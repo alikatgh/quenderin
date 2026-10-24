@@ -92,6 +92,19 @@ data class RemoteHarnessClientModel(val provider: String, val id: String, val na
 data class RemoteHarnessClientTimelineItem(val id: String, val kind: String, val text: String, val reasoning: String = "") {
     override fun toString() = "RemoteHarnessClientTimelineItem(redacted)"
 }
+/** Durable restriction only; no Bot display data or mutation authorization is stored. */
+data class RemoteHarnessClientBotReadOnlyScope(
+    val origin: String, val hostDeviceID: String, val hostFingerprint: String, val workspaceID: String, val sessionID: String,
+) {
+    init {
+        rhCheck(origin == ConnectionOrigins.canonicalize(origin), "client-storage")
+        rhID(hostDeviceID); rhID(workspaceID); rhUnicode(sessionID)
+        rhCheck(sessionID.isNotEmpty() && '\u0000' !in sessionID &&
+            sessionID.toByteArray(Charsets.UTF_8).size <= RemoteHarnessBotRead.IDENTITY_BYTES, "client-storage")
+        rhCheck(hostFingerprint.matches(Regex("^[a-f0-9]{64}$")), "client-storage")
+    }
+    override fun toString() = "RemoteHarnessClientBotReadOnlyScope(redacted)"
+}
 enum class RemoteHarnessClientPhase { SETUP, AUTHORIZING, HOSTS, CONFIRM_PIN, CONNECTING, WORKSPACES, SESSIONS, SESSION, DISCONNECTED, BLOCKED }
 
 data class RemoteHarnessClientSnapshot(
@@ -100,6 +113,7 @@ data class RemoteHarnessClientSnapshot(
     val hosts: List<RemoteHarnessClientHost> = emptyList(), val pendingHost: RemoteHarnessClientHost? = null,
     val workspaces: List<RemoteHarnessClientWorkspace> = emptyList(), val workspaceID: String? = null,
     val workspaceTitle: String = "", val sessions: List<RemoteHarnessClientSession> = emptyList(), val sessionID: String? = null,
+    val botSessionReadOnly: Boolean = false,
     val timeline: List<RemoteHarnessClientTimelineItem> = emptyList(), val models: List<RemoteHarnessClientModel> = emptyList(),
     val provider: String? = null, val model: String? = null, val effort: String? = null,
     val draft: String = "", val status: RemoteSessionStatus = RemoteSessionStatus.DISCONNECTED,
@@ -107,6 +121,11 @@ data class RemoteHarnessClientSnapshot(
     val hasMore: Boolean = false, val approvalSupported: Boolean = false,
     val approvals: List<RemoteHarnessClientApproval> = emptyList(),
     val approvalActions: Map<String, RemoteHarnessClientApprovalAction> = emptyMap(),
+    // Connection-local display state. Roster data and navigation authority are never persisted.
+    val botReadSupported: Boolean = false, val botRosterLoading: Boolean = false,
+    val botRoster: RemoteHarnessBotRoster? = null, val botRosterError: String? = null,
+    val availableBotIDs: Set<String> = emptySet(),
+    val botSessionClassificationPending: Boolean = false,
     val clientPublicIdentity: String? = null, val clientFingerprint: String? = null,
 ) {
     override fun toString() = "RemoteHarnessClientSnapshot(redacted)"
@@ -118,18 +137,33 @@ class RemoteHarnessClientSavedState(
     val workspaceID: String?, val workspaceTitle: String, val sessionID: String?, val draft: String,
     val timeline: List<RemoteHarnessClientTimelineItem>, val commands: List<String>,
     val provider: String? = null, val model: String? = null, val effort: String? = null,
+    selectedBotReadOnly: Boolean = false,
+    botReadOnlyScopes: List<RemoteHarnessClientBotReadOnlyScope>? = null,
 ) {
+    val botReadOnlyScopes: List<RemoteHarnessClientBotReadOnlyScope>
+    val botSessionReadOnly: Boolean
     init {
         rhCheck(origin == ConnectionOrigins.canonicalize(origin), "client-storage"); rhID(deviceID)
         if (hostID != null) { rhID(hostID); rhCheck(hostName != null && hostFingerprint?.matches(Regex("^[a-f0-9]{64}$")) == true, "client-storage") }
         else rhCheck(hostName == null && hostFingerprint == null, "client-storage")
         workspaceID?.let(::rhID); sessionID?.let(::rhID)
         rhCheck(sessionID == null || workspaceID != null && hostID != null, "client-storage")
+        rhCheck(!selectedBotReadOnly || sessionID != null && workspaceID != null && hostID != null, "client-storage")
+        val currentScope = if (sessionID != null && workspaceID != null && hostID != null && hostFingerprint != null)
+            RemoteHarnessClientBotReadOnlyScope(origin, hostID, hostFingerprint, workspaceID, sessionID) else null
+        // The short-lived selected-only format is upgraded without dropping its restriction.
+        val scopes = botReadOnlyScopes ?: if (selectedBotReadOnly) listOf(currentScope!!) else emptyList()
+        rhCheck(scopes.size <= MAX_BOT_READ_ONLY_SCOPES && scopes.distinct().size == scopes.size && scopes.all { it.origin == origin }, "client-storage")
+        val selected = currentScope != null && currentScope in scopes
+        rhCheck(botReadOnlyScopes == null || selectedBotReadOnly == selected, "client-storage")
+        this.botReadOnlyScopes = java.util.Collections.unmodifiableList(ArrayList(scopes))
+        this.botSessionReadOnly = selected
         rhCheck(draft.toByteArray(Charsets.UTF_8).size <= RemoteHarnessBounds.TEXT_BYTES && timeline.size <= 512 &&
             commands.size <= 512 && commands.distinct().size == commands.size, "client-storage")
         commands.forEach(::rhID)
     }
     override fun toString() = "RemoteHarnessClientSavedState(redacted)"
+    companion object { const val MAX_BOT_READ_ONLY_SCOPES = 128 }
 }
 interface RemoteHarnessClientStateStore {
     fun read(): RemoteHarnessClientSavedState?
@@ -162,6 +196,11 @@ object RemoteHarnessClientRecords {
             "origin" to s(record.origin), "deviceId" to s(record.deviceID), "hostId" to s(record.hostID),
             "hostName" to s(record.hostName), "pin" to s(record.hostFingerprint), "workspaceId" to s(record.workspaceID),
             "workspaceTitle" to s(record.workspaceTitle), "sessionId" to s(record.sessionID), "draft" to s(record.draft),
+            "botSessionReadOnly" to RemoteHarnessJSON.BooleanValue(record.botSessionReadOnly),
+            "botReadOnlyScopes" to RemoteHarnessJSON.ArrayValue(record.botReadOnlyScopes.map { scope ->
+                RemoteHarnessJSON.obj("origin" to s(scope.origin), "hostDeviceId" to s(scope.hostDeviceID),
+                    "hostFingerprint" to s(scope.hostFingerprint), "workspaceId" to s(scope.workspaceID), "sessionId" to s(scope.sessionID))
+            }),
             "provider" to s(record.provider), "model" to s(record.model), "effort" to s(record.effort),
             "timeline" to RemoteHarnessJSON.ArrayValue(record.timeline.map { RemoteHarnessJSON.obj("id" to s(it.id),
                 "kind" to s(it.kind), "text" to s(it.text), "reasoning" to s(it.reasoning)) }),
@@ -172,10 +211,20 @@ object RemoteHarnessClientRecords {
         val timeline = (p.rhRequired("timeline") as RemoteHarnessJSON.ArrayValue).values.map { value ->
             val item = value.objectValue(); RemoteHarnessClientTimelineItem(item.rhString("id"), item.rhString("kind"), item.rhString("text"), item.rhString("reasoning")) }
         val commands = (p.rhRequired("commands") as RemoteHarnessJSON.ArrayValue).values.map { it.stringValue() }
+        val scopes = p["botReadOnlyScopes"]?.let { value ->
+            val rows = value as? RemoteHarnessJSON.ArrayValue ?: throw RemoteHarnessException("client-storage")
+            rhCheck(rows.values.size <= RemoteHarnessClientSavedState.MAX_BOT_READ_ONLY_SCOPES, "client-storage")
+            rows.values.map { row ->
+                val scope = row.objectValue()
+                rhCheck(scope.keys == setOf("origin", "hostDeviceId", "hostFingerprint", "workspaceId", "sessionId"), "client-storage")
+                RemoteHarnessClientBotReadOnlyScope(scope.rhString("origin"), scope.rhString("hostDeviceId"),
+                    scope.rhString("hostFingerprint"), scope.rhString("workspaceId"), scope.rhString("sessionId"))
+            }
+        }
         rhCheck(timeline.size <= 512 && commands.size <= 512 && p.rhString("draft").toByteArray().size <= RemoteHarnessBounds.TEXT_BYTES, "client-storage")
         return RemoteHarnessClientSavedState(p.rhString("origin"), p.rhString("deviceId"), p.s("hostId"), p.s("hostName"), p.s("pin"),
             p.s("workspaceId"), p.rhString("workspaceTitle"), p.s("sessionId"), p.rhString("draft"), timeline, commands,
-            p.s("provider"), p.s("model"), p.s("effort"))
+            p.s("provider"), p.s("model"), p.s("effort"), p["botSessionReadOnly"]?.booleanValue() ?: false, scopes)
     }
     fun fingerprint(key: ByteArray): String {
         rhCheck(key.size == 32, "client-host-key")

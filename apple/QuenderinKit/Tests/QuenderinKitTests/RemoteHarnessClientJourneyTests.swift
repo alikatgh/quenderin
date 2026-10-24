@@ -86,6 +86,11 @@ import XCTest
     var refreshRequests = 0, registrationRequests = 0, prompts = 0, approvals = 0, cancellations = 0
     var creations = 0, modelSelections = 0
     var companionAvailable = true
+    var botCapabilities: [String] = []
+    var botReads = 0, deferBotReads = false
+    var botResponseOverride: [String: Any]?
+    var sessionRowsOverride: [[String: Any]]?
+    var workspaceSessionIDs: [String]?
     var snapshotActiveAttempt = false
     var snapshotTurnEvent: String?
     var loseRefresh = false, running = false, created = false
@@ -117,7 +122,11 @@ import XCTest
     }
     func makeSocket() -> any RemoteHarnessClientSocket { let socket = JourneySocket(server: self); sockets.append(socket); return socket }
     var sessionRow: [String: Any] { ["sessionId": "session-real", "updatedAt": now, "running": running, "blank": false, "title": "Synthetic task"] }
-    var workspace: [String: Any] { ["workspaceId": "workspace-real", "path": "/synthetic/project", "title": "Synthetic workspace", "sessionIds": created ? ["session-real", "session-created"] : ["session-real"], "createdAt": "2026-10-23", "updatedAt": "2026-10-23"] }
+    var workspace: [String: Any] { ["workspaceId": "workspace-real", "path": "/synthetic/project", "title": "Synthetic workspace", "sessionIds": workspaceSessionIDs ?? (created ? ["session-real", "session-created"] : ["session-real"]), "createdAt": "2026-10-23", "updatedAt": "2026-10-23"] }
+    func botResponse(workspaceID: String = "workspace-real", revision: Int = 7, bots: [[String: Any]]? = nil) -> [String: Any] {
+        ["status": 200, "json": ["ok": true, "value": ["schemaVersion": 1, "workspaceId": workspaceID, "revision": revision, "readOnly": true,
+            "bots": bots ?? [["id": "bot-real", "name": "Synthetic researcher", "sessionId": "session-real", "model": "deepseek-flash", "permission": "read-only"]]]]]
+    }
 }
 @MainActor private final class JourneySocket: RemoteHarnessClientSocket {
     let server: JourneyServer
@@ -128,6 +137,7 @@ import XCTest
     var relaySelected = false
     var receivedCount = 0
     var officialFrameLimit = 7
+    var pendingBotReads: [String] = []
     var emittedOfficialFrames: [Int] { server.official?.emittedFrames ?? [] }
     init(server: JourneyServer) { self.server = server }
     func start(origin: String) throws { XCTAssertTrue(origin.hasPrefix("https://")) }
@@ -143,6 +153,10 @@ import XCTest
     func frame(_ endpoint: String, _ value: [String: Any]) throws {
         guard let stream = streams[endpoint] else { return }
         try business("event", ["event": "harness.remote.frame", "data": ["streamId": stream, "hasValue": true, "value": value]])
+    }
+    func replyBotReads(_ result: [String: Any]? = nil) throws {
+        let pending = pendingBotReads; pendingBotReads = []
+        for id in pending { try business("rpc.response", ["requestId": id, "result": result ?? server.botResponseOverride ?? server.botResponse()]) }
     }
     func drainOfficialFrames() throws {
         guard let official = server.official else { return }
@@ -174,8 +188,19 @@ import XCTest
             let raw = Data(base64Encoded: standard + String(repeating: "=", count: (4 - standard.count % 4) % 4))!
             let rpc = try RemoteHarnessJSON(data: Data(raw.dropLast(16))).fields(), rpcID = try rpc.text("id"), payload = try rpc.required("payload").fields(), method = try payload.text("method"), params = try payload.required("params").fields()
             if method == "harness.transport.describe" {
-                let capabilities = server.companionAvailable ? ["harness.remote.v3", "quenderin.approvals.v1"] : ["harness.remote.v3"]
+                let capabilities = (server.companionAvailable ? ["harness.remote.v3", "quenderin.approvals.v1"] : ["harness.remote.v3"]) + server.botCapabilities
                 try business("rpc.response", ["requestId": rpcID, "result": ["capabilities": capabilities]]); return
+            }
+            if method == "plugin.route.call" {
+                XCTAssertEqual(try params.text("route"), "api/bot")
+                let body = try params.required("body").fields(), request = try body.required("payload").fields()
+                XCTAssertEqual(try body.text("endpoint"), "quenderin-roster")
+                XCTAssertEqual(try request.required("schemaVersion").integerValue(), 1)
+                XCTAssertEqual(try request.text("workspaceId"), "workspace-real")
+                server.botReads += 1
+                if server.deferBotReads { pendingBotReads.append(rpcID) }
+                else { try business("rpc.response", ["requestId": rpcID, "result": server.botResponseOverride ?? server.botResponse()]) }
+                return
             }
             if method == "harness.remote.stream.open" {
                 let endpoint = try params.text("endpoint"), stream = try params.text("streamId"); streams[endpoint] = stream
@@ -238,7 +263,7 @@ import XCTest
             }
             var value: Any = NSNull()
             switch endpoint {
-            case "session/list": value = ["items": server.created ? [server.sessionRow, ["sessionId": "session-created", "updatedAt": server.now, "running": false, "blank": true, "title": "New synthetic session"]] : [server.sessionRow]]
+            case "session/list": value = ["items": server.sessionRowsOverride ?? (server.created ? [server.sessionRow, ["sessionId": "session-created", "updatedAt": server.now, "running": false, "blank": true, "title": "New synthetic session"]] : [server.sessionRow])]
             case "session/create": server.creations += 1; server.created = true; value = ["sessionId": "session-created"]
             case "session/modelCatalog": value = ["default": ["provider": "synthetic", "model": "deepseek-harness", "reasoningEffort": "high"], "groups": [["id": "synthetic", "name": "Synthetic provider", "models": [["id": "deepseek-harness", "name": "Synthetic DeepSeek", "reasoning": ["efforts": [["id": "high", "name": "High"]]]]]]]]
             case "session/selectModel": server.modelSelections += 1; value = ["selected": ["provider": "synthetic", "model": "deepseek-harness", "reasoningEffort": "high"]]
@@ -571,6 +596,246 @@ import XCTest
     private func settle(_ predicate: @escaping @MainActor () -> Bool, file: StaticString = #filePath, line: UInt = #line) async {
         for _ in 0..<200 { if predicate() { return }; await Task.yield() }
         XCTAssertTrue(predicate(), file: file, line: line)
+    }
+    private func botController(_ server: JourneyServer, storage: JourneyStorage, clock: JourneyClock? = nil) async throws -> RemoteHarnessClientController {
+        let vault = JourneyCredentials(); server.credentials = vault
+        let native = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: vault, storage: storage, clock: clock ?? JourneyClock(),
+            makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) })
+        await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
+        await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost()
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first))
+        XCTAssertEqual(native.screen, .sessions); XCTAssertNil(native.failure)
+        return native
+    }
+    func testBotReadRequiresBothCapabilitiesAndNeverRequestsDuringDiscovery() async throws {
+        for capabilities in [[], ["plugin.route.v1"], ["quenderin.bot.read.v1"]] {
+            let server = JourneyServer(); server.botCapabilities = capabilities
+            let native = try await botController(server, storage: JourneyStorage())
+            await native.refreshBots()
+            XCTAssertEqual(server.botReads, 0); XCTAssertFalse(native.botReadAvailable); XCTAssertNil(native.botRoster)
+            await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+            await native.refreshBots(); XCTAssertEqual(server.botReads, 0); XCTAssertNil(native.failure)
+            native.disconnect()
+        }
+        let server = JourneyServer(), vault = JourneyCredentials(); server.credentials = vault
+        server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        let native = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: vault, storage: JourneyStorage(), clock: JourneyClock(), makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) })
+        defer { native.disconnect() }
+        await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
+        await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost(); await native.refreshBots()
+        XCTAssertEqual(native.screen, .workspaces); XCTAssertEqual(server.botReads, 0); XCTAssertFalse(native.botReadAvailable)
+    }
+    func testBotReadHasIndependentLoadingExplicitRefreshAndNoPersistence() async throws {
+        let server = JourneyServer(), storage = JourneyStorage(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]; server.deferBotReads = true
+        let native = try await botController(server, storage: storage); defer { native.disconnect() }
+        await settle { server.botReads == 1 && native.botLoading }
+        XCTAssertFalse(native.busy); XCTAssertTrue(native.botReadAvailable); XCTAssertNil(native.botRoster)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let saved = try encoder.encode(try XCTUnwrap(storage.value))
+        let socket = try XCTUnwrap(server.sockets.last); try socket.replyBotReads()
+        await settle { native.botRoster?.revision == 7 && !native.botLoading }
+        let bot = try XCTUnwrap(native.botRoster?.bots.first)
+        XCTAssertEqual(bot.name, "Synthetic researcher"); XCTAssertTrue(native.canOpenBot(bot)); XCTAssertFalse(native.botUnavailable)
+        XCTAssertEqual(try encoder.encode(try XCTUnwrap(storage.value)), saved, "Bot data never enters the journal")
+        server.deferBotReads = false; server.botResponseOverride = server.botResponse(revision: 8, bots: [])
+        await native.refreshBots()
+        XCTAssertEqual(server.botReads, 2); XCTAssertEqual(native.botRoster?.revision, 8); XCTAssertTrue(native.botRoster?.bots.isEmpty == true)
+        XCTAssertFalse(native.canOpenBot(bot)); XCTAssertEqual(try encoder.encode(try XCTUnwrap(storage.value)), saved)
+        let restored = RemoteHarnessClientController(backend: JourneyCrypto(), storage: storage)
+        XCTAssertNil(restored.botRoster); XCTAssertFalse(restored.botReadAvailable); XCTAssertFalse(restored.botLoading)
+    }
+    func testFailedBotReadPreservesDraftHistoryApprovalAndStop() async throws {
+        let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        server.botResponseOverride = server.botResponse(bots: [])
+        let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && native.botRoster != nil }
+        native.updateDraft("Synthetic remote task"); await native.send(); await settle { native.approvalCards.first?.action != nil }
+        native.updateDraft("Keep this unfinished draft")
+        let history = native.timeline.records, approvals = native.approvals.map(\.eventID), commands = native.journal.commands.count
+        let action = native.approvalCards.first?.action?.arguments
+        server.deferBotReads = true
+        let refresh = Task { await native.refreshBots() }
+        await settle { native.botLoading && server.sockets.last?.pendingBotReads.count == 1 }
+        XCTAssertTrue(native.canStop); XCTAssertFalse(native.busy)
+        try XCTUnwrap(server.sockets.last).replyBotReads(["status": 503, "json": ["ok": false, "error": "Synthetic private Host diagnostic"]])
+        await refresh.value
+        XCTAssertTrue(native.botUnavailable); XCTAssertNil(native.botRoster); XCTAssertNil(native.failure)
+        XCTAssertEqual(native.journal.draft, "Keep this unfinished draft"); XCTAssertEqual(native.timeline.records, history)
+        XCTAssertEqual(native.approvals.map(\.eventID), approvals); XCTAssertEqual(native.approvalCards.first?.action?.arguments, action)
+        XCTAssertEqual(native.journal.commands.count, commands); XCTAssertTrue(native.canStop)
+        await native.stop(); XCTAssertEqual(server.cancellations, 1); XCTAssertEqual(native.stopState, .receiptReceived)
+    }
+    func testBotReadDeadlineStaysLocalAndSessionRemainsUsable() async throws {
+        let server = JourneyServer(), clock = JourneyClock(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        server.botResponseOverride = server.botResponse(bots: []); server.running = true; server.snapshotActiveAttempt = true
+        let native = try await botController(server, storage: JourneyStorage(), clock: clock); defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && native.botRoster != nil }
+        native.updateDraft("Keep this unfinished draft")
+        let history = native.timeline.records, commands = native.journal.commands.count, sockets = server.sockets.count
+        let socket = try XCTUnwrap(server.sockets.last)
+        server.deferBotReads = true
+        let refresh = Task { await native.refreshBots() }
+        await settle { native.botLoading && socket.pendingBotReads.count == 1 }
+        let reads = server.botReads, received = socket.receivedCount
+        clock.monotonicMilliseconds += 60_000
+        try socket.frame("$events", ["type": "keepalive"])
+        await settle { socket.receivedCount > received }
+        clock.monotonicMilliseconds += RemoteHarnessLimits.deadlineMilliseconds - 60_000
+        // An authenticated live frame drives expiry and refreshes transport
+        // liveness; this exercises RPC expiry independently of heartbeat loss.
+        try socket.frame("$events", ["type": "keepalive"])
+        await refresh.value
+        XCTAssertTrue(native.botUnavailable); XCTAssertFalse(native.botLoading); XCTAssertNil(native.botRoster)
+        XCTAssertNil(native.failure); XCTAssertEqual(native.screen, .session); XCTAssertTrue(native.snapshotReady)
+        XCTAssertTrue(native.botReadAvailable); XCTAssertTrue(native.canStop); XCTAssertFalse(socket.closed)
+        XCTAssertEqual(server.sockets.count, sockets); XCTAssertEqual(native.journal.commands.count, commands)
+        XCTAssertEqual(native.journal.draft, "Keep this unfinished draft"); XCTAssertEqual(native.timeline.records, history)
+        try socket.replyBotReads(server.botResponse(revision: 99))
+        await settle { socket.pendingBotReads.isEmpty }
+        XCTAssertNil(native.botRoster); XCTAssertTrue(native.botUnavailable)
+        await native.stop()
+        XCTAssertEqual(server.cancellations, 1); XCTAssertEqual(native.stopState, .receiptReceived)
+        XCTAssertNil(native.failure); XCTAssertFalse(socket.closed); XCTAssertEqual(native.screen, .session)
+        XCTAssertNil(native.botRoster); XCTAssertTrue(native.botUnavailable); XCTAssertEqual(server.botReads, reads)
+    }
+    func testBotReadRejectsWrongWorkspaceWithoutChangingSessionState() async throws {
+        let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        server.botResponseOverride = server.botResponse(workspaceID: "workspace-other")
+        let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
+        await settle { native.botUnavailable }
+        XCTAssertNil(native.botRoster); XCTAssertNil(native.failure); XCTAssertEqual(native.screen, .sessions)
+        server.botResponseOverride = server.botResponse()
+        await native.refreshBots()
+        let bot = try XCTUnwrap(native.botRoster?.bots.first)
+        await native.openBotSession(bot); await settle { native.snapshotReady }
+        XCTAssertEqual(native.journal.sessionID, "session-real"); XCTAssertEqual(server.creations, 0); XCTAssertEqual(server.prompts, 0)
+    }
+    func testBotGenerationRetirementClearsImmediatelyAndReconnectRefetches() async throws {
+        let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
+        await settle { native.botRoster != nil }
+        let oldBot = try XCTUnwrap(native.botRoster?.bots.first), oldSocket = try XCTUnwrap(server.sockets.last)
+        server.deferBotReads = true
+        let oldRefresh = Task { await native.refreshBots() }; await settle { oldSocket.pendingBotReads.count == 1 }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && server.sockets.last?.pendingBotReads.count == 1 }
+        XCTAssertNil(native.botRoster); XCTAssertFalse(native.canOpenBot(oldBot)); XCTAssertTrue(native.botLoading)
+        try oldSocket.replyBotReads(server.botResponse(revision: 99)); await oldRefresh.value
+        XCTAssertNil(native.botRoster, "retired generation cannot publish its result")
+        try XCTUnwrap(server.sockets.last).replyBotReads(server.botResponse(revision: 8)); await settle { native.botRoster?.revision == 8 }
+        let reads = server.botReads
+        native.disconnect()
+        XCTAssertNil(native.botRoster); XCTAssertFalse(native.botReadAvailable); XCTAssertFalse(native.botLoading); XCTAssertFalse(native.canOpenBot(oldBot))
+        server.deferBotReads = false; server.botResponseOverride = server.botResponse(revision: 9)
+        await native.reconnect(); await settle { native.snapshotReady && native.botRoster?.revision == 9 }
+        XCTAssertEqual(server.botReads, reads + 1); XCTAssertNil(native.failure)
+    }
+    func testBotNavigationRequiresCurrentUniqueSessionAndLiveWorkspaceMembership() async throws {
+        let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
+        await settle { native.botRoster != nil }
+        let bot = try XCTUnwrap(native.botRoster?.bots.first), socket = try XCTUnwrap(server.sockets.last)
+        server.workspaceSessionIDs = []
+        try socket.frame("workspace/follow", ["type": "upsert", "workspace": server.workspace])
+        await settle { native.workspaces.first?.sessionIDs.isEmpty == true }
+        let sockets = server.sockets.count
+        XCTAssertFalse(native.canOpenBot(bot)); await native.openBotSession(bot)
+        XCTAssertEqual(server.sockets.count, sockets); XCTAssertNil(native.journal.sessionID)
+        server.workspaceSessionIDs = ["session-real"]; server.sessionRowsOverride = [server.sessionRow, server.sessionRow]
+        try socket.frame("workspace/follow", ["type": "upsert", "workspace": server.workspace])
+        await settle { native.workspaces.first?.sessionIDs == ["session-real"] }
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first)); await settle { native.botRoster != nil }
+        XCTAssertEqual(native.sessions.count, 2); XCTAssertFalse(native.canOpenBot(bot))
+        let duplicateSockets = server.sockets.count; await native.openBotSession(bot)
+        XCTAssertEqual(server.sockets.count, duplicateSockets); XCTAssertNil(native.journal.sessionID)
+    }
+    func testBotNavigationUsesExactUTF8SessionIdentity() async throws {
+        let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        let composed = "session-\u{e9}", decomposed = "session-e\u{301}"
+        var row = server.sessionRow; row["sessionId"] = composed
+        server.workspaceSessionIDs = [composed]; server.sessionRowsOverride = [row]
+        server.botResponseOverride = server.botResponse(bots: [["id": "bot-real", "name": "Synthetic researcher", "sessionId": decomposed, "model": NSNull(), "permission": NSNull()]])
+        let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
+        await settle { native.botRoster != nil }
+        let bot = try XCTUnwrap(native.botRoster?.bots.first), sockets = server.sockets.count
+        XCTAssertFalse(native.canOpenBot(bot)); await native.openBotSession(bot)
+        XCTAssertEqual(server.sockets.count, sockets); XCTAssertNil(native.journal.sessionID); XCTAssertEqual(server.creations, 0)
+    }
+    func testBotSessionReadOnlyMarkerSurvivesOrdinaryReselectColdRestoreAndReconnect() async throws {
+        let server = JourneyServer(), storage = JourneyStorage(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        let native = try await botController(server, storage: storage)
+        await settle { native.botRoster != nil }
+        await native.openBotSession(try XCTUnwrap(native.botRoster?.bots.first)); await settle { native.snapshotReady }
+        native.updateDraft("Preserve this Bot draft")
+        XCTAssertTrue(native.isBotSessionReadOnly); XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
+        let commands = native.journal.commands.count
+        await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(native.journal.commands.count, commands)
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        XCTAssertTrue(native.isBotSessionReadOnly); XCTAssertEqual(native.journal.draft, "Preserve this Bot draft")
+        native.disconnect(); server.botCapabilities = []
+        let restored = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials), storage: storage, clock: JourneyClock(), makeSocket: { server.makeSocket() })
+        defer { restored.disconnect() }
+        XCTAssertTrue(restored.isBotSessionReadOnly); XCTAssertNil(restored.botRoster)
+        await restored.reconnect(); await settle { restored.snapshotReady }
+        XCTAssertTrue(restored.isBotSessionReadOnly); XCTAssertFalse(restored.botReadAvailable)
+        await restored.send(); await restored.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(restored.journal.commands.count, commands)
+        await restored.selectWorkspace(try XCTUnwrap(restored.workspaces.first)); await restored.createSession(); await settle { restored.snapshotReady }
+        XCTAssertEqual(restored.journal.sessionID, "session-created"); XCTAssertFalse(restored.isBotSessionReadOnly)
+        restored.updateDraft("A separate normal task"); XCTAssertTrue(restored.canSend); XCTAssertTrue(restored.canChangeModel)
+        await restored.selectModel("synthetic:deepseek-harness", effort: "high"); XCTAssertEqual(server.modelSelections, 1)
+    }
+    func testBotClassificationBlocksMutationsUntilCurrentRosterAndMarksOrdinarySelection() async throws {
+        let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]; server.deferBotReads = true
+        let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && server.sockets.last?.pendingBotReads.count == 1 }
+        native.updateDraft("Wait for ownership verification")
+        let commands = native.journal.commands.count
+        XCTAssertTrue(native.botSessionClassificationPending); XCTAssertFalse(native.isBotSessionReadOnly); XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
+        await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(native.journal.commands.count, commands)
+        try XCTUnwrap(server.sockets.last).replyBotReads(server.botResponse(bots: [])); await settle { !native.botLoading }
+        XCTAssertFalse(native.botSessionClassificationPending); XCTAssertFalse(native.isBotSessionReadOnly); XCTAssertTrue(native.canSend); XCTAssertTrue(native.canChangeModel)
+        let refresh = Task { await native.refreshBots() }; await settle { native.botLoading }
+        XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
+        try XCTUnwrap(server.sockets.last).replyBotReads(); await refresh.value
+        XCTAssertTrue(native.isBotSessionReadOnly); XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
+        await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(native.journal.commands.count, commands)
+    }
+    func testFailedBotMarkerSavePreservesPreviousRecordAndBlocksMutations() async throws {
+        let server = JourneyServer(), storage = JourneyStorage(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]; server.deferBotReads = true
+        let native = try await botController(server, storage: storage); defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && server.sockets.last?.pendingBotReads.count == 1 }
+        native.updateDraft("Keep the previous protected record")
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let previous = try encoder.encode(try XCTUnwrap(storage.value)), commands = native.journal.commands.count
+        storage.failWrites = true
+        try XCTUnwrap(server.sockets.last).replyBotReads(); await settle { native.botUnavailable }
+        XCTAssertEqual(native.failure, .storage); XCTAssertTrue(native.botSessionClassificationPending)
+        XCTAssertEqual(try encoder.encode(try XCTUnwrap(storage.value)), previous); XCTAssertEqual(native.journal.draft, "Keep the previous protected record")
+        await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(native.journal.commands.count, commands)
+    }
+    func testLegacyBotMarkerDecodeAndExactScopeValidation() async throws {
+        let server = JourneyServer(), storage = JourneyStorage(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        let native = try await botController(server, storage: storage); defer { native.disconnect() }
+        await settle { native.botRoster != nil }
+        await native.openBotSession(try XCTUnwrap(native.botRoster?.bots.first)); await settle { native.snapshotReady }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        let saved = try XCTUnwrap(storage.value), scope = try XCTUnwrap(saved.botReadOnlyScope)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(saved)) as? [String: Any])
+        legacy.removeValue(forKey: "botReadOnlyScope")
+        var sessions = try XCTUnwrap(legacy["savedSessions"] as? [[String: Any]])
+        for index in sessions.indices { sessions[index].removeValue(forKey: "botReadOnlyScope") }; legacy["savedSessions"] = sessions
+        let decoded = try JSONDecoder().decode(RemoteHarnessClientJournal.self, from: JSONSerialization.data(withJSONObject: legacy))
+        try decoded.validate(); XCTAssertNil(decoded.botReadOnlyScope); XCTAssertTrue(decoded.savedSessions.allSatisfy { $0.botReadOnlyScope == nil })
+        XCTAssertTrue(scope.matches(origin: saved.origin, hostID: saved.profile?.hostID, hostFingerprint: saved.profile?.hostFingerprint, workspaceID: saved.profile?.workspaceID, sessionID: saved.sessionID))
+        XCTAssertFalse(scope.matches(origin: "https://other.example", hostID: scope.hostID, hostFingerprint: scope.hostFingerprint, workspaceID: scope.workspaceID, sessionID: scope.sessionID))
+        XCTAssertFalse(scope.matches(origin: scope.origin, hostID: scope.hostID, hostFingerprint: "changed-pin", workspaceID: scope.workspaceID, sessionID: scope.sessionID))
+        let unicode = RemoteHarnessClientBotSessionScope(origin: scope.origin, hostID: scope.hostID, hostFingerprint: scope.hostFingerprint, workspaceID: "workspace-\u{e9}", sessionID: "session-\u{e9}")
+        XCTAssertFalse(unicode.matches(origin: scope.origin, hostID: scope.hostID, hostFingerprint: scope.hostFingerprint, workspaceID: "workspace-e\u{301}", sessionID: "session-e\u{301}"))
+        var invalid = saved; invalid.sessionID = "different-session"; XCTAssertThrowsError(try invalid.validate())
     }
     func testOfficialRuntimeFactsReplayThroughNativeControllerToReady() async throws {
         let official = try JourneyOfficialRuntime()

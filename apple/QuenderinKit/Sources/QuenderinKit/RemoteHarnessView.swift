@@ -162,7 +162,62 @@ public struct RemoteHarnessView: View {
                     }.disabled(controller.busy).accessibilityIdentifier("remote-session-\(session.sessionID)")
                 }
             }
+            bots
         }
+    }
+    private struct BotListItem: Identifiable {
+        let bot: RemoteHarnessBot
+        var id: Data { Data(bot.id.utf8) }
+    }
+    private var bots: some View {
+        Section("Bots") {
+            if !controller.botReadAvailable {
+                Text(controller.companionAvailable ? "Bots aren’t available from this computer." : "Connect to your computer to view its bots.")
+                    .foregroundStyle(.secondary).accessibilityIdentifier("remote-bots-unsupported")
+            } else {
+                refreshBotsButton
+                if controller.botLoading {
+                    ProgressView(controller.botRoster == nil ? "Loading bots…" : "Refreshing bots…")
+                        .accessibilityIdentifier("remote-bots-loading")
+                }
+                if controller.botUnavailable {
+                    Text("Bots couldn’t be loaded. Refresh bots to try again when your computer is ready.")
+                        .foregroundStyle(.secondary).accessibilityIdentifier("remote-bots-unavailable")
+                } else if let roster = controller.botRoster {
+                    if roster.bots.isEmpty {
+                        Text("No bots in this workspace.").foregroundStyle(.secondary).accessibilityIdentifier("remote-bots-empty")
+                    }
+                    ForEach(roster.bots.map { BotListItem(bot: $0) }) { item in
+                        let bot = item.bot
+                        Button { Task { await controller.openBotSession(bot) } } label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(bot.name)
+                                Text("Model: \(bot.model ?? "Not provided")").font(.caption).foregroundStyle(.secondary)
+                                Text("Permission: \(bot.permission ?? "Not provided")").font(.caption).foregroundStyle(.secondary)
+                                if !controller.canOpenBot(bot) {
+                                    Text("Current session unavailable").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .disabled(controller.busy || controller.botLoading || !controller.canOpenBot(bot))
+                        .accessibilityHint("Opens this bot’s current conversation for viewing.")
+                        .accessibilityIdentifier("remote-bot-\(item.id.base64EncodedString())")
+                    }
+                    Text("Open a bot to read its current conversation. Send messages and change bot settings on your computer.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if roster.readOnly {
+                        Text("Bot changes are currently disabled on the computer.")
+                            .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("remote-bots-host-read-only")
+                    }
+                } else if !controller.botLoading {
+                    Text("Refresh bots to see this workspace’s bots.").foregroundStyle(.secondary)
+                }
+            }
+        }.accessibilityIdentifier("remote-bots")
+    }
+    private var refreshBotsButton: some View {
+        Button { Task { await controller.refreshBots() } } label: { Label("Refresh bots", systemImage: "arrow.clockwise") }
+            .disabled(!controller.botReadAvailable || controller.botLoading).accessibilityIdentifier("remote-refresh-bots")
     }
     private var recovery: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -190,25 +245,63 @@ public struct RemoteHarnessView: View {
                     .labelStyle(.iconOnly).disabled(controller.busy).accessibilityIdentifier("remote-refresh-status")
                 if controller.running { Text("Running on computer").font(.caption) }
             }.padding(.horizontal)
-            modelControls.padding(.horizontal).padding(.vertical, 6)
+            if controller.isBotSessionReadOnly || controller.botReadAvailable || controller.botSessionClassificationPending {
+                sessionBotStatus.padding(.horizontal).padding(.vertical, 6)
+            }
+            if !controller.isBotSessionReadOnly { modelControls.padding(.horizontal).padding(.vertical, 6) }
             Divider()
             history
             if !controller.approvals.isEmpty { approvalControls }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
-                TextField("Task for this computer", text: Binding(
-                    get: { controller.journal.draft },
-                    set: { value in controller.updateDraft(value) }
-                ), axis: .vertical)
-                    .lineLimit(2...8).textFieldStyle(.roundedBorder).accessibilityIdentifier("remote-composer")
+                if !controller.isBotSessionReadOnly {
+                    TextField("Task for this computer", text: Binding(
+                        get: { controller.journal.draft },
+                        set: { value in controller.updateDraft(value) }
+                    ), axis: .vertical)
+                        .lineLimit(2...8).textFieldStyle(.roundedBorder).disabled(controller.botSessionClassificationPending)
+                        .accessibilityIdentifier("remote-composer")
+                }
                 HStack {
                     Text(stopLabel).font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("Stop") { Task { await controller.stop() } }.disabled(!controller.canStop).accessibilityIdentifier("remote-stop")
-                    Button("Send") { Task { await controller.send() } }.buttonStyle(.borderedProminent).disabled(!controller.canSend).accessibilityIdentifier("remote-send")
+                    if !controller.isBotSessionReadOnly {
+                        Button("Send") { Task { await controller.send() } }.buttonStyle(.borderedProminent).disabled(!controller.canSend).accessibilityIdentifier("remote-send")
+                    }
                 }
             }.padding()
         }
+    }
+    private var sessionBotStatus: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if controller.isBotSessionReadOnly {
+                Label("Bot session · View only", systemImage: "eye").font(.callout.weight(.semibold))
+                    .accessibilityIdentifier("remote-bot-session-read-only")
+                Text("Read the conversation here. Send messages and change bot settings on your computer.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if controller.botSessionClassificationPending && !controller.isBotSessionReadOnly {
+                if controller.botLoading {
+                    ProgressView("Checking session access…")
+                } else {
+                    Text(controller.botUnavailable
+                         ? "Session access couldn’t be checked. Refresh bots to try again. Your draft is kept."
+                         : "Refresh bots to check session access before sending a task or changing the model.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else if controller.botLoading {
+                ProgressView("Refreshing bots…")
+            } else if controller.botUnavailable {
+                Text("Bots couldn’t be refreshed. Try again when your computer is ready.").font(.caption).foregroundStyle(.secondary)
+            }
+            if controller.botReadAvailable {
+                refreshBotsButton
+            } else if controller.isBotSessionReadOnly {
+                Text("The bot list isn’t available from this computer. This conversation remains view only.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("remote-session-bot-status")
     }
     private var history: some View {
         ScrollView {

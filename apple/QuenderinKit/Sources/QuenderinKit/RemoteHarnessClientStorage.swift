@@ -144,12 +144,28 @@ public struct RemoteHarnessClientSavedCommand: Codable, NativeConnectionPrivateV
     let params: Data
     var outcome: String
 }
+/// Durable navigation restriction only; this contains no Bot display data.
+/// A missing optional marker in an older record means no known restriction.
+struct RemoteHarnessClientBotSessionScope: Codable, NativeConnectionPrivateValue {
+    let origin: String
+    let hostID: String
+    let hostFingerprint: String
+    let workspaceID: String
+    let sessionID: String
+    func matches(origin: String?, hostID: String?, hostFingerprint: String?, workspaceID: String?, sessionID: String?) -> Bool {
+        guard let origin, let hostID, let hostFingerprint, let workspaceID, let sessionID else { return false }
+        return self.origin.utf8.elementsEqual(origin.utf8) && self.hostID.utf8.elementsEqual(hostID.utf8)
+            && self.hostFingerprint.utf8.elementsEqual(hostFingerprint.utf8) && self.workspaceID.utf8.elementsEqual(workspaceID.utf8)
+            && self.sessionID.utf8.elementsEqual(sessionID.utf8)
+    }
+}
 public struct RemoteHarnessClientSavedSession: Codable, NativeConnectionPrivateValue {
     let hostID: String
     let workspaceID: String
     let sessionID: String
     var draft: String
     var history: [Data]
+    var botReadOnlyScope: RemoteHarnessClientBotSessionScope? = nil
 }
 public struct RemoteHarnessClientJournal: Codable, NativeConnectionPrivateValue {
     public var schemaVersion = 1
@@ -162,6 +178,7 @@ public struct RemoteHarnessClientJournal: Codable, NativeConnectionPrivateValue 
     public var history: [Data] = []
     public var commands: [RemoteHarnessClientSavedCommand] = []
     public var savedSessions: [RemoteHarnessClientSavedSession] = []
+    var botReadOnlyScope: RemoteHarnessClientBotSessionScope?
     public init() {}
     func validate() throws {
         guard schemaVersion == 1, pins.count <= 256, history.count <= 1024, commands.count <= 4096, savedSessions.count <= 50, draft.utf8.count <= 65_536 else { throw RemoteHarnessClientFailure.storage }
@@ -169,10 +186,16 @@ public struct RemoteHarnessClientJournal: Codable, NativeConnectionPrivateValue 
         if let deviceID { try RemoteHarnessClientEncoding.deviceID(deviceID) }
         if let profile { guard profile.kind == .remoteHarness, profile.endpoint == origin, let hostID = profile.hostID, pins[hostID] == profile.hostFingerprint else { throw RemoteHarnessClientFailure.storage } }
         guard sessionID == nil || profile != nil, Set(commands.map(\.id)).count == commands.count else { throw RemoteHarnessClientFailure.storage }
+        if let scope = botReadOnlyScope {
+            guard scope.matches(origin: origin, hostID: profile?.hostID, hostFingerprint: profile?.hostFingerprint, workspaceID: profile?.workspaceID, sessionID: sessionID) else { throw RemoteHarnessClientFailure.storage }
+        }
         for data in history { _ = try RemoteHarnessJSON(data: data) }
         for command in commands { _ = try RemoteHarnessJSON(data: command.params) }
         for session in savedSessions {
             guard !session.hostID.isEmpty, !session.workspaceID.isEmpty, !session.sessionID.isEmpty, session.draft.utf8.count <= 65_536, session.history.count <= 1024 else { throw RemoteHarnessClientFailure.storage }
+            if let scope = session.botReadOnlyScope {
+                guard scope.matches(origin: origin, hostID: session.hostID, hostFingerprint: pins[session.hostID], workspaceID: session.workspaceID, sessionID: session.sessionID) else { throw RemoteHarnessClientFailure.storage }
+            }
             for data in session.history { _ = try RemoteHarnessJSON(data: data) }
         }
     }

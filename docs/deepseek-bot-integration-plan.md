@@ -1,10 +1,10 @@
 # DeepSeek Bot ideas and native integration plan
 
-Date: 24 October 2026. Status: **planning only; implementation tasks are unchecked**.
+Date: 24 October 2026. Status: **read-only Host/native slice implemented; full workflow remains open**.
 
-Implementation has since started with the inactive read-only protocol foundation.
+Implementation now includes the pinned passive Host route and native Bot list/history.
 See the [Sol 6.1 implementation brief](deepseek-bot-sol-implementation.md) for
-delivered source, verification and the exact remaining runtime/UI work. The
+delivered source, verification and the exact remaining live/native checks. The
 phase-level tasks below remain unchecked until their complete exit criteria pass.
 
 This supplements the [native delivery roadmap, section 6](native-connections-roadmap.md#6-full-feature-parity-in-dependency-order). It expands that roadmap's existing DS Bot teams, groups, cards and automation items; it does not replace the core remote-control completion gates. Store submission remains deferred.
@@ -22,11 +22,11 @@ These are useful additions to Quenderin, not claims that DS Bot invented the tec
 | Component | Inspected baseline | Consequence |
 | --- | --- | --- |
 | DeepSeek Bot | [0.2.1 release](https://github.com/Fei2411/DeepSeek-Bot/releases/tag/v0.2.1), source `1bebe826f74e9a72cabafd3b80602b05af867b38` | Community Harness plugin, Apache-2.0; preserve LICENSE and applicable NOTICE when reusing source. It is not an official DeepSeek product. |
-| Bot runtime compatibility | [Plugin README](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/ds-bot/README.md) lists Harness `0.2.1-rc.2` Web and `0.2.0-rc.2` Web/Desktop | Quenderin's official fixture pins `0.2.1-rc.1`; compatibility is unproven. Wildcard package peer dependencies are not compatibility evidence. |
+| Bot runtime compatibility | [Plugin README](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/ds-bot/README.md) lists Harness `0.2.1-rc.2` Web and `0.2.0-rc.2` Web/Desktop | Quenderin's `0.2.1-rc.1` fixture now proves the passive store/channel read through authenticated Remote. Full Bot startup compatibility remains unproven. |
 | Remote integration | [`ds-harness-remote` Bot bridge](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/src/plugin-route-bridge.ts), revision `9a60e783ec1ceaff6116b0462a2863f07f602a55` | Already contains a Bot route bridge and a TypeScript Android client. Adapt their protocol and mapping; these are references, not a drop-in Swift/Kotlin SDK. |
 | Quenderin | Local source `1fb1b4416a0ad102141c8a20b5d98e1495eb046f` | Core remote source/fixture/hosted-build evidence is recorded in the roadmap. Live enrolled Host, signed native interaction and later parity remain separate open gates. |
 
-This assessment inspected public source and current Quenderin files. No DS Bot package was installed, no upstream tests or real-model calls were run, and no compatibility combination was newly validated.
+The original assessment inspected source only. The subsequent [Host run](https://github.com/alikatgh/quenderin/actions/runs/40084776342) validates the pinned passive store/channel combination with synthetic state, without invoking the complete Bot entry point or a real model. The implementation brief separates that evidence from pending live and signed-native checks.
 
 ## Ideas worth adopting
 
@@ -69,7 +69,7 @@ Quenderin already has SkillMemory, approved Hy-Memory proposals, desktop memory 
 
 ### Compatibility and safety differences to resolve
 
-1. **Route availability is not plugin compatibility.** `plugin.route.v1` only means the Remote Host can forward a route. Negotiate DS Bot version and individual supported features separately. Quenderin's current [Host method policy](../native/remote-host/tools/prepare_host.py) and both native codecs deliberately reject `plugin.route.call`; add only the reviewed operations.
+1. **Route availability is not plugin compatibility.** `plugin.route.v1` only means the Remote Host can forward a route. Negotiate DS Bot version and individual supported features separately. Quenderin's [Host method policy](../native/remote-host/tools/prepare_host.py) and native codecs now admit only the reviewed passive read contract; later operations require their own policy and tests.
 2. **No broad proxy or raw state export.** DS Bot uses browser-authenticated `POST /api/bot`; its state includes management metadata. The existing Remote bridge passes its JSON response. Filter fields on the Host before encrypted transmission, then validate native DTOs. Keep install/update, provider-key, secret-value, browser-cookie, arbitrary URL and terminal routes outside the initial contract. Remote already excludes many administrative operations; preserve those exclusions rather than enabling every DS Bot endpoint. [Bridge and validation](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/src/plugin-route-bridge.ts#L7-L87)
 3. **A nominal read may have effects.** Upstream `state` can bootstrap the team, while `memory-ask` can call a model and change memory. Build a genuinely read-only roster projection; classify operations by actual effects, not their names. [Channel implementation](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/ds-bot/src/host/channel.js#L134-L147)
 4. **Mutations need durable identities.** Upstream `send` creates a fresh request UUID; an RPC acknowledgement alone cannot prevent replay. Reuse Quenderin's command journal and add Host-side atomic reservation, outcome reconciliation and restart tests before automatic retry. Questions/cards bind their exact pending record, revision and scope; a form confirmation never substitutes for a tool approval. [Send and card handlers](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/ds-bot/src/host/channel.js#L351-L426)
@@ -163,5 +163,5 @@ Start with **phase 0 plus the phase 1 read-only slice**: one pinned DS Bot in th
 After that contract passes, Host integration, Apple UI and Android UI can proceed in parallel with separate file ownership. Memory/context work depends on stable bot/part identity; teams depend on durable admission and aggregate execution bounds; schedules depend on both.
 
 The original assessment was planning only. Subsequent implementation and source
-publication are recorded in the implementation brief; this assessment does not
-establish installed Host support or a store release.
+publication are recorded in the implementation brief. This does not establish
+full Bot execution, a user-operated installation or a store release.

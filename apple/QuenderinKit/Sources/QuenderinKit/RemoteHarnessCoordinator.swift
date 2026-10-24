@@ -306,10 +306,22 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         guard let expectedBinding = binding else { return }
         let now = clock.monotonicMilliseconds
         for (id, deadline) in approvalDeadlines where now < 0 || now >= deadline { approvalDeadlines.removeValue(forKey: id); approvals.removeValue(forKey: id) }
-        guard bindingMatchesExactly(expectedBinding), pending.values.contains(where: { now >= $0.deadline }) else { return }
-        // Retiring the channel also releases Host stream slots whose open ack
-        // timed out. Nothing is resent; other sent mutations remain uncertain.
-        retireConnection(reason: .deadlineExceeded, expectedBinding: expectedBinding)
+        let expired = pending.filter { now >= $0.value.deadline }.sorted { $0.value.ordinal < $1.value.ordinal }
+        for (id, _) in expired {
+            // A completion may retire or replace this generation, or expire
+            // another read reentrantly. Never process its stale reservation.
+            guard bindingMatchesExactly(expectedBinding) else { return }
+            guard let request = pending[id] else { continue }
+            if request.operation.method == .pluginRouteCall {
+                pending.removeValue(forKey: id)
+                request.completion(.failed(.deadlineExceeded))
+            } else {
+                // Retiring also releases Host stream slots whose open ack timed
+                // out. Nothing is resent; sent mutations remain uncertain.
+                retireConnection(reason: .deadlineExceeded, expectedBinding: expectedBinding)
+                return
+            }
+        }
     }
     public func disconnect() { retireConnection(reason: .disconnected) }
 

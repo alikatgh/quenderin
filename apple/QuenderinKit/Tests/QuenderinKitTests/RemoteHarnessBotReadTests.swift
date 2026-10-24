@@ -1,5 +1,8 @@
 import Foundation
 import XCTest
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 @testable import QuenderinKit
 
 @MainActor
@@ -44,13 +47,17 @@ final class RemoteHarnessBotReadTests: XCTestCase {
         try RemoteHarnessJSON.object(["v": .integer(1), "id": .string("host-frame"), "type": .string("rpc.response"),
             "timestamp": .integer(2), "payload": .object(["requestId": .string(requestID), "result": result])]).data
     }
+    private func event(_ streamID: String, _ value: RemoteHarnessJSON) throws -> Data {
+        try RemoteHarnessJSON.object(["v": .integer(1), "id": .string("host-event"), "type": .string("event"), "timestamp": .integer(2),
+            "payload": .object(["event": .string("harness.remote.frame"), "data": .object(["streamId": .string(streamID), "hasValue": .boolean(true), "value": value])])]).data
+    }
     private func negotiate(_ coordinator: RemoteHarnessCoordinator, binding: RemoteHarnessBinding, capabilities: [String]) throws {
         let rpc = try coordinator.perform(.describe()) { _ in }
         try coordinator.receive(response(rpc, .object(["capabilities": .array(capabilities.map { try .string($0) })])), authenticatedBinding: binding)
     }
-    private func harness(workspace: String? = "workspace-a", session: String? = nil, capabilities: [String]? = nil) throws -> Harness {
+    private func harness(workspace: String? = "workspace-a", session: String? = nil, capabilities: [String]? = nil, clientDeviceID: String? = nil) throws -> Harness {
         let port = Port(), journal = Journal(), clock = Clock()
-        let binding = try RemoteHarnessBinding(generation: 1, hostID: "host-a", workspaceID: workspace, sessionID: session)
+        let binding = try RemoteHarnessBinding(generation: 1, hostID: "host-a", workspaceID: workspace, sessionID: session, clientDeviceID: clientDeviceID)
         let coordinator = RemoteHarnessCoordinator(port: port, clock: clock, journal: journal)
         try coordinator.connect(authenticatedBinding: binding)
         try negotiate(coordinator, binding: binding, capabilities: capabilities ?? self.capabilities())
@@ -101,6 +108,55 @@ final class RemoteHarnessBotReadTests: XCTestCase {
         try h.coordinator.receive(response(sessionRPC, .object(["ok": .boolean(true), "value": .object(["items": .array([])])])), authenticatedBinding: h.binding)
         XCTAssertEqual(h.coordinator.stopState, .notRequested)
         XCTAssertEqual(h.coordinator.pendingApprovalRequests.count, 0)
+    }
+
+    func testCapturedHostRuntimeResultPassesThroughTypedNativeReadWithoutEffects() throws {
+        let root = (0..<5).reduce(URL(fileURLWithPath: #filePath)) { url, _ in url.deletingLastPathComponent() }
+        let document = try RemoteHarnessJSON(data: Data(contentsOf: root.appendingPathComponent("shared/remote-harness-bot-runtime-facts.json"))).fields()
+        XCTAssertEqual(try document.required("schemaVersion").integerValue(), 1)
+        let provenance = try document.required("provenance").fields(), capture = try document.required("capture").fields()
+        XCTAssertEqual(try provenance.text("sourceRevision"), "91f3bfa30a2af533c8663fa8e957fafdfac5725e")
+        XCTAssertEqual(try provenance.required("workflowRunId").integerValue(), 40_084_776_342)
+        XCTAssertEqual(try provenance.required("workflowJobId").integerValue(), 120_845_355_394)
+        XCTAssertEqual(try provenance.text("rawResultSHA256"), "3f2dd458164967b5ebd4ca892cedaeb94cf145a290eb5294b4b35137f7161723")
+        XCTAssertEqual(try capture.required("schema").integerValue(), 1)
+        XCTAssertEqual(try capture.text("harnessRevision"), "1600d8a1e140dcde43a1a0941940a0480712c011")
+        XCTAssertEqual(try capture.text("remoteRevision"), "9a60e783ec1ceaff6116b0462a2863f07f602a55")
+        XCTAssertEqual(try capture.text("botRevision"), "1bebe826f74e9a72cabafd3b80602b05af867b38")
+        let effects = try capture.required("readEffects").fields()
+        XCTAssertEqual(Set(effects.keys), Set(["modelCalls", "refreshCalls", "loadCalls", "bootstrapCalls", "secretReads", "agentStarts", "stateWrites", "catalogCalls"]))
+        for (name, count) in effects { XCTAssertEqual(try count.integerValue(), 0, name) }
+        let workspace = try capture.text("workspaceId"), rawData = Data(try capture.text("rawResult").utf8)
+        #if canImport(CryptoKit)
+        XCTAssertEqual(SHA256.hash(data: rawData).map { String(format: "%02x", $0) }.joined(), try provenance.text("rawResultSHA256"))
+        #endif
+        XCTAssertEqual(try JSONSerialization.jsonObject(with: rawData) as? NSDictionary,
+            try JSONSerialization.jsonObject(with: capture.required("result").data) as? NSDictionary)
+        let h = try harness(workspace: workspace, session: "fixture-bot-part")
+        let approvals = h.coordinator.pendingApprovalRequests
+        var received: RemoteHarnessBotRoster?
+        let rpc = try h.coordinator.readBotRoster { result in
+            switch result {
+            case .success(let roster): received = roster
+            case .failure(let error): XCTFail("Captured Host read failed: \(error)")
+            }
+        }
+        let request = try RemoteHarnessCodec().decode(XCTUnwrap(h.port.sent.last))
+        guard case .request(.pluginRouteCall, let params) = request.body else { return XCTFail("Expected plugin route read") }
+        XCTAssertEqual(try JSONSerialization.jsonObject(with: params.data) as? NSDictionary,
+            try JSONSerialization.jsonObject(with: capture.required("request").data) as? NSDictionary)
+        let wire = try response(rpc, RemoteHarnessJSON(data: rawData))
+        guard case .response(_, let raw) = try RemoteHarnessCodec().decode(wire).body else { return XCTFail("Expected captured route response") }
+        XCTAssertEqual(raw.data, rawData, "The exact captured result bytes reach the native coordinator")
+        try h.coordinator.receive(wire, authenticatedBinding: h.binding)
+        let roster = try XCTUnwrap(received), bot = try XCTUnwrap(roster.bots.first)
+        XCTAssertEqual(roster.schemaVersion, 1); XCTAssertEqual(roster.workspaceID, workspace); XCTAssertEqual(roster.revision, 8)
+        XCTAssertFalse(roster.readOnly); XCTAssertEqual(roster.bots.count, 1)
+        XCTAssertEqual(bot.id, "fixture-bot"); XCTAssertEqual(bot.name, "Researcher"); XCTAssertEqual(bot.sessionID, "fixture-bot-part")
+        XCTAssertEqual(bot.model, "fixture/scripted"); XCTAssertEqual(bot.permission, "read-only")
+        XCTAssertEqual(h.coordinator.pendingApprovalRequests, approvals); XCTAssertEqual(h.coordinator.stopState, .notRequested)
+        XCTAssertEqual(h.journal.writes, 0); XCTAssertEqual(h.journal.outcomes, 0)
+        XCTAssertEqual(h.coordinator.binding, h.binding); XCTAssertEqual(h.port.invalidations, 0); XCTAssertEqual(h.coordinator.pendingRPCCount, 0)
     }
 
     func testEverySharedInvalidRequestIsRejectedBeforeDispatch() throws {
@@ -233,8 +289,107 @@ final class RemoteHarnessBotReadTests: XCTestCase {
         h.clock.monotonicMilliseconds += RemoteHarnessLimits.deadlineMilliseconds
         h.coordinator.expireDeadlines()
         XCTAssertEqual(outcomes, Array(repeating: .failed(.deadlineExceeded), count: 128))
-        XCTAssertEqual(h.coordinator.pendingRPCCount, 0); XCTAssertFalse(h.coordinator.supportsBotRead)
-        XCTAssertEqual(h.port.sent.count, sent); XCTAssertEqual(h.port.invalidations, 1)
+        XCTAssertEqual(h.coordinator.pendingRPCCount, 0); XCTAssertTrue(h.coordinator.supportsBotRead)
+        XCTAssertEqual(h.coordinator.binding, h.binding)
+        XCTAssertEqual(h.port.sent.count, sent); XCTAssertEqual(h.port.invalidations, 0)
+        XCTAssertEqual(h.journal.writes, 0); XCTAssertEqual(h.journal.outcomes, 0)
+        var refreshed: RemoteHarnessBotRoster?
+        let rpc = try h.coordinator.readBotRoster { if case .success(let roster) = $0 { refreshed = roster } }
+        try h.coordinator.receive(response(rpc, fixture("response")), authenticatedBinding: h.binding)
+        XCTAssertNotNil(refreshed, "Expired reads release their pending capacity")
+    }
+
+    #if canImport(CryptoKit)
+    func testRosterDeadlinePreservesLiveStreamsExactApprovalAndNonexpiredStop() throws {
+        let h = try harness(session: "session-a", capabilities: capabilities() + ["quenderin.approvals.v1"], clientDeviceID: "client-a")
+        let follow = try h.coordinator.nextStreamID(), events = try h.coordinator.nextStreamID()
+        var followUpdates: [RemoteHarnessStreamUpdate] = [], eventUpdates: [RemoteHarnessStreamUpdate] = []
+        let followRPC = try h.coordinator.perform(.sessionFollow(streamID: follow, sessionID: "session-a"), onStream: { followUpdates.append($0) }) { _ in }
+        try h.coordinator.receive(response(followRPC, .object(["streamId": .string(follow), "opened": .boolean(true)])), authenticatedBinding: h.binding)
+        let eventsRPC = try h.coordinator.perform(.events(streamID: events), onStream: { eventUpdates.append($0) }) { _ in }
+        try h.coordinator.receive(response(eventsRPC, .object(["streamId": .string(events), "opened": .boolean(true)])), authenticatedBinding: h.binding)
+        var reads: [RemoteHarnessError] = [], stop: RemoteHarnessCompletion?
+        let read = try h.coordinator.readBotRoster { result in
+            if case .failure(let error) = result { reads.append(error) } else { XCTFail("Expired read succeeded") }
+        }
+        let readDeadline = try XCTUnwrap(h.coordinator.nextDeadline)
+        h.clock.monotonicMilliseconds = readDeadline - 1
+        try h.coordinator.receive(event(follow, .object(["type": .string("event"), "event": .object(["type": .string("turn/start"), "data": .object(["turn": .integer(1)])])])), authenticatedBinding: h.binding)
+        try h.coordinator.receive(event(events, .object(["type": .string("ready"), "clientId": .string("event-client")])), authenticatedBinding: h.binding)
+        let request = try RemoteHarnessJSON.object(["toolName": .string("read_file"), "callId": .string("call-a")])
+        let extended = try RemoteHarnessApprovalBinding(.object(["hostDeviceId": .string("host-a"), "clientDeviceId": .string("client-a"),
+            "workspaceId": .string("workspace-a"), "sessionId": .string("session-a"), "runId": .string("turn:1"), "eventId": .string("approval-a"),
+            "actionDigest": .string(RemoteHarnessApprovalDigest.digest(request)), "expiresAt": .integer(60_002)]))
+        try h.coordinator.receive(event(events, .object(["type": .string("waterfall"), "event": .string("approval/request"), "eventId": .string("approval-a"),
+            "agentId": .string("session-a"), "request": request, "quenderinBinding": extended.json()])), authenticatedBinding: h.binding)
+        let approval = try XCTUnwrap(h.coordinator.pendingApprovalRequests.first)
+        XCTAssertEqual(approval.extensionBinding, extended)
+        let cancel = try h.coordinator.perform(.cancel(sessionID: "session-a"), commandID: "stop-a") { stop = $0 }
+        let stopDeadline = h.clock.monotonicMilliseconds + RemoteHarnessLimits.deadlineMilliseconds, sent = h.port.sent.count
+        h.clock.monotonicMilliseconds = readDeadline
+        h.coordinator.expireDeadlines()
+        XCTAssertEqual(reads, [.deadlineExceeded]); XCTAssertNil(stop)
+        XCTAssertEqual(h.coordinator.binding, h.binding); XCTAssertTrue(h.coordinator.supportsBotRead)
+        XCTAssertEqual(h.coordinator.activeStreamCount, 2); XCTAssertEqual(h.coordinator.pendingRPCCount, 1)
+        XCTAssertEqual(h.coordinator.nextDeadline, stopDeadline); XCTAssertEqual(h.coordinator.stopState, .requested)
+        XCTAssertEqual(h.coordinator.pendingApprovalRequests, [approval])
+        XCTAssertEqual(followUpdates.count, 1); XCTAssertEqual(eventUpdates.count, 2)
+        XCTAssertEqual(h.port.invalidations, 0); XCTAssertEqual(h.port.sent.count, sent)
+        XCTAssertEqual(h.journal.writes, 1); XCTAssertEqual(h.journal.outcomes, 0)
+        try h.coordinator.receive(response(read, fixture("response")), authenticatedBinding: h.binding)
+        XCTAssertEqual(reads, [.deadlineExceeded]); XCTAssertEqual(h.coordinator.pendingRPCCount, 1)
+        XCTAssertEqual(h.coordinator.pendingApprovalRequests, [approval]); XCTAssertEqual(h.port.sent.count, sent)
+        try h.coordinator.receive(event(follow, .object(["type": .string("keepalive")])), authenticatedBinding: h.binding)
+        XCTAssertEqual(followUpdates.count, 2, "The live follow listener still receives frames")
+        let decision = try h.coordinator.perform(.boundApproval(clientID: approval.clientID, binding: extended, allow: true), commandID: "approve-a") { _ in }
+        try h.coordinator.receive(response(decision, .object(["ok": .boolean(true), "value": .object(["recorded": .boolean(true)])])), authenticatedBinding: h.binding)
+        try h.coordinator.receive(response(cancel, .object(["ok": .boolean(true), "value": .object(["accepted": .boolean(true)])])), authenticatedBinding: h.binding)
+        XCTAssertEqual(h.coordinator.stopState, .receiptReceived); XCTAssertNotNil(stop)
+        XCTAssertEqual(h.coordinator.pendingRPCCount, 0); XCTAssertEqual(h.coordinator.activeStreamCount, 2)
+        XCTAssertEqual(h.journal.writes, 2); XCTAssertEqual(h.journal.outcomes, 2); XCTAssertEqual(h.port.invalidations, 0)
+    }
+    #endif
+
+    func testOrdinaryRPCDeadlineStillRetiresConnectionAndLeavesSentStopUnknown() throws {
+        let h = try harness(session: "session-a")
+        var ordinary: RemoteHarnessCompletion?, read: RemoteHarnessCompletion?, stop: RemoteHarnessCompletion?
+        try h.coordinator.perform(.modelCatalog()) { ordinary = $0 }
+        let deadline = try XCTUnwrap(h.coordinator.nextDeadline)
+        h.clock.monotonicMilliseconds += 1
+        try h.coordinator.perform(.botRoster(workspaceID: "workspace-a")) { read = $0 }
+        try h.coordinator.perform(.cancel(sessionID: "session-a"), commandID: "stop-a") { stop = $0 }
+        let sent = h.port.sent.count
+        h.clock.monotonicMilliseconds = deadline
+        h.coordinator.expireDeadlines()
+        XCTAssertEqual(ordinary, .failed(.deadlineExceeded)); XCTAssertEqual(read, .failed(.deadlineExceeded)); XCTAssertEqual(stop, .outcomeUnknown)
+        XCTAssertNil(h.coordinator.binding); XCTAssertFalse(h.coordinator.supportsBotRead); XCTAssertEqual(h.coordinator.stopState, .outcomeUnknown)
+        XCTAssertEqual(h.coordinator.pendingRPCCount, 0); XCTAssertEqual(h.port.invalidations, 1); XCTAssertEqual(h.port.sent.count, sent)
+        XCTAssertEqual(h.journal.writes, 1); XCTAssertEqual(h.journal.outcomes, 1)
+    }
+
+    func testReentrantRosterDeadlineCompletionCannotExpireANewerGeneration() throws {
+        let h = try harness(), newer = try RemoteHarnessBinding(generation: 2, hostID: "host-a", workspaceID: "workspace-a")
+        var first: RemoteHarnessCompletion?, second: RemoteHarnessCompletion?, ordinary: RemoteHarnessCompletion?, current: RemoteHarnessCompletion?
+        var callbackError: Error?, currentRPC: String?
+        let raw = try fixture("response")
+        try h.coordinator.perform(.botRoster(workspaceID: "workspace-a")) { completion in
+            first = completion
+            do {
+                try h.coordinator.connect(authenticatedBinding: newer)
+                try self.negotiate(h.coordinator, binding: newer, capabilities: self.capabilities())
+                currentRPC = try h.coordinator.perform(.botRoster(workspaceID: "workspace-a")) { current = $0 }
+            } catch { callbackError = error }
+        }
+        try h.coordinator.perform(.botRoster(workspaceID: "workspace-a")) { second = $0 }
+        try h.coordinator.perform(.modelCatalog()) { ordinary = $0 }
+        h.clock.monotonicMilliseconds += RemoteHarnessLimits.deadlineMilliseconds
+        h.coordinator.expireDeadlines()
+        XCTAssertNil(callbackError); XCTAssertEqual(first, .failed(.deadlineExceeded))
+        XCTAssertEqual(second, .failed(.disconnected)); XCTAssertEqual(ordinary, .failed(.disconnected))
+        XCTAssertEqual(h.coordinator.binding, newer); XCTAssertTrue(h.coordinator.supportsBotRead)
+        XCTAssertEqual(h.coordinator.pendingRPCCount, 1); XCTAssertNil(current); XCTAssertEqual(h.port.invalidations, 1)
+        try h.coordinator.receive(response(XCTUnwrap(currentRPC), raw), authenticatedBinding: newer)
+        XCTAssertEqual(current, .response(raw)); XCTAssertEqual(h.coordinator.pendingRPCCount, 0)
         XCTAssertEqual(h.journal.writes, 0); XCTAssertEqual(h.journal.outcomes, 0)
     }
 

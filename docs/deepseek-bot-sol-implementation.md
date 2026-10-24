@@ -6,6 +6,10 @@ Read it with the [product plan](deepseek-bot-integration-plan.md) and the existi
 the authority for completion evidence; this brief explains how to implement the
 remaining work without reopening settled architecture.
 
+The foundation evidence below describes the first published increment. The
+current continuation attaches its passive Host route and native read-only Bot
+state; see the continuation status at the end before starting new work.
+
 ## Mission and working agreement
 
 Deliver persistent DeepSeek bots through Quenderin's existing **My computer**
@@ -34,7 +38,7 @@ merged in PR #181. Its final documentation baseline is
 remaining live gaps are recorded in the native roadmap; do not report that
 historical CI as a fresh run of later changes.
 
-This increment adds a **source foundation for a read-only Bot roster**:
+The first published increment adds a **source foundation for a read-only Bot roster**:
 
 - A shared versioned extension contract and synthetic valid/invalid fixtures.
 - A pure Host-side projection of explicitly supplied, already-materialized data.
@@ -43,19 +47,23 @@ This increment adds a **source foundation for a read-only Bot roster**:
 - Capability, workspace, input-size and connection-lifecycle checks on both cores.
 - Focused tests and integration into existing verification recipes.
 
-It intentionally does **not** install DS Bot, load a runtime, advertise or mount
+That first increment does **not** install DS Bot, load a runtime, advertise or mount
 the new endpoint, add a Bot screen, save a new cache, or change provider/session
-data. The current Host companion still refuses this new route. That is the
+data. At that foundation revision, the Host companion still refused this route. That was the
 activation boundary, not a claim that the user can already operate DS Bot.
 
-The first deployment-capable follow-up must wire the verified Host runtime and
-prove its lifecycle before offering the feature in the apps.
+The current continuation wires the pinned Host adapter and proves its lifecycle
+before offering the feature in the apps. Full DS Bot startup remains an
+operator-owned process; the passive store/channel fixture does not certify the
+complete plugin entry point or its agent, connector and scheduler lifecycle.
 
 Implemented API map:
 
 | File | Public seam |
 | --- | --- |
 | `native/remote-host/quenderin-bot-read-policy.mjs` | `validateBotReadRequest`, `projectBotReadSnapshot`, `handleBotReadRequest`, `validateBotReadResponse`; pure materialized-data functions, no mounted route |
+| `native/remote-host/quenderin-bot-runtime.mjs` | `mountBotRead`, `mountedBotRead`, `botSessionWritable`; live materialized ownership, revision and lifecycle boundary |
+| `native/remote-host/tools/prepare_bot.py` | Hash-checked store/channel preparation for the pinned already-operated Bot runtime |
 | `apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessBotRead.swift` | `RemoteHarnessBotRoster` and `RemoteHarnessBot` validated display DTOs |
 | `apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCoordinator.swift` | `readBotRoster`, `supportsBotRead`; existing completion vocabulary preserved |
 | `android/quenderin-core/src/main/kotlin/ai/quenderin/core/RemoteHarnessBotRead.kt` | `RemoteHarnessBotRead`, `RemoteHarnessBotRoster`, `RemoteHarnessBotSummary` |
@@ -281,7 +289,7 @@ Use the existing connection, not a separate socket, executor or account flow.
 | Platform | Integration points | Required behavior |
 | --- | --- | --- |
 | Apple | `RemoteHarnessClientGateway.swift`, `RemoteHarnessClientController.swift`, `RemoteHarnessView.swift` | MainActor ownership; independent roster loading/error state; negotiated refresh; discard stale callbacks |
-| Android core | `RemoteHarnessClient.kt`, `RemoteHarnessClientModels.kt` | Existing owner-thread lifecycle; ephemeral roster state, not new persistent data |
+| Android core | `RemoteHarnessClient.kt`, `RemoteHarnessClientModels.kt` | Existing owner-thread lifecycle; ephemeral roster plus bounded durable exact identity restrictions |
 | Android app | `RemoteHarnessController.kt`, `ui/RemoteHarnessScreen.kt` | Dispatch through the existing `quenderin-remote-owner`; publish snapshots to Main |
 
 Clear the roster on Host/workspace change or disconnect and refetch on recovery.
@@ -289,7 +297,21 @@ A roster error must not clear drafts/history, fail the session or disable Stop.
 Display incompatible, unavailable, not-ready and disconnected states accurately.
 Do not show a writable Bot composer merely because read support is available.
 Navigating from a bot to its session requires current authoritative ownership;
-the roster's display text never authorizes a mutation.
+the roster's display text never authorizes a mutation. The existing session
+composer must remain view-only for a Bot-selected part. Persist the minimum
+exact origin/Host-pin/workspace/session restriction so switching sessions or
+relaunching cannot silently enable raw Harness prompts. This safety metadata is
+separate from the ephemeral roster. Missing legacy fields decode safely; failed
+writes preserve prior records and block new work.
+
+Swift retains this restriction with its existing bounded saved-session records.
+Android retains at most 128 immutable exact scopes without eviction. If a batch
+would overflow, durably fill the remaining safety slots before rejecting the
+whole new roster; never publish a partial roster. A saturated list requires
+successful current classification before an unrecorded session becomes writable.
+Supported Hosts also require current roster/session membership classification
+before ordinary prompt or model changes. History, bound approvals and Stop have
+their own existing authorization paths and stay available.
 
 After this, follow product-plan phases 2–5: durable commands and typed questions,
 then explicit memory/search and context continuity, then bounded teams and
@@ -367,7 +389,7 @@ store release complete from these checks. Those remain explicit gates under the
 user's current native-run restriction. No new variable-charge provider, relay,
 scheduler or notification service is authorized by this brief.
 
-## Handover evidence
+## Foundation evidence
 
 Implementation source: `ee499aaac936c8d31ce74974a9f89f50bb5bb6d8`, published to
 [`codex/deepseek-bot-read-contract-20261024`](https://github.com/alikatgh/quenderin/tree/codex/deepseek-bot-read-contract-20261024).
@@ -423,9 +445,41 @@ reassess those earlier review sources after live Host/native validation. Disk
 headroom changed from 14,911,967,232 to 15,777,673,216 bytes while swap allocation
 fell by 1 GiB; these are volume-wide observations, not attributed cleanup savings.
 
-**Start here next:** implement the passive, pinned Host runtime adapter described
-above and prove the zero-model-call fixture and authoritative workspace/session
-mapping. Keep the capability unadvertised until that gate passes. Then wire the
-existing native controllers and read-only screens. The remaining product-plan
-checkboxes stay open; do not restart the transport or treat this foundation as
-the completed Bot feature.
+## Continuation status
+
+- [x] Attach the passive route through the pinned official Host registries and
+  authenticated Remote dispatcher, including mount/unmount and revoked trust.
+- [x] Prove that reading already-created Bot state starts no model, bootstrap,
+  refresh, secret, catalog or agent operation and writes no state.
+- [x] Add native Bot lists, metadata, refresh and current-session history through
+  the existing SwiftUI and Compose controllers. Keep unsupported/error states
+  visible and ordinary Harness sessions usable.
+- [x] Persist exact scoped Bot-session write restrictions across navigation and
+  relaunch. Fail closed at bounded storage capacity; preserve existing drafts.
+- [x] Isolate Swift roster deadlines from healthy session streams, approval and
+  Stop. Preserve duplicate Android session rows without duplicate lazy-list keys.
+- [x] Obtain independent Host and native reviews and resolve their findings.
+- [ ] Complete hosted compilation/tests of this integrated native candidate.
+- [ ] Verify rendered/signed native interaction and a real enrolled Host.
+
+The [pinned Host run](https://github.com/alikatgh/quenderin/actions/runs/40084776342)
+passed at source `91f3bfa30a2af533c8663fa8e957fafdfac5725e`: 100 Host tests,
+15 source/package guards, six process/environment guards, the patched upstream
+compile/bundle, four bridge integration tests and three official runtime tests.
+The latter install the pinned Bot store/channel with synthetic already-created
+state through the official registries; they preserve the ordinary session,
+approval, Stop and cold-history journeys. Full Bot startup, migrations, connectors
+and real inference are outside this result.
+
+The actual authenticated Bot response and its eight zero-valued effect counters
+are preserved in `shared/remote-harness-bot-runtime-facts.json`, with source/run
+provenance and raw-result SHA-256. Both native coordinator tests consume those
+exact response bytes; the original 47 captured Harness frames are unchanged.
+Primary verification of the current Kotlin source passed 210 client checks,
+41 Bot cases over 22 shared fixtures and 39 carrier fixtures/28 behaviors. Swift
+frontend parsing passed; parsing alone does not establish Swift type checking.
+
+**Active next step:** publish the combined native candidate, run the existing
+hosted native SDK/app workflow and full PR CI, then record the exact results here.
+The read-only slice does not enable Bot sending, memory, cards, teams, schedules
+or store submission. Those product-plan gates remain open.

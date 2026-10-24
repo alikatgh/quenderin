@@ -21,7 +21,7 @@ class RemoteHarnessBotRoster internal constructor(
     override fun toString() = "RemoteHarnessBotRoster(redacted)"
 }
 
-/** Quenderin extension only. The current Host companion neither installs nor advertises this route.
+/** Quenderin extension, available only after the installed Host negotiates both read capabilities.
  * This codec performs no I/O, bootstrap, generic plugin dispatch, mutation or session authorization. */
 object RemoteHarnessBotRead {
     const val CAPABILITY = "quenderin.bot.read.v1"

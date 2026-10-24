@@ -12,6 +12,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -76,14 +77,25 @@ fun RemoteHarnessScreen(controller: RemoteHarnessController, onBack: () -> Unit)
                         Column { Text(workspace.title); Text(workspace.path, style = MaterialTheme.typography.bodySmall) }
                     } }
                 }
-                RemoteHarnessClientPhase.SESSIONS -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Sessions", style = MaterialTheme.typography.titleMedium)
-                    Button(onClick = controller::createSession, enabled = state.approvalSupported && !state.busy, modifier = Modifier.testTag("remote.createSession")) { Text("New session on computer") }
-                    if (state.sessions.isEmpty()) Text("No sessions in this workspace yet.")
-                    state.sessions.forEach { session -> OutlinedButton(onClick = { controller.session(session.id) }, enabled = !state.busy,
+                RemoteHarnessClientPhase.SESSIONS -> LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("remote.sessions"),
+                    verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                    item(key = "section:sessions") {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Sessions", style = MaterialTheme.typography.titleMedium)
+                            Button(onClick = controller::createSession, enabled = state.approvalSupported && !state.busy,
+                                modifier = Modifier.testTag("remote.createSession")) { Text("New session on computer") }
+                            if (state.sessions.isEmpty()) Text("No sessions in this workspace yet.")
+                        }
+                    }
+                    itemsIndexed(state.sessions, key = { index, session -> "session:$index:${session.id}" }) { _, session -> OutlinedButton(onClick = { controller.session(session.id) }, enabled = !state.busy,
                         modifier = Modifier.fillMaxWidth().testTag("remote.session.${session.id}")) {
                         Text(session.title + if (session.running) " · Running" else "")
                     } }
+                    item(key = "section:bots") { RemoteBotStatus(controller, state, Modifier.padding(top = 12.dp)) }
+                    items(state.botRoster?.bots.orEmpty(), key = { "bot:${it.id}" }) { bot ->
+                        RemoteBotRow(bot, available = bot.id in state.availableBotIDs, enabled = !state.busy,
+                            onClick = { controller.bot(bot.id) })
+                    }
                 }
                 RemoteHarnessClientPhase.SESSION -> RemoteSession(controller, state, Modifier.weight(1f))
                 RemoteHarnessClientPhase.DISCONNECTED -> {
@@ -106,7 +118,11 @@ fun RemoteHarnessScreen(controller: RemoteHarnessController, onBack: () -> Unit)
 
 private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
     RemoteSessionStatus.CONNECTING -> "Connecting"
-    RemoteSessionStatus.READY -> if (s.historyReady || s.sessionID == null) "Connected · execution on computer" else "Loading authoritative history"
+    RemoteSessionStatus.READY -> when {
+        !s.historyReady && s.sessionID != null -> "Loading authoritative history"
+        s.botSessionReadOnly -> "Connected · view-only Bot history"
+        else -> "Connected · execution on computer"
+    }
     RemoteSessionStatus.RUNNING -> "Running on computer"
     RemoteSessionStatus.AWAITING_APPROVAL -> "Computer needs your approval"
     RemoteSessionStatus.STOP_REQUESTED -> "Stop requested · waiting for computer confirmation"
@@ -158,11 +174,75 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
     } }
 }
 
+@Composable private fun RemoteBotStatus(controller: RemoteHarnessController, state: RemoteHarnessClientSnapshot, modifier: Modifier = Modifier) {
+    val roster = state.botRoster
+    val rosterError = state.botRosterError
+    Column(modifier.fillMaxWidth().testTag("remote.bots"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Bots", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).padding(top = 12.dp))
+            TextButton(onClick = controller::refreshBots, enabled = state.botReadSupported && !state.botRosterLoading,
+                modifier = Modifier.testTag("remote.refreshBots")) { Text("Refresh bots") }
+        }
+        when {
+            !state.botReadSupported -> Text("This connection does not support Bot viewing. Enable the Bot integration on your computer, then reconnect.",
+                modifier = Modifier.testTag("remote.botsUnsupported"), style = MaterialTheme.typography.bodySmall)
+            state.botRosterLoading -> {
+                LinearProgressIndicator(Modifier.fillMaxWidth().testTag("remote.botsLoading"))
+                Text("Refreshing bots…", style = MaterialTheme.typography.bodySmall)
+            }
+            rosterError != null -> Text(rosterError, color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("remote.botsUnavailable"), style = MaterialTheme.typography.bodySmall)
+            roster == null -> Text("Bots have not been loaded. Refresh to check this workspace.",
+                modifier = Modifier.testTag("remote.botsNotLoaded"), style = MaterialTheme.typography.bodySmall)
+            roster.bots.isEmpty() -> Text("No bots in this workspace.",
+                modifier = Modifier.testTag("remote.botsEmpty"), style = MaterialTheme.typography.bodySmall)
+            else -> Text("${roster.bots.size} bots · view-only history",
+                modifier = Modifier.testTag("remote.botsReady"), style = MaterialTheme.typography.bodySmall)
+        }
+        if (roster != null) {
+            if (state.botRosterLoading || state.botRosterError != null)
+                Text("Previously received bots remain visible. Refresh must finish successfully before opening their sessions.",
+                    style = MaterialTheme.typography.bodySmall)
+            Text(if (roster.readOnly) "Computer reports read-only Bot data."
+                else "Computer does not mark Bot data read-only. Bot history remains view-only here.",
+                modifier = Modifier.testTag("remote.botsReadOnly"), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable private fun RemoteBotRow(bot: RemoteHarnessBotSummary, available: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled && available, contentPadding = PaddingValues(12.dp),
+        modifier = Modifier.fillMaxWidth().testTag("remote.bot.${bot.id}")) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(bot.name, style = MaterialTheme.typography.titleSmall)
+            Text("Model: ${bot.model ?: "Not reported"}", style = MaterialTheme.typography.bodySmall)
+            Text("Permission: ${bot.permission ?: "Not reported"}", style = MaterialTheme.typography.bodySmall)
+            Text(if (available) "View current history" else "Current session is not available for viewing",
+                style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
 @Composable private fun RemoteSession(controller: RemoteHarnessController, state: RemoteHarnessClientSnapshot, modifier: Modifier) {
     var localDraft by remember(state.sessionID) { mutableStateOf(state.draft) }
     LaunchedEffect(state.draft) { if (state.draft.isEmpty() || localDraft.isEmpty()) localDraft = state.draft }
+    val sessionMutationsAllowed = !state.botSessionReadOnly && !state.botSessionClassificationPending
+    val modelChangesAllowed = sessionMutationsAllowed && state.approvalSupported && state.historyReady && state.models.isNotEmpty() && !state.busy
     Column(modifier.fillMaxWidth()) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("remote.timeline"), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+            if (state.botReadSupported || state.botSessionReadOnly || state.botSessionClassificationPending) item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state.botSessionReadOnly) Text("Bot history is view-only. Run tasks and change this bot's model on your computer.",
+                        modifier = Modifier.testTag("remote.botSessionReadOnly"), style = MaterialTheme.typography.bodyMedium)
+                    else if (state.botSessionClassificationPending) Text("Verify this session before sending tasks or changing its model. Your draft and history are preserved.",
+                        modifier = Modifier.testTag("remote.botClassificationPending"), style = MaterialTheme.typography.bodyMedium)
+                    RemoteBotStatus(controller, state)
+                    if (state.botSessionClassificationPending && !state.botRosterLoading)
+                        TextButton(onClick = controller::reconnect, enabled = controller.securityAvailable && !state.busy,
+                            modifier = Modifier.testTag("remote.recoverBots")) { Text("Reconnect to verify session") }
+                }
+            }
             if (state.hasMore) item { TextButton(onClick = controller::earlierHistory, enabled = state.historyReady && !state.busy) { Text("Load earlier history") } }
             items(state.timeline, key = { it.id }) { item ->
                 Column(Modifier.fillMaxWidth().testTag("remote.message.${item.id}")) {
@@ -202,17 +282,18 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                 }
             }
         }
-        var showModels by remember { mutableStateOf(false) }
+        var showModels by remember(state.sessionID) { mutableStateOf(false) }
+        LaunchedEffect(modelChangesAllowed) { if (!modelChangesAllowed) showModels = false }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Box {
-                TextButton(onClick = { showModels = true }, enabled = state.approvalSupported && state.historyReady && state.models.isNotEmpty() && !state.busy,
+            if (!state.botSessionReadOnly) Box {
+                TextButton(onClick = { showModels = true }, enabled = modelChangesAllowed,
                     modifier = Modifier.testTag("remote.models")) { Text("Model and effort") }
-                DropdownMenu(showModels, onDismissRequest = { showModels = false }) {
+                DropdownMenu(showModels && modelChangesAllowed, onDismissRequest = { showModels = false }) {
                     state.models.forEach { model ->
-                        DropdownMenuItem(text = { Text("${model.provider} / ${model.name}") }, enabled = state.approvalSupported && state.historyReady && !state.busy, onClick = {
+                        DropdownMenuItem(text = { Text("${model.provider} / ${model.name}") }, enabled = modelChangesAllowed, onClick = {
                             showModels = false; controller.selectModel(model.provider, model.id, null)
                         })
-                        model.efforts.forEach { effort -> DropdownMenuItem(text = { Text("${model.name} · ${effort.second}") }, enabled = state.approvalSupported && state.historyReady && !state.busy, onClick = {
+                        model.efforts.forEach { effort -> DropdownMenuItem(text = { Text("${model.name} · ${effort.second}") }, enabled = modelChangesAllowed, onClick = {
                             showModels = false; controller.selectModel(model.provider, model.id, effort.first)
                         }) }
                     }
@@ -222,10 +303,12 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                 TextButton(onClick = controller::stop, enabled = state.historyReady && state.status != RemoteSessionStatus.STOP_REQUESTED,
                     modifier = Modifier.testTag("remote.stop")) { Text("Stop on computer") }
         }
-        OutlinedTextField(localDraft, { localDraft = it; controller.draft(it) }, label = { Text("Task for your computer") }, minLines = 2, maxLines = 6,
-            modifier = Modifier.fillMaxWidth().testTag("remote.composer"), enabled = !state.busy)
-        Button(onClick = controller::send, enabled = state.approvalSupported && state.historyReady && !state.busy && localDraft.isNotBlank() && state.status != RemoteSessionStatus.OUTCOME_UNKNOWN,
-            modifier = Modifier.fillMaxWidth().testTag("remote.send").padding(vertical = 8.dp)) { Text("Send to computer") }
+        if (!state.botSessionReadOnly) {
+            OutlinedTextField(localDraft, { localDraft = it; controller.draft(it) }, label = { Text("Task for your computer") }, minLines = 2, maxLines = 6,
+                modifier = Modifier.fillMaxWidth().testTag("remote.composer"), enabled = sessionMutationsAllowed && !state.busy)
+            Button(onClick = controller::send, enabled = sessionMutationsAllowed && state.approvalSupported && state.historyReady && !state.busy && localDraft.isNotBlank() && state.status != RemoteSessionStatus.OUTCOME_UNKNOWN,
+                modifier = Modifier.fillMaxWidth().testTag("remote.send").padding(vertical = 8.dp)) { Text("Send to computer") }
+        }
     }
 }
 

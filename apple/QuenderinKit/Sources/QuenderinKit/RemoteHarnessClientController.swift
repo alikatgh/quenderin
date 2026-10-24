@@ -42,6 +42,10 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     @Published public private(set) var running = false
     @Published public private(set) var snapshotReady = false
     @Published public private(set) var companionAvailable = false
+    @Published public private(set) var botReadAvailable = false
+    @Published public private(set) var botRoster: RemoteHarnessBotRoster?
+    @Published public private(set) var botLoading = false
+    @Published public private(set) var botUnavailable = false
     private let backend: any RemoteHarnessCryptoBackend
     private let account: RemoteHarnessClientAccount
     private let storage: any RemoteHarnessClientJournalStorage
@@ -52,6 +56,10 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     private var workTask: Task<Void, Never>?
     private var snapshotDeadline: Task<Void, Never>?
     private var workspaceSnapshotWaiter: CheckedContinuation<Void, Error>?
+    private var botTask: Task<Void, Never>?
+    private var botRequestID: UUID?
+    private var botBinding: RemoteHarnessBinding?
+    private var sessionsBinding: RemoteHarnessBinding?
     @TaskLocal private static var taskOperationID: UUID?
     private var storageReady = true
     private var selectedWorkspace: RemoteHarnessClientWorkspace?
@@ -59,11 +67,11 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     private lazy var gateway: RemoteHarnessClientGateway = {
         let value = RemoteHarnessClientGateway(backend: backend, journal: self, clock: clock, makeSocket: makeSocket)
         value.onDisconnected = { [weak self] failure in
-            guard let self else { return }; self.failure = failure; self.screen = .disconnected; self.snapshotReady = false; self.companionAvailable = false
+            guard let self else { return }; self.invalidateBotContext(); self.failure = failure; self.screen = .disconnected; self.snapshotReady = false; self.companionAvailable = false
             self.workspaceSnapshotWaiter?.resume(throwing: failure); self.workspaceSnapshotWaiter = nil
             self.stopState = self.gateway.stopState; self.approvals = []; self.approvalCards = []; self.timeline.clearApprovalEvidence()
         }
-        value.onStateChanged = { [weak self] in guard let self else { return }; self.stopState = self.gateway.stopState; self.approvals = self.gateway.approvals; self.companionAvailable = self.gateway.supportsCompanion; self.refreshApprovalCards() }
+        value.onStateChanged = { [weak self] in guard let self else { return }; self.stopState = self.gateway.stopState; self.approvals = self.gateway.approvals; self.companionAvailable = self.gateway.supportsCompanion; self.synchronizeBotSupport(); self.refreshApprovalCards() }
         return value
     }()
     public init(backend: (any RemoteHarnessCryptoBackend)? = nil, http: (any RemoteHarnessClientHTTP)? = nil,
@@ -82,9 +90,17 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         } catch { storageReady = false; failure = .storage }
     }
     public var cryptoAvailable: Bool { backend.isAvailable }
-    public var canSend: Bool { storageReady && companionAvailable && snapshotReady && screen == .session && !busy && !running && !journal.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    public var isBotSessionReadOnly: Bool {
+        journal.botReadOnlyScope?.matches(origin: journal.origin, hostID: journal.profile?.hostID, hostFingerprint: journal.profile?.hostFingerprint,
+            workspaceID: journal.profile?.workspaceID, sessionID: journal.sessionID) == true
+    }
+    public var botSessionClassificationPending: Bool { gateway.supportsBotRead && !botClassificationReady }
+    private var botClassificationReady: Bool {
+        !gateway.supportsBotRead || (!botLoading && !botUnavailable && botRoster != nil && Self.sameBinding(botBinding, gateway.binding))
+    }
+    public var canSend: Bool { storageReady && !isBotSessionReadOnly && botClassificationReady && companionAvailable && snapshotReady && screen == .session && !busy && !running && !journal.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var canCreateSession: Bool { storageReady && companionAvailable && screen == .sessions && !busy }
-    public var canChangeModel: Bool { storageReady && companionAvailable && snapshotReady && screen == .session && !busy && !running }
+    public var canChangeModel: Bool { storageReady && !isBotSessionReadOnly && botClassificationReady && companionAvailable && snapshotReady && screen == .session && !busy && !running }
     public var canStop: Bool { snapshotReady && screen == .session && !busy && running }
     public var workspaceTitle: String { selectedWorkspace?.title ?? journal.profile?.displayName ?? "Choose workspace" }
     public var computerName: String { host?.name ?? "Saved computer" }
@@ -117,6 +133,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     }
     public func reconnect() async {
         await work {
+            self.invalidateBotContext()
             guard self.cryptoAvailable else { throw RemoteHarnessClientFailure.cryptoUnavailable }
             guard let origin = self.journal.origin, let deviceID = self.journal.deviceID else { self.screen = .setup; return }
             let credential = try await self.account.credential(origin: origin, deviceID: deviceID); self.credential = credential
@@ -127,7 +144,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
                 guard host.fingerprint == profile.hostFingerprint else { throw RemoteHarnessClientFailure.pinChanged }
                 self.host = host
                 try await self.connect(workspaceID: nil, sessionID: nil)
-                if let workspace = self.workspaces.first(where: { $0.workspaceID == profile.workspaceID }), let sessionID = self.journal.sessionID, workspace.sessionIDs.contains(sessionID) {
+                if let workspaceID = profile.workspaceID, let workspace = self.workspaces.first(where: { $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) }), let sessionID = self.journal.sessionID, workspace.sessionIDs.contains(where: { $0.utf8.elementsEqual(sessionID.utf8) }) {
                     self.selectedWorkspace = workspace; try await self.openSession(sessionID)
                 } else { self.screen = .workspaces }
             } else { self.screen = .computers }
@@ -135,6 +152,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     }
     public func selectHost(_ summary: RemoteHarnessClientHost) async {
         await work {
+            self.invalidateBotContext()
             guard let origin = self.journal.origin, let deviceID = self.journal.deviceID else { throw RemoteHarnessClientFailure.reauthorize }
             let credential = try await self.account.credential(origin: origin, deviceID: deviceID); try self.checkOperation(); self.credential = credential
             let candidate = try await self.account.host(summary, credential: credential)
@@ -158,15 +176,17 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         await work { try await self.openWorkspace(workspace) }
     }
     private func openWorkspace(_ workspace: RemoteHarnessClientWorkspace) async throws {
-        guard workspaces.contains(where: { $0.workspaceID == workspace.workspaceID }), let host,
+        invalidateBotContext()
+        guard workspaces.contains(where: { $0.workspaceID.utf8.elementsEqual(workspace.workspaceID.utf8) }), let host,
               let fingerprint = host.fingerprint, let origin = journal.origin else { throw RemoteHarnessClientFailure.protocolMismatch }
         let profile = try NativeConnectionProfile(id: "remote-" + UUID().uuidString.lowercased(), kind: .remoteHarness, displayName: workspace.title,
             endpoint: origin, hostID: host.deviceID, hostFingerprint: fingerprint, workspaceID: workspace.workspaceID)
-        var next = journal; try preserveSession(&next); next.profile = profile; next.sessionID = nil; next.history = []; next.draft = ""
+        var next = journal; try preserveSession(&next); next.profile = profile; next.sessionID = nil; next.botReadOnlyScope = nil; next.history = []; next.draft = ""
         try commit(next); selectedWorkspace = workspace
         try await connect(workspaceID: workspace.workspaceID, sessionID: nil)
-        guard let fresh = workspaces.first(where: { $0.workspaceID == workspace.workspaceID }) else { throw RemoteHarnessClientFailure.protocolMismatch }
-        selectedWorkspace = fresh; sessions = try await sessionList().filter { fresh.sessionIDs.contains($0.sessionID) }; screen = .sessions
+        guard let fresh = workspaces.first(where: { $0.workspaceID.utf8.elementsEqual(workspace.workspaceID.utf8) }) else { throw RemoteHarnessClientFailure.protocolMismatch }
+        selectedWorkspace = fresh; sessions = try await sessionList().filter { row in fresh.sessionIDs.contains { $0.utf8.elementsEqual(row.sessionID.utf8) } }; sessionsBinding = gateway.binding; screen = .sessions
+        beginBotRefresh()
     }
     public func createSession() async {
         await work {
@@ -183,21 +203,38 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         }
     }
     public func selectSession(_ session: RemoteHarnessClientSession) async {
-        await work { guard self.sessions.contains(where: { $0.sessionID == session.sessionID }) else { throw RemoteHarnessClientFailure.protocolMismatch }; try await self.openSession(session.sessionID) }
+        await selectSession(session, bot: nil)
     }
-    private func openSession(_ sessionID: String) async throws {
+    private func selectSession(_ session: RemoteHarnessClientSession, bot: RemoteHarnessBot?) async {
+        await work {
+            if let bot { guard self.currentBotSession(bot) != nil else { return } }
+            guard self.sessions.contains(where: { $0.sessionID.utf8.elementsEqual(session.sessionID.utf8) }) else { throw RemoteHarnessClientFailure.protocolMismatch }
+            try await self.openSession(session.sessionID, botReadOnly: bot != nil)
+        }
+    }
+    public func canOpenBot(_ bot: RemoteHarnessBot) -> Bool { currentBotSession(bot) != nil }
+    public func openBotSession(_ bot: RemoteHarnessBot) async {
+        guard let session = currentBotSession(bot) else { return }
+        await selectSession(session, bot: bot)
+    }
+    private func openSession(_ sessionID: String, botReadOnly: Bool = false) async throws {
         guard let workspaceID = journal.profile?.workspaceID else { throw RemoteHarnessClientFailure.protocolMismatch }
         var next = journal; try preserveSession(&next)
-        let saved = next.savedSessions.first { $0.hostID == next.profile?.hostID && $0.workspaceID == workspaceID && $0.sessionID == sessionID }
+        let scope = try sessionScope(sessionID, journal: next)
+        let saved = next.savedSessions.first { $0.hostID.utf8.elementsEqual(scope.hostID.utf8) && $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) && $0.sessionID.utf8.elementsEqual(sessionID.utf8) }
+        let readOnly = botReadOnly || scopeMatches(next.botReadOnlyScope, scope) || scopeMatches(saved?.botReadOnlyScope, scope) || rosterContainsSession(sessionID)
         next.sessionID = sessionID; next.draft = saved?.draft ?? ""; next.history = saved?.history ?? []
+        next.botReadOnlyScope = readOnly ? scope : nil
         try commit(next); try timeline.restore(next.history)
         snapshotReady = false; try await connect(workspaceID: workspaceID, sessionID: sessionID)
-        guard let workspace = workspaces.first(where: { $0.workspaceID == workspaceID }), workspace.sessionIDs.contains(sessionID) else { throw RemoteHarnessClientFailure.protocolMismatch }
+        guard let workspace = workspaces.first(where: { $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) }), workspace.sessionIDs.contains(where: { $0.utf8.elementsEqual(sessionID.utf8) }) else { throw RemoteHarnessClientFailure.protocolMismatch }
         selectedWorkspace = workspace
         let listed = try await sessionList()
         try checkOperation()
-        guard let session = listed.first(where: { $0.sessionID == sessionID }) else { throw RemoteHarnessClientFailure.protocolMismatch }
-        running = session.running; sessions = listed.filter { selectedWorkspace?.sessionIDs.contains($0.sessionID) == true || $0.sessionID == sessionID }
+        let matchingSessions = listed.filter { $0.sessionID.utf8.elementsEqual(sessionID.utf8) }
+        guard matchingSessions.count == 1, let session = matchingSessions.first else { throw RemoteHarnessClientFailure.protocolMismatch }
+        running = session.running; sessions = listed.filter { row in workspace.sessionIDs.contains { $0.utf8.elementsEqual(row.sessionID.utf8) } }; sessionsBinding = gateway.binding
+        beginBotRefresh()
         try await loadModels()
         let binding = gateway.binding
         try gateway.follow({ try .sessionFollow(streamID: $0, sessionID: sessionID) }) { [weak self] update in
@@ -213,7 +250,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
                 // Durable records checkpoint independently from transient deltas.
                 var next = self.journal; next.history = self.timeline.records; try self.commit(next)
                 self.applyRunning(value)
-            } catch { self.fail(error); self.gateway.disconnect(); self.screen = .disconnected; self.snapshotReady = false }
+            } catch { self.invalidateBotContext(); self.fail(error); self.gateway.disconnect(); self.screen = .disconnected; self.snapshotReady = false }
         }
         try gateway.follow({ try .control(streamID: $0) }) { [weak self] update in
             guard let self, self.gateway.binding == binding else { return }
@@ -223,10 +260,12 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         waitForSnapshot(binding)
     }
     public func send() async {
+        guard !isBotSessionReadOnly, botClassificationReady else { return }
         guard companionAvailable else { failure = .companionRequired; return }
         guard canSend, let sessionID = journal.sessionID else { return }
         let text = journal.draft, commandID = UUID().uuidString
         await work {
+            guard !self.isBotSessionReadOnly, self.botClassificationReady else { return }
             try self.requireCompanion()
             let timeZone = Self.promptTimeZoneIdentifier(self.clientTimeZone().identifier)
             _ = try await self.gateway.call(.prompt(commandID: commandID, sessionID: sessionID, text: text, clientTimeZone: timeZone), commandID: commandID)
@@ -257,8 +296,10 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         }
     }
     public func selectModel(_ id: String, effort: String) async {
+        guard !isBotSessionReadOnly, botClassificationReady else { return }
         guard let model = models.first(where: { $0.id == id }), let sessionID = journal.sessionID, model.efforts.contains(effort) || effort.isEmpty else { return }
         await work {
+            guard !self.isBotSessionReadOnly, self.botClassificationReady else { return }
             try self.requireCompanion()
             let response = try await self.gateway.call(.selectModel(sessionID: sessionID, provider: model.provider, model: model.model, reasoningEffort: effort.isEmpty ? nil : effort), commandID: UUID().uuidString)
             try self.checkOperation()
@@ -274,9 +315,89 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
             try self.timeline.prependPage(page); var next = self.journal; next.history = self.timeline.records; try self.commit(next)
         }
     }
-    public func disconnect() { operationID = nil; workTask?.cancel(); workTask = nil; busy = false; snapshotDeadline?.cancel(); snapshotDeadline = nil; workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.connection); workspaceSnapshotWaiter = nil; gateway.disconnect(); screen = journal.origin == nil ? .setup : .disconnected; snapshotReady = false; companionAvailable = false; approvals = []; approvalCards = []; timeline.clearApprovalEvidence() }
+    public func disconnect() { invalidateBotContext(); operationID = nil; workTask?.cancel(); workTask = nil; busy = false; snapshotDeadline?.cancel(); snapshotDeadline = nil; workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.connection); workspaceSnapshotWaiter = nil; gateway.disconnect(); screen = journal.origin == nil ? .setup : .disconnected; snapshotReady = false; companionAvailable = false; approvals = []; approvalCards = []; timeline.clearApprovalEvidence() }
     public func showSetup() { disconnect(); screen = .setup; failure = nil }
     public func showComputers() { disconnect(); screen = .computers }
+    /// Read state has its own task and error surface so refresh cannot disable
+    /// Stop, consume an approval, or replace a draft/history failure.
+    public func refreshBots() async {
+        beginBotRefresh()
+        await botTask?.value
+    }
+    private func beginBotRefresh() {
+        synchronizeBotSupport()
+        guard !botLoading, botReadAvailable, let binding = gateway.binding,
+              Self.sameBinding(binding, sessionsBinding), let workspaceID = binding.workspaceID,
+              let profileWorkspaceID = journal.profile?.workspaceID, profileWorkspaceID.utf8.elementsEqual(workspaceID.utf8) else { return }
+        let requestID = UUID()
+        botRequestID = requestID; botBinding = binding; botLoading = true; botUnavailable = false
+        botTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let roster = try await self.gateway.readBotRoster()
+                guard !Task.isCancelled, self.botRequestID == requestID,
+                      Self.sameBinding(binding, self.gateway.binding), self.gateway.supportsBotRead,
+                      roster.workspaceID.utf8.elementsEqual(workspaceID.utf8) else { return }
+                try self.markSelectedBotSession(roster)
+                self.botRoster = roster; self.botLoading = false; self.botTask = nil; self.botRequestID = nil
+            } catch {
+                guard !Task.isCancelled, self.botRequestID == requestID,
+                      Self.sameBinding(binding, self.gateway.binding), self.gateway.supportsBotRead else { return }
+                self.botRoster = nil; self.botLoading = false; self.botUnavailable = true; self.botTask = nil; self.botRequestID = nil
+            }
+        }
+    }
+    private func synchronizeBotSupport() {
+        if !gateway.supportsBotRead || (botBinding != nil && !Self.sameBinding(botBinding, gateway.binding)) { clearBots() }
+        botReadAvailable = gateway.supportsBotRead
+    }
+    private func clearBots() {
+        botRequestID = nil; botTask?.cancel(); botTask = nil; botBinding = nil
+        botRoster = nil; botReadAvailable = false; botLoading = false; botUnavailable = false
+    }
+    private func invalidateBotContext() { clearBots(); sessionsBinding = nil }
+    private func sessionScope(_ sessionID: String, journal: RemoteHarnessClientJournal) throws -> RemoteHarnessClientBotSessionScope {
+        guard let origin = journal.origin, let hostID = journal.profile?.hostID, let fingerprint = journal.profile?.hostFingerprint,
+              let workspaceID = journal.profile?.workspaceID else { throw RemoteHarnessClientFailure.protocolMismatch }
+        return .init(origin: origin, hostID: hostID, hostFingerprint: fingerprint, workspaceID: workspaceID, sessionID: sessionID)
+    }
+    private func scopeMatches(_ lhs: RemoteHarnessClientBotSessionScope?, _ rhs: RemoteHarnessClientBotSessionScope) -> Bool {
+        lhs?.matches(origin: rhs.origin, hostID: rhs.hostID, hostFingerprint: rhs.hostFingerprint, workspaceID: rhs.workspaceID, sessionID: rhs.sessionID) == true
+    }
+    private func rosterContainsSession(_ sessionID: String) -> Bool {
+        guard let roster = botRoster, Self.sameBinding(botBinding, gateway.binding),
+              let workspaceID = journal.profile?.workspaceID, roster.workspaceID.utf8.elementsEqual(workspaceID.utf8) else { return false }
+        return roster.bots.contains { $0.sessionID.utf8.elementsEqual(sessionID.utf8) }
+    }
+    private func markSelectedBotSession(_ roster: RemoteHarnessBotRoster) throws {
+        guard let sessionID = journal.sessionID, let binding = gateway.binding,
+              binding.sessionID?.utf8.elementsEqual(sessionID.utf8) == true,
+              roster.bots.contains(where: { $0.sessionID.utf8.elementsEqual(sessionID.utf8) }) else { return }
+        let scope = try sessionScope(sessionID, journal: journal)
+        guard !scopeMatches(journal.botReadOnlyScope, scope) else { return }
+        var next = journal; next.botReadOnlyScope = scope
+        do { try commit(next) }
+        catch { storageReady = false; failure = .storage; throw RemoteHarnessClientFailure.storage }
+    }
+    private static func sameBinding(_ lhs: RemoteHarnessBinding?, _ rhs: RemoteHarnessBinding?) -> Bool {
+        guard let lhs, let rhs else { return false }
+        return lhs.generation == rhs.generation && lhs.hostID.utf8.elementsEqual(rhs.hostID.utf8)
+            && lhs.workspaceID.map { Data($0.utf8) } == rhs.workspaceID.map { Data($0.utf8) }
+            && lhs.sessionID.map { Data($0.utf8) } == rhs.sessionID.map { Data($0.utf8) }
+            && lhs.clientDeviceID.map { Data($0.utf8) } == rhs.clientDeviceID.map { Data($0.utf8) }
+    }
+    private func currentBotSession(_ bot: RemoteHarnessBot) -> RemoteHarnessClientSession? {
+        guard botReadAvailable, !botUnavailable, let roster = botRoster, let binding = gateway.binding,
+              Self.sameBinding(botBinding, binding), Self.sameBinding(sessionsBinding, binding),
+              let workspaceID = binding.workspaceID, roster.workspaceID.utf8.elementsEqual(workspaceID.utf8),
+              let profileWorkspaceID = journal.profile?.workspaceID, profileWorkspaceID.utf8.elementsEqual(workspaceID.utf8) else { return nil }
+        let currentBots = roster.bots.filter { $0.id.utf8.elementsEqual(bot.id.utf8) }
+        guard currentBots.count == 1, let current = currentBots.first, current.sessionID.utf8.elementsEqual(bot.sessionID.utf8) else { return nil }
+        let currentWorkspaces = workspaces.filter { $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) }
+        guard currentWorkspaces.count == 1, currentWorkspaces[0].sessionIDs.contains(where: { $0.utf8.elementsEqual(current.sessionID.utf8) }) else { return nil }
+        let currentSessions = sessions.filter { $0.sessionID.utf8.elementsEqual(current.sessionID.utf8) }
+        return currentSessions.count == 1 ? currentSessions[0] : nil
+    }
     public func refreshSessionState() async {
         await work {
             let listed = try await self.sessionList(); try self.checkOperation()
@@ -302,6 +423,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         approvalCards = approvals.map { RemoteHarnessClientApprovalCard($0, action: approvalAction(for: $0)) }
     }
     private func connect(workspaceID: String?, sessionID: String?) async throws {
+        invalidateBotContext()
         timeline.clearApprovalEvidence(); approvalCards = []
         companionAvailable = false
         guard let origin = journal.origin, let deviceID = journal.deviceID, let host else { throw RemoteHarnessClientFailure.reauthorize }
@@ -343,7 +465,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
                 }
             } catch {
                 self.workspaceSnapshotWaiter?.resume(throwing: error); self.workspaceSnapshotWaiter = nil
-                self.fail(error); self.gateway.disconnect(); self.screen = .disconnected
+                self.invalidateBotContext(); self.fail(error); self.gateway.disconnect(); self.screen = .disconnected
             }
         } } catch { workspaceSnapshotWaiter?.resume(throwing: error); workspaceSnapshotWaiter = nil; return }
         waitForSnapshot(binding)
@@ -439,14 +561,14 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
             do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { return }
             guard let self, self.gateway.binding == binding else { return }
             self.workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.timeout); self.workspaceSnapshotWaiter = nil
-            self.gateway.disconnect(); self.failure = .timeout; self.screen = .disconnected; self.snapshotReady = false
+            self.invalidateBotContext(); self.gateway.disconnect(); self.failure = .timeout; self.screen = .disconnected; self.snapshotReady = false
         }
     }
     private func commit(_ next: RemoteHarnessClientJournal) throws { try storage.save(next); journal = next }
     private func preserveSession(_ next: inout RemoteHarnessClientJournal) throws {
         guard let hostID = next.profile?.hostID, let workspaceID = next.profile?.workspaceID, let sessionID = next.sessionID else { return }
-        let saved = RemoteHarnessClientSavedSession(hostID: hostID, workspaceID: workspaceID, sessionID: sessionID, draft: next.draft, history: next.history)
-        if let index = next.savedSessions.firstIndex(where: { $0.hostID == hostID && $0.workspaceID == workspaceID && $0.sessionID == sessionID }) { next.savedSessions[index] = saved }
+        let saved = RemoteHarnessClientSavedSession(hostID: hostID, workspaceID: workspaceID, sessionID: sessionID, draft: next.draft, history: next.history, botReadOnlyScope: next.botReadOnlyScope)
+        if let index = next.savedSessions.firstIndex(where: { $0.hostID.utf8.elementsEqual(hostID.utf8) && $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) && $0.sessionID.utf8.elementsEqual(sessionID.utf8) }) { next.savedSessions[index] = saved }
         else { guard next.savedSessions.count < 50 else { throw RemoteHarnessClientFailure.limit }; next.savedSessions.append(saved) }
     }
     public func persistBeforeDispatch(_ command: RemoteHarnessJournalCommand) throws {

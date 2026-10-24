@@ -520,8 +520,9 @@ cancellation. Store and real-provider activation gates remain separate.
 - [ ] DS Bot teams, group conversations and interactive cards.
   Detailed reuse strategy: [DS Bot integration plan](deepseek-bot-integration-plan.md).
   The [Sol 6.1 implementation brief](deepseek-bot-sol-implementation.md) records the
-  first inactive read-only protocol increment and remaining runtime/UI gates;
-  it does not complete this parity item.
+  passive Host route, native read-only Bot list/history and exact verification
+  evidence. Sending, memory, cards, teams and live/signed-native checks remain
+  open; the read-only slice does not complete this parity item.
 - [ ] LAN/P2P/TURN with verified encrypted relay fallback.
 - [ ] Codex App Server adapter, then individual ACP backend adapters with their
   actual capability restrictions and independent acceptance tests.

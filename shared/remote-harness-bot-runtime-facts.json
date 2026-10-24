@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "sourceRevision": "91f3bfa30a2af533c8663fa8e957fafdfac5725e",
+    "workflowRunId": 40084776342,
+    "workflowJobId": 120845355394,
+    "workflowUrl": "https://github.com/alikatgh/quenderin/actions/runs/40084776342",
+    "validation": "Synthetic already-created state through pinned store/channel and authenticated Remote; no real provider inference.",
+    "rawResultSHA256": "3f2dd458164967b5ebd4ca892cedaeb94cf145a290eb5294b4b35137f7161723"
+  },
+  "capture": {
+    "schema": 1,
+    "harnessRevision": "1600d8a1e140dcde43a1a0941940a0480712c011",
+    "remoteRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+    "botRevision": "1bebe826f74e9a72cabafd3b80602b05af867b38",
+    "lifecycle": "explicit synthetic store load, then real channel.install; full createRuntime not invoked",
+    "authenticatedCarrier": "admitted ConnectionController channel -> RpcRouter -> shared Fetch with official owner Peer",
+    "workspaceId": "9f0f5f16-c802-410b-89f7-6802b1ec41dc",
+    "request": {
+      "route": "api/bot",
+      "body": {
+        "endpoint": "quenderin-roster",
+        "payload": {
+          "schemaVersion": 1,
+          "workspaceId": "9f0f5f16-c802-410b-89f7-6802b1ec41dc"
+        }
+      }
+    },
+    "rawResult": "{\"status\":200,\"json\":{\"ok\":true,\"value\":{\"schemaVersion\":1,\"workspaceId\":\"9f0f5f16-c802-410b-89f7-6802b1ec41dc\",\"revision\":8,\"readOnly\":false,\"bots\":[{\"id\":\"fixture-bot\",\"name\":\"Researcher\",\"sessionId\":\"fixture-bot-part\",\"model\":\"fixture/scripted\",\"permission\":\"read-only\"}]}}}",
+    "result": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "9f0f5f16-c802-410b-89f7-6802b1ec41dc",
+          "revision": 8,
+          "readOnly": false,
+          "bots": [
+            {
+              "id": "fixture-bot",
+              "name": "Researcher",
+              "sessionId": "fixture-bot-part",
+              "model": "fixture/scripted",
+              "permission": "read-only"
+            }
+          ]
+        }
+      }
+    },
+    "readEffects": {
+      "modelCalls": 0,
+      "refreshCalls": 0,
+      "loadCalls": 0,
+      "bootstrapCalls": 0,
+      "secretReads": 0,
+      "agentStarts": 0,
+      "stateWrites": 0,
+      "catalogCalls": 0
+    },
+    "outcomes": {
+      "notReady": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      },
+      "wrongWorkspace": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      },
+      "staleRevision": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      },
+      "wrongCurrentOwner": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      },
+      "wrongSessionWorkspace": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      },
+      "invalidTeamOwnershipForOtherWorkspace": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      },
+      "unmounted": {
+        "status": 503,
+        "json": {
+          "ok": false,
+          "error": {
+            "code": "BOT_READ_UNAVAILABLE",
+            "message": "Bot roster read unavailable"
+          }
+        }
+      }
+    },
+    "ordinaryWorkspace": {
+      "workspaceId": "b6097f16-1b8f-4ef9-8ade-062bd2fb0a05",
+      "request": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-roster",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "b6097f16-1b8f-4ef9-8ade-062bd2fb0a05"
+          }
+        }
+      },
+      "rawResult": "{\"status\":200,\"json\":{\"ok\":true,\"value\":{\"schemaVersion\":1,\"workspaceId\":\"b6097f16-1b8f-4ef9-8ade-062bd2fb0a05\",\"revision\":8,\"readOnly\":false,\"bots\":[]}}}",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "b6097f16-1b8f-4ef9-8ade-062bd2fb0a05",
+            "revision": 8,
+            "readOnly": false,
+            "bots": []
+          }
+        }
+      }
+    },
+    "unmountedCapabilityAbsent": true,
+    "sameRouterBeforeMountAfterMountAndUnmount": true,
+    "revocationDroppedResult": true
+  }
+}

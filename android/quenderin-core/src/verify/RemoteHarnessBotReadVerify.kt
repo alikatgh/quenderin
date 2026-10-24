@@ -379,5 +379,39 @@ fun main(args: Array<String>) {
         val id = f.owner.readBotRoster(outcomes::add)
         check(outcomes.single().wireRequestID == id && outcomes.single().botRoster != null && f.owner.pendingCount() == 0 && f.journalCount == 0)
     }
+    case("captured-pinned-host-roster-through-native-coordinator") {
+        val captureFile = File(fixture.absoluteFile.parentFile, "remote-harness-bot-runtime-facts.json")
+        check(captureFile.isFile && captureFile.length() <= RemoteHarnessBounds.FRAME_BYTES)
+        val artifact = RemoteHarnessJSON.parse(captureFile.readBytes()).objectValue()
+        check(artifact.rhRequired("schemaVersion").integerValue() == 1L)
+        val provenance = artifact.rhRequired("provenance").objectValue()
+        val capture = artifact.rhRequired("capture").objectValue()
+        check(capture.rhString("harnessRevision") == "1600d8a1e140dcde43a1a0941940a0480712c011")
+        check(capture.rhString("remoteRevision") == "9a60e783ec1ceaff6116b0462a2863f07f602a55")
+        check(capture.rhString("botRevision") == "1bebe826f74e9a72cabafd3b80602b05af867b38")
+        check(capture.rhRequired("readEffects").objectValue().values.all { it.integerValue() == 0L })
+        val capturedWorkspace = capture.rhString("workspaceId")
+        val raw = capture.rhString("rawResult").toByteArray(Charsets.UTF_8)
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(raw)
+            .joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
+        check(digest == provenance.rhString("rawResultSHA256"))
+        check(botCanonical(RemoteHarnessJSON.parse(raw)) == botCanonical(capture.rhRequired("result")))
+        check("PRIVATE" !in raw.toString(Charsets.UTF_8))
+        val parsed = RemoteHarnessBotRead.result(raw, capturedWorkspace)
+        check(parsed.bots.single().id == "fixture-bot" && parsed.bots.single().sessionID == "fixture-bot-part")
+        check(parsed.bots.single().name == "Researcher" && !parsed.readOnly)
+        val f = BotReadFake()
+        f.context = RemoteHarnessAuthenticatedContext(RemoteHarnessTransportBinding("profile-a", "https://relay.example", "host-a",
+            "a".repeat(64), capturedWorkspace), "device-a", "connection-capture", 2, null)
+        f.owner.beginConnection(f.context); f.describe(capabilities)
+        val outcomes = arrayListOf<RemoteHarnessOutcome>()
+        val id = f.owner.readBotRoster(outcomes::add)
+        check(botCanonical(f.sent.last().payload.values.rhRequired("params")) == botCanonical(capture.rhRequired("request")))
+        check(f.owner.receive(f.context, f.rawBytes(id, raw.toString(Charsets.UTF_8))))
+        val result = outcomes.single()
+        check(result.kind == RemoteHarnessOutcomeKind.RESULT && result.botRoster?.workspaceID == capturedWorkspace &&
+            result.botRoster?.bots?.single()?.sessionID == "fixture-bot-part" && result.value == null && result.frame == null)
+        check(f.journalCount == 0 && f.owner.pendingCount() == 0 && f.owner.pendingApprovals().isEmpty())
+    }
     println("BOT_READ_VERIFY_PASS fixtures=$fixtures cases=$cases")
 }
