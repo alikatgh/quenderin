@@ -46,7 +46,7 @@ class FileConversationPersistence(private val dir: File) : ConversationPersisten
 
     override fun saveIndex(summaries: List<ConversationSummary>) {
         val text = summaries.joinToString("\n") {
-            "${it.id}\t${escape(it.title)}\t${it.updatedAt}\t${escape(it.preview)}"
+            "${it.id}\t${escape(it.title)}\t${it.updatedAt}\t${escape(it.preview)}\t${it.localModelID ?: ""}\t${if (it.hasOrdinaryTurn) 1 else 0}\t${if (it.automaticModelPin) 1 else 0}"
         }
         runCatching { atomicWrite(indexFile, text) }
     }
@@ -61,7 +61,10 @@ class FileConversationPersistence(private val dir: File) : ConversationPersisten
             val updatedAt = parts[2].toLongOrNull() ?: return@mapNotNull null
             // 4th column (preview) arrived later — an index written before it still loads.
             val preview = if (parts.size >= 4) unescape(parts[3]) else ""
-            ConversationSummary(parts[0], unescape(parts[1]), updatedAt, preview)
+            val automaticPin = parts.getOrNull(6) == "1"
+            val modelID = parts.getOrNull(4)?.takeIf { automaticPin && InferencePerformanceIdentity.validModelID(it) }
+            ConversationSummary(parts[0], unescape(parts[1]), updatedAt, preview, modelID,
+                hasOrdinaryTurn = parts.getOrNull(5)?.let { it == "1" } ?: true, automaticModelPin = automaticPin && modelID != null)
         }
     }
 

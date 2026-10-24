@@ -22,11 +22,63 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
     private val operations = ReentrantLock()
     private var held = false
     private var admitted = 0
+    private var workflowHolds = 0
     private var selected: Pair<ModelEntry, String>? = null
     override val isSuspendedForSpecialist: Boolean get() = state.withLock { held }
+    override val automaticSelectionIdle: Boolean get() = state.withLock { !held && admitted == 0 && workflowHolds == 0 }
     override val loadedModelId: String? get() = state.withLock { if (held) null else underlying.loadedModelId }
     override val loadedContextTokens: Int? get() = state.withLock { if (held) null else underlying.loadedContextTokens }
     override fun requestCancel() = underlying.requestCancel()
+    override fun preventAutomaticModelSwitch(): AutoCloseable {
+        state.withLock { workflowHolds++ }
+        return object : AutoCloseable {
+            private var closed = false
+            override fun close() = state.withLock { if (!closed) { closed = true; workflowHolds-- } }
+        }
+    }
+    override fun automaticExecutionProfiles(model: ModelEntry, request: AutomaticChatRequest?, observations: List<InferencePerformanceSample>): List<AutomaticExecutionProfile> {
+        state.withLock {
+            if (held || admitted != 0 || workflowHolds != 0 || !operations.tryLock()) return emptyList()
+            admitted++
+        }
+        try { return underlying.automaticExecutionProfiles(model, request, observations) }
+        finally { operations.unlock(); state.withLock { admitted--; changed.signalAll() } }
+    }
+    override fun <T> withLoadedModel(expectedID: String, action: () -> T): T = ordinary {
+        check(underlying.loadedModelId == expectedID) { "The local model changed before this turn. Your draft is kept." }
+        action()
+    }
+    override fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = ordinary { underlying.pendingChatFits(model, request) }
+    override fun activateInstalledIfIdle(model: ModelEntry, filePath: String, previousVerifiedPath: String?, expectedProfile: AutomaticExecutionProfile?, request: AutomaticChatRequest?, isCurrent: () -> Boolean): Boolean {
+        state.withLock {
+            if (held || admitted != 0 || workflowHolds != 0 || !isCurrent() || !operations.tryLock()) return false
+            admitted++
+        }
+        try {
+            val snapshot = selected?.takeIf { underlying.loadedModelId == it.first.id }
+            if (!isCurrent()) return false
+            try {
+                underlying.load(model, filePath)
+                val actual = if (expectedProfile == null && request == null) null else underlying.automaticExecutionProfiles(model, request).singleOrNull()
+                val matches = expectedProfile == null || (actual != null && actual.runtimeID == expectedProfile.runtimeID &&
+                    actual.backendID == expectedProfile.backendID && actual.environmentID == expectedProfile.environmentID && actual.contextTokens == expectedProfile.contextTokens)
+                val fitsPendingTurn = request == null || (actual?.promptTokens != null && actual.promptTokens + ChatTier.of(model).maxTokens <= actual.contextTokens)
+                if (isCurrent() && matches && fitsPendingTurn) { selected = model to filePath; return true }
+            } catch (_: Exception) { /* One restoration attempt below, preserving native partial behavior. */ }
+            if (snapshot == null) {
+                underlying.unload(); selected = null
+            } else if (underlying.loadedModelId != snapshot.first.id) {
+                if (previousVerifiedPath == snapshot.second) {
+                    try { underlying.load(snapshot.first, previousVerifiedPath); selected = snapshot }
+                    catch (_: Exception) { underlying.unload(); selected = null }
+                } else { underlying.unload(); selected = null }
+            }
+            return false
+        } finally {
+            operations.unlock()
+            state.withLock { admitted--; changed.signalAll() }
+        }
+    }
     private fun <T> ordinary(work: () -> T): T {
         state.withLock { check(!held) { BUSY }; admitted++ }
         try {
@@ -43,6 +95,9 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
     override fun complete(prompt: String): String = ordinary { underlying.complete(prompt) }
     override fun complete(prompt: String, onToken: (String) -> Unit): String = ordinary { underlying.complete(prompt, onToken) }
     override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String = ordinary { underlying.completeChat(systemPrompt, history, onToken) }
+    override fun completeChatOwned(systemPrompt: String, history: List<ChatMessage>, isCurrent: () -> Boolean, onToken: (String) -> Unit): String = ordinary {
+        underlying.completeChatOwned(systemPrompt, history, isCurrent, onToken)
+    }
     override fun completeThinking(prompt: String, maxTokens: Int): String = ordinary { underlying.completeThinking(prompt, maxTokens) }
     override fun completeWithGrammar(prompt: String, grammar: String, maxTokens: Int, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String =
         ordinary { underlying.completeWithGrammar(prompt, grammar, maxTokens, topP, topK, temperature, repeatPenalty, repeatLastN) }

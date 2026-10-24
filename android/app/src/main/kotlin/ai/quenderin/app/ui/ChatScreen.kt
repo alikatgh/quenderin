@@ -120,6 +120,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 
 /**
  * The chat surface. A polished, cohesive layout (avatar top bar with a live status line, message
@@ -137,13 +139,19 @@ fun ChatScreen(
     onDeepThinkingChange: (Boolean) -> Unit = {},
     /** Switch to the Agent tab after a chat→agent handoff (twin of iOS AgentHandoff shell). */
     onOpenAgent: () -> Unit = {},
+    automaticEnabled: Boolean = false,
+    automaticDescription: () -> String = { "Estimated speed · current local model" },
+    modelPreparationMessage: String? = null,
+    captureLocalTurnIntent: () -> ai.quenderin.core.LocalTurnIntent = { ai.quenderin.core.LocalTurnIntent(0, null, true) },
+    prepareAutomaticTurn: (ai.quenderin.core.AutomaticChatRequest, Boolean, Boolean, String?, ai.quenderin.core.LocalTurnIntent, () -> Boolean) -> ai.quenderin.core.PreparedLocalTurn? = { _, _, _, _, _, _ -> ai.quenderin.core.PreparedLocalTurn(model) { true } },
 ) {
     val scope = rememberCoroutineScope()
     val chat = coordinator.chat
     // The conversation list (ChatTab) owns the coordinator and its `summaries`; this screen only
     // renders the OPEN conversation, so it just tracks its messages.
     var messages by remember { mutableStateOf(chat.messages) }
-    var input by remember { mutableStateOf("") }
+    var draftOwner by remember { mutableStateOf(coordinator.currentId) }
+    var input by remember(draftOwner) { mutableStateOf(coordinator.draft(draftOwner).text) }
     var busy by remember { mutableStateOf(false) }
     var genPhase by remember { mutableStateOf(ai.quenderin.core.GenerationPhase.IDLE) }
     // The in-flight generation coroutine, so Stop can cancel it (and the coordinator can join it on a
@@ -155,10 +163,15 @@ fun ChatScreen(
     var showPicker by remember { mutableStateOf(false) }
     // A failed generation must be VISIBLE, not silently swallowed: a swallowed throw (engine not
     // loaded, native decode error) looks identical to "the app is ignoring me". Surface + log it.
-    var sendError by remember { mutableStateOf<String?>(null) }
+    var sendError by remember(draftOwner) { mutableStateOf<String?>(null) }
     // Queued attachments for the next send — extracted at pick time (twin of iOS ChatView).
-    var pendingDocuments by remember { mutableStateOf<List<AttachedDocument>>(emptyList()) }
-    var attachmentNotice by remember { mutableStateOf<String?>(null) }
+    var pendingDocuments by remember(draftOwner) { mutableStateOf(coordinator.draft(draftOwner).documents) }
+    var attachmentNotice by remember(draftOwner) { mutableStateOf<String?>(null) }
+    fun stashVisibleDraft() {
+        // During the final admission hop, the visible composer may already be blank while the
+        // unsent draft is still retained by its conversation. Do not replace it with that blank.
+        if (!busy || input.isNotEmpty() || pendingDocuments.isNotEmpty()) coordinator.saveDraft(draftOwner, input, pendingDocuments)
+    }
     // Router suggestion for the drafted FIRST message (twin of iOS ChatView.routeSuggestion).
     var routeSuggestionDismissed by remember { mutableStateOf(false) }
     // Sticky computer-task handoff target (twin of iOS agentSuggestion).
@@ -179,9 +192,9 @@ fun ChatScreen(
         (mi.totalMem / gb) to (mi.availMem / gb)
     }
     val routeSuggestion: Pair<RouteDecision, ModelEntry>? = remember(
-        input, messages.isEmpty(), model.id, routeSuggestionDismissed, suggestBestModel, installedModels,
+        input, messages.isEmpty(), model.id, routeSuggestionDismissed, suggestBestModel, automaticEnabled, installedModels,
     ) {
-        if (!suggestBestModel || routeSuggestionDismissed || !messages.isEmpty()) return@remember null
+        if (automaticEnabled || !suggestBestModel || routeSuggestionDismissed || !messages.isEmpty()) return@remember null
         if (input.trim().length < 12 || installedModels.size <= 1) return@remember null
         val decision = ModelRouter.route(
             input, installedModels, totalRamGb, freeRamGb,
@@ -195,6 +208,8 @@ fun ChatScreen(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
+        val attachmentOwner = draftOwner
+        coordinator.saveDraft(attachmentOwner, input, pendingDocuments)
         scope.launch(Dispatchers.IO) {
             val name = runCatching {
                 context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
@@ -211,11 +226,13 @@ fun ChatScreen(
             withContext(Dispatchers.Main.immediate) {
                 when (result) {
                     is DocumentTextExtractor.Extraction.Document -> {
-                        pendingDocuments = pendingDocuments + result.document
-                        attachmentNotice = null
+                        val draft = coordinator.draft(attachmentOwner)
+                        val nextDocuments = draft.documents + result.document
+                        coordinator.saveDraft(attachmentOwner, draft.text, nextDocuments)
+                        if (attachmentOwner == coordinator.currentId) { pendingDocuments = nextDocuments; attachmentNotice = null }
                     }
                     is DocumentTextExtractor.Extraction.Rejected -> {
-                        attachmentNotice = result.reason
+                        if (attachmentOwner == coordinator.currentId) attachmentNotice = result.reason
                     }
                 }
             }
@@ -223,16 +240,19 @@ fun ChatScreen(
     }
     LaunchedEffect(coordinator) {
         messages = chat.messages
+        draftOwner = coordinator.currentId
         genPhase = chat.generationPhase
         // chat.send() runs on Dispatchers.IO (below), so its onChange fires from a background thread —
         // writing Compose state (`messages`) off the main thread is a threading violation (Q-228). Marshal
         // every emit onto the main dispatcher. Main.immediate keeps same-thread emits (the settle, which
         // can land on main) synchronous instead of posting an extra frame.
-        chat.onChange = { next ->
-            scope.launch(Dispatchers.Main.immediate) { messages = next }
+        chat.onChange = {}
+        chat.onRevisionChange = { revision, next ->
+            scope.launch(Dispatchers.Main.immediate) { if (chat.isRevisionCurrent(revision)) { messages = next; draftOwner = coordinator.currentId } }
         }
-        chat.onPhaseChange = { phase ->
-            scope.launch(Dispatchers.Main.immediate) { genPhase = phase }
+        chat.onPhaseChange = {}
+        chat.onRevisionPhaseChange = { revision, phase ->
+            scope.launch(Dispatchers.Main.immediate) { if (chat.isRevisionCurrent(revision)) genPhase = phase }
         }
     }
     val listState = rememberLazyListState()
@@ -256,9 +276,17 @@ fun ChatScreen(
         ChatTopBar(
             model = model,
             hasMessages = messages.isNotEmpty(),
-            onBack = onBack,
+            onBack = { stashVisibleDraft(); chat.invalidatePreparedTurns(); onBack() },
             onTitleClick = { showProfile = true },
-            onNew = { coordinator.startNew() },
+            onNew = {
+                stashVisibleDraft()
+                val previousOwner = draftOwner
+                sendJob?.cancel(); chat.stopGenerating(); coordinator.startNew()
+                if (previousOwner == coordinator.currentId) {
+                    val draft = coordinator.draft(previousOwner); input = draft.text; pendingDocuments = draft.documents
+                }
+                draftOwner = coordinator.currentId
+            },
             onShare = {
                 val md = ConversationExporter.markdown(messages, model.label)
                 val share = Intent(Intent.ACTION_SEND).apply {
@@ -269,20 +297,24 @@ fun ChatScreen(
                 runCatching { context.startActivity(Intent.createChooser(share, shareTitle)) }
             },
         )
+        if (automaticEnabled) Text(automaticDescription(), style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        if (modelPreparationMessage != null) Text(modelPreparationMessage, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
 
-        // Shared by composer Send and empty-state starter chips.
-        fun sendCurrent(textOverride: String? = null) {
+        // Shared by composer Send, starters and Continue. Continue retains any unrelated composer draft.
+        fun sendCurrent(textOverride: String? = null, useDraft: Boolean = true) {
             val text = (textOverride ?: input).trim()
-            if (text.isEmpty() && pendingDocuments.isEmpty()) return
+            val docs = if (useDraft) pendingDocuments else emptyList()
+            if (text.isEmpty() && docs.isEmpty()) return
             if (busy) return
-            val docs = pendingDocuments
-            input = ""
-            pendingDocuments = emptyList()
-            attachmentNotice = null
-            routeSuggestionDismissed = false
             // Computer task → educate + handoff button. Do NOT call the model (it only produces
             // "I cannot fulfill…" walls). Twin of iOS ChatView.send ActionIntent short-circuit.
             if (text.isNotEmpty() && ActionIntent.looksLikeComputerTask(text)) {
+                if (useDraft) {
+                    input = ""; pendingDocuments = emptyList(); attachmentNotice = null; routeSuggestionDismissed = false
+                    coordinator.saveDraft(draftOwner, "", emptyList())
+                }
                 agentSuggestion = text
                 chat.recordGuidedTurn(
                     userText = text,
@@ -296,20 +328,55 @@ fun ChatScreen(
                 return
             }
             agentSuggestion = null
+            val intent = captureLocalTurnIntent()
+            if (!intent.ready) { sendError = "Confirming the requested local model. Your draft is kept."; return }
             busy = true
             sendError = null
+            val conversationID = coordinator.currentId
+            val lifecycleRevision = coordinator.lifecycleRevision
+            val firstTurn = !coordinator.hasOrdinaryTurn
+            val messageCountBeforeSend = chat.messages.size
+            val request = ai.quenderin.core.AutomaticChatRequest(text, docs, chat.messages)
+            if (useDraft) coordinator.saveDraft(conversationID, text, docs)
+            val admission = chat.captureTurnAdmission {
+                captureLocalTurnIntent() == intent && coordinator.currentId == conversationID && coordinator.lifecycleRevision == lifecycleRevision
+            }
             sendJob = scope.launch {
+                val myJob = checkNotNull(currentCoroutineContext()[Job])
                 try {
-                    withContext(Dispatchers.IO) { chat.send(text, docs, model) }
+                    val prepared = withContext(Dispatchers.IO) {
+                        prepareAutomaticTurn(request, firstTurn, docs.isNotEmpty(), coordinator.pinnedLocalModelID, intent) {
+                            myJob.isActive && coordinator.currentId == conversationID && coordinator.lifecycleRevision == lifecycleRevision
+                        }
+                    } ?: throw ai.quenderin.core.EngineNotLoadedException()
+                    if (!prepared.accepts() || coordinator.lifecycleRevision != lifecycleRevision) throw ai.quenderin.core.AutomaticSelectionChangedException()
+                    if (useDraft) { input = ""; pendingDocuments = emptyList(); attachmentNotice = null; routeSuggestionDismissed = false }
+                    withContext(Dispatchers.IO) { chat.withSelectedModel(prepared.model.id) {
+                        if (!prepared.accepts() || coordinator.lifecycleRevision != lifecycleRevision) throw ai.quenderin.core.AutomaticSelectionChangedException()
+                        check(!automaticEnabled || chat.pendingChatFits(prepared.model, request)) { "This pending turn does not fit the selected model's actual context. Your draft is kept." }
+                        chat.send(text, docs, prepared.model, admission = admission, onAdmitted = {
+                            if (useDraft) coordinator.saveDraft(conversationID, "", emptyList())
+                            coordinator.recordLocalAdmission(prepared.model.id, automaticEnabled, conversationID)
+                        })
+                    } }
                 } catch (t: Throwable) {
-                    if (t is kotlinx.coroutines.CancellationException) throw t
+                    if (t is kotlinx.coroutines.CancellationException) {
+                        if (useDraft && sendJob == myJob) coordinator.draftAfterCancelledAdmission(conversationID, lifecycleRevision, messageCountBeforeSend)?.let {
+                            input = it.text; pendingDocuments = it.documents
+                        }
+                        throw t
+                    }
+                    if (sendJob == myJob && useDraft && coordinator.currentId == conversationID && coordinator.lifecycleRevision == lifecycleRevision &&
+                        chat.messages.size == messageCountBeforeSend) { input = text; pendingDocuments = docs; coordinator.saveDraft(conversationID, text, docs) }
                     Log.e("Quenderin", "chat.send failed", t)
-                    sendError = t.message?.takeIf { it.isNotBlank() }
+                    if (sendJob == myJob) sendError = t.message?.takeIf { it.isNotBlank() }
                         ?: "${t.javaClass.simpleName}: generation failed"
                 } finally {
-                    withContext(kotlinx.coroutines.NonCancellable) { coordinator.persist() }
-                    busy = false
-                    sendJob = null
+                    withContext(kotlinx.coroutines.NonCancellable) {
+                        coordinator.finishOwnedSend(conversationID, lifecycleRevision, { sendJob == myJob }) {
+                            busy = false; sendJob = null
+                        }
+                    }
                 }
             }
         }
@@ -452,24 +519,7 @@ fun ChatScreen(
             // Hoisted: stringResource() can't be called inside the non-composable semantics{} lambda.
             val continueDesc = stringResource(R.string.chat_continue_generating)
             TextButton(
-                onClick = {
-                    busy = true
-                    sendError = null
-                    sendJob = scope.launch {
-                        try {
-                            withContext(Dispatchers.IO) { chat.continueLast() }
-                        } catch (t: Throwable) {
-                            if (t is kotlinx.coroutines.CancellationException) throw t
-                            Log.e("Quenderin", "chat.continueLast failed", t)
-                            sendError = t.message?.takeIf { it.isNotBlank() }
-                                ?: "${t.javaClass.simpleName}: continue failed"
-                        } finally {
-                            withContext(kotlinx.coroutines.NonCancellable) { coordinator.persist() }
-                            busy = false
-                            sendJob = null
-                        }
-                    }
-                },
+                onClick = { sendCurrent(ai.quenderin.core.ChatUserFacing.continueCue(java.util.Locale.getDefault().language), useDraft = false) },
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 2.dp)
                     .semantics { contentDescription = continueDesc },
@@ -507,6 +557,7 @@ fun ChatScreen(
                             TextButton(
                                 onClick = {
                                     pendingDocuments = pendingDocuments.filter { it.name != doc.name }
+                                    coordinator.saveDraft(draftOwner, input, pendingDocuments)
                                 },
                                 modifier = Modifier.semantics { contentDescription = removeDesc },
                             ) {
@@ -526,7 +577,7 @@ fun ChatScreen(
             input = input,
             busy = busy,
             canSendWithAttachments = pendingDocuments.isNotEmpty(),
-            onInput = { input = it },
+            onInput = { input = it; coordinator.saveDraft(draftOwner, it, pendingDocuments) },
             // image/* is intentional: picker accepts photos so DocumentTextExtractor can refuse
             // with an honest vision-not-yet message (not a silent "file type not supported" from SAF).
             onAttach = {
@@ -538,7 +589,7 @@ fun ChatScreen(
             onStop = {
                 // Real stop: end the native decode now (not one token late / dead during prefill) and
                 // cancel the coroutine so its blocking send unwinds. The streamed partial stays. (Q-005)
-                chat.stopGenerating()
+                chat.invalidatePreparedTurns()
                 sendJob?.cancel()
             },
         )
@@ -561,7 +612,7 @@ fun ChatScreen(
                 currentModelId = model.id,
                 onSelect = { picked ->
                     showPicker = false
-                    if (picked.id != model.id) onSelectModel(picked)
+                    onSelectModel(picked)
                 },
             )
         }

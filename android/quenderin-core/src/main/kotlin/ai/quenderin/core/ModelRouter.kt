@@ -23,6 +23,8 @@ data class RouteDecision(
  * mid-conversation swap.
  */
 object ModelRouter {
+    fun familyRank(model: ModelEntry, task: TaskKind): Int = preferredFamilies(task)
+        .indexOfFirst { model.id.startsWith(it) }.let { if (it < 0) Int.MAX_VALUE else it }
 
     internal val codingMarkers = listOf(
         "```", "def ", "func ", "fun ", "class ", "import ", "print(", "console.log",

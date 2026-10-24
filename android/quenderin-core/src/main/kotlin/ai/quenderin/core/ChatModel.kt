@@ -73,11 +73,17 @@ val ChatMessage.isFlagged: Boolean
  * `synchronized(lock)` give the Compose main-thread reader a happens-before view of the writes, same
  * idiom as [AgentSession]. (Q-004/Q-168 corruption; Q-005/Q-237 stop + degeneration abort.)
  */
+data class ChatTurnAdmission internal constructor(internal val revision: Long, internal val isCurrent: () -> Boolean)
+
 class ChatModel(
     private val engine: InferenceEngine,
     var onChange: (List<ChatMessage>) -> Unit = {},
     private val context: ConversationContext = ConversationContext(),
 ) {
+    fun <T> withSelectedModel(expectedID: String, action: () -> T): T = engine.withLoadedModel(expectedID, action)
+    fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = engine.pendingChatFits(model, request)
+    fun captureTurnAdmission(isCurrent: () -> Boolean = { true }): ChatTurnAdmission = synchronized(lock) { ChatTurnAdmission(activeGeneration, isCurrent) }
+    fun isRevisionCurrent(revision: Long): Boolean = synchronized(lock) { activeGeneration == revision }
     private val lock = Any()
     private val _messages = mutableListOf<ChatMessage>()
     val messages: List<ChatMessage> get() = synchronized(lock) { _messages.toList() }
@@ -113,13 +119,21 @@ class ChatModel(
 
     /** Optional listener for phase flips (Compose polls [generationPhase] or rebinds here). */
     var onPhaseChange: (GenerationPhase) -> Unit = {}
+    /** UI dispatchers must validate the revision when consuming a queued event. */
+    var onRevisionChange: ((Long, List<ChatMessage>) -> Unit)? = null
+    var onRevisionPhaseChange: ((Long, GenerationPhase) -> Unit)? = null
 
-    private fun setPhase(p: GenerationPhase) {
-        generationPhase = p
-        onPhaseChange(p)
+    private fun publish(revision: Long, snapshot: List<ChatMessage>) {
+        if (!isRevisionCurrent(revision)) return
+        onChange(snapshot)
+        if (isRevisionCurrent(revision)) onRevisionChange?.invoke(revision, snapshot)
     }
-
-    private fun emit() = onChange(messages)
+    private fun publishPhase(revision: Long, phase: GenerationPhase) {
+        val accepted = synchronized(lock) { if (activeGeneration != revision) false else { generationPhase = phase; true } }
+        if (!accepted) return
+        onPhaseChange(phase)
+        if (isRevisionCurrent(revision)) onRevisionPhaseChange?.invoke(revision, phase)
+    }
 
     /**
      * Record a user turn + a fixed assistant reply without calling the model. Used when chat
@@ -134,11 +148,16 @@ class ChatModel(
     ) {
         val trimmed = userText.trim()
         if ((trimmed.isEmpty() && documents.isEmpty()) || isGenerating) return
+        val revision: Long
+        val snapshot: List<ChatMessage>
         synchronized(lock) {
+            if (isGenerating) return
+            revision = ++activeGeneration
             _messages += ChatMessage(Role.USER, trimmed, documents)
             _messages += ChatMessage(Role.ASSISTANT, assistantText)
+            snapshot = _messages.toList()
         }
-        emit()
+        publish(revision, snapshot)
     }
 
     /**
@@ -149,7 +168,8 @@ class ChatModel(
      * race two writers onto the transcript.
      */
     @JvmOverloads
-    fun send(text: String, documents: List<AttachedDocument> = emptyList(), model: ModelEntry? = null): String {
+    fun send(text: String, documents: List<AttachedDocument> = emptyList(), model: ModelEntry? = null,
+             admission: ChatTurnAdmission? = null, onAdmitted: (() -> Unit)? = null): String {
         val trimmed = text.trim()
         // Documents alone are a legitimate send ("summarize this file" with no extra words). Twin-drift
         // fix: an empty send is a SILENT no-op (return ""), matching iOS ChatModel's `guard … else { return }`
@@ -173,10 +193,12 @@ class ChatModel(
         val afterUser: List<ChatMessage>
         val afterPlaceholder: List<ChatMessage>
         synchronized(lock) {
+            if (admission != null && (admission.revision != activeGeneration || !admission.isCurrent())) throw AutomaticSelectionChangedException()
             if (isGenerating) return ""
             isGenerating = true
-            setPhase(GenerationPhase.LOADING_PROMPT)
             myGen = ++activeGeneration
+            generationPhase = GenerationPhase.LOADING_PROMPT
+            lastHitTokenCap = false
             _messages += ChatMessage(Role.USER, trimmed, documents)
             afterUser = _messages.toList()
             // History is computed BEFORE the placeholder is appended so the empty assistant turn isn't
@@ -197,10 +219,13 @@ class ChatModel(
             _messages += ChatMessage(Role.ASSISTANT, "")
             afterPlaceholder = _messages.toList()
         }
-        onChange(afterUser)
-        onChange(afterPlaceholder)
+        publishPhase(myGen, GenerationPhase.LOADING_PROMPT)
+        publish(myGen, afterUser)
+        publish(myGen, afterPlaceholder)
+        fun ownsGeneration(): Boolean = isRevisionCurrent(myGen) && (admission?.isCurrent?.invoke() != false)
         try {
-            lastHitTokenCap = false
+            onAdmitted?.invoke() // May persist index metadata; lifecycle/reset never waits on this I/O.
+            if (!ownsGeneration()) return ""
             val sb = StringBuilder()
             var tokenCount = 0
             // Pace transcript writes to display frames (~30 Hz): every write copies the list, re-parses
@@ -209,13 +234,14 @@ class ChatModel(
             val flushGate = StreamFlushGate()
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
             // blank for the whole (multi-second) generation. Mirrors iOS `ChatModel`.
-            val reply = engine.completeChat(systemPrompt, history) { piece ->
+            val reply = engine.completeChatOwned(systemPrompt, history, ::ownsGeneration) { piece ->
+                if (!ownsGeneration()) { engine.requestCancel(); return@completeChatOwned }
                 sb.append(piece)
                 // Degeneration guard: if the tail is verbatim-looping despite the sampler's repetition
                 // penalty, stop paying for tokens — the settle-time collapse below cleans up. Checked every
                 // 32 tokens like iOS; asks the engine to end the native decode now. (Q-237)
                 tokenCount += 1
-                if (tokenCount == 1) setPhase(GenerationPhase.WRITING)
+                if (tokenCount == 1) publishPhase(myGen, GenerationPhase.WRITING)
                 if (tokenCount % 32 == 0 && DegenerationGuard.looksDegenerate(sb.toString())) {
                     engine.requestCancel()
                 }
@@ -232,7 +258,7 @@ class ChatModel(
             // an honest notice, mirroring iOS ChatModel. Only when this generation is still active: a user
             // Stop supersedes it (activeGeneration bumped), and then the streamed partial should stand,
             // exactly as iOS's `!stopRequested` guard. (writeAssistant also drops a superseded write.)
-            val stillActive = synchronized(lock) { myGen == activeGeneration }
+            val stillActive = ownsGeneration()
             val finalText = if (settled.isBlank() && stillActive) {
                 // Locale-aware notice (ru/ko/ja/zh); default EN for tests / unknown locales.
                 ChatUserFacing.emptyReply(java.util.Locale.getDefault().language)
@@ -242,18 +268,22 @@ class ChatModel(
             // Token-cap hit mid-sentence → "Continue" affordance (KNOWN_FAILURE_MODES). Real signal from
             // the native loop (perfDecodeTok >= maxTokens), not a piece count (UTF-8 reassembly merges
             // pieces so a piece-count would undercount). User Stop supersedes → stillActive false.
-            if (stillActive) lastHitTokenCap = engine.lastHitTokenCap()
-            writeAssistant(myGen, placeholderIndex, finalText)
+            if (stillActive) {
+                val hitCap = engine.lastHitTokenCap()
+                synchronized(lock) { if (myGen == activeGeneration) lastHitTokenCap = hitCap }
+            }
+            if (stillActive) writeAssistant(myGen, placeholderIndex, finalText)
             return finalText
         } finally {
-            synchronized(lock) {
+            val finished = synchronized(lock) {
                 // Only the CURRENT generation owns isGenerating; a superseded send must not clear a flag a
                 // newer send/lifecycle op already re-set (M10 finally-safety, same as AgentSession).
                 if (activeGeneration == myGen) {
                     isGenerating = false
-                    setPhase(GenerationPhase.IDLE)
-                }
+                    true
+                } else false
             }
+            if (finished) publishPhase(myGen, GenerationPhase.IDLE)
         }
     }
 
@@ -270,14 +300,14 @@ class ChatModel(
      *  in range — under [lock] so a concurrent [reset]/[restore] can't shrink the list between the check
      *  and the write. A superseded generation (or a cleared slot) drops the write silently. */
     private fun writeAssistant(gen: Long, index: Int, textValue: String) {
-        val changed = synchronized(lock) {
-            if (gen != activeGeneration || index >= _messages.size) return@synchronized false
+        val snapshot = synchronized(lock) {
+            if (gen != activeGeneration || index >= _messages.size) return@synchronized null
             // copy() (not a fresh ChatMessage) so the row keeps its stable [ChatMessage.id] across
             // every streamed token — the UI list key stays put instead of churning per token.
             _messages[index] = _messages[index].copy(text = textValue)
-            true
+            _messages.toList()
         }
-        if (changed) emit()
+        if (snapshot != null) publish(gen, snapshot)
     }
 
     /**
@@ -287,22 +317,33 @@ class ChatModel(
      * The streamed partial already in the transcript stays. Twin of iOS `ChatModel.stopGenerating`.
      */
     fun stopGenerating() {
+        val revision: Long
         synchronized(lock) {
             if (!isGenerating) return
-            activeGeneration++   // supersede the running send → its remaining writes become no-ops
+            revision = ++activeGeneration   // supersede the running send → its remaining writes become no-ops
             isGenerating = false
-            setPhase(GenerationPhase.IDLE)
         }
         engine.requestCancel()
+        publishPhase(revision, GenerationPhase.IDLE)
+    }
+
+    fun invalidatePreparedTurns() {
+        val cancel: Boolean
+        val revision: Long
+        synchronized(lock) { revision = ++activeGeneration; cancel = isGenerating; isGenerating = false }
+        if (cancel) engine.requestCancel()
+        publishPhase(revision, GenerationPhase.IDLE)
     }
 
     /** Clear the conversation. First stops any in-flight generation so a zombie send can't write into the
      *  now-empty transcript (out of bounds) or resurrect a stale reply. */
     fun reset() {
-        stopGenerating()
-        lastHitTokenCap = false
-        synchronized(lock) { _messages.clear() }
-        emit()
+        val revision: Long
+        val cancel: Boolean
+        synchronized(lock) { revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false; _messages.clear() }
+        if (cancel) engine.requestCancel()
+        publishPhase(revision, GenerationPhase.IDLE)
+        publish(revision, emptyList())
     }
 
     /** Replace the transcript with a previously persisted conversation (see [ConversationStore]),
@@ -310,12 +351,15 @@ class ChatModel(
      *  generation so tokens from the OUTGOING conversation can't bleed into the one being restored
      *  (the conversation-switch corruption — Q-004/Q-168). */
     fun restore(saved: List<ChatMessage>) {
-        stopGenerating()
-        lastHitTokenCap = false
+        val revision: Long
+        val cancel: Boolean
         synchronized(lock) {
+            revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false
             _messages.clear()
             _messages.addAll(saved)
         }
-        emit()
+        if (cancel) engine.requestCancel()
+        publishPhase(revision, GenerationPhase.IDLE)
+        publish(revision, saved.toList())
     }
 }

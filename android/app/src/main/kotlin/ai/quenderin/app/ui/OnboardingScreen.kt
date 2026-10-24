@@ -120,10 +120,19 @@ fun AppRoot(
     downloader: ModelDownloader,
     probe: () -> AndroidDeviceProfile,
     conversations: ConversationPersistence,
+    performanceStore: ai.quenderin.core.InferencePerformanceStore,
+    automaticProfile: (ModelEntry, ai.quenderin.core.AutomaticChatRequest?, List<ai.quenderin.core.InferencePerformanceSample>) -> List<ai.quenderin.core.AutomaticExecutionProfile>,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var phase by remember { mutableStateOf<OnboardingPhase>(OnboardingPhase.Idle) }
+    var readyModel by remember { mutableStateOf<ModelEntry?>(null) }
+    val selectionPrefs = remember { context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
+    val automaticMode = remember { ai.quenderin.core.AutomaticSelectionMode(
+        read = { selectionPrefs.getBoolean(ai.quenderin.core.AutomaticSelectionMode.PREFERENCE_KEY, false) },
+        write = { selectionPrefs.edit().putBoolean(ai.quenderin.core.AutomaticSelectionMode.PREFERENCE_KEY, it).apply() }) }
+    var automaticEnabled by remember { mutableStateOf(automaticMode.enabled()) }
+    var manualStateRevision by remember { mutableStateOf(0L) }
     val onboarding = remember {
         // SharedPreferences backs the core's remember/recall seam (twin of the Swift UserDefaults
         // default); the file check points at the downloader's models dir under filesDir.
@@ -132,8 +141,17 @@ fun AppRoot(
         OnboardingModel(
             engine,
             downloader,
-            recallActiveModelID = { prefs.getString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, null) },
-            rememberActiveModelID = { id -> prefs.edit().putString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, id).apply() },
+            recallActiveModelID = {
+                if (automaticMode.enabled()) prefs.getString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, null)
+                else prefs.getString(ai.quenderin.core.AutomaticSelectionMode.MANUAL_MODEL_KEY, null)
+                    ?: prefs.getString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, null)
+            },
+            rememberActiveModelID = { id ->
+                prefs.edit().putString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, id).also {
+                    if (!automaticMode.enabled() && !prefs.contains(ai.quenderin.core.AutomaticSelectionMode.MANUAL_MODEL_KEY))
+                        it.putString(ai.quenderin.core.AutomaticSelectionMode.MANUAL_MODEL_KEY, id)
+                }.apply()
+            },
             activeModelFileExists = { model ->
                 ai.quenderin.core.ModelArtifacts.filenames(model).all { File(modelsDir, it).isFile }
             },
@@ -146,7 +164,25 @@ fun AppRoot(
             // Disk preflight for the live install path (twin of Swift storageCheck): refuse a
             // download that can't finish, instead of dying at 95% with a generic failure.
             availableDiskBytes = { android.os.StatFs(context.filesDir.path).availableBytes },
-        ).apply { onChange = { phase = it } }
+            verifiedInstalledPath = { model ->
+                if (ai.quenderin.core.InferencePerformanceIdentity.artifact(model) == null) null else {
+                    val path = File(modelsDir, model.filename).absolutePath
+                    runCatching { ai.quenderin.core.ModelArtifactVerificationReceipts.process.verify(model, path)?.path }.getOrNull()
+                }
+            },
+        ).apply { onChange = { next -> scope.launch(Dispatchers.Main.immediate) {
+            if (next is OnboardingPhase.Ready) readyModel = next.model
+            phase = next
+        } } }
+    }
+    val automatic = remember { ai.quenderin.app.AutomaticModelController(engine, onboarding, automaticMode,
+        performanceStore, File(context.filesDir, "models"), probe, automaticProfile,
+        rememberManualModel = { selectionPrefs.edit().putString(ai.quenderin.core.AutomaticSelectionMode.MANUAL_MODEL_KEY, it).apply() },
+        onManualStateChanged = { scope.launch(Dispatchers.Main.immediate) { manualStateRevision++ } }) }
+    fun selectManual(model: ModelEntry) {
+        val intent = automatic.manualChoice(model)
+        automaticEnabled = false
+        scope.launch(Dispatchers.IO) { automatic.confirmManualChoice(intent) }
     }
     // Relaunch fast-path: restore the last successfully-loaded model straight to Ready instead of
     // replaying first-run onboarding. Blocking (integrity re-check + load) → IO, like every other
@@ -261,13 +297,26 @@ fun AppRoot(
         }
         return
     }
-    when (val current = phase) {
+    // Retain the composed conversation owner/draft through both automatic and manual model loads.
+    when (val current = readyModel?.let { OnboardingPhase.Ready(it) } ?: phase) {
         is OnboardingPhase.Ready -> MainTabs(
             engine = engine,
             model = current.model,
             conversations = conversations,
             // Reuse the onboarding install flow: download (if needed) → load → swap. Blocking → IO.
-            onSelectModel = { picked -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) } },
+            onSelectModel = ::selectManual,
+            automaticEnabled = automaticEnabled,
+            onAutomaticChange = {
+                automatic.setAutomaticEnabled(it); automaticEnabled = automaticMode.enabled()
+            },
+            automaticDescription = { automatic.description },
+            modelPreparationMessage = when (val state = phase) {
+                is OnboardingPhase.Ready -> manualStateRevision.let { automatic.manualPreparationMessage }
+                is OnboardingPhase.Failed -> state.reason
+                else -> "Preparing the selected local model… Your draft is kept."
+            },
+            captureLocalTurnIntent = automatic::captureTurnIntent,
+            prepareAutomaticTurn = automatic::prepareTurn,
             onOpenDeepSeek = { showDeepSeek = true },
             onOpenComputer = ::openComputer,
         )
@@ -278,7 +327,7 @@ fun AppRoot(
                 phase = current,
                 selection = onboarding.selection,
                 onStart = { onboarding.start(probe()) },   // world-class selector path
-                onAccept = { model -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(model) } },
+                onAccept = ::selectManual,
                 onChoose = { showPicker = true },
                 onCancel = { model -> (downloader as? WorkManagerModelDownloader)?.cancel(model) },
                 storageCheck = { model ->
@@ -312,7 +361,7 @@ fun AppRoot(
                         currentModelId = "",
                         onSelect = { picked ->
                             showPicker = false
-                            scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) }
+                            selectManual(picked)
                         },
                     )
                 }

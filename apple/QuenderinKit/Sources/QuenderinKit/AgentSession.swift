@@ -114,6 +114,13 @@ public final class AgentSession: ObservableObject {
         cancelFlag = CancelFlag()   // Q-641: fresh stop flag for this run
         defer { isRunning = false }
 
+        let modelOwnership: SpecialistInferenceLease
+        do { modelOwnership = try await engine.retainModelForAgentRun() }
+        catch {
+            answer = "The local text engine is changing models. Try this goal again when it is ready."
+            haltReason = .blocked
+            return
+        }
         let flag = cancelFlag
         // Stream live: the loop fires onStep as each step lands and onProgress as the recipe cursor
         // advances. Both hop to the MainActor; the token gate drops a stale append from a prior run.
@@ -132,6 +139,7 @@ public final class AgentSession: ObservableObject {
             } },
             isCancelled: { flag.isCancelled }
         )
+        try? await modelOwnership.resume()
         guard runToken == token else { return }   // a newer run started while we awaited
         answer = result.answer
         haltReason = result.haltReason

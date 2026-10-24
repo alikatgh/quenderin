@@ -18,6 +18,7 @@ public struct ModelPickerView: View {
     /// row says which it is.
     private let installedFilenames: Set<String>
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var automatic = AutomaticModelPreferences.shared
     @Environment(\.colorScheme) private var scheme
 
     public init(totalRAMGB: Double, currentModelID: String? = nil, onSelect: @escaping (ModelEntry) -> Void) {
@@ -81,6 +82,10 @@ public struct ModelPickerView: View {
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.horizontal, 4)
 
+                Toggle("Automatic for new chats", isOn: $automatic.enabled)
+                    .toggleStyle(.switch).tint(p.primary)
+                Text("Verifies installed model files before using their observations. Keeps the chosen model through the conversation; a manual choice turns Automatic off.")
+                    .font(.caption).foregroundStyle(p.onSurfaceVariant)
                 // The router's switch lives WHERE models are chosen, not only buried in Settings.
                 Toggle(isOn: $settings.suggestBestModel) {
                     VStack(alignment: .leading, spacing: 1) {
@@ -139,7 +144,7 @@ public struct ModelPickerView: View {
                 isCurrent: option.model.id == currentModelID,
                 isInstalled: installedFilenames.contains(option.model.filename),
                 palette: p,
-                action: { onSelect(option.model) }
+                action: { automatic.chooseManually(option.model.id); onSelect(option.model) }
             )
         }
     }

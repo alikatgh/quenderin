@@ -6,18 +6,16 @@ import UniformTypeIdentifiers
 /// send button, a typing indicator, and an empty state — the SwiftUI twin of Android's redesigned
 /// `ChatScreen`, built on the shared `QuenderinPalette` / `BubbleShape` tokens. Tokens land in the
 /// assistant bubble live as they stream.
+@MainActor
 public struct ChatView: View {
     @ObservedObject private var model: ChatModel
     @ObservedObject private var settings = AppSettings.shared
-    @State private var draft: String = ""
+    @ObservedObject private var automatic = AutomaticModelPreferences.shared
+    @ObservedObject private var composer: ChatComposerState
     @State private var suggestionDismissed = false
     /// The last sent message when it read as a computer task — drives the "Run it with the
     /// Agent" handoff bar above the composer (see `ActionIntent`). Cleared on tap or dismiss.
     @State private var agentSuggestion: String?
-    /// Documents queued for the NEXT send (chips above the composer) — extracted at attach time,
-    /// cleared once the message goes out. Milestone 1: documents-as-text in chat.
-    @State private var pendingDocuments: [AttachedDocument] = []
-    @State private var attachmentNotice: String?
     @State private var showAttachPicker = false
     /// Streaming auto-follows ONLY while true. Bool + hysteresis only — never continuous
     /// CGFloat scroll metrics (those force a full body rebuild every wheel tick).
@@ -53,6 +51,7 @@ public struct ChatView: View {
     public init(model: ChatModel, activeModel: ModelEntry? = nil,
                 onSwitchModel: ((ModelEntry) -> Void)? = nil, conversationID: String? = nil) {
         self.model = model
+        self.composer = model.composer
         self.activeModel = activeModel
         self.onSwitchModel = onSwitchModel
         self.conversationID = conversationID
@@ -71,15 +70,15 @@ public struct ChatView: View {
     /// Router suggestion for the drafted FIRST message: only in an empty chat, only when the
     /// pick differs from the loaded model, and only from what's actually installed.
     private var routeSuggestion: (decision: RouteDecision, entry: ModelEntry)? {
-        guard settings.suggestBestModel, !suggestionDismissed,
+        guard settings.suggestBestModel, !automatic.enabled, !suggestionDismissed,
               let active = activeModel, onSwitchModel != nil,
-              model.messages.isEmpty, draft.trimmingCharacters(in: .whitespaces).count >= 12 else { return nil }
+              model.messages.isEmpty, composer.draft.trimmingCharacters(in: .whitespaces).count >= 12 else { return nil }
         let installed = ModelManager(
             storage: OnboardingModel.defaultModelStorage(),
             activeModelID: active.id
         ).installed().map(\.model)
         guard installed.count > 1,
-              let decision = ModelRouter.route(prompt: draft, installed: installed),
+              let decision = ModelRouter.route(prompt: composer.draft, installed: installed),
               decision.modelID != active.id,
               let entry = installed.first(where: { $0.id == decision.modelID }) else { return nil }
         return (decision, entry)
@@ -88,25 +87,30 @@ public struct ChatView: View {
     // Mirrors the Send button's .disabled guard so Return-to-send adds no new behavior.
     private func send() {
         suggestionDismissed = false
-        let prompt = draft.trimmingCharacters(in: .whitespaces)
+        let prompt = composer.draft.trimmingCharacters(in: .whitespaces)
         // Documents alone are a legitimate send ("summarize this file" with no extra words).
-        guard !prompt.isEmpty || !pendingDocuments.isEmpty, !model.isGenerating else { return }
-        let documents = pendingDocuments
-        pendingDocuments = []
-        attachmentNotice = nil
-        draft = ""
+        guard !prompt.isEmpty || !composer.pendingDocuments.isEmpty, !model.isGenerating else { return }
+        let documents = composer.pendingDocuments
         composerFocused = true   // Return-to-send must not drop keyboard focus mid-conversation
 
         // Computer task → educate + handoff button. Do NOT call the model (it only produces
         // "I cannot fulfill…" walls). Code owns the path so the user always gets a real CTA.
         if ActionIntent.looksLikeComputerTask(prompt) {
+            composer.pendingDocuments = []; composer.attachmentNotice = nil; composer.draft = ""
             agentSuggestion = prompt
             model.recordGuidedTurn(userText: prompt, documents: documents,
                                    assistantText: ActionIntent.localizedGuidedReply())
             return
         }
         agentSuggestion = nil
-        Task { await model.send(prompt, documents: documents, model: activeModel) }
+        let submittedDraft = composer.draft
+        Task {
+            await model.send(prompt, documents: documents, model: activeModel, onAccepted: {
+                if composer.draft == submittedDraft { composer.draft = "" }
+                if composer.pendingDocuments == documents { composer.pendingDocuments = [] }
+                composer.attachmentNotice = nil
+            })
+        }
     }
 
     /// Latest computer-task handoff target — O(n) once per body, not O(n²) per bubble.
@@ -131,6 +135,13 @@ public struct ChatView: View {
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 0) {
+            if let error = model.preparationError {
+                Text(error).font(.caption).foregroundStyle(.secondary).padding(8)
+            }
+            if automatic.enabled {
+                Text(model.automaticSelectionStatus ?? "Automatic · selects installed, verified models before a new chat's first reply; estimated until observed locally")
+                    .font(.caption2).foregroundStyle(.secondary).padding(6)
+            }
             // NO GeometryReader around ScrollView — that fights content size and makes wheel
             // scroll rubber-band, jump, and lag. nearBottom comes from AppKit (macOS) or a
             // cheap bottom sentinel (iOS) with hysteresis only.
@@ -145,10 +156,10 @@ public struct ChatView: View {
                                 // Complete prompts send immediately so first-run is one tap.
                                 // Starters are already locale-resolved via ChatStarters.offlineChat(locale:).
                                 if starter.prompt.hasSuffix(":\n\n") || starter.prompt.hasSuffix(":\n") {
-                                    draft = starter.prompt
+                                    composer.draft = starter.prompt
                                     composerFocused = true
                                 } else {
-                                    draft = starter.prompt
+                                    composer.draft = starter.prompt
                                     send()
                                 }
                             }
@@ -363,15 +374,15 @@ public struct ChatView: View {
     private func composer(palette p: QuenderinPalette) -> some View {
         VStack(spacing: 6) {
             // Queued attachments + any rejection notice — visible BEFORE sending, removable.
-            if !pendingDocuments.isEmpty || attachmentNotice != nil {
+            if !composer.pendingDocuments.isEmpty || composer.attachmentNotice != nil {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        ForEach(pendingDocuments, id: \.name) { doc in
+                        ForEach(composer.pendingDocuments, id: \.name) { doc in
                             HStack(spacing: 4) {
                                 Image(systemName: "doc.text").font(.caption2)
                                 Text(doc.name).font(.caption)
                                 Button {
-                                    pendingDocuments.removeAll { $0.name == doc.name }
+                                    composer.pendingDocuments.removeAll { $0.name == doc.name }
                                 } label: {
                                     Image(systemName: "xmark.circle.fill").font(.caption2)
                                 }
@@ -383,7 +394,7 @@ public struct ChatView: View {
                             .padding(.vertical, 5)
                             .background(p.surface, in: Capsule())
                         }
-                        if let notice = attachmentNotice {
+                        if let notice = composer.attachmentNotice {
                             Text(notice).font(.caption).foregroundStyle(.orange)
                         }
                     }
@@ -425,8 +436,8 @@ public struct ChatView: View {
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 switch DocumentTextExtractor.extract(name: url.lastPathComponent, url: url) {
-                case .document(let doc): pendingDocuments.append(doc)
-                case .rejected(let reason): attachmentNotice = reason
+                case .document(let doc): composer.pendingDocuments.append(doc)
+                case .rejected(let reason): composer.attachmentNotice = reason
                 }
             }
         }
@@ -449,7 +460,7 @@ public struct ChatView: View {
             .help(String(localized: "Attach a text, PDF, or image (images: vision not available yet)"))
             .accessibilityLabel(String(localized: "Attach a file"))
 
-            TextField(String(localized: "Message"), text: $draft)   // the empty state already says "Try one" — a long hint truncated here on every iPhone width
+            TextField(String(localized: "Message"), text: $composer.draft)   // the empty state already says "Try one" — a long hint truncated here on every iPhone width
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
                 .submitLabel(.send)
@@ -464,7 +475,7 @@ public struct ChatView: View {
                 // over the transcript, not part of the content.
                 .glassChrome(in: Capsule())
 
-            let canSend = (!draft.trimmingCharacters(in: .whitespaces).isEmpty || !pendingDocuments.isEmpty) && !model.isGenerating
+            let canSend = (!composer.draft.trimmingCharacters(in: .whitespaces).isEmpty || !composer.pendingDocuments.isEmpty) && !model.isGenerating
             Button {
                 if model.isGenerating { model.stopGenerating() } else { send() }
             } label: {

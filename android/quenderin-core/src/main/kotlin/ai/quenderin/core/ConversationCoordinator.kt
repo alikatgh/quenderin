@@ -2,6 +2,8 @@ package ai.quenderin.core
 
 import java.util.UUID
 
+data class ConversationDraft(val text: String = "", val documents: List<AttachedDocument> = emptyList())
+
 /**
  * Binds [ConversationManager] (pure lifecycle) to a live [ChatModel] for the history feature: on
  * construction it restores the most recent conversation (or starts fresh), persists after each
@@ -16,6 +18,14 @@ class ConversationCoordinator(
     var onChange: (List<ConversationSummary>) -> Unit = {},
 ) {
     private val manager = ConversationManager(persistence, now, makeId)
+    private val drafts = HashMap<String, ConversationDraft>()
+    fun draft(id: String?): ConversationDraft = synchronized(drafts) { drafts[id] ?: ConversationDraft() }
+    fun saveDraft(id: String?, text: String, documents: List<AttachedDocument>) {
+        if (id == null) return
+        synchronized(drafts) { if (text.isEmpty() && documents.isEmpty()) drafts.remove(id) else drafts[id] = ConversationDraft(text, documents.toList()) }
+    }
+    fun draftAfterCancelledAdmission(id: String?, revision: Long, messageCountBeforeSend: Int): ConversationDraft? =
+        if (id == currentId && revision == lifecycleRevision && chat.messages.size == messageCountBeforeSend) draft(id) else null
 
     /** History rows, newest first. */
     var summaries: List<ConversationSummary> = emptyList()
@@ -23,6 +33,12 @@ class ConversationCoordinator(
 
     /** The open conversation's id (twin of Swift `currentID`). */
     val currentId: String? get() = manager.currentId
+    val pinnedLocalModelID: String? get() = manager.currentLocalModelID
+    val hasOrdinaryTurn: Boolean get() = manager.currentHasOrdinaryTurn
+    @Volatile var lifecycleRevision: Long = 0L
+        private set
+    fun pinLocalModel(modelID: String) = manager.pinLocalModel(modelID)
+    fun recordLocalAdmission(modelID: String, automatic: Boolean, expectedID: String?) = manager.recordLocalAdmission(modelID, automatic, expectedID)
 
     /**
      * How many of the live chat's messages are already saved for the CURRENT conversation.
@@ -66,10 +82,21 @@ class ConversationCoordinator(
         savedCount = chat.messages.size
         refresh()
     }
+    fun persistIfOwned(id: String?, revision: Long, ownsJob: () -> Boolean): Boolean {
+        if (id != currentId || revision != lifecycleRevision || !ownsJob()) return false
+        persist()
+        return true
+    }
+    fun finishOwnedSend(id: String?, revision: Long, ownsJob: () -> Boolean, clearOwner: () -> Unit) {
+        try { persistIfOwned(id, revision, ownsJob) }
+        finally { if (ownsJob()) clearOwner() }
+    }
 
     /** Start a fresh conversation (saving the one you're leaving). No-op if the chat is empty. */
     fun startNew() {
-        if (chat.messages.isEmpty()) return
+        lifecycleRevision++
+        chat.invalidatePreparedTurns()
+        if (chat.messages.isEmpty()) return // Keep the existing empty draft reachable; only its pending send is invalidated.
         persist()
         manager.startNew()
         chat.reset()
@@ -79,6 +106,8 @@ class ConversationCoordinator(
 
     /** Open a past conversation into the chat, saving the current one first. */
     fun open(id: String) {
+        lifecycleRevision++
+        chat.invalidatePreparedTurns()
         persist()
         chat.restore(manager.open(id))
         savedCount = chat.messages.size
@@ -87,8 +116,11 @@ class ConversationCoordinator(
 
     /** Delete a conversation. If it was the open one, fall back to the most recent (or fresh). */
     fun delete(id: String) {
+        lifecycleRevision++
+        chat.invalidatePreparedTurns()
         val wasCurrent = manager.currentId == id
         manager.delete(id)
+        synchronized(drafts) { drafts.remove(id) }
         if (wasCurrent) {
             val recent = manager.list().firstOrNull()
             if (recent != null) {
@@ -103,7 +135,10 @@ class ConversationCoordinator(
 
     /** Delete all saved conversations, then drop into a fresh empty one (first-launch state). */
     fun clearAll() {
+        lifecycleRevision++
+        chat.invalidatePreparedTurns()
         manager.clearAll()
+        synchronized(drafts) { drafts.clear() }
         manager.startNew()
         chat.reset()
         savedCount = 0

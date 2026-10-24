@@ -71,6 +71,9 @@ public actor LlamaEngine: InferenceEngine {
     /// Read it with `log stream --predicate 'subsystem == "org.quenderin" && category == "inference"'`.
     private static let perfLog = Logger(subsystem: "org.quenderin", category: "inference")
 
+    private var loadedPerformance: (model: ModelEntry, artifact: String, loadMs: Double, environment: String)?
+    private let performance: InferencePerformanceCallback?
+    private var effectiveProfiles: [InferenceExecutionProfile] = []
     private var loaded: String?
     private var loadedMuse = false
     private var loadedJais = false
@@ -92,6 +95,7 @@ public actor LlamaEngine: InferenceEngine {
     nonisolated(unsafe) private var backendInitialized = false  // llama_backend_init is once-per-process (L1)
     /// The unthrottled (P-core) thread count chosen at load — the governor's baseline for in-flight
     /// thermal re-tuning during generation. Set under `nativeLock`; read at the start of a decode.
+    nonisolated(unsafe) private var loadedEnvironmentID = ""
     nonisolated(unsafe) private var loadedBaseThreads = 1
     /// The exact token sequence currently resident in the context's KV cache (prior prompt + reply).
     /// Lets a new chat turn reuse the cache and decode only the new suffix instead of re-prefilling the
@@ -104,7 +108,8 @@ public actor LlamaEngine: InferenceEngine {
     private let cancelState = OSAllocatedUnfairLock(initialState: GenerationCancelLedger())
     #endif
 
-    public init(deviceBudgetGB: Double = 4.0) {
+    public init(deviceBudgetGB: Double = 4.0, performance: InferencePerformanceCallback? = nil) {
+        self.performance = performance
         self.deviceBudgetGB = deviceBudgetGB
     }
 
@@ -113,6 +118,34 @@ public actor LlamaEngine: InferenceEngine {
     /// The real `n_ctx` of the loaded context — an actor-property read, so it never waits on
     /// `nativeLock` (a decode in flight can't stall the chat layer asking for the window size).
     public func loadedContextTokens() async -> Int? { loadedNCtx }
+
+    public func knownExecutionProfiles() async -> [InferenceExecutionProfile] { effectiveProfiles }
+
+    public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
+        guard let id = loaded, let receipt = effectiveProfiles.last(where: { $0.modelID == id }) else { return nil }
+        #if canImport(llama)
+        let prompt = loadedBeam ? BeamChatPrompt.build(system: system, history: history)
+            : loadedMuse ? MuseChatPrompt.build(system: system, history: history)
+            : (buildChatPrompt(system: system, history: history) ?? flatTranscriptPrompt(system: system, history: history))
+        let muse = loadedMuse, beam = loadedBeam, hy = loadedSpecialist
+        let request = try? await ModelArtifactSet.inBackground {
+            self.expectedRequestProfile(prompt: prompt, addBOS: !muse && !beam && !hy)
+        }
+        guard loaded == id, let request else { return nil }
+        return receipt.nextRequest(cacheMode: request.0, promptTokens: request.1)
+        #else
+        return receipt
+        #endif
+    }
+
+    #if canImport(llama)
+    nonisolated private func expectedRequestProfile(prompt: String, addBOS: Bool) -> (String, Int) {
+        nativeLock.lock(); defer { nativeLock.unlock() }
+        let tokens = tokenize(text: prompt, addBOS: addBOS)
+        let plan = KVCacheReuse.plan(cached: cachedTokens, new: tokens)
+        return (plan.clearCache || plan.decodeFrom == 0 ? "cold" : "prefix", tokens.count)
+    }
+    #endif
 
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
         // Before file IO, cancellation, or releasing the current working model.
@@ -133,9 +166,10 @@ public actor LlamaEngine: InferenceEngine {
         try metadata.validateForLoad(entry)
         #endif
         // llama.cpp loads a split model through its first shard; verify every sibling first.
-        try await ModelArtifactSet.verifyInBackground(entry, firstFile: fileURL)
+        try await ModelArtifactSet.inBackground { try InferencePerformanceIdentity.verifyInstalled(entry, firstFile: fileURL) }
         #if canImport(llama)
         cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
+        loadedPerformance = nil
         loaded = nil                              // nothing loaded until the new model succeeds
         loadedNCtx = nil
         if ModelRuntimeSupport.isBeam(entry) {
@@ -144,8 +178,16 @@ public actor LlamaEngine: InferenceEngine {
                 throw InferenceError.loadFailed(reason: ModelRuntimeSupport.beamUnavailableMessage)
             }
         }
+        let loadStarted = ContinuousClock.now
         loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
         loaded = entry.id
+        if let artifact = InferencePerformanceIdentity.verifiedArtifact(entry, firstFile: fileURL) {
+            loadedPerformance = (entry, artifact, Self.ms(ContinuousClock.now - loadStarted), loadedEnvironmentID)
+            effectiveProfiles.removeAll { $0.modelID == entry.id }
+            effectiveProfiles.append(.init(modelID: entry.id, artifactSHA256: artifact, runtimeID: InferencePerformanceRuntime.id,
+                backendID: InferencePerformanceIdentity.backendID, environmentID: loadedEnvironmentID, contextTokens: loadedNCtx ?? 0))
+            if effectiveProfiles.count > 64 { effectiveProfiles.removeFirst(effectiveProfiles.count - 64) }
+        }
         loadedMuse = ModelRuntimeSupport.isMuse(entry)
         loadedJais = metadata.architecture == "k2-horizon" || ModelRuntimeSupport.isJais(entry)
         loadedBeam = ModelRuntimeSupport.isBeam(entry)
@@ -163,6 +205,7 @@ public actor LlamaEngine: InferenceEngine {
         unloadLocked()
         #endif
         loaded = nil
+        loadedPerformance = nil
         loadedNCtx = nil
         loadedMuse = false
         loadedJais = false
@@ -184,7 +227,9 @@ public actor LlamaEngine: InferenceEngine {
         guard !loadedBeam else { throw InferenceError.generationFailed(reason: "Beam supports structured text chat only; raw/agent requests are unavailable.") }
         guard !loadedJais else { throw InferenceError.generationFailed(reason: "Jais 3 currently supports structured text chat only; choose another model for agent actions.") }
         try MuseGenerationPolicy.validate(isMuse: loadedMuse, request: .raw, hasGrammar: options.gbnfGrammar != nil)
-        return try await startGeneration(prompt: prompt, options: options)
+        var rawOptions = options
+        rawOptions.collectPerformance = false
+        return try await startGeneration(prompt: prompt, options: rawOptions)
     }
 
     /// Called only after the public API selected and constructed the appropriate framing.
@@ -201,6 +246,8 @@ public actor LlamaEngine: InferenceEngine {
         let jais = loadedJais
         let beam = loadedBeam
         let hy = loadedSpecialist
+        let observation = options.collectPerformance && options.gbnfGrammar == nil && !hy ? loadedPerformance : nil
+        let report = performance
         // Mint THIS generation's id — never reset a shared flag (S2): the old `= false` here
         // erased a Stop aimed at the still-running previous decode, and the old onTermination's
         // `= true` could kill the NEXT generation. With ids, a cancel reaches exactly the
@@ -210,7 +257,7 @@ public actor LlamaEngine: InferenceEngine {
             // Run the decode OFF the cooperative pool (M2) so a multi-second generation doesn't
             // pin a Swift-concurrency thread; `nativeLock` (acquired inside) keeps it safe.
             DispatchQueue.global(qos: .userInitiated).async {
-                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, jais: jais, beam: beam, hy: hy, deadline: deadline, into: continuation)
+                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, jais: jais, beam: beam, hy: hy, deadline: deadline, observation: observation, report: report, into: continuation)
             }
             continuation.onTermination = { _ in self.cancelState.withLock { $0.cancel(upTo: myGen) } }
         }
@@ -505,6 +552,10 @@ public actor LlamaEngine: InferenceEngine {
             throw InferenceError.loadFailed(reason: "llama_init_from_model returned null")
         }
 
+        loadedEnvironmentID = InferencePerformanceIdentity.environment(context: nctx,
+            cacheType: ctxParams.type_k == GGML_TYPE_Q8_0 ? "q8_0" : "f16", threads: baseThreads,
+            gpuLayers: modelParams.n_gpu_layers, cpuExperts: !specialist && isMoE && plan.experts == .cpu,
+            batch: Int(ctxParams.n_batch))
         model = m
         context = ctx
         if let box = loadCancellation { contextCancellation = box.retain() }
@@ -562,6 +613,8 @@ public actor LlamaEngine: InferenceEngine {
         beam: Bool,
         hy: Bool,
         deadline: ContinuousClock.Instant?,
+        observation: (model: ModelEntry, artifact: String, loadMs: Double, environment: String)?,
+        report: InferencePerformanceCallback?,
         into continuation: AsyncThrowingStream<String, Error>.Continuation
     ) {
         // This generation answers ONLY for its own id — a cancel aimed at an older run, or a
@@ -575,6 +628,7 @@ public actor LlamaEngine: InferenceEngine {
             return
         }
 
+        let generationStarted = ContinuousClock.now
         // 1) Prompt → tokens.
         let rawTokens = tokenize(text: prompt, addBOS: !muse && !beam && !hy)
         guard !rawTokens.isEmpty else {
@@ -688,6 +742,8 @@ public actor LlamaEngine: InferenceEngine {
         // that callback as CPU-only. Cancellation must clear BOTH the partial KV and
         // its mirror, including when Stop arrives just after the final batch.
         let perfT0 = ContinuousClock.now
+        let initialThermal = ThermalMonitor.currentLevel()
+        var stayedNominal = initialThermal == .nominal
         var toPrefill = Array(newTokens[reuse...])
         var prefillResult = decode(&toPrefill)
         if prefillResult == .decoded(1) && reuse > 0 {
@@ -727,6 +783,9 @@ public actor LlamaEngine: InferenceEngine {
         let thermalSampleInterval = 32
 
         var produced = 0
+        var sampledTokens = 0
+        var firstTokenMs: Double?
+        var fatalDecode = false
         var decoder = UTF8StreamDecoder()   // survives across tokens: split characters reassemble
         // Watches for a stop sequence (e.g. "</think>") that may span tokens; inert when none set,
         // so a plain generation is byte-for-byte unchanged. (Revives the dead stopSequences field.)
@@ -740,12 +799,15 @@ public actor LlamaEngine: InferenceEngine {
                                       // C++ `out += piece` happening before the fatal check).
         while produced < options.maxTokens {
             if cancelled() { break }   // interrupted by a switch/cancel aimed at THIS generation (M3/S2)
-            if produced % thermalSampleInterval == 0,
-               let retuned = governor.update(level: ThermalMonitor.currentLevel()) {
-                llama_set_n_threads(context, Int32(retuned), Int32(retuned))
+            if produced % thermalSampleInterval == 0 {
+                let level = ThermalMonitor.currentLevel()
+                stayedNominal = stayedNominal && level == .nominal
+                if let retuned = governor.update(level: level) { llama_set_n_threads(context, Int32(retuned), Int32(retuned)) }
             }
             let next = llama_sampler_sample(sampler, context, -1)
             if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
+            sampledTokens += 1
+            if firstTokenMs == nil { firstTokenMs = Self.ms(ContinuousClock.now - generationStarted) }
             do {
                 let now = ContinuousClock.now
                 let gap = now - perfLastTok
@@ -786,6 +848,7 @@ public actor LlamaEngine: InferenceEngine {
                 // possibly-desynced prefix (audit S3). With partial output already yielded, keep
                 // the text; with nothing yielded, it's a failure.
                 if feedbackRC != 1 {
+                    fatalDecode = true
                     llama_memory_clear(mem, true)
                     cachedTokens = []
                     if !yieldedAnyText {
@@ -823,6 +886,17 @@ public actor LlamaEngine: InferenceEngine {
         let prefillMs = Self.ms(perfPrefillDone - perfT0)
         let decodeMs = Self.ms(perfEnd - perfPrefillDone)
         Self.perfLog.info("perf: prefill \(perfPrefillTok) tok in \(prefillMs, format: .fixed(precision: 0)) ms (\(prefillMs > 0 ? Double(perfPrefillTok) * 1000 / prefillMs : 0, format: .fixed(precision: 1)) tok/s) | decode \(produced) tok in \(decodeMs, format: .fixed(precision: 0)) ms (\(decodeMs > 0 ? Double(produced) * 1000 / decodeMs : 0, format: .fixed(precision: 1)) tok/s) | max gap \(Self.ms(perfMaxGap), format: .fixed(precision: 0)) ms, \(perfGapsOver250) gaps > 250 ms")
+        // Snapshot identity belongs to this generation. Fatal partial text remains visible but never trains.
+        if !cancelled(), !fatalDecode, stayedNominal, ThermalMonitor.currentLevel() == .nominal,
+           let observation, let report, let firstTokenMs, sampledTokens >= 32 {
+            report(InferencePerformanceSample(modelID: observation.model.id, artifactSHA256: observation.artifact,
+                runtimeID: InferencePerformanceRuntime.id, backendID: InferencePerformanceIdentity.backendID,
+                environmentID: observation.environment, contextTokens: nCtx, promptTokens: newTokens.count,
+                prefillTokens: perfPrefillTok, decodedTokens: sampledTokens, prefillMs: prefillMs, decodeMs: decodeMs,
+                firstTokenMs: firstTokenMs, maxGapMs: Self.ms(perfMaxGap), loadMs: observation.loadMs,
+                cacheMode: reuse == 0 ? "cold" : "prefix", thermalState: "nominal",
+                recordedAtMs: Int64(Date().timeIntervalSince1970 * 1000)))
+        }
         continuation.finish()
     }
 

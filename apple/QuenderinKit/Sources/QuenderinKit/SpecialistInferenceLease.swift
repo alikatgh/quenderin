@@ -31,14 +31,22 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     private let underlying: any InferenceEngine
     private var held: UUID?
     private var starts = 0
+    private var automaticSwitching = false
+    private var activeStreams: Set<UUID> = []
+    private var agentModelOwners: Set<UUID> = []
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var selected: (model: ModelEntry, file: URL)?
     public init(_ underlying: any InferenceEngine) { self.underlying = underlying }
     public func isSuspendedForSpecialist() async -> Bool { held != nil }
     public func loadedModelID() async -> String? { held == nil ? await underlying.loadedModelID() : nil }
     public func loadedContextTokens() async -> Int? { held == nil ? await underlying.loadedContextTokens() : nil }
+    public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
+        guard held == nil else { return nil }
+        return await underlying.loadedExecutionProfile(system: system, history: history, options: options)
+    }
+    public func knownExecutionProfiles() async -> [InferenceExecutionProfile] { await underlying.knownExecutionProfiles() }
     public nonisolated func requestCancel() { underlying.requestCancel() }
-    private func begin() throws { guard held == nil else { throw SpecialistCoordinationError.busy }; starts += 1 }
+    private func begin() throws { guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }; starts += 1 }
     private func end() {
         starts -= 1
         if starts == 0 { let pending = waiters; waiters = []; pending.forEach { $0.resume() } }
@@ -49,20 +57,82 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         selected = (model, fileURL)
     }
     public func unload() async {
-        guard held == nil else { return }
+        guard held == nil, !automaticSwitching else { return }
         starts += 1; defer { end() }
         await underlying.unload(); selected = nil
     }
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         try begin(); defer { end() }
-        return try await underlying.generate(prompt: prompt, options: options)
+        let id = UUID(); activeStreams.insert(id)
+        do { return track(try await underlying.generate(prompt: prompt, options: options), id: id) }
+        catch { activeStreams.remove(id); throw error }
     }
     public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         try begin(); defer { end() }
-        return try await underlying.generateChat(system: system, history: history, options: options)
+        let id = UUID(); activeStreams.insert(id)
+        do { return track(try await underlying.generateChat(system: system, history: history, options: options), id: id) }
+        catch { activeStreams.remove(id); throw error }
+    }
+    private func track(_ stream: AsyncThrowingStream<String, Error>, id: UUID) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await piece in stream {
+                        if Task.isCancelled { break }
+                        continuation.yield(piece)
+                    }
+                    self.activeStreams.remove(id)
+                    continuation.finish()
+                } catch {
+                    self.activeStreams.remove(id)
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+    public func retainModelForAgentRun() async throws -> SpecialistInferenceLease {
+        guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }
+        let id = UUID(); agentModelOwners.insert(id)
+        return SpecialistInferenceLease { await self.releaseAgentModel(id) }
+    }
+    private func releaseAgentModel(_ id: UUID) { agentModelOwners.remove(id) }
+    public func loadForAutomaticIfIdle(model: ModelEntry, at fileURL: URL,
+                                       stillCurrent: @escaping @Sendable () async -> Bool,
+                                       accept: @escaping @Sendable () async -> Bool) async throws -> Bool {
+        guard held == nil, !automaticSwitching, starts == 0, activeStreams.isEmpty, agentModelOwners.isEmpty else { return false }
+        automaticSwitching = true
+        defer { automaticSwitching = false }
+        let previous = selected
+        do {
+            guard await stillCurrent(), !Task.isCancelled else { throw CancellationError() }
+            try await underlying.load(model: model, at: fileURL)
+            // Acceptance validates and publishes the selection in one MainActor turn while this
+            // exclusive transaction is still held. There is no outer asynchronous acceptance gap.
+            guard await accept() else { throw CancellationError() }
+            selected = (model, fileURL)
+            return true
+        } catch {
+            let original = error
+            // Keep this transaction exclusive through its single recovery; an agent cannot acquire
+            // the newly loaded model in the gap before an invalidated Automatic choice rolls back.
+            if let previous {
+                do {
+                    try await ModelArtifactSet.inBackground {
+                        try InferencePerformanceIdentity.verifyInstalled(previous.model, firstFile: previous.file)
+                    }
+                    try await underlying.load(model: previous.model, at: previous.file)
+                    selected = previous
+                } catch {
+                    await underlying.unload(); selected = nil
+                    throw SpecialistCoordinationError.restoreFailed
+                }
+            } else { await underlying.unload(); selected = nil }
+            throw original
+        }
     }
     public func suspendForSpecialist() async throws -> SpecialistInferenceLease {
-        guard held == nil else { throw SpecialistCoordinationError.busy }
+        guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }
         let id = UUID(); held = id
         underlying.requestCancel()
         // Close already-admitted async load/generate starts before joining native work.

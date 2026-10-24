@@ -187,6 +187,15 @@ inline int warmupContext(llama_context* ctx, const llama_vocab* vocab) {
     return rc;
 }
 
+// Immutable caller-owned numeric outcome. status: 0 success, 1 cancel, 2 fatal decode,
+// 3 context exhaustion, 4 failed stream, 5 prompt clamped, 6 no usable generation.
+struct GenerationPerformance {
+    int promptTokens = 0, prefillTokens = 0, decodedTokens = 0;
+    double prefillMs = 0, decodeMs = 0, firstTokenMs = 0, maxGapMs = 0;
+    int cacheMode = 0;
+    int status = 6;
+};
+
 // Decode `newTokens` — reusing the KV from a prior turn when it's a strict-prefix extension — then
 // sample up to `maxTokens`, feeding each sampled token back. Keeps `cached` in STRICT lockstep with the
 // KV: the mirror is assigned only AFTER the prefill decode succeeds, and each sampled token is recorded
@@ -226,14 +235,18 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
                                 std::vector<llama_token>& cached, Emit emit, Cancelled cancelled,
                                 bool* failed = nullptr,
                                 ThermalPoll thermalPoll = []() -> int { return 0; },
-                                bool* hitTokenCap = nullptr) {
+                                bool* hitTokenCap = nullptr,
+                                GenerationPerformance* performance = nullptr) {
     std::string out;
+    if (performance) *performance = GenerationPerformance{};
     if (failed) *failed = false;
     if (hitTokenCap) *hitTokenCap = false;
     if (rawTokens.empty()) return out;
     // Clamp BEFORE planning reuse so the mirror always describes what the KV actually holds.
     const std::vector<llama_token> newTokens = clampToContext(rawTokens, ctx, maxTokens);
 
+    const bool promptClamped = newTokens.size() != rawTokens.size();
+    if (performance) performance->promptTokens = (int)newTokens.size();
     const auto perfT0 = std::chrono::steady_clock::now();   // prefill start (perf instrumentation)
 
     llama_memory_t mem = llama_get_memory(ctx);
@@ -274,14 +287,18 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     if (prefill.cancelled || prefill.code != 0) {
         llama_memory_clear(llama_get_memory(ctx), true);
         cached.clear();
+        if (performance) performance->status = prefill.cancelled ? 1 : 2;
         if (failed) *failed = !prefill.cancelled;   // genuinely fatal, or even a fresh full reprefill doesn't fit n_ctx
         return out;
     }
     cached = newTokens;   // the KV now holds exactly newTokens
 
+    llama_synchronize(ctx);
     const auto perfPrefillDone = std::chrono::steady_clock::now();   // prefill end / decode start
     const int perfPrefillTok = (int) toDecode.size();
     int perfDecodeTok = 0;
+    double perfFirstTokenMs = 0.0;
+    int performanceStatus = promptClamped ? 5 : 0;
     // Smoothness (docs/INFERENCE_SLO.md): the user feels the WORST inter-token gap, not the average.
     // Track the max gap between consecutive sampled tokens and how many exceeded the 250 ms SLO.
     auto perfLastTok = perfPrefillDone;
@@ -292,7 +309,7 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     UTF8StreamDecoder utf8;   // reassemble characters split across BPE pieces (iOS twin)
     bool stream_ok = true;    // false once emit() asks us to stop (pending JNI exception, etc.)
     for (int i = 0; i < maxTokens; ++i) {
-        if (cancelled()) break;
+        if (cancelled()) { performanceStatus = 1; break; }
         if (i % kThermalSampleInterval == 0) {
             int retuned = thermalPoll();
             if (retuned > 0) llama_set_n_threads(ctx, retuned, retuned);
@@ -302,6 +319,7 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
         perfDecodeTok++;
         {
             const auto now = std::chrono::steady_clock::now();
+            if (perfDecodeTok == 1) perfFirstTokenMs = std::chrono::duration<double, std::milli>(now - perfT0).count();
             const double gap = std::chrono::duration<double, std::milli>(now - perfLastTok).count();
             if (gap > perfMaxGapMs) perfMaxGapMs = gap;
             if (perfDecodeTok > 1 && gap > 250.0) perfGapsOver250++;   // the first gap IS the prefill→token hop
@@ -319,12 +337,12 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
                 // Raw-byte accumulate (always correct UTF-8 once complete); stream only COMPLETE chars.
                 out.append(big.data(), (size_t) c);
                 std::string piece = utf8.feed(big.data(), (size_t) c);
-                if (!piece.empty() && !emit(piece)) { stream_ok = false; break; }
+                if (!piece.empty() && !emit(piece)) { stream_ok = false; performanceStatus = 4; break; }
             }
         } else if (c > 0) {
             out.append(buf, (size_t) c);
             std::string piece = utf8.feed(buf, (size_t) c);
-            if (!piece.empty() && !emit(piece)) { stream_ok = false; break; }
+            if (!piece.empty() && !emit(piece)) { stream_ok = false; performanceStatus = 4; break; }
         }
 
         // Feed the token back to extend the KV. Decode BEFORE recording it in the mirror, and push only
@@ -335,6 +353,8 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
             // Code 1 mid-stream = context filled while generating THIS reply — graceful stop, not a
             // failure. A fatal (negative) code with nothing generated yet IS a failure; with partial
             // output already produced, keep it rather than discard a real (if truncated) reply.
+            performanceStatus = frc == 1 ? 3 : 2;
+            // Preserve partial text, but never treat a fatal partial decode as training evidence.
             if (failed && out.empty() && frc != 1) *failed = true;
             break;
         }
@@ -344,7 +364,7 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     // Skip if emit already failed (a pending JNI exception makes another CallVoidMethod UB).
     if (stream_ok) {
         std::string tail = utf8.flush();
-        if (!tail.empty()) (void) emit(tail);
+        if (!tail.empty() && !emit(tail)) performanceStatus = 4;
     }
 
     // Token-cap hit: produced the full budget without EOG/cancel (Continue affordance).
@@ -352,9 +372,20 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
 
     // Perf: prefill vs steady decode tok/s — the number that turns "feels slow" into data. Decode is the
     // one the user watches (token-by-token); prefill is the one-shot time-to-first-token.
+    llama_synchronize(ctx);
     const auto perfEnd = std::chrono::steady_clock::now();
     const double prefillMs = std::chrono::duration<double, std::milli>(perfPrefillDone - perfT0).count();
     const double decodeMs = std::chrono::duration<double, std::milli>(perfEnd - perfPrefillDone).count();
+    if (performance) {
+        performance->prefillTokens = perfPrefillTok;
+        performance->decodedTokens = perfDecodeTok;
+        performance->prefillMs = prefillMs;
+        performance->decodeMs = decodeMs;
+        performance->firstTokenMs = perfFirstTokenMs;
+        performance->maxGapMs = perfMaxGapMs;
+        performance->cacheMode = reuse > 0 && toDecode.size() < newTokens.size() ? 1 : 0;
+        performance->status = performanceStatus;
+    }
     QUENDERIN_PERF_LOG(
         "perf: prefill %d tok in %.0f ms (%.1f tok/s) | decode %d tok in %.0f ms (%.1f tok/s) | max gap %.0f ms, %d gaps > 250 ms",
         perfPrefillTok, prefillMs, prefillMs > 0 ? perfPrefillTok * 1000.0 / prefillMs : 0.0,

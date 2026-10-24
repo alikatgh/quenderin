@@ -53,7 +53,8 @@ public final class FileConversationPersistence: ConversationPersistence {
     }
 
     public func saveIndex(_ summaries: [ConversationSummary]) {
-        let rows = summaries.map { IndexRow(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview, modelID: $0.modelID) }
+        let rows = summaries.map { IndexRow(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview, modelID: $0.modelID,
+            automaticModelID: $0.automaticModelID, hasOrdinaryInference: $0.hasOrdinaryInference) }
         do {
             let data = try JSONEncoder().encode(rows)
             try data.write(to: indexURL, options: .atomic)
@@ -66,17 +67,21 @@ public final class FileConversationPersistence: ConversationPersistence {
     public func loadIndex() -> [ConversationSummary] {
         guard let data = try? Data(contentsOf: indexURL),
               let rows = try? JSONDecoder().decode([IndexRow].self, from: data) else { return [] }
-        return rows.map { ConversationSummary(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview ?? "", modelID: $0.modelID) }
+        return rows.map { ConversationSummary(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview ?? "", modelID: $0.modelID,
+            automaticModelID: $0.automaticModelID, hasOrdinaryInference: $0.hasOrdinaryInference) }
     }
 
     /// On-disk index shape — Codable mirror of `ConversationSummary` (which stays a plain value
     /// type in the core), the same decoupling `ConversationStore.StoredMessage` uses.
-    /// `preview` / `modelID` are optional so an index written before the fields existed still decodes.
+    /// Optional metadata preserves old indexes. modelID remains an avatar; automaticModelID is an explicit pin.
+    /// Missing hasOrdinaryInference means legacy/unknown, rather than treating old chats as new.
     private struct IndexRow: Codable {
         let id: String
         let title: String
         let updatedAt: Int64
         let preview: String?
         let modelID: String?
+        let automaticModelID: String?
+        let hasOrdinaryInference: Bool?
     }
 }

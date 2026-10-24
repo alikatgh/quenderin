@@ -44,6 +44,8 @@ class OnboardingModel(
     // download disk preflight. The core is filesystem-free, so this is a seam; the null
     // default skips the check on the JVM/tests. Twin of Swift `availableDiskBytes(modelsDir)`.
     private val availableDiskBytes: () -> Long? = { null },
+    /** Offline verifier: must return null on absence or hash drift and must never start a download. */
+    private val verifiedInstalledPath: (ModelEntry) -> String? = { null },
 ) {
     companion object {
         /** Preferences key for the remembered model id — same string as Swift's
@@ -51,7 +53,7 @@ class OnboardingModel(
         const val ACTIVE_MODEL_PREFS_KEY = "quenderin.activeModelID"
     }
 
-    var phase: OnboardingPhase = OnboardingPhase.Idle
+    @Volatile var phase: OnboardingPhase = OnboardingPhase.Idle
         private set(value) {
             field = value
             if (value is OnboardingPhase.Recommended) lastRecommended = value
@@ -68,6 +70,7 @@ class OnboardingModel(
      *  `phase` and `engine.load()`. @Volatile + the check-and-set under `this` keeps it a no-op. */
     @Volatile
     private var isInstalling = false
+    private val activationLock = Any()
 
     /**
      * The full selector result (rationale + heat/battery + alternatives) when the pick
@@ -152,7 +155,7 @@ class OnboardingModel(
     }
 
     /** Proceed from Recommended → download → load → ready for [model]. Blocking; call off-main. */
-    fun acceptAndPrepare(model: ModelEntry) {
+    fun acceptAndPrepare(model: ModelEntry) = synchronized(activationLock) {
         // Q-336: serialize — a concurrent accept (double-tap, or the model picker overlapping a prior
         // download/load) would race `phase` + engine.load(). Twin of Swift install()'s isInstalling
         // guard. Sequential calls still work: the flag is cleared in the finally below.
@@ -254,6 +257,33 @@ class OnboardingModel(
         } finally {
             isInstalling = false
         }
+    }
+
+    /** Between-turn Automatic activation. This path cannot call a downloader, even on hash drift.
+     * Keep Ready visible so an awaiting send retains its draft, attachments and conversation owner.
+     * A manual choice invalidates [isCurrent] immediately and is serialized after recovery. */
+    fun activateInstalled(model: ModelEntry, expectedProfile: AutomaticExecutionProfile? = null, request: AutomaticChatRequest? = null,
+                          isCurrent: () -> Boolean = { true }): Boolean = synchronized(activationLock) {
+        if (!isCurrent() || isInstalling || engine.isSuspendedForSpecialist || !ModelRuntimeSupport.supports(model)) return false
+        val previous = engine.loadedModelId?.let(ModelCatalog::entry)
+        if (previous?.id == model.id) return isCurrent() && (request == null || engine.pendingChatFits(model, request))
+        isInstalling = true
+        try {
+            val path = verifiedInstalledPath(model) ?: return false
+            if (!isCurrent()) return false
+            val previousPath = previous?.let(verifiedInstalledPath)
+            if (!isCurrent()) return false
+            if (engine.activateInstalledIfIdle(model, path, previousPath, expectedProfile, request, isCurrent)) {
+                phase = OnboardingPhase.Ready(model)
+                rememberActiveModelID(model.id)
+                return true
+            }
+            if (previous != null && engine.loadedModelId == previous.id) {
+                phase = OnboardingPhase.Ready(previous)
+                rememberActiveModelID(previous.id)
+            } else if (engine.loadedModelId == null) phase = OnboardingPhase.Failed("Couldn't restore the previous local model. Choose a model to continue.")
+            false
+        } finally { isInstalling = false }
     }
 
     /** Best-effort reload of a previously-working model after a failed switch. Its file is still on

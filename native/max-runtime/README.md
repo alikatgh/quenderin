@@ -18,8 +18,9 @@ is required. No pretrained model is used by this module's tests.
 The C interface and graph exporter follow Modular source
 `527d069ee11a41ac5320af1f9402db0a66b2b868` (`max/v26.7.0`).
 `sdk-lock.json` pins 17 official wheels (262,318,881 bytes), eight C headers,
-dependency metadata and aggregate transfer/extraction limits. Its initial SHA256
-is `ab0172ff923993e26329f7d9f7b3938d24c486ef565b42c79923995ff0c1378f`.
+exact selected-wheel PEP 658 metadata and aggregate transfer/extraction limits.
+Its metadata-audited lock SHA256 is
+`cbadf5b47aa91d5ef3b418eab4fa61f8907bdf0c6796cf8c85551573c9864e9b`.
 Any change to the lock, including its license review, changes the required hash.
 See [NOTICE.md](NOTICE.md) for source attribution and binary-license boundaries.
 
@@ -44,7 +45,7 @@ unnecessary local build prerequisite. Once the workflow is on the default branch
 ```sh
 gh workflow run max-runtime.yml --ref main \
   -f mode=audit \
-  -f reviewed_lock_sha256=ab0172ff923993e26329f7d9f7b3938d24c486ef565b42c79923995ff0c1378f
+  -f reviewed_lock_sha256=cbadf5b47aa91d5ef3b418eab4fa61f8907bdf0c6796cf8c85551573c9864e9b
 ```
 
 Audit mode downloads exact inert bytes, verifies hashes and archive paths, reads
@@ -53,10 +54,22 @@ It does not install/import MAX. Review the actual terms and `libmax.so` inventor
 do not substitute the source tag's older Community License or a newer source
 license for the installed binary's terms.
 
-Record the exact audit's license map in `runtime_license_review` only for
-`hosted-cpu-fixture-only-no-redistribution`, rerun the guards and independently
-review that change. Compute the new lock hash, then dispatch `mode=execute` with
-that hash. A missing or mismatched review prevents SDK installation/execution.
+[Audit 40099566447](https://github.com/alikatgh/quenderin/actions/runs/40099566447)
+verified the exact metadata, found `libmax.so`, and extracted the actual binary
+terms. Five required Modular wheels have no separate embedded terms file; all
+six Modular packages declare the same MAX platform license. Execution remains
+held while the CPU fixture's exclusion of GPU-only NVSHMEM components is checked.
+Its included terms restrict their development use to NVIDIA GPU systems.
+Installing the SDK is a separate gate from inspecting its inert bytes.
+
+For any changed SDK, record the new audit's exact license map and explicit
+per-package applicable-terms evidence in `runtime_license_review`, rerun the
+guards and independently review component applicability and the change. The only
+permitted review scope is `hosted-cpu-fixture-only-no-redistribution`; it does not
+clear mobile redistribution or a managed service. Compute the new lock hash, then
+dispatch `mode=execute` with that hash. Missing, incomplete or mismatched coverage
+prevents both installation and execution. Matching package license declarations
+alone never authorize shared coverage.
 
 Execution compiles the real bridge, exports the CPU graph and invokes the native
 executor in a separate network namespace as a non-root process without

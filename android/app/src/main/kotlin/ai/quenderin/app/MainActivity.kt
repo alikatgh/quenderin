@@ -40,6 +40,13 @@ class MainActivity : ComponentActivity() {
         //   adb shell am start -n ai.quenderin.app/.MainActivity --ez quenderin.mock_ui true
         val mockUi = BuildConfig.DEBUG && intent?.getBooleanExtra("quenderin.mock_ui", false) == true
 
+        val performanceStore = ai.quenderin.core.InferencePerformanceStore(File(filesDir, "inference-performance.bin"))
+        var localEngine: LlamaEngine? = null
+        val environmentFacts = listOf(Build.MANUFACTURER, Build.MODEL, Build.BOARD, Build.HARDWARE,
+            Build.FINGERPRINT, Build.VERSION.RELEASE, Build.VERSION.SDK_INT.toString(),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL else "unknown-soc",
+            Build.SUPPORTED_ABIS.joinToString(","), System.getProperty("os.version", "unknown-kernel"),
+            "driver=cpu-os-build;vulkanDriver=unverified", "vulkanCompiled=${BuildConfig.QUENDERIN_VULKAN}").joinToString("|")
         val engine: InferenceEngine = CoordinatedInferenceEngine(
             if (mockUi) {
                 MockInferenceEngine()
@@ -56,7 +63,16 @@ class MainActivity : ComponentActivity() {
                 android.util.Log.i("Quenderin",
                     "gpuLayers=$gpuLayers, rationale: ${GpuOffloadPlanner.rationale(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)}")
 
-                LlamaEngine(deviceBudgetGb = budget, gpuLayers = gpuLayers).also {
+                LlamaEngine(deviceBudgetGb = budget, gpuLayers = gpuLayers,
+                    onPerformance = { performanceStore.record(it) },
+                    performanceEnvironment = { configuration -> ai.quenderin.core.InferencePerformanceIdentity.fingerprint("$environmentFacts|$configuration") },
+                    thermalSnapshot = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ThermalMonitor.levelFromStatus(
+                            (getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus)
+                        else ai.quenderin.core.ThermalLevel.NOMINAL
+                    },
+                ).also {
+                    localEngine = it
                     // Seed the engine with the device's current thermal pressure so the first model
                     // load already sheds threads if the phone is hot (PowerManager is API 29+).
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -79,7 +95,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             QuenderinTheme {
-                AppRoot(engine = engine, downloader = downloader, probe = ::probeDevice, conversations = conversations)
+                AppRoot(engine = engine, downloader = downloader, probe = ::probeDevice, conversations = conversations,
+                    performanceStore = performanceStore, automaticProfile = { model, prompt, observations -> engine.automaticExecutionProfiles(model, prompt, observations) })
             }
         }
     }

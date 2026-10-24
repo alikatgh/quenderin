@@ -128,6 +128,7 @@ struct LlamaHandle {
     ggml_threadpool_t threadpool = nullptr;
     // The n_ctx actually used after q8_0→F16 fallback (may be smaller than the Kotlin request).
     uint32_t nCtx = 0;
+    int kvCacheNativeId = 0;
     // The exact tokens resident in the KV cache (prior prompt + reply) — lets the next chat turn
     // decode only the new suffix instead of re-prefilling the whole history (mirrors KVCacheReuse).
     // Empty on a fresh handle (each load); reset implicitly because nativeFree deletes the handle.
@@ -227,7 +228,8 @@ jstring make_jstring(JNIEnv* env, const std::string& s) { return quenderin::jni:
 // Reset at the start of each generate(); observed after it returns.
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
                      JNIEnv* env, jobject sink, jobject thiz, bool& failed,
-                     llama_sampler* override_sampler = nullptr) {
+                     llama_sampler* override_sampler = nullptr,
+                     quenderin::GenerationPerformance* performance = nullptr) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
     h->hitTokenCap = false;
 
@@ -303,7 +305,7 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     llama_sampler* active_sampler = override_sampler ? override_sampler : h->sampler;
     bool hitCap = false;
     std::string result = quenderin::generateWithKVReuse(h->ctx, vocab, active_sampler, newTokens, max_tokens,
-                                                         h->cached, emit, cancelled, &failed, thermalPoll, &hitCap);
+                                                         h->cached, emit, cancelled, &failed, thermalPoll, &hitCap, performance);
     h->hitTokenCap = hitCap;
     LOGI("generate: done failed=%d hitCap=%d out_bytes=%zu", (int) failed, (int) hitCap, result.size());
     return result;
@@ -419,6 +421,18 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
 } // namespace
 
 extern "C" {
+
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeSupportsPerformance(JNIEnv*, jclass) { return JNI_TRUE; }
+
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeRegisteredRuntime(JNIEnv* env, jclass) {
+#if defined(QUENDERIN_PRISM_LLAMA) && QUENDERIN_PRISM_LLAMA
+    return make_jstring(env, "prism");
+#else
+    return make_jstring(env, "llama");
+#endif
+}
 
 JNIEXPORT jboolean JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeSupportsBeam(JNIEnv*, jclass) {
@@ -666,7 +680,8 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject thiz,
     h->ctx = ctx;
     h->sampler = sampler;
     h->threadpool = tp;
-    h->nCtx = cp.n_ctx;
+    h->nCtx = llama_n_ctx(ctx);
+    h->kvCacheNativeId = cp.type_k == GGML_TYPE_Q8_0 ? 1 : 0;
     LOGI("nativeLoad: OK, handle=%p n_ctx=%u affinity=%s", (void*) h, cp.n_ctx, tp ? "on" : "off");
     return reinterpret_cast<jlong>(h);
 }
@@ -791,6 +806,52 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobj
     return make_jstring(env, out);
 }
 
+// New symbol: adding a measurement sink must never change the legacy JNI call arity.
+// Chat-templated streaming completion: `payload` is the structured conversation (role\x1Ftext records
+// joined by \x1E, system first). We apply the model's own chat template so it answers as an assistant and
+// stops at its end-of-turn token — dramatically faster + higher quality than the raw "User:/Assistant:"
+// prompt. Streams pieces to `sink`; returns the full text.
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatMeasured(JNIEnv* env, jobject thiz,
+                                                               jlong handle, jstring payload,
+                                                               jint max_tokens, jboolean disable_thinking,
+                                                               jobject sink, jobject performance_sink) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h) { LOGE("nativeCompleteChat: null handle (no model loaded)"); return make_jstring(env, ""); }
+    if (h->specialist) return throw_generation_failed(env, "Hy-Memory requires its specialist workflow.");
+    const char* p = quenderin::jni::get_chars(env, payload);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");
+    std::string payloadStr(p);
+    quenderin::jni::release_chars(p);
+
+    bool templated = false;
+    std::string prompt = buildChatPrompt(h->model, payloadStr, templated, disable_thinking == JNI_TRUE);
+    LOGI("nativeCompleteChat: templated=%d no_think=%d prompt_bytes=%zu", (int) templated, (int) disable_thinking, prompt.size());
+    if (prompt.empty()) return make_jstring(env, "");
+
+    bool failed = false;
+    quenderin::GenerationPerformance performance;
+    std::string out = generate(h, prompt, max_tokens, env, sink, thiz, failed, nullptr, &performance);
+    if (env->ExceptionCheck()) return nullptr;
+    if (performance_sink) {
+        jclass cls = env->GetObjectClass(performance_sink);
+        if (!cls) return nullptr; // OOM already pending; never call GetMethodID with a null class.
+        jmethodID report = env->GetMethodID(cls, "onMetrics", "(IIIDDDDII)V");
+        env->DeleteLocalRef(cls);
+        if (!report) { if (env->ExceptionCheck()) env->ExceptionClear(); }
+        else {
+            env->CallVoidMethod(performance_sink, report,
+                (jint)performance.promptTokens, (jint)performance.prefillTokens, (jint)performance.decodedTokens,
+                (jdouble)performance.prefillMs, (jdouble)performance.decodeMs,
+                (jdouble)performance.firstTokenMs, (jdouble)performance.maxGapMs,
+                (jint)performance.cacheMode, (jint)performance.status);
+            if (env->ExceptionCheck()) return nullptr;
+        }
+    }
+    if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
+    return make_jstring(env, out);
+}
+
 JNIEXPORT void JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeFree(JNIEnv* /*env*/, jobject /*thiz*/, jlong handle) {
     LlamaHandle* h = as_handle(handle);
@@ -811,7 +872,34 @@ Java_ai_quenderin_core_LlamaEngine_nativeFree(JNIEnv* /*env*/, jobject /*thiz*/,
 JNIEXPORT jint JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoadedNCtx(JNIEnv* /*env*/, jobject /*thiz*/, jlong handle) {
     LlamaHandle* h = as_handle(handle);
-    return h ? (jint) h->nCtx : 0;
+    return h ? (jint) llama_n_ctx(h->ctx) : 0;
+}
+
+JNIEXPORT jint JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeLoadedKVCache(JNIEnv*, jobject, jlong handle) {
+    LlamaHandle* h = as_handle(handle);
+    return h ? h->kvCacheNativeId : 0;
+}
+
+// Read-only query under the Kotlin coordinator's idle lease. Never changes/rebuilds the KV.
+JNIEXPORT jlongArray JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeChatExecutionProfile(JNIEnv* env, jobject, jlong handle,
+                                                            jstring payload, jint max_tokens, jboolean disable_thinking) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h) return nullptr;
+    const char* p = quenderin::jni::get_chars(env, payload);
+    if (!p) return nullptr;
+    std::string source(p); quenderin::jni::release_chars(p);
+    bool templated = false;
+    const auto prompt = buildChatPrompt(h->model, source, templated, disable_thinking == JNI_TRUE);
+    const auto tokens = tokenize(llama_model_get_vocab(h->model), prompt, !h->muse && !h->beam && !h->specialist);
+    const auto clamped = quenderin::clampToContext(tokens, h->ctx, max_tokens);
+    const auto plan = quenderin::kvReusePlan(h->cached, clamped);
+    const jlong values[4] = {(jlong)llama_n_ctx(h->ctx), (jlong)h->kvCacheNativeId, (jlong)tokens.size(),
+        (jlong)(!plan.clearCache && plan.decodeFrom > 0 ? 1 : 0)};
+    jlongArray result = env->NewLongArray(4);
+    if (result) env->SetLongArrayRegion(result, 0, 4, values);
+    return result;
 }
 
 JNIEXPORT jboolean JNICALL

@@ -12,6 +12,10 @@ data class ConversationSummary(
     /** One-line snippet of the LAST message ("You: …" for the user's own) — what a chat-list row
      *  shows under the title, WhatsApp-style. Empty for a conversation with no messages yet. */
     val preview: String = "",
+    /** Sticky local execution owner, set only when a real local turn is admitted. */
+    val localModelID: String? = null,
+    val hasOrdinaryTurn: Boolean = false,
+    val automaticModelPin: Boolean = false,
 )
 
 /**
