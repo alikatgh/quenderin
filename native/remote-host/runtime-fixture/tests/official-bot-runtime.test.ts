@@ -170,7 +170,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
         sessions: { 'fixture-bot': 'fixture-group-member' }, segments: { 'fixture-bot': [{ sessionId: 'fixture-group-past' }] } } },
       agents: {}, capabilities: { items: {} }, exchanges: [], exchangeTurns: {}, works: {}, questions: {}, views: {}, prefs: {}, switching: {} }));
     let rt: any, botFiber: any;
-    await ctx.plugin({ name: 'fixture-user-operated-bot', async apply(botCtx: Context) {
+    await ctx.plugin({ name: 'fixture-user-operated-bot', inject: ['connection', 'workspaceRegistry'], async apply(botCtx: Context) {
       botFiber = botCtx.fiber;
       rt = { ctx: botCtx, home, statePath: join(home, 'state.json'), warn: () => undefined };
       installStore(rt);
@@ -178,6 +178,11 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
       await rt.load();
       expect(rt.quenderinReadStatus()).toEqual({ ready: true, readOnly: false });
       expect(rt.chatOwners.get('fixture-bot-part')).toBe('fixture-bot');
+      const botWorkspace = botCtx.workspaceRegistry.get(rt.state.workspaceId);
+      expect(botWorkspace?.id, 'Bot plugin-scoped authoritative Workspace').toBe(workspace.id);
+      expect(botWorkspace?.sessionIds, 'Bot plugin-scoped Workspace membership').toEqual(expect.arrayContaining([
+        'fixture-bot', 'fixture-bot-part', 'fixture-room', 'fixture-group-member', 'fixture-group-past',
+      ]));
       installChannel(rt); await rt.load();
     } });
     const startupRevision = rt.state.revision;
