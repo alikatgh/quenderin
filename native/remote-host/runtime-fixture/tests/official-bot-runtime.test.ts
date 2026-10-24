@@ -98,6 +98,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     await ctx.plugin(Gateway, { streamInboxBytes: 65_536 }); await ctx.plugin(ApiRemotes);
     const peer = ctx.connection.createPeer({ principal: { kind: 'owner' }, interactions: 'answer' });
     const local = new TypertGatewaySwitch(ctx.typertGateway).local(peer);
+    expect(local.supportsCarrier).toBe(true);
     harness = new HarnessRemoteBridge(local, async () => undefined, undefined, '0.2.1-rc.1', undefined, undefined, undefined,
       sessionId => botSessionWritable(ctx.connection, sessionId));
     const capabilities = () => ['harness.remote.v3', 'harness.remote.transfer.v1', ...(createPluginRouteDispatcher(() => ctx.connection, () => undefined)?.quenderinBotReadAvailable?.() === true ? ['plugin.route.v1', 'quenderin.bot.read.v1'] : [])];
@@ -130,6 +131,14 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
       if (closed) throw new Error('Unexpected fixture disconnect');
       return sent.at(-1)! as any;
     };
+    const createSession = async (workspaceId: string, sessionId: string) => {
+      const reply = await invoke('harness.remote.call', { endpoint: 'session/create', payload: { args: { request: {
+        workspaceId, sessionId: SessionId(sessionId),
+      } } } });
+      expect(reply.type).toBe('rpc.response');
+      expect(reply.payload.result).toEqual({ ok: true, value: { sessionId } });
+      await until(() => ctx.workspaceRegistry.list().some(workspace => workspace.id === workspaceId && workspace.sessionIds.includes(SessionId(sessionId))));
+    };
     await connect();
     expect((await invoke('harness.transport.describe', {})).payload.result.capabilities).not.toContain('quenderin.bot.read.v1');
     expect((await invoke('plugin.route.call', { route: 'api/bot', body: { endpoint: 'quenderin-roster', payload: { schemaVersion: 1, workspaceId: 'unavailable' } } })).payload.result.status).toBe(503);
@@ -137,12 +146,9 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
 
     const path = join(root, 'workspace'); mkdirSync(path);
     const workspace = await ctx.workspaceRegistry.create(path, 'Synthetic Bot workspace');
-    await ctx.sessionController.create({ workspaceId: workspace.id, sessionId: SessionId('fixture-bot') });
-    await ctx.sessionController.create({ workspaceId: workspace.id, sessionId: SessionId('fixture-bot-part') });
-    for (const sessionId of ['fixture-room', 'fixture-group-member', 'fixture-group-past']) {
-      await ctx.sessionController.create({ workspaceId: workspace.id, sessionId: SessionId(sessionId) });
+    for (const sessionId of ['fixture-bot', 'fixture-bot-part', 'fixture-room', 'fixture-group-member', 'fixture-group-past']) {
+      await createSession(workspace.id, sessionId);
     }
-    await until(() => workspace.sessionIds.includes(SessionId('fixture-bot-part')));
     const home = join(root, 'bot'); mkdirSync(home);
     writeFileSync(join(home, 'state.json'), JSON.stringify({ version: 1, workspaceId: workspace.id, revision: 7,
       mainBotIds: [], bots: { 'fixture-bot': { id: 'fixture-bot', name: 'Researcher', sessionId: 'fixture-bot-part', model: 'fixture/scripted', permission: 'read-only', capabilities: [], instructions: 'SYNTHETIC_PRIVATE_INSTRUCTIONS' } },
@@ -187,7 +193,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     rt.chatOwners.set('fixture-bot-part', 'other-bot'); await unavailable('wrongCurrentOwner'); rt.chatOwners.set('fixture-bot-part', 'fixture-bot');
     const otherPath = join(root, 'other-workspace'); mkdirSync(otherPath);
     const other = await ctx.workspaceRegistry.create(otherPath, 'Other workspace');
-    await ctx.sessionController.create({ workspaceId: other.id, sessionId: SessionId('fixture-other-session') });
+    await createSession(other.id, 'fixture-other-session');
     const otherWorkspaceRequest = { ...request, body: { ...request.body, payload: { schemaVersion: 1, workspaceId: other.id } } };
     const otherWorkspaceReply = await invoke('plugin.route.call', otherWorkspaceRequest);
     expect(otherWorkspaceReply.type).toBe('rpc.response');
