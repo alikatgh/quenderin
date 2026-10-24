@@ -147,9 +147,14 @@ before installation can be allowed. The successful
 verified selected-wheel PEP 658 metadata and the actual `libmax.so`. Five Modular
 wheels lack separate embedded terms; the execution gate requires explicit
 per-package coverage of the inspected SDK terms and third-party notices before
-any installation or execution. GPU-only component exclusion remains under review;
-no actual SDK execution has been established. This gate covers the ephemeral CPU
-fixture only.
+any installation or execution. The guarded CPU projection's
+[first actual attempt](https://github.com/alikatgh/quenderin/actions/runs/40104752084)
+passed installation, file/loader absence checks and SDK import. Graph compilation
+then failed because the deliberately omitted `shmem.mojoc` is required even for
+the CPU graph. Its upstream Linux build links NVIDIA device bitcode into that
+module. Restoring the packaged module would invalidate the omission argument.
+Execution stays held pending a verified source build without that bitcode or
+applicable clearance. The native graph has not executed successfully.
 
 This boundary accepts an exported float32 graph. It does not load GGUF, tokenize
 chat, implement autoregressive decoding, package an Android/iOS runtime, or make
@@ -182,17 +187,18 @@ on-device MAX and must be labelled accordingly.
 
 ### 5. Verify before enabling or making speed claims
 
-- [ ] Shared policy fixtures: faster/slower measured candidates, stale runtime,
+- [x] Shared policy fixtures: faster/slower measured candidates, stale runtime,
   changed artifact/driver, missing backend, insufficient samples and memory veto.
-- [ ] A fake 40-token/sec MAX record cannot enable an absent adapter.
-- [ ] Cancelled/failed runs cannot train the policy; numeric storage remains
+- [x] A fake 40-token/sec MAX record cannot enable an absent adapter.
+- [x] Cancelled/failed runs cannot train the policy; numeric storage remains
   bounded and contains no conversation content. Manual mode survives relaunch.
-- [ ] Hosted native builds/tests with actual libraries, independent review and
+- [x] Hosted native builds/tests with actual libraries, independent review and
   exact staged secret scans before source publication.
 - [ ] Later authorized hardware validation: same model/artifact, prompt/output
   lengths, cache state, context, thermal/power conditions and sampling. Compare
   baseline and MAX latency, throughput, memory and sustained performance.
-- [ ] Enable only the verified combinations and retain deterministic fallback.
+- [x] Keep MAX unavailable to Automatic; retain the existing runtime gates and
+  deterministic fallback until a complete model adapter is verified.
 
 Under the current native-run restriction, source/fixture/hosted compilation can
 advance. Actual phone speed, energy use, driver stability and sustained thermal
@@ -236,6 +242,22 @@ Follow [the MAX bridge instructions](../native/max-runtime/README.md) for its
 separate metadata audit and gated CPU fixture. Never treat a fake API fixture as
 actual SDK execution or the CPU graph as a mobile LLM benchmark.
 
-Current integrated hosted results and remaining review findings must be recorded
-before marking the verification/release items complete. Store submission remains
-deferred; no provider, relay or inference service is activated by this increment.
+Automatic was delivered through [PR #186](https://github.com/alikatgh/quenderin/pull/186)
+at main revision `c089da2e5437713a863459a809db846bdc84118e`. Its tree exactly matched
+tested head `eecfa6ef889b0ef0524e7754b2ff83fcacd5f7f2`:
+
+- [CI 40103248277](https://github.com/alikatgh/quenderin/actions/runs/40103248277):
+  all 18 jobs passed; 763 Swift tests, six skipped, zero failures. Swift and Kotlin
+  each executed all 24 shared policy fixtures exactly once. The actual JNI
+  generation-loop fixture and existing core/regression checks passed.
+- [Native SDK/app linking 40103248222](https://github.com/alikatgh/quenderin/actions/runs/40103248222):
+  Apple and Android passed with their actual SDKs. Apple compiled unsigned
+  iPhone, simulator-SDK and Mac targets; these were compilation checks, not UI runs.
+- Fresh independent reviews covered admission, manual intent, conversation
+  changes, cancellation, context overflow, recovery and draft preservation.
+  Both exact staged-blob secret scans passed before publication.
+
+Store submission remains deferred. Phone rendering, signed native interaction and
+sustained model speed remain unverified; no provider, relay or inference service
+is activated by this increment. The separate MAX SDK attempt above is not a
+successful native graph execution, mobile adapter or Bonsai benchmark.

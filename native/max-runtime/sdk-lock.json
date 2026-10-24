@@ -39,7 +39,7 @@
           "max/max-26.7.0.dist-info/LICENSE",
           "max/max-26.7.0.dist-info/Third-Party-Notices"
         ],
-        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. MAX 26.7.0's embedded Community License (August 18, 2026) sections 1.1 and 1.4 cover this SDK interoperability fixture, with its Third-Party-Notices retained. Only the bound CPU source-module profile is admitted: omit max-shmem-libs and the original shmem.mojoc (which embeds NVSHMEM device bitcode); precompile the nine pinned Apache/LLVM upstream sources without GPU bitcode/host data, using exact compiler/dependency/argument/output receipts. Retained-byte and loader-absence checks precede every SDK child. No GPU, mobile, redistribution, managed service or other version is cleared."
       },
       "max-core": {
         "version": "26.7.0",
@@ -47,7 +47,7 @@
           "max/max-26.7.0.dist-info/LICENSE",
           "max/max-26.7.0.dist-info/Third-Party-Notices"
         ],
-        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. MAX 26.7.0's embedded Community License (August 18, 2026) sections 1.1 and 1.4 cover this SDK interoperability fixture, with its Third-Party-Notices retained. Only the bound CPU source-module profile is admitted: omit max-shmem-libs and the original shmem.mojoc (which embeds NVSHMEM device bitcode); precompile the nine pinned Apache/LLVM upstream sources without GPU bitcode/host data, using exact compiler/dependency/argument/output receipts. Retained-byte and loader-absence checks precede every SDK child. No GPU, mobile, redistribution, managed service or other version is cleared."
       },
       "max-mojo-libs": {
         "version": "26.7.0",
@@ -55,7 +55,7 @@
           "max/max-26.7.0.dist-info/LICENSE",
           "max/max-26.7.0.dist-info/Third-Party-Notices"
         ],
-        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. MAX 26.7.0's embedded Community License (August 18, 2026) sections 1.1 and 1.4 cover this SDK interoperability fixture, with its Third-Party-Notices retained. Only the bound CPU source-module profile is admitted: omit max-shmem-libs and the original shmem.mojoc (which embeds NVSHMEM device bitcode); precompile the nine pinned Apache/LLVM upstream sources without GPU bitcode/host data, using exact compiler/dependency/argument/output receipts. Retained-byte and loader-absence checks precede every SDK child. No GPU, mobile, redistribution, managed service or other version is cleared."
       },
       "max-shmem-libs": {
         "version": "26.7.0",
@@ -71,7 +71,7 @@
           "max/max-26.7.0.dist-info/LICENSE",
           "max/max-26.7.0.dist-info/Third-Party-Notices"
         ],
-        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. MAX 26.7.0's embedded Community License (August 18, 2026) sections 1.1 and 1.4 cover this SDK interoperability fixture, with its Third-Party-Notices retained. Only the bound CPU source-module profile is admitted: omit max-shmem-libs and the original shmem.mojoc (which embeds NVSHMEM device bitcode); precompile the nine pinned Apache/LLVM upstream sources without GPU bitcode/host data, using exact compiler/dependency/argument/output receipts. Retained-byte and loader-absence checks precede every SDK child. No GPU, mobile, redistribution, managed service or other version is cleared."
       },
       "mojo-compiler-mojo-libs": {
         "version": "1.2.0",
@@ -79,7 +79,7 @@
           "max/max-26.7.0.dist-info/LICENSE",
           "max/max-26.7.0.dist-info/Third-Party-Notices"
         ],
-        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. MAX 26.7.0's embedded Community License (August 18, 2026) sections 1.1 and 1.4 cover this SDK interoperability fixture, with its Third-Party-Notices retained. Only the bound CPU source-module profile is admitted: omit max-shmem-libs and the original shmem.mojoc (which embeds NVSHMEM device bitcode); precompile the nine pinned Apache/LLVM upstream sources without GPU bitcode/host data, using exact compiler/dependency/argument/output receipts. Retained-byte and loader-absence checks precede every SDK child. No GPU, mobile, redistribution, managed service or other version is cleared."
       },
       "numpy": {
         "version": "2.3.3",
@@ -164,9 +164,10 @@
         "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
       }
     },
-    "cpu_fixture_profile_id": "max-26.7.0-linux-x86_64-cpu-without-nvshmem-v1",
-    "cpu_fixture_profile_sha256": "5d3a29a4e9f91b8c5ce79f87cd22ac0c1d402eff7002482e9a5860eb382ef231",
-    "native_evidence_sha256": "802579c5a58437ad524aedc78db2f7a65eaf7ff255d9829adf064cee23fed4a8"
+    "cpu_fixture_profile_id": "max-26.7.0-linux-x86_64-cpu-source-shmem-v2",
+    "cpu_fixture_profile_sha256": "2e6a0e6de258a3f680079821f415e4e4739632b7724df98eea2942fcdfeb3586",
+    "native_evidence_sha256": "802579c5a58437ad524aedc78db2f7a65eaf7ff255d9829adf064cee23fed4a8",
+    "source_module_license": "The nine pinned upstream shmem source headers identify Apache-2.0 WITH LLVM-exception. The generated CPU module uses the upstream default precompile recipe with no additional bitcode libraries or host GPU data. Original packaged module and NVSHMEM payload hashes stay forbidden; no generated SDK/model artifact is redistributed."
   },
   "packages": [
     {
@@ -678,7 +679,7 @@
   ],
   "cpu_fixture_profile": {
     "schema": 1,
-    "id": "max-26.7.0-linux-x86_64-cpu-without-nvshmem-v1",
+    "id": "max-26.7.0-linux-x86_64-cpu-source-shmem-v2",
     "scope": "hosted-cpu-fixture-only-no-redistribution",
     "audit_url": "https://github.com/alikatgh/quenderin/actions/runs/40101507948",
     "native_evidence_sha256": "802579c5a58437ad524aedc78db2f7a65eaf7ff255d9829adf064cee23fed4a8",
@@ -726,6 +727,112 @@
       "requirement": "max-shmem-libs==26.7.0",
       "reason": "Only this audited CPU graph fixture omits the separately packaged GPU runtime; missing-component demand must fail without fallback."
     },
-    "runtime_license_approval_inferred": false
+    "runtime_license_approval_inferred": false,
+    "generated_source_module": {
+      "schema": 1,
+      "installed_path": "modular/lib/mojo/shmem.mojoc",
+      "source_revision": "527d069ee11a41ac5320af1f9402db0a66b2b868",
+      "source_license": "Apache-2.0 WITH LLVM-exception",
+      "source_recipe_url": "https://github.com/modular/modular/blob/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/BUILD.bazel",
+      "build_rule_url": "https://github.com/modular/rules_mojo/blob/47643a3b441c20c3a351b8807e37c547338557c8/mojo/mojo_library.bzl",
+      "sources": [
+        {
+          "filename": "__init__.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/__init__.mojo",
+          "size": 2960,
+          "sha256": "3e5f2a68f08f9302606b0cb11a88d9af7dbe6225802feab3e11299b3d6573011"
+        },
+        {
+          "filename": "_mpi.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/_mpi.mojo",
+          "size": 6553,
+          "sha256": "b81ec9d1a3435cebed92ef1b64f362c12b75a051688be5da4cbb617bb6339c49"
+        },
+        {
+          "filename": "_nvshmem.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/_nvshmem.mojo",
+          "size": 20001,
+          "sha256": "e11d02dfe0a063a3d74c689110ab6d3091c797cea61b1613084f34f6b16e16e2"
+        },
+        {
+          "filename": "_rocshmem.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/_rocshmem.mojo",
+          "size": 22831,
+          "sha256": "04589c6b659507cbe11cc2f2d16fc1c29cfc17dbf4aac82ee42792feab8424e6"
+        },
+        {
+          "filename": "ep.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/ep.mojo",
+          "size": 44079,
+          "sha256": "17ae863cd0d893ae2dc277a41afb35f54539c59cae0acfb78c3b855940ff38ca"
+        },
+        {
+          "filename": "ep_comm.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/ep_comm.mojo",
+          "size": 307956,
+          "sha256": "cb3286828f72d120dd9aa62dd499e325a5da7faed1504d6b88284f67ca145d82"
+        },
+        {
+          "filename": "shmem_api.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/shmem_api.mojo",
+          "size": 39794,
+          "sha256": "8c68e01fb78911083ae5848b2a94a3fad9c2508af4a23cdce61fe4f6f86516ed"
+        },
+        {
+          "filename": "shmem_buffer.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/shmem_buffer.mojo",
+          "size": 6895,
+          "sha256": "02f6a047a9db7f62811e0cb96f2403ae3062e7219dd33a81b9c1bc21d4050f7c"
+        },
+        {
+          "filename": "shmem_context.mojo",
+          "url": "https://raw.githubusercontent.com/modular/modular/527d069ee11a41ac5320af1f9402db0a66b2b868/max/kernels/src/shmem/shmem_context.mojo",
+          "size": 23237,
+          "sha256": "29b07b039102afa07e8525175f781b3d39944f5b953c852bdd84677c95b63829"
+        }
+      ],
+      "compiler": {
+        "package": "mojo-compiler",
+        "version": "1.2.0",
+        "installed_path": "modular/bin/mojo",
+        "size": 145823064,
+        "sha256": "2f57923dc2a088231b7e85e03d29bc15a7892e2beff1c388a3effaed945d2aa3"
+      },
+      "module_inputs": [
+        "std.mojoc",
+        "max.mojoc",
+        "layout.mojoc",
+        "linalg.mojoc",
+        "structured_kernels.mojoc",
+        "_cublas.mojoc",
+        "_rocblas.mojoc",
+        "comm.mojoc",
+        "internal_utils.mojoc",
+        "pipeline.mojoc"
+      ],
+      "arguments": [
+        "precompile",
+        "-strip-file-prefix=.",
+        "-o",
+        "{output}",
+        "--ignore-deprecated=UnsafePointer",
+        "--ignore-deprecated=alloc",
+        "--ignore-deprecated=Pointer.__add__",
+        "--ignore-deprecated=Pointer.__sub__",
+        "--ignore-deprecated=Pointer.__iadd__",
+        "--ignore-deprecated=Pointer.__isub__",
+        "--ignore-deprecated=Pointer.__getitem__",
+        "--ignore-deprecated=Pointer.load",
+        "--ignore-deprecated=Pointer.store",
+        "--ignore-deprecated=Pointer.free",
+        "--ignore-deprecated=Pointer.bitcast",
+        "--ignore-deprecated=Pointer.address_space_cast",
+        "--ignore-deprecated=LayoutTensor",
+        "--ignore-deprecated=LayoutTensorIter",
+        "-I",
+        "{inputs}",
+        "{sources}"
+      ]
+    }
   }
 }

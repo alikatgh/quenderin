@@ -22,6 +22,7 @@ import zipfile
 from gates import ROOT, load_lock, require_hosted, verify_dependency_versions, verify_license_review
 from native_audit import inspect_native
 from cpu_profile import build_projection, canonical_sha, hash_file, prepare_installation, validate_profile, verify_loader_absence
+from source_shmem import validate_recipe
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -189,6 +190,9 @@ def main() -> None:
     require_hosted()
     lock = load_lock(reviewed=args.reviewed_lock)
     verify_dependency_versions(lock)
+    recipe = validate_recipe(lock["cpu_fixture_profile"])
+    if sum(item["size"] for item in lock["packages"] + lock["headers"] + recipe["sources"]) > lock["maximum_download_bytes"]:
+        raise ValueError("SDK/header/source aggregate transfer budget exceeded")
     work = args.work.resolve()
     runner_temp = pathlib.Path(os.environ["RUNNER_TEMP"]).resolve()
     if not work.is_relative_to(runner_temp) or work == runner_temp or work.exists():
@@ -200,6 +204,8 @@ def main() -> None:
     deadline = time.monotonic() + lock["maximum_network_seconds"]
     header_dir = work / "include/max/c"
     header_dir.mkdir(parents=True)
+    source_dir = work / "cpu-sources/shmem"
+    source_dir.mkdir(parents=True)
     def expired(signum, frame):
         raise TimeoutError("Aggregate network deadline exceeded")
     previous_handler = signal.signal(signal.SIGALRM, expired)
@@ -209,6 +215,8 @@ def main() -> None:
             download(package, wheels / package["filename"], deadline)
         for header in lock["headers"]:
             download(header, header_dir / header["filename"], deadline)
+        for source in recipe["sources"]:
+            download(source, source_dir / source["filename"], deadline)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
@@ -217,6 +225,8 @@ def main() -> None:
         raise ValueError("Distinct license text exceeds the 512 KiB review log budget")
     facts = audit_facts(lock, licenses, inventories)
     facts["nativeEvidence"] = inspect_native(lock, wheels, work / "native-inspection")
+    facts["cpuSourceRecipe"] = {"recipeSHA256": canonical_sha(recipe), "sourceFiles": len(recipe["sources"]),
+                               "sourceBytes": sum(item["size"] for item in recipe["sources"]), "compilerExecuted": False}
     projection = None
     if lock.get("cpu_fixture_profile") is not None:
         facts["cpuFixtureProfileEvidence"] = validate_profile(lock, facts["nativeEvidence"])

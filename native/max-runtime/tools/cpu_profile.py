@@ -11,7 +11,7 @@ import stat
 import time
 import zipfile
 
-PROFILE_ID = "max-26.7.0-linux-x86_64-cpu-without-nvshmem-v1"
+PROFILE_ID = "max-26.7.0-linux-x86_64-cpu-source-shmem-v2"
 OMITTED_PACKAGE = "max-shmem-libs"
 OMITTED_MOJO = "max_mojo_libs-26.7.0.data/platlib/modular/lib/mojo/shmem.mojoc"
 NVSHMEM_NAMES = {"libnvshmem_host.so.3", "nvshmem_bootstrap_mpi.so.3", "nvshmem_transport_ibgda.so.6", "nvshmem_transport_ibrc.so.6"}
@@ -68,6 +68,8 @@ def validate_profile(lock: dict, native: dict) -> dict:
     exception = profile.get("declared_dependency_exception", {})
     if exception.get("package") != "max-core" or exception.get("requirement") != "max-shmem-libs==26.7.0" or not exception.get("reason"):
         raise ValueError("Explicit bounded CPU dependency exception required")
+    from source_shmem import validate_recipe
+    validate_recipe(profile)
     return {"profileSHA256": canonical_sha(profile), "nativeEvidenceSHA256": native["evidenceSHA256"],
             "retainedPackages": [package["name"] for package in lock["packages"] if package["name"] != OMITTED_PACKAGE],
             "omittedPackages": [OMITTED_PACKAGE], "runtimeAdmissionInferred": False}
@@ -152,10 +154,11 @@ def build_projection(lock: dict, wheels: pathlib.Path, native: dict) -> dict:
     return {**decision, "expected": expected, "distributions": distributions, "consoleScripts": sorted(scripts)}
 
 
-def file_inventory(sdk: pathlib.Path, forbidden_hashes: set[str]) -> dict:
+def file_inventory(sdk: pathlib.Path, forbidden_hashes: set[str], generated_files=None) -> dict:
     if sdk.is_symlink() or not sdk.is_dir():
         raise ValueError("Owned CPU SDK directory required")
     result, aggregate = {}, 0
+    generated_files = generated_files or {}
     for directory, subdirectories, filenames in os.walk(sdk, followlinks=False):
         for name in subdirectories:
             if "nvshmem" in name.lower() or "max_shmem_libs" in name.lower():
@@ -165,11 +168,14 @@ def file_inventory(sdk: pathlib.Path, forbidden_hashes: set[str]) -> dict:
         for name in filenames:
             path = pathlib.Path(directory) / name
             relative = path.relative_to(sdk).as_posix()
-            if "nvshmem" in relative.lower() or "max_shmem_libs" in relative.lower() or path.name == "shmem.mojoc":
+            if ("nvshmem" in relative.lower() or "max_shmem_libs" in relative.lower()
+                    or path.name == "shmem.mojoc" and relative not in generated_files):
                 raise ValueError("Omitted shared-memory component is present in CPU SDK")
             digest, size = hash_file(path)
             if digest in forbidden_hashes:
                 raise ValueError("Omitted component was renamed inside CPU SDK")
+            if relative in generated_files and generated_files[relative] != {"sha256": digest, "size": size}:
+                raise ValueError("Attested generated module identity differs")
             aggregate += size
             if len(result) >= 16384 or aggregate > 1600000000:
                 raise ValueError("CPU SDK installed-file budget exceeded")
@@ -177,14 +183,16 @@ def file_inventory(sdk: pathlib.Path, forbidden_hashes: set[str]) -> dict:
     return result
 
 
-def verify_tree(sdk: pathlib.Path, projection: dict, profile: dict) -> dict:
+def verify_tree(sdk: pathlib.Path, projection: dict, profile: dict, generated_receipts=()) -> dict:
     forbidden = {item["sha256"] for item in profile["omitted_package_payloads"] + profile["omitted_files"]}
-    actual = file_inventory(sdk, forbidden)
-    expected = projection["expected"]
+    from source_shmem import generation_files
+    generated = generation_files(profile, projection, generated_receipts)
+    actual = file_inventory(sdk, forbidden, generated)
+    expected = dict(projection["expected"], **{path: {**record, "kind": "generated-source"} for path, record in generated.items()})
     if not set(expected).issubset(actual):
         raise ValueError("Retained CPU SDK file is missing")
     for path, source in expected.items():
-        if source["kind"] == "archive" and actual[path] != {key: source[key] for key in ["sha256", "size"]}:
+        if source["kind"] in {"archive", "generated-source"} and actual[path] != {key: source[key] for key in ["sha256", "size"]}:
             raise ValueError(f"Retained CPU SDK file identity differs: {path}")
         if source["kind"] == "pip-record" and actual[path]["size"] > 1048576:
             raise ValueError("Installer RECORD exceeds metadata budget")
@@ -236,14 +244,17 @@ def prepare_installation(sdk: pathlib.Path, projection: dict, profile: dict) -> 
             "sourceProjection": projection, "files": actual}
 
 
-def verify_installation(sdk: pathlib.Path, manifest: dict, lock: dict, native: dict) -> None:
+def verify_installation(sdk: pathlib.Path, manifest: dict, lock: dict, native: dict, *, require_generated=False) -> None:
     decision = validate_profile(lock, native)
     projection = manifest.get("sourceProjection", {})
     if (manifest.get("schema") != 1 or any(manifest.get(key) != decision[key] or projection.get(key) != decision[key]
                                           for key in ["profileSHA256", "nativeEvidenceSHA256"])
             or projection.get("retainedPackages") != decision["retainedPackages"]):
         raise ValueError("CPU installation manifest provenance differs")
-    if verify_tree(sdk, projection, lock["cpu_fixture_profile"]) != manifest.get("files"):
+    receipts = manifest.get("generatedModules", [])
+    if require_generated and len(receipts) != 1:
+        raise ValueError("Attested source-built module required before SDK import")
+    if verify_tree(sdk, projection, lock["cpu_fixture_profile"], receipts) != manifest.get("files"):
         raise ValueError("CPU installation manifest changed before SDK import")
 
 

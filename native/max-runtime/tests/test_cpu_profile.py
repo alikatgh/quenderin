@@ -55,6 +55,7 @@ def fixture(root):
                                             for item in elfs if item["package"] == "max-shmem-libs"],
                "omitted_files": [{**native["sharedMemoryArtifacts"][0], "installed_path": installed_path(OMITTED_MOJO)}],
                "generated_console_scripts": "omit", "runtime_license_approval_inferred": False,
+               "generated_source_module": copy.deepcopy(load_lock()["cpu_fixture_profile"]["generated_source_module"]),
                "declared_dependency_exception": {"package": "max-core", "requirement": "max-shmem-libs==26.7.0", "reason": "inert unit fixture"}}
     lock = {"packages": packages, "maximum_uncompressed_bytes": 100000, "cpu_fixture_profile": profile}
     return lock, native, wheels, payloads

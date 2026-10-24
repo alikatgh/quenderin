@@ -20,7 +20,7 @@ The C interface and graph exporter follow Modular source
 `sdk-lock.json` pins 17 official wheels (262,318,881 bytes), eight C headers,
 exact selected-wheel PEP 658 metadata and aggregate transfer/extraction limits.
 Its reviewed CPU-fixture lock SHA256 is
-`74fbb48b0573a8a985256a90a8848a7997ba2c25e3a3a9598b2e712e29859265`.
+`6b5c5d4edb57cc45f52cf1b23a9faac30e10a17198aa72ed08b2f25a042fb70a`.
 Any change to the lock, including its license review, changes the required hash.
 See [NOTICE.md](NOTICE.md) for source attribution and binary-license boundaries.
 
@@ -45,7 +45,7 @@ unnecessary local build prerequisite. Once the workflow is on the default branch
 ```sh
 gh workflow run max-runtime.yml --ref main \
   -f mode=audit \
-  -f reviewed_lock_sha256=74fbb48b0573a8a985256a90a8848a7997ba2c25e3a3a9598b2e712e29859265
+  -f reviewed_lock_sha256=6b5c5d4edb57cc45f52cf1b23a9faac30e10a17198aa72ed08b2f25a042fb70a
 ```
 
 Audit mode downloads exact inert bytes, verifies hashes and archive paths, reads
@@ -60,10 +60,18 @@ terms. Five required Modular wheels have no separate embedded terms file; all
 six Modular packages declare the same MAX platform license. The follow-up
 [nonexecuting audit](https://github.com/alikatgh/quenderin/actions/runs/40101507948)
 records exact ELF dependencies and Python import evidence. The CPU profile omits
-the entire `max-shmem-libs` wheel and the exact audited `shmem.mojoc`, keeping the
-GPU-only NVSHMEM implementation outside the installed runtime. Its terms restrict
-development use to NVIDIA GPU systems. Missing components cause failure; there
-is no fallback installation.
+the entire `max-shmem-libs` wheel and the original `shmem.mojoc`, which its upstream
+Linux recipe links with NVSHMEM device bitcode. Those payloads remain forbidden.
+Their terms restrict development use to NVIDIA GPU systems.
+
+Simply removing the module prevents CPU graph compilation, as
+[attempt 40104752084](https://github.com/alikatgh/quenderin/actions/runs/40104752084)
+demonstrated after the installation/absence checks and SDK import succeeded.
+The source-built profile pins nine Apache/LLVM upstream files (474,306 bytes)
+and uses the upstream `mojo precompile` recipe without GPU bitcode or host data.
+Ten retained dependency modules, compiler bytes, arguments and generated output
+are checked and receipted before SDK Python import. Missing components cause
+failure; there is no fallback installation of the original binary.
 
 The lock binds the exact profile, metadata receipt and versioned terms coverage.
 Before every SDK process, guards verify retained files and notices against the

@@ -14,6 +14,7 @@ import time
 
 from gates import ROOT, assert_network, assert_status, load_lock, require_hosted, runtime_environment, verify_license_review
 from cpu_profile import validate_profile, verify_installation, verify_loader_absence
+from source_shmem import generate_module
 
 
 def bounded(command: list[str], *, env: dict[str, str], cwd: pathlib.Path, deadline: float,
@@ -124,6 +125,14 @@ def main() -> None:
     os.sched_setaffinity(0, allowed)
     deadline = time.monotonic() + lock["maximum_runtime_seconds"]
     absence = verify_loader_absence(sdk, native, deadline)
+    manifest, module_receipt = generate_module(work, sdk, scratch, manifest, lock["cpu_fixture_profile"], env, deadline, bounded)
+    manifest_raw = (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    if len(manifest_raw) > 4194304:
+        raise ValueError("Attested generated-module manifest exceeds 4 MiB")
+    manifest_path.write_bytes(manifest_raw)
+    receipt["manifestSHA256"] = hashlib.sha256(manifest_raw).hexdigest()
+    (work / "installed.json").write_text(json.dumps(receipt) + "\n")
+    verify_installation(sdk, manifest, lock, native, require_generated=True)
     executable = scratch / "max-cpu-fixture"
     compile_command = ["/usr/bin/cc", "-std=c11", "-O1", "-Wall", "-Wextra", "-Werror",
                        "-I", str(ROOT / "include"), "-I", str(work / "include"),
@@ -131,11 +140,11 @@ def main() -> None:
                        "-L", str(max_libraries[0].parent), "-lmax", "-o", str(executable)]
     bounded(compile_command, env=env, cwd=scratch, deadline=deadline)
     graph = scratch / "weighted-multiply.mef"
-    verify_installation(sdk, manifest, lock, native)
+    verify_installation(sdk, manifest, lock, native, require_generated=True)
     absence = verify_loader_absence(sdk, native, deadline)
     bounded(["/usr/bin/python3", "-S", "-B", str(ROOT / "fixture/export_graph.py"), str(graph)],
             env=env, cwd=scratch, deadline=deadline)
-    verify_installation(sdk, manifest, lock, native)
+    verify_installation(sdk, manifest, lock, native, require_generated=True)
     absence = verify_loader_absence(sdk, native, deadline)
     facts, _diagnostics = bounded([str(executable), str(graph)], env=env, cwd=scratch, deadline=deadline)
     parsed = json.loads(facts)
@@ -147,7 +156,7 @@ def main() -> None:
                       "mefSHA256": hashlib.sha256(graph.read_bytes()).hexdigest(),
                       "networkIsolated": True, "telemetryOptOut": True, "crashReportingOptOut": True,
                       "cpuProfileSHA256": profile["profileSHA256"], "installedManifestSHA256": hashlib.sha256(manifest_raw).hexdigest(),
-                      "loaderAbsence": absence}))
+                      "loaderAbsence": absence, "sourceModuleReceipt": module_receipt}))
     print("QUENDERIN_MAX_CPU_FACTS_END")
 
 
