@@ -73,6 +73,8 @@ def main() -> None:
     lock = load_lock(reviewed=args.reviewed_lock)
     work = args.work.resolve(strict=True)
     inspection = json.loads((work / "inspection.json").read_text())
+    if inspection.get("nativeEvidence", {}).get("cpuOmissionAdmitted") is not True:
+        raise ValueError("SDK execution held: a reviewed, enforceable NVSHMEM-free CPU profile has not been established")
     review = lock.get("runtime_license_review")
     license_hashes = inspection.get("licenseSHA256")
     if not isinstance(license_hashes, dict) or any(not isinstance(key, str) or "/" not in key for key in license_hashes):

@@ -20,6 +20,7 @@ import urllib.request
 import zipfile
 
 from gates import ROOT, load_lock, require_hosted, verify_dependency_versions, verify_license_review
+from native_audit import inspect_native
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -214,6 +215,7 @@ def main() -> None:
     if sum(len(x["text"].encode()) for x in {x["sha256"]: x for x in licenses}.values()) > 524288:
         raise ValueError("Distinct license text exceeds the 512 KiB review log budget")
     facts = audit_facts(lock, licenses, inventories)
+    facts["nativeEvidence"] = inspect_native(lock, wheels, work / "native-inspection")
     (work / "inspection.json").write_text(json.dumps(facts, indent=2) + "\n")
     print("QUENDERIN_MAX_SDK_INSPECTION_BEGIN")
     print(json.dumps(facts, indent=2))
@@ -230,6 +232,8 @@ def main() -> None:
     if args.mode == "audit":
         return
     verify_license_review(lock, licenses)
+    if facts["nativeEvidence"]["cpuOmissionAdmitted"] is not True:
+        raise ValueError("SDK installation held: a reviewed, enforceable NVSHMEM-free CPU profile has not been established")
     if sum(bool(p["nativeLibraries"]) for p in inventories) != 1:
         raise ValueError("Exactly one pinned SDK libmax.so is required; no conda/unpinned fallback is permitted")
     # Wheel installation has no build backend or lifecycle scripts. Dependency
