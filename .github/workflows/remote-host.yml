@@ -6,6 +6,8 @@ on:
     paths:
       - 'native/remote-host/**'
       - 'shared/remote-harness-approval-digest-fixtures.json'
+      - 'shared/remote-harness-bot-read-contract.json'
+      - 'shared/remote-harness-bot-read-fixtures.json'
       - '.github/workflows/remote-host.yml'
 
 permissions:

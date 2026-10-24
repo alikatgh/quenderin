@@ -518,6 +518,10 @@ cancellation. Store and real-provider activation gates remain separate.
 - [ ] Provider/settings management with field-level authorization and redaction.
 - [ ] Automation tasks and delivery history with durable execution/cost bounds.
 - [ ] DS Bot teams, group conversations and interactive cards.
+  Detailed reuse strategy: [DS Bot integration plan](deepseek-bot-integration-plan.md).
+  The [Sol 6.1 implementation brief](deepseek-bot-sol-implementation.md) records the
+  first inactive read-only protocol increment and remaining runtime/UI gates;
+  it does not complete this parity item.
 - [ ] LAN/P2P/TURN with verified encrypted relay fallback.
 - [ ] Codex App Server adapter, then individual ACP backend adapters with their
   actual capability restrictions and independent acceptance tests.

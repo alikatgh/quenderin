@@ -38,10 +38,16 @@ internal fun rhUnicode(value: String) {
 /** Immutable JSON preserves unknown fields and number lexemes; toString never exposes content. */
 sealed class RemoteHarnessJSON {
     final override fun toString() = "RemoteHarnessJSON(redacted)"
-    class ObjectValue(values: Map<String, RemoteHarnessJSON>) : RemoteHarnessJSON() {
+    class ObjectValue private constructor(values: Map<String, RemoteHarnessJSON>, internal val sourceUTF8Bytes: Int?) : RemoteHarnessJSON() {
+        constructor(values: Map<String, RemoteHarnessJSON>) : this(values, null)
         val values: Map<String, RemoteHarnessJSON> = run {
             rhCheck(values.size <= RemoteHarnessBounds.CONTAINER_ENTRIES, "container-limit"); values.keys.forEach(::rhUnicode)
             Collections.unmodifiableMap(LinkedHashMap(values))
+        }
+        companion object {
+            /** Exact original object span, including internal whitespace and escape spelling.
+             * Metadata is immutable, never serialized, and absent for programmatically built trees. */
+            internal fun parsed(values: Map<String, RemoteHarnessJSON>, sourceUTF8Bytes: Int) = ObjectValue(values, sourceUTF8Bytes)
         }
     }
     class ArrayValue(values: List<RemoteHarnessJSON>) : RemoteHarnessJSON() {
@@ -133,24 +139,39 @@ sealed class RemoteHarnessJSON {
 
     private class Reader(private val source: String) {
         private var position = 0
+        private var utf8Position = 0
+        private fun advance(): Char {
+            val c = source[position++]
+            // parse() already validates raw scalar pairs. Count their UTF-8 bytes once, while
+            // escaped Unicode remains the ASCII bytes actually carried in the source.
+            utf8Position += when {
+                c.code <= 0x7f -> 1
+                c.code <= 0x7ff -> 2
+                c.isHighSurrogate() -> 4
+                c.isLowSurrogate() -> 0
+                else -> 3
+            }
+            return c
+        }
         fun read(): RemoteHarnessJSON { val value = value(1); whitespace(); rhCheck(position == source.length, "invalid-json"); return value }
-        private fun whitespace() { while (position < source.length && source[position] in " \t\r\n") position++ }
-        private fun take(c: Char): Boolean = if (position < source.length && source[position] == c) { position++; true } else false
+        private fun whitespace() { while (position < source.length && source[position] in " \t\r\n") advance() }
+        private fun take(c: Char): Boolean = if (position < source.length && source[position] == c) { advance(); true } else false
         private fun expect(c: Char) = rhCheck(take(c), "invalid-json")
         private fun value(depth: Int): RemoteHarnessJSON {
             rhCheck(depth <= RemoteHarnessBounds.JSON_DEPTH, "json-depth"); whitespace()
             rhCheck(position < source.length, "invalid-json")
             return when (source[position]) {
                 '{' -> {
-                    position++; whitespace(); val map = linkedMapOf<String, RemoteHarnessJSON>()
+                    val startBytes = utf8Position
+                    advance(); whitespace(); val map = linkedMapOf<String, RemoteHarnessJSON>()
                     if (!take('}')) { do {
                         whitespace(); val key = quoted(); rhCheck(!map.containsKey(key), "duplicate-key")
                         rhCheck(map.size < RemoteHarnessBounds.CONTAINER_ENTRIES, "container-limit")
                         whitespace(); expect(':'); map[key] = value(depth + 1); whitespace()
-                    } while (take(',')); expect('}') }; ObjectValue(map)
+                    } while (take(',')); expect('}') }; ObjectValue.parsed(map, utf8Position - startBytes)
                 }
                 '[' -> {
-                    position++; whitespace(); val list = arrayListOf<RemoteHarnessJSON>()
+                    advance(); whitespace(); val list = arrayListOf<RemoteHarnessJSON>()
                     if (!take(']')) { do {
                         rhCheck(list.size < RemoteHarnessBounds.CONTAINER_ENTRIES, "container-limit")
                         list.add(value(depth + 1)); whitespace()
@@ -164,7 +185,10 @@ sealed class RemoteHarnessJSON {
                 else -> throw RemoteHarnessException("invalid-json")
             }
         }
-        private fun literal(token: String) { rhCheck(source.regionMatches(position, token, 0, token.length), "invalid-json"); position += token.length }
+        private fun literal(token: String) {
+            rhCheck(source.regionMatches(position, token, 0, token.length), "invalid-json")
+            position += token.length; utf8Position += token.length
+        }
         private fun number(): NumberValue {
             val start = position; take('-'); rhCheck(position < source.length, "invalid-json")
             if (!take('0')) { rhCheck(source[position] in '1'..'9', "invalid-json"); digits() }
@@ -172,23 +196,23 @@ sealed class RemoteHarnessJSON {
             if (take('e') || take('E')) { if (!take('+')) take('-'); val startDigits = position; digits(); rhCheck(position > startDigits, "invalid-json") }
             return NumberValue(source.substring(start, position))
         }
-        private fun digits() { while (position < source.length && source[position] in '0'..'9') position++ }
+        private fun digits() { while (position < source.length && source[position] in '0'..'9') advance() }
         private fun quoted(): String {
             expect('"'); val out = StringBuilder(); var closed = false
             while (position < source.length) {
-                val c = source[position++]
+                val c = advance()
                 if (c == '"') { closed = true; break }
                 rhCheck(c.code >= 32, "invalid-json")
                 if (c != '\\') out.append(c) else {
                     rhCheck(position < source.length, "invalid-json")
-                    when (val escape = source[position++]) {
+                    when (val escape = advance()) {
                         '"', '\\', '/' -> out.append(escape)
                         'b' -> out.append('\b'); 'f' -> out.append('\u000c'); 'n' -> out.append('\n'); 'r' -> out.append('\r'); 't' -> out.append('\t')
                         'u' -> {
                             rhCheck(position + 4 <= source.length, "invalid-json")
                             val token = source.substring(position, position + 4)
                             rhCheck(token.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }, "invalid-json")
-                            out.append(token.toInt(16).toChar()); position += 4
+                            out.append(token.toInt(16).toChar()); position += 4; utf8Position += 4
                         }
                         else -> throw RemoteHarnessException("invalid-json")
                     }

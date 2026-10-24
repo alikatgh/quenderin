@@ -446,6 +446,12 @@ jobs:
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/RemoteHarnessClientVerify.kt -include-runtime -d "$RUNNER_TEMP/remote-client-journey.jar"
           java -jar "$RUNNER_TEMP/remote-client-journey.jar" shared/remote-harness-approval-digest-fixtures.json shared/remote-harness-official-runtime-facts.json
+      - name: Verify opt-in Bot read contract and isolated RPC lifecycle (synthetic data only)
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/RemoteHarnessBotReadVerify.kt \
+            -include-runtime -d "$RUNNER_TEMP/remote-bot-read.jar"
+          java -jar "$RUNNER_TEMP/remote-bot-read.jar" shared/remote-harness-bot-read-fixtures.json
       - name: Verify native Harness fragments (synthetic byte fixtures only)
         run: |
           set -o pipefail

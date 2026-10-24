@@ -5,6 +5,7 @@ public enum RemoteHarnessMethod: String, Sendable {
     case call = "harness.remote.call"
     case open = "harness.remote.stream.open"
     case close = "harness.remote.stream.close"
+    case pluginRouteCall = "plugin.route.call"
 }
 
 /// The first native journey deliberately has a fixed endpoint vocabulary.
@@ -29,6 +30,9 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
         var mutation = false, approvalClient: String?, approvalEvent: String?, approvalAllows = false, extendedApproval: RemoteHarnessApprovalBinding?
         switch method {
         case .describe: try fields.requireKeys([])
+        case .pluginRouteCall:
+            workspaceID = try RemoteHarnessBotReadContract.requestWorkspace(params)
+            endpoint = "quenderin-roster"
         case .close:
             try fields.requireKeys(["streamId"]); streamID = try fields.text("streamId")
         case .call, .open:
@@ -108,6 +112,12 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
     }
 
     public static func describe() throws -> Self { try Self(method: .describe, params: .object([:])) }
+    public static func botRoster(workspaceID: String) throws -> Self {
+        try Self(method: .pluginRouteCall, params: .object(["route": .string("api/bot"), "body": .object([
+            "endpoint": .string("quenderin-roster"),
+            "payload": .object(["schemaVersion": .integer(1), "workspaceId": .string(workspaceID)])
+        ])]))
+    }
     public static func sessionList() throws -> Self { try call("session/list", args: .object(["_request": .object([:])])) }
     public static func sessionCreate(workspaceID: String) throws -> Self { try call("session/create", args: .object(["request": .object(["workspaceId": .string(workspaceID)])])) }
     public static func modelCatalog() throws -> Self { try call("session/modelCatalog", args: .object([:])) }

@@ -147,6 +147,7 @@ jobs:
             ../../apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionJSON.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCodec.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessApprovalBinding.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessBotRead.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessOperations.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCoordinator.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessFragments.swift \
@@ -199,6 +200,7 @@ jobs:
             ../../apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionJSON.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCodec.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessApprovalBinding.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessBotRead.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessOperations.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCoordinator.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessFragments.swift \
