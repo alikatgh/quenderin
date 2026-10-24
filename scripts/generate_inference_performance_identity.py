@@ -14,7 +14,9 @@ KOTLIN = Path("android/quenderin-core/src/main/kotlin/ai/quenderin/core/Inferenc
 
 def source_paths(root: Path) -> list[Path]:
     paths = [Path("shared/prism-runtime.json"), Path("shared/inference-performance-contract.json"),
+             Path("apple/QuenderinKit/Sources/QuenderinKit/InferenceEngine.swift"),
              Path("apple/QuenderinKit/Sources/QuenderinKit/LlamaEngine.swift"),
+             Path("android/quenderin-core/src/main/kotlin/ai/quenderin/core/InferenceEngine.kt"),
              Path("android/quenderin-core/src/main/kotlin/ai/quenderin/core/LlamaEngine.kt"),
              Path("android/jni/CMakeLists.txt"), Path("android/jni/llama_jni.cpp")]
     paths.extend(path.relative_to(root) for path in (root / "android/jni").glob("*.h"))

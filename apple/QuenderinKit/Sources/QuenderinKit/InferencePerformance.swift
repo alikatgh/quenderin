@@ -179,28 +179,7 @@ public actor InferencePerformanceStore {
     }
 }
 
-/// A bounded, content-free receipt of the configuration actually loaded by the native engine.
-public struct InferenceExecutionProfile: Sendable, Equatable {
-    public let modelID: String
-    public let artifactSHA256: String
-    public let runtimeID: String
-    public let backendID: String
-    public let environmentID: String
-    public let contextTokens: Int
-    public let cacheMode: String
-    public let promptTokens: Int?
-    public init(modelID: String, artifactSHA256: String, runtimeID: String, backendID: String,
-                environmentID: String, contextTokens: Int, cacheMode: String = "cold", promptTokens: Int? = nil) {
-        self.modelID = modelID; self.artifactSHA256 = artifactSHA256; self.runtimeID = runtimeID
-        self.backendID = backendID; self.environmentID = environmentID; self.contextTokens = contextTokens
-        self.cacheMode = cacheMode; self.promptTokens = promptTokens
-    }
-    func nextRequest(cacheMode: String, promptTokens: Int?) -> InferenceExecutionProfile {
-        .init(modelID: modelID, artifactSHA256: artifactSHA256, runtimeID: runtimeID, backendID: backendID,
-            environmentID: environmentID, contextTokens: contextTokens, cacheMode: cacheMode, promptTokens: promptTokens)
-    }
-}
-
+/// An installed model and the admission gates used by Automatic selection.
 public struct AutomaticModelCandidate: Sendable {
     public let modelID: String
     public let artifactSHA256: String
