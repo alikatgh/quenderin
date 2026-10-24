@@ -15,6 +15,7 @@ import DefaultModel from '@deepseek-ai/dsh-agent-default-model';
 import { HostConnectionService } from '@deepseek-ai/dsh-client-connection';
 import FileUploads from '@deepseek-ai/dsh-client-file-upload';
 import { AttachmentStore, type ImageAttachmentLimits } from '@deepseek-ai/dsh-attachment';
+import Commands from '@deepseek-ai/dsh-commands';
 import { SessionQueryEngine } from '@deepseek-ai/dsh-session-query';
 import { LlmAdapter, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm';
 import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl';
@@ -22,6 +23,7 @@ import Storage from '@deepseek-ai/dsh-storage';
 import * as JsonStorage from '@deepseek-ai/dsh-storage-json';
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain';
 import WorkspaceRegistry from '@deepseek-ai/dsh-workspace';
+import Approval from '@deepseek-ai/dsh-user-approval';
 import { SessionId } from '@deepseek-ai/dsh-session';
 import { HarnessRemoteBridge } from '@quenderin/patched-host-bridge';
 import { TypertGatewaySwitch } from '@quenderin/upstream-gateway-switch';
@@ -78,6 +80,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
   const trust = (allowed: boolean) => writeFileSync(trustPath, JSON.stringify({ version: 1, peers: allowed ? [{ deviceId: 'fixture-native', publicKey }] : [] }), { mode: 0o600 });
   trust(true);
   let controller: ConnectionController | undefined, harness: HarnessRemoteBridge | undefined;
+  let toolCalls = 0;
   let completed: any;
   try {
     await ctx.plugin(TypertRegistry); await ctx.plugin(RemoteAccess);
@@ -89,13 +92,23 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     await ctx.plugin(DefaultModel, { provider: 'fixture', model: 'scripted' });
     ctx.llm.registerAdapter(['fixture'], adapter);
     new NoMediaAttachments(ctx); new NoSearchQuery(ctx);
+    await ctx.plugin(Commands);
     const noBrowserAuth = new Proxy({}, { get() { throw new Error('Browser authentication outside this fixture'); } });
     new HostConnectionService(ctx, [], noBrowserAuth as never);
     await ctx.plugin(FileUploads);
+    await ctx.plugin(Approval, { policy: 'ask' });
+    ctx.on('tools/pre-execute', async () => {
+      toolCalls++;
+      throw new Error('Zero-tool Bot fixture budget exceeded');
+    });
     ctx.effect(() => ctx.typert.register(SESSION)); ctx.effect(() => ctx.typert.register(WORKSPACE));
     await ctx.plugin(SessionController, { nativeOpen: false });
     await ctx.plugin(WorkspaceController, { documentsDirectory: root });
+    for (const service of new Set(['commands', 'approval', ...SessionController.inject, ...WorkspaceController.inject, 'sessionController', 'workspaceController'])) {
+      expect(ctx.get(service), `Required Bot fixture service "${service}" is inactive`).toBeDefined();
+    }
     await ctx.plugin(Gateway, { streamInboxBytes: 65_536 }); await ctx.plugin(ApiRemotes);
+    expect(ctx.get('typertGateway'), 'Required Bot fixture Gateway is inactive').toBeDefined();
     const peer = ctx.connection.createPeer({ principal: { kind: 'owner' }, interactions: 'answer' });
     const local = new TypertGatewaySwitch(ctx.typertGateway).local(peer);
     expect(local.supportsCarrier).toBe(true);
@@ -222,7 +235,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     } } } });
     expect(ordinaryModelSelection.type).toBe('rpc.response');
     expect(ordinaryModelSelection.payload.result).toMatchObject({ ok: true, value: { selected: { provider: 'fixture', model: 'scripted' } } });
-    expect(adapter.calls).toBe(0); expect(Object.values(readEffects)).toEqual(Object.values(readEffects).map(() => 0));
+    expect(adapter.calls).toBe(0); expect(toolCalls).toBe(0); expect(Object.values(readEffects)).toEqual(Object.values(readEffects).map(() => 0));
     completed = { schema: 1, harnessRevision: '1600d8a1e140dcde43a1a0941940a0480712c011', remoteRevision: '9a60e783ec1ceaff6116b0462a2863f07f602a55', botRevision: '1bebe826f74e9a72cabafd3b80602b05af867b38',
       lifecycle: 'explicit synthetic store load, then real channel.install; full createRuntime not invoked', authenticatedCarrier: 'admitted ConnectionController channel -> RpcRouter -> shared Fetch with official owner Peer',
       workspaceId: workspace.id, request, rawResult: JSON.stringify(result), result, readEffects, outcomes,
