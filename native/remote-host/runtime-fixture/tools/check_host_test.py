@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import unittest
 
-from check_host import ALIASES, POLICIES, verify_checkout
+from check_host import ALIASES, COMPANIONS, verify_checkout
 
 
 class SourceGuardTests(unittest.TestCase):
@@ -31,6 +31,8 @@ class SourceGuardTests(unittest.TestCase):
             'packages/plugin/src/connection-controller.ts': 'export const connection=1\n',
             'packages/protocol/src/index.ts': 'export const protocol=1\n',
         }
+        for path in set(ALIASES.values()).difference(COMPANIONS):
+            self.files.setdefault(path, 'export const fixture=1\n')
         for relative, text in self.files.items():
             path = self.checkout / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -43,10 +45,10 @@ class SourceGuardTests(unittest.TestCase):
         self.transform = lambda _path, source: '// approved patch\n' + source
         for relative in patches:
             (self.checkout / relative).write_text(self.transform(relative, self.files[relative]))
-        for name in POLICIES:
+        for path, name in COMPANIONS.items():
             value = 'export const policy=1\n'
             (self.companion / name).write_text(value)
-            (self.checkout / 'packages/plugin/src' / name).write_text(value)
+            (self.checkout / path).write_text(value)
 
     def git(self, *args):
         env = {'PATH': '/usr/bin:/bin', 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_TERMINAL_PROMPT': '0'}

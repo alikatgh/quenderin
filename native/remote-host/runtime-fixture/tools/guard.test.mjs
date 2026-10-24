@@ -34,8 +34,8 @@ test('npm loads distinct empty scratch configs and rejects the former duplicate 
 });
 
 test('runtime environment has only the explicit fixture allowlist', () => {
-  const result = runtimeEnvironment('/tmp/fixture', '/tmp/source', '/tmp/fixture/facts.json');
-  assert.deepEqual(Object.keys(result).sort(), ['CI', 'DSH_HOME', 'GITHUB_ACTIONS', 'LANG', 'LC_ALL', 'PATH', 'QUENDERIN_FIXTURE_FACTS', 'QUENDERIN_FIXTURE_ROOT', 'QUENDERIN_HOST_SOURCE', 'TMPDIR', 'TZ'].sort());
+  const result = runtimeEnvironment('/tmp/fixture', '/tmp/source', '/tmp/fixture/facts.json', '/tmp/bot');
+  assert.deepEqual(Object.keys(result).sort(), ['CI', 'DSH_HOME', 'GITHUB_ACTIONS', 'LANG', 'LC_ALL', 'PATH', 'QUENDERIN_FIXTURE_FACTS', 'QUENDERIN_FIXTURE_ROOT', 'QUENDERIN_HOST_SOURCE', 'QUENDERIN_BOT_SOURCE', 'TMPDIR', 'TZ'].sort());
   assert.equal(result.DSH_HOME, '/tmp/fixture');
   assert.equal(result.TMPDIR, '/tmp/fixture');
   for (const key of ['HOME', 'XDG_CONFIG_HOME', 'NODE_OPTIONS', 'CODEX_HOME', 'DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'QUENDERIN_PARENT_NETNS']) assert.equal(Object.hasOwn(result, key), false);

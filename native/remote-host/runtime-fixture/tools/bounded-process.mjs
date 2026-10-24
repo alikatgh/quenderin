@@ -6,12 +6,13 @@ export function processEnvironment() {
   return { PATH: `${dirname(process.execPath)}:/usr/bin:/bin`, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8', TZ: 'UTC', CI: 'true' };
 }
 
-export function runtimeEnvironment(scratch, source, facts) {
-  if (![scratch, source, facts].every(value => typeof value === 'string' && value.startsWith('/'))) throw new Error('Absolute fixture paths required');
+export function runtimeEnvironment(scratch, source, facts, bot) {
+  if (![scratch, source, facts, bot].every(value => typeof value === 'string' && value.startsWith('/'))) throw new Error('Absolute fixture paths required');
   return {
     ...processEnvironment(), GITHUB_ACTIONS: 'true',
     DSH_HOME: scratch, TMPDIR: scratch,
     QUENDERIN_FIXTURE_ROOT: scratch, QUENDERIN_HOST_SOURCE: source, QUENDERIN_FIXTURE_FACTS: facts,
+    QUENDERIN_BOT_SOURCE: bot,
   };
 }
 
