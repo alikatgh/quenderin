@@ -165,8 +165,10 @@ class AndroidVisionConfigureTests(unittest.TestCase):
             shutil.copyfile(vision.ROOT/'native/vision/CMakeLists.txt', bridge/'CMakeLists.txt')
             for name in ('quenderin_vision.cpp', 'vision_safety.cpp', 'quenderin_vision.h'):
                 (bridge/name).write_text('// Configure fixture; never compiled.\n')
-            for name in ('llama_jni.cpp', 'vision_jni.cpp'):
+            for name in ('llama_jni.cpp', 'vision_jni.cpp', 'max_jni.cpp'):
                 (jni/name).write_text('// Configure fixture; never compiled.\n')
+            max_runtime = root/'native/max-runtime/src'; max_runtime.mkdir(parents=True)
+            (max_runtime/'quenderin_max_model.c').write_text('/* Configure fixture; never compiled. */\n')
             source = (vision.ROOT/'android/jni/CMakeLists.txt').read_text()
             (jni/'CMakeLists.txt').write_text(source + r'''
 get_target_property(jni_links quenderin_llama LINK_LIBRARIES)

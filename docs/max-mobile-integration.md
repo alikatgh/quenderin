@@ -1,13 +1,13 @@
 # Mobile MAX/Bonsai integration status
 
-Updated 25 October 2026. This records the mobile half of the
+Updated 26 October 2026. This records the mobile half of the
 [MAX acceleration work](modular-acceleration-plan.md). It separates the
-portable adapter boundary that now exists from the mobile vendor runtime that
-has not been integrated.
+portable adapter boundary and native bindings that now exist from the mobile
+vendor runtime that has not been integrated.
 
-**Current status: not integrated, not validated on a phone, store submission
-deferred.** No model weights were downloaded, no MAX SDK was installed locally,
-and no device or simulator was run for this increment.
+**Current status: bindings exist, no vendor runtime is linked, not validated on a
+phone, store submission deferred.** No model weights were downloaded, no MAX SDK
+was installed locally, and no device or simulator was run for this increment.
 
 ## What is actually true
 
@@ -15,10 +15,12 @@ and no device or simulator was run for this increment.
 | --- | --- | --- |
 | MAX CPU tensor bridge | Foundation merged | [PR #185](https://github.com/alikatgh/quenderin/pull/185), real SDK run [40174916756](https://github.com/alikatgh/quenderin/actions/runs/40174916756) |
 | Portable model-adapter boundary | Source + host fixture | `native/max-runtime/{include,src}/quenderin_max_model.*`, `native/max-runtime/tools/test_model_adapter.py` |
+| Android JNI/Kotlin binding | Source + hosted fixture; unavailable without a runner | [max-android-binding.md](max-android-binding.md) |
+| Apple C/Swift binding | Source + hosted tests; unavailable without a runner | [max-apple-binding.md](max-apple-binding.md) |
 | Android arm64 / iOS SDK compile probes | Compile-only CI gates; inspect the exact candidate's checks | `native/max-runtime/android-check`, `native-remote-sdk.yml` steps |
 | Mobile audit receipt | Recorded and gated | `native/max-runtime/mobile-lock.json`, `tools/check_mobile_lock.py` |
-| Android MAX runtime | Blocked | Pinned MAX 26.7 source has zero Android/Adreno/Qualcomm/Dragonfly paths |
-| Bonsai MEF/tokenizer/cache contract | Blocked | Only the official GGUF is pinned; no reviewed MEF or mapping exists |
+| Android MAX runtime | Blocked | Pinned 26.7 and main `8d5597…` have zero Android/Adreno/Qualcomm/Dragonfly paths; no Android wheel |
+| Bonsai MEF/tokenizer/cache contract | Blocked | GGUF pinned; no MEF; the MLX tokenizer candidate is unadopted and unverified |
 | Apple iOS MAX artifact | Blocked | MAX's Apple target is Apple Silicon macOS; no iOS application artifact |
 | Phone speed, memory, thermals, rendered UI | Unverified | Standing restriction forbids device and simulator runs |
 | Store submission | Deferred | — |
@@ -65,6 +67,27 @@ never stage these files in shared or user-writable external storage. The adapter
 cannot close this gap without a vendor API that accepts an already-open
 descriptor.
 
+## Native bindings
+
+Both bindings wrap the canonical C implementation and link no vendor runner, so
+opening reports unavailable and MAX stays out of model pickers and Automatic.
+
+- **Android** — `android/jni/max_jni.cpp` compiles the canonical C boundary once,
+  uses registry IDs rather than raw pointers, binds callbacks and cancellation
+  to the active run ID, preserves supplementary Unicode and embedded NUL, and
+  refuses close while busy. The pure-Kotlin facade is
+  `MaxModelBinding.kt`; a hosted JNI/JVM fixture links the synthetic runner only
+  in the test build. See [max-android-binding.md](max-android-binding.md).
+- **Apple** — `apple/QuenderinKit/Sources/CMaxModel` is a byte-verified SwiftPM
+  staging of the same C files. The Swift wrapper exposes receipts, capability,
+  streaming generation, cancel and close; close waits for an active run and
+  cancel reaches the native lease directly. Tests use a test-only Swift runner.
+  See [max-apple-binding.md](max-apple-binding.md).
+
+Neither binding is compiled with a production runner, and no weights or vendor
+SDK were downloaded. Hosted JNI/JVM and Swift tests are compilation/fixture
+evidence, not MAX execution or phone performance.
+
 ```sh
 python3 -B native/max-runtime/tools/test_model_adapter.py --work "$HOME/quenderin-max-scratch"
 python3 -B -m unittest discover -s native/max-runtime/tests -p 'test_*.py'
@@ -82,12 +105,31 @@ head revision and retain its run links in the PR validation record. These checks
 establish host fixture execution and compile compatibility, not MAX execution
 or a distributable mobile runtime.
 
+## Backend input refresh — 25 October 2026
+
+Only metadata was inspected; no weights, wheels or vendor SDKs were downloaded.
+The refresh did not clear any support flag.
+
+| Input | Status | Evidence |
+| --- | --- | --- |
+| MAX host runtime releases | Supplied, host only | The latest official tag is still `max/v26.7.0` (2026-10-22); main is an unreleased `26.8.0.dev` pin. |
+| MAX Android/Adreno/Qualcomm backend | Missing | main `8d559749621418f39f31df7da998bcce884fa5b1` (2026-10-25) has 16,637 paths and none match Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly. |
+| MAX iOS application artifact | Missing | 26.7.0 publishes 15 `max` wheels for macOS arm64, manylinux aarch64 and manylinux x86_64; none are Android or iOS. `max-core` matches that host set. |
+| Bonsai 2B weights | Supplied and pinned | `prism-ml/Ternary-Bonsai-2-2B-gguf` at `683f7be…`, 429,183,456 bytes, SHA-256 `36061ad4…`. |
+| Bonsai MEF | Missing | The `prism-ml` organization exposes GGUF/MLX/unpacked/AWQ artifacts; no `.mef` artifact was found. |
+| Tokenizer candidate | Unadopted | `prism-ml/Ternary-Bonsai-2-2B-mlx-2bit` at `1c6cbae…` has `tokenizer.json` (12,807,982 bytes, SHA-256 `5f9e4d49…`). It is MLX metadata, not verified against the pinned GGUF tokenizer, prompt template, sampling or cache contract. |
+| Prompt/sampling/stop/cache contract | Missing | No publisher or Modular conversion recipe maps PTQ1_0/Hadamard weights, tokenizer, stops and multi-turn cache into a MAX runner. |
+| Demo build recipe | Missing | The author's 61 public repositories and 3 gists contain no matching MAX/Android/Bonsai build source by name, description or public code search; no author contact was made. |
+| Mobile redistribution terms | Not reviewed | The inspected SDK embeds the 2026-08-18 Community License; mobile components, notices and distribution requirements remain unreviewed. |
+| Telemetry controls | Unproven on mobile | Opt-outs are required by the boundary and proven for the host CPU fixture only. |
+
 ## Why mobile MAX is still blocked
 
-1. **No public mobile backend.** The pinned source revision
-   `527d069ee11a41ac5320af1f9402db0a66b2b868` (26.7.0) has 13,588 paths and none
-   match Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly. The official blog
-   defers those plugins. The demo's custom port is not public.
+1. **No public mobile backend.** Both the pinned source revision
+   `527d069ee11a41ac5320af1f9402db0a66b2b868` (26.7.0, 13,588 paths) and main
+   `8d5597…` (16,637 paths) contain no Android, Adreno, Qualcomm, Hexagon, QNN
+   or Dragonfly path. The official blog defers those plugins. The demo's custom
+   port is not public, and no Android or iOS wheel is published.
 2. **No Bonsai MEF contract.** The official
    `prism-ml/Ternary-Bonsai-2-2B-gguf` file is pinned
    (`683f7be2629342a50987627b40881e54761a2430`, 429,183,456 bytes, SHA-256

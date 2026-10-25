@@ -186,6 +186,10 @@ receipt. Details and the blocked matrix are in
   claims in a checked lock.
 - [x] Exercise the boundary on a host with an inert runner double, including
   failure injection and sanitizers. No vendor runtime was loaded.
+- [x] Wrap the boundary for Android (JNI + pure-Kotlin facade) and Apple
+  (byte-verified SwiftPM C target + Swift wrapper). Both link no production
+  runner, fail closed, bind cancellation to the active run, and stay out of
+  model selection.
 
 This boundary accepts an exported float32 graph or a vendor runner. It does not
 load GGUF, tokenize chat itself, implement autoregressive decoding, package an
@@ -194,8 +198,10 @@ remaining tasks stay unchecked:
 
 - [ ] Pin the Android demo's source, compiler, runtime, device backend, build
   recipe and exact Bonsai artifact. **Blocked:** no public demonstration source
-  or build recipe was located, and the pinned 26.7 tree has no mobile backend
-  in the recorded audit. Record a source receipt and all licenses when one exists.
+  or build recipe was located, the pinned 26.7 tree has no mobile backend, and
+  the 25 October refresh of main `8d5597…`, official releases and PyPI found no
+  Android/iOS wheel or MEF. Record a source receipt and all licenses when one
+  exists.
 - [ ] Verify redistribution and telemetry behavior for the exact components.
   The wheels declare `LicenseRef-MAX-Platform-Software-License`; the inspected
   SDK embeds the same Community License hash recorded for the pinned source.

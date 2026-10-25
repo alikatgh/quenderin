@@ -53,6 +53,7 @@ jobs:
           QUENDERIN_REQUIRE_REMOTE_CRYPTO: '0'
         run: |
           set -o pipefail
+          python3 -B scripts/stage_apple_max_model.py --check
           swift test --package-path apple/QuenderinKit 2>&1 | tee "$RUNNER_TEMP/inference-performance-swift.log"
           python3 -B scripts/check_inference_performance.py --results "$RUNNER_TEMP/inference-performance-swift.log"
       - name: Compile the portable MAX model-adapter boundary for iOS (no vendor runtime)
