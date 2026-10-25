@@ -1757,33 +1757,79 @@ fun main() {
         chat2.messages.map { it.text } == listOf("first question", "hello there") &&
             c2.summaries.size == 1 && c2.summaries[0].title == "first question"
     })
-    check("ConversationCoordinator.persist never saves an in-flight partial assistant", run {
+    fun streamingEngine(hook: () -> Unit): InferenceEngine = object : InferenceEngine {
+        override val loadedModelId: String? = "stream"
+        override fun load(model: ModelEntry, filePath: String) {}
+        override fun unload() {}
+        override fun complete(prompt: String): String = "unused"
+        override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+            onToken("partial")
+            hook()                            // navigate / stop / persist while the reply is streaming
+            onToken(" tail")
+            return "partial tail"
+        }
+    }
+    check("ConversationCoordinator.startNew mid-stream saves only completed turns", run {
         val p = InMemoryConversationPersistence()
         lateinit var coordinator: ConversationCoordinator
-        var persistedDuringStream: List<String>? = null
         var mid: (() -> Unit)? = null
-        val engine = object : InferenceEngine {
-            override val loadedModelId: String? = "stream"
-            override fun load(model: ModelEntry, filePath: String) {}
-            override fun unload() {}
-            override fun complete(prompt: String): String = "unused"
-            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
-                onToken("partial")
-                mid?.invoke()                 // navigate/persist while the reply is still streaming
-                onToken(" tail")
-                return "partial tail"
-            }
-        }
-        val chat = ChatModel(engine)
-        mid = {
-            coordinator.persist()
-            persistedDuringStream = p.loadTranscript(coordinator.currentId!!).map { it.text }
-        }
+        var oldId: String? = null
+        var savedAtNew: List<String>? = null
+        val chat = ChatModel(streamingEngine { mid?.invoke() })
         coordinator = ConversationCoordinator(chat, p, now = { 42L })
+        mid = {
+            oldId = coordinator.currentId
+            coordinator.startNew()            // actual New-chat path: invalidate, then persist inside
+            savedAtNew = p.loadTranscript(oldId!!).map { it.text }
+        }
         chat.send("question")
-        val after = p.loadTranscript(coordinator.currentId!!).map { it.text }
-        persistedDuringStream == listOf("question") && after == listOf("question") &&
-            !chat.isGenerating && coordinator.summaries.map { it.title } == listOf("question")
+        val afterSettle = p.loadTranscript(oldId!!).map { it.text }
+        coordinator.persist()                 // repeat persist after the abandoned stream settles
+        val afterRepeat = p.loadTranscript(oldId!!).map { it.text }
+        savedAtNew == listOf("question") && afterSettle == listOf("question") &&
+            afterRepeat == listOf("question") && chat.messages.isEmpty() && !chat.isGenerating
+    })
+    check("ConversationCoordinator Back ordering (invalidate, then persist) drops the partial", run {
+        val p = InMemoryConversationPersistence()
+        lateinit var coordinator: ConversationCoordinator
+        var mid: (() -> Unit)? = null
+        var oldId: String? = null
+        var savedAtBack: List<String>? = null
+        val chat = ChatModel(streamingEngine { mid?.invoke() })
+        coordinator = ConversationCoordinator(chat, p, now = { 43L })
+        mid = {
+            oldId = coordinator.currentId
+            chat.invalidatePreparedTurns()    // ChatScreen.onBack runs this FIRST...
+            coordinator.persist()             // ...then MainTabs.onBack persists
+            savedAtBack = p.loadTranscript(oldId!!).map { it.text }
+        }
+        chat.send("question")
+        val afterSettle = p.loadTranscript(oldId!!).map { it.text }
+        coordinator.persist()                 // the isGenerating-fall persist after the stream ends
+        val afterRepeat = p.loadTranscript(oldId!!).map { it.text }
+        savedAtBack == listOf("question") && afterSettle == listOf("question") &&
+            afterRepeat == listOf("question")
+    })
+    check("explicit Stop keeps the streamed partial and persists it exactly once", run {
+        val p = InMemoryConversationPersistence()
+        lateinit var coordinator: ConversationCoordinator
+        var mid: (() -> Unit)? = null
+        var oldId: String? = null
+        var savedAtStop: List<String>? = null
+        val chat = ChatModel(streamingEngine { mid?.invoke() })
+        coordinator = ConversationCoordinator(chat, p, now = { 44L })
+        mid = {
+            oldId = coordinator.currentId
+            chat.stopGenerating()             // ChatScreen.onStop: the partial is the user's answer
+            coordinator.persist()
+            savedAtStop = p.loadTranscript(oldId!!).map { it.text }
+        }
+        chat.send("question")
+        val afterSettle = p.loadTranscript(oldId!!).map { it.text }
+        coordinator.persist()                 // repeat persist must not drop or duplicate it
+        coordinator.open(oldId!!)             // reopen the saved conversation
+        savedAtStop == listOf("question", "partial") && afterSettle == listOf("question", "partial") &&
+            chat.messages.map { it.text } == listOf("question", "partial")
     })
     check("ConversationCoordinator.startNew is a no-op on an empty chat", run {
         val p = InMemoryConversationPersistence()

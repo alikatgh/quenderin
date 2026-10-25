@@ -94,25 +94,19 @@ public final class ConversationCoordinator: ObservableObject {
         chat.composer.restore(manager.currentID.flatMap { composerSnapshots[$0] } ?? .init())
     }
 
-    /// Persist the current conversation — call when a turn finishes. No-ops on an empty chat so
-    /// untouched "New conversation" rows don't pile up, and when nothing new was said since the
-    /// last save (see `savedCount`). Callers like `startNew()`/`open()` can run mid-stream (e.g.
-    /// the user navigates away) — `chat.messages` then ends in a placeholder/partial assistant
-    /// turn, which is trimmed before saving so the just-sent user message (and any prior
-    /// completed turns) is still persisted instead of silently dropped.
+    /// Persist the current conversation — call when a turn finishes, and when leaving the open
+    /// conversation. No-ops on an empty chat so untouched "New conversation" rows don't pile up, and
+    /// when nothing new was said since the last save (see `savedCount`).
+    ///
+    /// A reply the model still owns is NOT a finished turn: it is abandoned (removed) before the
+    /// save, so navigating away mid-stream can never leave a partial answer behind — not now, and not
+    /// later when the stream settles. An explicit Stop marks the partial as the user's answer first,
+    /// so Stop is never treated as abandonment.
     public func persist() {
-        guard let id = manager.currentID, !chat.messages.isEmpty else { return }
-        // Snapshot before stopping: a streaming send leaves an assistant placeholder/partial
-        // reply in `messages`; save only completed turns and the user's message, matching the
-        // Kotlin twin. Stop the reply as well so a conversation switch cannot leave a zombie
-        // writer behind (Q-004/Q-168).
-        var toSave = chat.messages
-        let wasGenerating = chat.isGenerating
-        if wasGenerating { chat.stopGenerating() }
-        if wasGenerating, toSave.last?.role == .assistant {
-            toSave.removeLast()
-        }
-        guard toSave.count > savedCount else { return }
+        if chat.isGenerating, !chat.didRequestStop { chat.abandonInFlightTurn() }
+        guard let id = manager.currentID else { return }
+        let toSave = chat.completedMessages()
+        guard !toSave.isEmpty, toSave.count > savedCount else { return }
         manager.save(id: id, messages: toSave, modelID: activeModelID,
                      automaticModelID: pinnedModelID, hasOrdinaryInference: chat.hasOrdinaryInference)
         savedCount = toSave.count

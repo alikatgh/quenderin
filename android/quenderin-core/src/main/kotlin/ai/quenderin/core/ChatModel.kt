@@ -88,6 +88,15 @@ class ChatModel(
     private val _messages = mutableListOf<ChatMessage>()
     val messages: List<ChatMessage> get() = synchronized(lock) { _messages.toList() }
 
+    /**
+     * Id of the assistant message owned by a send whose turn has NOT settled yet. While it is set,
+     * [completedMessages] excludes it and lifecycle invalidation removes it, so a partial reply that
+     * the user navigated away from can never be persisted as a finished turn. Cleared by a normal
+     * settle, by an explicit [stopGenerating] (the streamed partial is then the user's answer), and
+     * by [invalidatePreparedTurns]/[reset]/[restore].
+     */
+    private var inFlightAssistantId: Long? = null
+
     /** Monotonic id of the generation allowed to write the transcript. A send captures its id at start;
      *  [stopGenerating]/[reset]/[restore] bump this so a superseded (zombie) send stops writing. */
     @Volatile
@@ -216,7 +225,9 @@ class ChatModel(
                 engine.loadedContextTokens,
             )
             placeholderIndex = _messages.size
-            _messages += ChatMessage(Role.ASSISTANT, "")
+            val placeholder = ChatMessage(Role.ASSISTANT, "")
+            _messages += placeholder
+            inFlightAssistantId = placeholder.id
             afterPlaceholder = _messages.toList()
         }
         publishPhase(myGen, GenerationPhase.LOADING_PROMPT)
@@ -273,6 +284,9 @@ class ChatModel(
                 synchronized(lock) { if (myGen == activeGeneration) lastHitTokenCap = hitCap }
             }
             if (stillActive) writeAssistant(myGen, placeholderIndex, finalText)
+            // Normal settle: this turn is now a finished answer. A Stop/abandon already cleared the
+            // id (and a superseded send must not touch state a newer turn owns).
+            synchronized(lock) { if (myGen == activeGeneration) inFlightAssistantId = null }
             return finalText
         } finally {
             val finished = synchronized(lock) {
@@ -311,10 +325,33 @@ class ChatModel(
     }
 
     /**
+     * Messages that belong to SETTLED turns — the only transcript a caller may persist. While a
+     * reply streams, its assistant message is excluded (an engine that throws mid-stream leaves the
+     * partial excluded too); after an explicit Stop the id is already cleared, so the partial is the
+     * user's answer and is included. Twin of Swift `ChatModel.completedMessages`.
+     */
+    fun completedMessages(): List<ChatMessage> = synchronized(lock) {
+        val pending = inFlightAssistantId
+        if (pending == null) _messages.toList() else _messages.filterNot { it.id == pending }
+    }
+
+    /**
+     * Persistence-safe abandonment: only acts when the model still owns an unsettled turn, so a
+     * plain [ConversationCoordinator.persist] between turns does not churn the generation revision
+     * (which would invalidate a concurrently prepared admission). Twin of Swift
+     * `ChatModel.abandonInFlightTurn` called from `ConversationCoordinator.persist`.
+     */
+    fun discardUnsettledTurn() {
+        val owned = synchronized(lock) { isGenerating || inFlightAssistantId != null }
+        if (owned) invalidatePreparedTurns()
+    }
+
+    /**
      * Stop the in-flight reply where it is: bump the generation id so no more tokens land, and ask the
      * engine to interrupt its native decode now (the flag-only break lands one token late and does nothing
      * during a non-interruptible prefill — Q-005/Q-217). Idempotent; no-op when nothing is generating.
-     * The streamed partial already in the transcript stays. Twin of iOS `ChatModel.stopGenerating`.
+     * The streamed partial already in the transcript stays AND becomes persistable: an explicit Stop is
+     * a decision about the user's time, not an unfinished turn. Twin of iOS `ChatModel.stopGenerating`.
      */
     fun stopGenerating() {
         val revision: Long
@@ -322,17 +359,35 @@ class ChatModel(
             if (!isGenerating) return
             revision = ++activeGeneration   // supersede the running send → its remaining writes become no-ops
             isGenerating = false
+            inFlightAssistantId = null      // explicit Stop settles the partial; never discard it
         }
         engine.requestCancel()
         publishPhase(revision, GenerationPhase.IDLE)
     }
 
+    /**
+     * Lifecycle invalidation — new chat, open another conversation, delete, clear, Back, or a model
+     * switch. Supersedes the running send AND removes the unsettled assistant message, so a reply the
+     * user navigated away from is neither shown as an answer nor persisted later. Always bumps the
+     * generation id so a prepared-but-unstarted turn cannot begin.
+     */
     fun invalidatePreparedTurns() {
-        val cancel: Boolean
         val revision: Long
-        synchronized(lock) { revision = ++activeGeneration; cancel = isGenerating; isGenerating = false }
+        val cancel: Boolean
+        val snapshot: List<ChatMessage>?
+        synchronized(lock) {
+            revision = ++activeGeneration
+            cancel = isGenerating
+            isGenerating = false
+            val pending = inFlightAssistantId
+            inFlightAssistantId = null
+            val index = if (pending == null) -1 else _messages.indexOfFirst { it.id == pending }
+            if (index >= 0) _messages.removeAt(index)
+            snapshot = if (index >= 0) _messages.toList() else null
+        }
         if (cancel) engine.requestCancel()
         publishPhase(revision, GenerationPhase.IDLE)
+        snapshot?.let { publish(revision, it) }
     }
 
     /** Clear the conversation. First stops any in-flight generation so a zombie send can't write into the
@@ -340,7 +395,7 @@ class ChatModel(
     fun reset() {
         val revision: Long
         val cancel: Boolean
-        synchronized(lock) { revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false; _messages.clear() }
+        synchronized(lock) { revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false; inFlightAssistantId = null; _messages.clear() }
         if (cancel) engine.requestCancel()
         publishPhase(revision, GenerationPhase.IDLE)
         publish(revision, emptyList())
@@ -355,6 +410,7 @@ class ChatModel(
         val cancel: Boolean
         synchronized(lock) {
             revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false
+            inFlightAssistantId = null
             _messages.clear()
             _messages.addAll(saved)
         }

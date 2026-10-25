@@ -69,25 +69,17 @@ class ConversationCoordinator(
 
     /** Persist the current conversation — call when a turn finishes. No-op on an empty chat so
      *  untouched "New conversation" rows don't pile up, and when nothing new was said since the
-     *  last save (see [savedCount]). */
+     *  last save (see [savedCount]).
+     *
+     *  A reply the model still owns is NOT a finished turn: it is abandoned (removed) before the
+     *  save, so navigating away mid-stream can never leave a partial answer behind — not now, and
+     *  not later when the stream settles. An explicit Stop cleared that ownership first, so the
+     *  user's streamed partial is still persisted. */
     fun persist() {
-        val id = manager.currentId
-        if (chat.messages.isEmpty()) {
-            if (chat.isGenerating) chat.stopGenerating()
-            return
-        }
-        val generating = chat.isGenerating
-        // Snapshot the COMPLETED turns before stopping. A streaming send keeps an assistant
-        // placeholder/half reply in `messages`; the Swift twin trims that final in-flight assistant
-        // (ConversationCoordinator.persist), so Android must not persist it either. Kotlin still
-        // stops first so a conversation switch cannot leave a zombie writer behind (Q-004/Q-168).
-        val completed = if (generating && chat.messages.lastOrNull()?.role == Role.ASSISTANT) {
-            chat.messages.dropLast(1)
-        } else {
-            chat.messages.toList()
-        }
-        if (generating) chat.stopGenerating()
-        if (id == null || completed.size <= savedCount) return
+        chat.discardUnsettledTurn()
+        val id = manager.currentId ?: return
+        val completed = chat.completedMessages()
+        if (completed.isEmpty() || completed.size <= savedCount) return
         manager.save(id, completed)
         savedCount = completed.size
         refresh()

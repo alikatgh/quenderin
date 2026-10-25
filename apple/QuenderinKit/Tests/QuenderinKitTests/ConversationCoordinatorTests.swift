@@ -1,6 +1,28 @@
 import XCTest
 @testable import QuenderinKit
 
+/// Streams exactly what the test yields, so a navigation/Stop can be exercised while the assistant
+/// turn is genuinely in flight — no timers, no scheduling assumptions. Mirrors the proven
+/// `SelectionFixtureEngine.openAgentStream` continuation pattern.
+private actor ControlledStreamEngine: InferenceEngine {
+    private var loaded: String? = "controlled-stream"
+    private var continuation: AsyncThrowingStream<String, Error>.Continuation?
+    private var started = false
+
+    func loadedModelID() async -> String? { loaded }
+    func load(model: ModelEntry, at fileURL: URL) async throws { loaded = model.id }
+    func unload() async { loaded = nil }
+
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        guard loaded != nil else { throw InferenceError.modelNotLoaded }
+        return AsyncThrowingStream { continuation = $0; started = true }
+    }
+
+    func isStarted() -> Bool { started }
+    func emit(_ text: String) { continuation?.yield(text) }
+    func finish() { continuation?.finish(); continuation = nil }
+}
+
 final class ConversationCoordinatorTests: XCTestCase {
 
     // MARK: - FileConversationPersistence (the on-disk edge)
@@ -42,6 +64,27 @@ final class ConversationCoordinatorTests: XCTestCase {
         let engine = MockInferenceEngine(cannedReply: reply)
         try? await engine.load(model: ModelCatalog.smallest, at: URL(fileURLWithPath: "/dev/null"))
         return ChatModel(engine: engine)
+    }
+
+    /// A chat whose reply the test drives token by token (see `ControlledStreamEngine`).
+    private func streamingChat() async -> (ChatModel, ControlledStreamEngine) {
+        let engine = ControlledStreamEngine()
+        try? await engine.load(model: ModelCatalog.smallest, at: URL(fileURLWithPath: "/dev/null"))
+        return (ChatModel(engine: engine), engine)
+    }
+
+    /// Wait until `send` has connected the engine stream, so `emit` cannot be dropped.
+    private func waitUntilStreaming(_ engine: ControlledStreamEngine) async {
+        while true {
+            if await engine.isStarted() { return }
+            await Task.yield()
+        }
+    }
+
+    /// Wait until the first piece has landed in the transcript (the first piece always flushes).
+    @MainActor
+    private func waitForReplyText(_ chat: ChatModel, _ text: String) async {
+        while chat.messages.last?.text != text { await Task.yield() }
     }
 
     @MainActor
@@ -126,9 +169,9 @@ final class ConversationCoordinatorTests: XCTestCase {
     }
 
     /// `persist()` mid-stream must not write the trailing placeholder/partial assistant message to
-    /// disk. Pre-fix, `open()`/`startNew()` navigating away while a reply is in flight saved a
-    /// transcript ending in an empty assistant turn (see `ChatModelTests` for the matching
-    /// `isGenerating` spin-wait pattern this borrows).
+    /// disk. The unsettled turn is abandoned (removed) before the save, so it also cannot reappear
+    /// when the stream later settles. See `ChatModelTests` for the matching `isGenerating` spin-wait
+    /// pattern this borrows.
     @MainActor
     func testPersistSavesUserTurnAndTrimsPartialAssistantWhileGenerating() async {
         let persistence = InMemoryConversationPersistence()
@@ -207,5 +250,82 @@ final class ConversationCoordinatorTests: XCTestCase {
         XCTAssertEqual(persistence.loadIndex().map(\.id), ["real"])
         XCTAssertEqual(coord.currentID, "real")               // restored the real chat, not a shell
         XCTAssertEqual(coord.chat.messages.map(\.text), ["keep me"])
+    }
+
+    /// Reviewer regression: Back mid-stream must abandon the partial, so the same stream completing
+    /// afterwards can never be persisted by the next persist/reopen.
+    @MainActor
+    func testBackThenCompletionThenReopenDoesNotPersistPartial() async {
+        let persistence = InMemoryConversationPersistence()
+        let (chat, engine) = await streamingChat()
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
+        let id = coord.currentID!
+
+        let task = Task { await chat.send("question") }
+        while chat.messages.count < 2 { await Task.yield() }   // user + assistant placeholder
+        await waitUntilStreaming(engine)
+        await engine.emit("partial")
+        await waitForReplyText(chat, "partial")
+        XCTAssertTrue(chat.isGenerating)
+
+        coord.persist()   // Back to the list, mid-stream (the actual caller)
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question"])
+
+        await engine.finish()   // the abandoned stream still completes on the engine
+        await task.value
+        coord.persist()         // the isGenerating-fall persist after the stream ends
+        coord.open(id)          // reopen the saved conversation
+        XCTAssertEqual(chat.messages.map(\.text), ["question"])
+    }
+
+    /// New chat mid-stream is abandonment, not Stop: only the user's turn is saved and the fresh
+    /// conversation is empty.
+    @MainActor
+    func testStartNewMidStreamSavesUserTurnOnly() async {
+        let persistence = InMemoryConversationPersistence()
+        let (chat, engine) = await streamingChat()
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 2 })
+        let id = coord.currentID!
+
+        let task = Task { await chat.send("question") }
+        while chat.messages.count < 2 { await Task.yield() }
+        await waitUntilStreaming(engine)
+        await engine.emit("partial")
+        await waitForReplyText(chat, "partial")
+
+        coord.startNew()   // actual New-chat path: abandon, persist, reset
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question"])
+        XCTAssertTrue(chat.messages.isEmpty)
+
+        await engine.finish()
+        await task.value
+        coord.persist()    // repeat persist after the abandoned stream settles
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question"])
+    }
+
+    /// An explicit Stop is the opposite decision: the streamed partial IS the user's answer, so it
+    /// must survive persist and reopen exactly once (reviewer: never delete valid Stop partials).
+    @MainActor
+    func testExplicitStopPartialSurvivesPersistAndReopen() async {
+        let persistence = InMemoryConversationPersistence()
+        let (chat, engine) = await streamingChat()
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 3 })
+        let id = coord.currentID!
+
+        let task = Task { await chat.send("question") }
+        while chat.messages.count < 2 { await Task.yield() }
+        await waitUntilStreaming(engine)
+        await engine.emit("partial")
+        await waitForReplyText(chat, "partial")
+
+        chat.stopGenerating()   // ChatView's Stop button
+        coord.persist()
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question", "partial"])
+
+        await engine.finish()
+        await task.value
+        coord.persist()         // repeat persist must not drop or duplicate it
+        coord.open(id)
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "partial"])
     }
 }

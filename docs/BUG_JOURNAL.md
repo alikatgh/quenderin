@@ -4,10 +4,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
-- **Stopping a stream is not the same as removing its partial reply.** `ConversationCoordinator.persist()` used to stop
-  generation and then save `chat.messages`; the half-streamed assistant placeholder was still in that list, so navigating
-  away persisted a truncated reply. Snapshot the COMPLETED turns before stopping (trim the final in-flight assistant), then
-  save. Swift already trimmed; Kotlin now matches. CoreVerify pins the mid-stream persist/reopen case. (2026-10-26)
+- **Stopping a stream is not the same as removing its partial reply — and trimming a saved snapshot is nowhere near enough.**
+  A half-streamed assistant turn is LIVE `ChatModel` state: trimming it only from the saved list lets the next `persist()`
+  write it once the stream settles (`savedCount` still lags), and Android's navigation cleared `isGenerating` before
+  `persist()` ran, so the trim never fired at all. ChatModel now owns the unsettled assistant message: `completedMessages()`
+  excludes it, lifecycle invalidation (New/Open/Back/delete/clear) REMOVES it, and only an explicit Stop settles it in place
+  (that partial is the user's answer and must persist). Both twins pin New, Back-then-completion, repeat persist and
+  Stop/reopen. (2026-10-26)
 
 - **An over-RAM model on a near-full disk can watchdog-panic macOS — free disk (≥ model size) before benchmarking.**
   A 12.3 GiB MoE on an 18 GB Mac with the disk 97 % full has no swap headroom; `llama-bench -ngl 999` thrashed until
