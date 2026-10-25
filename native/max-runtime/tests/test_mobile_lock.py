@@ -39,6 +39,30 @@ class MobileLock(unittest.TestCase):
     def test_changed_license_rejected(self):
         self.rejected(lambda x: x["movement"]["sourceLicense"].update(bytes=1))
 
+    def test_refresh_required(self):
+        self.rejected(lambda x: x.pop("refresh"))
+
+    def test_refresh_hidden_mobile_source_rejected(self):
+        self.rejected(lambda x: x["refresh"].update(mainMobileBackendPaths=1))
+
+    def test_refresh_android_wheel_claim_rejected(self):
+        self.rejected(lambda x: x["refresh"].update(androidOrIosWheels=1))
+
+    def test_refresh_mef_claim_rejected(self):
+        self.rejected(lambda x: x["refresh"].update(prismMlMefArtifacts=1))
+
+    def test_refresh_demo_source_claim_rejected(self):
+        self.rejected(lambda x: x["refresh"].update(demoReposMatchingMaxMobile=1))
+
+    def test_refresh_platform_set_rejected(self):
+        self.rejected(lambda x: x["refresh"]["pypiWheelPlatforms"].append("android_arm64"))
+
+    def test_unadopted_tokenizer_required(self):
+        self.rejected(lambda x: x["refresh"]["bonsaiTokenizerCandidate"].update(adopted=True))
+
+    def test_tokenizer_candidate_hash_required(self):
+        self.rejected(lambda x: x["refresh"]["bonsaiTokenizerCandidate"].update(sha256="0" * 64))
+
     def test_demo_cannot_claim_source(self):
         self.rejected(lambda x: x["demonstration"].update(publicSourceAvailable=True))
 
