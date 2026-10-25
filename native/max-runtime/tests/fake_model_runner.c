@@ -103,6 +103,14 @@ static QMaxCode fake_tokenize(void *state, const char *utf8, size_t bytes,
   (void)error;
   if (!state || !utf8 || !tokens || !count || bytes < 1) return QMAX_INVALID_ARGUMENT;
   ((FakeRunner *)state)->steps = 0;
+  if (bytes >= 9 && memcmp(utf8, "__block__", 9) == 0) {
+    pthread_mutex_lock(&gate_mutex);
+    entered = 1;
+    pthread_cond_broadcast(&gate_cond);
+    while (!released) pthread_cond_wait(&gate_cond, &gate_mutex);
+    block_first = 0;
+    pthread_mutex_unlock(&gate_mutex);
+  }
   if (zero_prompt) {
     *count = 0;
     return QMAX_OK;
