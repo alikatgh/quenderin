@@ -7,6 +7,9 @@ private final class FakeState: @unchecked Sendable {
     var step = 0
     let entered = DispatchSemaphore(value: 0)
     let release = DispatchSemaphore(value: 0)
+    var blockClose = false
+    let closeEntered = DispatchSemaphore(value: 0)
+    let closeRelease = DispatchSemaphore(value: 0)
 }
 
 private final class ResultBox: @unchecked Sendable {
@@ -85,6 +88,11 @@ private func fakeNext(_ runner: UnsafeMutableRawPointer?, _ tokens: UnsafePointe
 
 private func fakeClose(_ runner: UnsafeMutableRawPointer?) {
     guard let runner else { return }
+    let state = Unmanaged<FakeState>.fromOpaque(runner).takeUnretainedValue()
+    if state.blockClose {
+        state.closeEntered.signal()
+        _ = state.closeRelease.wait(timeout: .now() + 10)
+    }
     Unmanaged<FakeState>.fromOpaque(runner).release()
 }
 
@@ -251,5 +259,33 @@ final class MaxModelTests: XCTestCase {
         XCTAssertTrue(result.succeeded)
         XCTAssertFalse(handle.isClosed)
         XCTAssertEqual(handle.close(), .closed)
+    }
+
+    func testCancelWaitsForCloseLease() throws {
+        let value = try receipt()
+        var runner = makeFakeRunner()
+        let opened = MaxModelBinding.open(value, runner: &runner)
+        guard case .success(let handle) = opened else { return XCTFail("open failed") }
+        guard let state = fakeLastState else { return XCTFail("missing fake runner state") }
+        state.blockClose = true
+        let closeBox = CloseBox()
+        let closeDone = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            closeBox.value = handle.close()
+            closeDone.signal()
+        }
+        XCTAssertEqual(state.closeEntered.wait(timeout: .now() + 5), .success)
+        let cancelDone = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            handle.cancel()
+            cancelDone.signal()
+        }
+        // cancel must block on the pointer lock while close owns the model lease.
+        XCTAssertEqual(cancelDone.wait(timeout: .now() + 0.2), .timedOut)
+        state.closeRelease.signal()
+        XCTAssertEqual(closeDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(cancelDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(closeBox.value, .closed)
+        XCTAssertTrue(handle.isClosed)
     }
 }

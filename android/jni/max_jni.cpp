@@ -78,6 +78,14 @@ struct ReceiptStorage {
     QMaxModelReceipt receipt{};
 };
 
+bool valid_sha256(const std::string& value) {
+    if (value.size() != 64) return false;
+    for (char c : value) {
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
+    }
+    return true;
+}
+
 bool build_receipt_impl(JNIEnv* env, jobjectArray path_array, jlongArray size_array,
                         jobjectArray hash_array, jstring runner_name, jstring backend_name,
                         jint context_tokens, jint max_output_tokens, ReceiptStorage* out) {
@@ -99,7 +107,12 @@ bool build_receipt_impl(JNIEnv* env, jobjectArray path_array, jlongArray size_ar
         } else {
             try {
                 out->paths.push_back(quenderin::jni::utf8(env, path, QMAX_MODEL_MAX_PATH_BYTES));
-                out->hashes.push_back(quenderin::jni::utf8(env, hash, 64));
+                const auto hash_value = quenderin::jni::utf8(env, hash, 64);
+                if (!valid_sha256(hash_value)) {
+                    ok = false;
+                } else {
+                    out->hashes.push_back(hash_value);
+                }
             } catch (...) {
                 ok = false;
             }

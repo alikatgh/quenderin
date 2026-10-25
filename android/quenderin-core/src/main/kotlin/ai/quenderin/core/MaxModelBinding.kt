@@ -46,15 +46,18 @@ object MaxModelStatus {
 
 data class MaxModelFile(val path: String, val bytes: Long, val sha256: String)
 
-data class MaxModelReceipt(
-    val files: List<MaxModelFile>,
+class MaxModelReceipt(
+    files: List<MaxModelFile>,
     val runnerName: String,
     val backend: String,
     val contextTokens: Int,
     val maxOutputTokens: Int,
 ) {
+    /** Snapshot the caller-owned list so later mutation cannot change the receipt. */
+    val files: List<MaxModelFile> = files.toList()
+
     init {
-        require(files.size in 1..MaxModelLimits.MAX_FILES) { "One to ${MaxModelLimits.MAX_FILES} artifact files are required." }
+        require(this.files.size in 1..MaxModelLimits.MAX_FILES) { "One to ${MaxModelLimits.MAX_FILES} artifact files are required." }
         require(runnerName.encodeToByteArray().size in 1..63) { "Runner identity is outside the reviewed range." }
         require(backend.encodeToByteArray().size in 1..15) { "Compiled backend identity is outside the reviewed range." }
         require(contextTokens in 1..MaxModelLimits.MAX_CONTEXT) { "Context budget is outside the reviewed range." }
@@ -62,7 +65,7 @@ data class MaxModelReceipt(
             "Output budget is outside the reviewed range."
         }
         var total = 0L
-        files.forEach { file ->
+        this.files.forEach { file ->
             require(File(file.path).isAbsolute && !file.path.contains('\u0000') &&
                 file.path.encodeToByteArray().size <= MaxModelLimits.MAX_PATH_BYTES) {
                 "Artifact paths must be absolute app-private paths."

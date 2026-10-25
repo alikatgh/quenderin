@@ -396,11 +396,12 @@ public final class MaxModelHandle: @unchecked Sendable {
     }
 
     /// Cancels the active run. Safe from the token callback or another thread.
+    /// Holds the pointer lock across the bounded native call so a concurrent
+    /// close cannot free the model between the null check and cancellation.
     public func cancel() {
         pointerLock.lock()
-        let current = model
-        pointerLock.unlock()
-        if let current { qmax_model_cancel(current) }
+        defer { pointerLock.unlock() }
+        if let current = model { qmax_model_cancel(current) }
     }
 
     /// Waits for an active generation to drain, then closes. Returns `.busy`

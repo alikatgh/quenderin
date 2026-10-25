@@ -44,7 +44,10 @@ Cases: receipt verification and tamper rejection, unavailable production path,
 capability after a real open, streaming text, supplementary scalar plus NUL,
 cancellation from the sink, cancellation after admission but before the first
 token, BUSY on a concurrent run, close-while-busy, reuse, idempotent close and a
-closed handle. The fake runner is never compiled into the app.
+closed handle. The JNI boundary rejects hash lengths 0/1/63 before copying, and
+the Kotlin receipt snapshots its caller-owned file list so post-construction
+mutation cannot change a verified receipt. The fake runner is never compiled
+into the app.
 
 The app's hosted Android job builds `libquenderin_max_jni.so` for arm64 through
 the existing CMake external build; that compile is the packaging check. It does

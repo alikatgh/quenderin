@@ -41,6 +41,7 @@ shipped) and synthetic files:
   token;
 - BUSY while another run holds the lease;
 - `close()` waits for the run to drain and returns `.closed`;
+- a concurrent `cancel()` waits for a blocked close to release the model lease;
 - reuse after cancellation, idempotent close, closed-handle rejection;
 - close from the callback is refused, not deadlocked.
 

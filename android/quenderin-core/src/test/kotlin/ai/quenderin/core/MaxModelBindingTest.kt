@@ -91,6 +91,14 @@ class MaxModelBindingTest {
         }
     }
 
+    @Test fun receiptSnapshotsTheCallerList() {
+        val files = mutableListOf(MaxModelFile("/tmp/model.mef", 8, "a".repeat(64)))
+        val receipt = MaxModelReceipt(files, "synthetic-runner", "cpu", 16, 4)
+        files[0] = files[0].copy(sha256 = "")
+        assertEquals(64, receipt.files[0].sha256.length)
+        assertEquals("a".repeat(64), receipt.files[0].sha256)
+    }
+
     @Test fun performanceMappingIsBoundedAndFinite() {
         val values = doubleArrayOf(2.0, 6.0, Double.NaN, -1.0, 0.0, Double.POSITIVE_INFINITY, 3.0, 1.0)
         val performance = MaxGenerationPerformance.from(values)
