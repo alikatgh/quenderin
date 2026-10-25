@@ -209,6 +209,7 @@ final class MaxModelTests: XCTestCase {
         guard case .success(let handle) = opened else { return XCTFail("open failed") }
         let entered = DispatchSemaphore(value: 0)
         let release = DispatchSemaphore(value: 0)
+        let workerDone = DispatchSemaphore(value: 0)
         let first = FirstCall()
         let worker = ResultBox()
         DispatchQueue.global().async {
@@ -219,6 +220,7 @@ final class MaxModelTests: XCTestCase {
                 }
                 return true
             }
+            workerDone.signal()
         }
         XCTAssertEqual(entered.wait(timeout: .now() + 5), .success)
         XCTAssertEqual(handle.generate(prompt: "hi") { _ in true }.code,
@@ -231,6 +233,7 @@ final class MaxModelTests: XCTestCase {
         }
         XCTAssertEqual(closeDone.wait(timeout: .now() + 0.2), .timedOut)
         release.signal()
+        XCTAssertEqual(workerDone.wait(timeout: .now() + 5), .success)
         XCTAssertEqual(closeDone.wait(timeout: .now() + 5), .success)
         XCTAssertEqual(worker.value?.succeeded, true)
         XCTAssertEqual(closeBox.value, .closed)
