@@ -17,6 +17,17 @@ private final class CloseBox: @unchecked Sendable {
     var value: MaxCloseResult?
 }
 
+private final class FirstCall: @unchecked Sendable {
+    private let lock = NSLock()
+    private var first = true
+    func take() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if first { first = false; return true }
+        return false
+    }
+}
+
 nonisolated(unsafe) private var fakeLastState: FakeState?
 
 private let fakeScript: [(bytes: [UInt8], eog: Bool)] = [
@@ -195,11 +206,14 @@ final class MaxModelTests: XCTestCase {
         guard case .success(let handle) = opened else { return XCTFail("open failed") }
         let entered = DispatchSemaphore(value: 0)
         let release = DispatchSemaphore(value: 0)
+        let first = FirstCall()
         let worker = ResultBox()
         DispatchQueue.global().async {
             worker.value = handle.generate(prompt: "hi") { _ in
-                entered.signal()
-                release.wait()
+                if first.take() {
+                    entered.signal()
+                    release.wait()
+                }
                 return true
             }
         }
