@@ -45,6 +45,7 @@ struct MaxHandle {
     std::atomic<jlong> current_run{0};
     std::atomic<jlong> cancel_requested{0};
     std::atomic<bool> running{false};
+    jlong pending_cancel = 0;
     std::mutex run_mutex;
     std::mutex model_mutex;
 };
@@ -447,20 +448,6 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
         MaxHandle* handle;
         ~RunningGuard() { handle->running.store(false); }
     } running_guard{handle.get()};
-    {
-        std::lock_guard<std::mutex> lock(handle->model_mutex);
-        model = handle->model;
-    }
-    if (!model) {
-        set_performance(env, performance_out, performance);
-        set_error(env, error_out, "MAX model handle is closed or unknown.");
-        return QMAX_INVALID_ARGUMENT;
-    }
-    {
-        std::lock_guard<std::mutex> lock(handle->run_mutex);
-        handle->current_run.store(run_id);
-        handle->cancel_requested.store(0);
-    }
     struct RunGuard {
         MaxHandle* handle;
         jlong run_id;
@@ -470,6 +457,33 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
             if (handle->cancel_requested.load() == run_id) handle->cancel_requested.store(0);
         }
     } run_guard{handle.get(), run_id};
+    bool pre_cancelled = false;
+    {
+        std::lock_guard<std::mutex> lock(handle->run_mutex);
+        if (handle->pending_cancel == run_id) {
+            handle->pending_cancel = 0;
+            pre_cancelled = true;
+        } else {
+            handle->pending_cancel = 0;
+            handle->current_run.store(run_id);
+            handle->cancel_requested.store(0);
+        }
+    }
+    if (pre_cancelled) {
+        performance.status = 1;
+        set_performance(env, performance_out, performance);
+        set_error(env, error_out, "Generation cancelled before native admission.");
+        return QMAX_CANCELLED;
+    }
+    {
+        std::lock_guard<std::mutex> lock(handle->model_mutex);
+        model = handle->model;
+    }
+    if (!model) {
+        set_performance(env, performance_out, performance);
+        set_error(env, error_out, "MAX model handle is closed or unknown.");
+        return QMAX_INVALID_ARGUMENT;
+    }
 
     std::string prompt_bytes;
     try {
@@ -523,15 +537,24 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
 
 JNIEXPORT jboolean JNICALL
 Java_ai_quenderin_core_MaxModelNative_nativeCancel(JNIEnv*, jclass, jlong id, jlong run_id) {
+    if (run_id <= 0) return JNI_FALSE;
     auto handle = handle_for(id);
     if (!handle) return JNI_FALSE;
     std::lock_guard<std::mutex> model_lock(handle->model_mutex);
     if (!handle->model) return JNI_FALSE;
     std::lock_guard<std::mutex> run_lock(handle->run_mutex);
-    if (handle->current_run.load() != run_id) return JNI_FALSE;
-    handle->cancel_requested.store(run_id);
-    qmax_model_cancel(handle->model);
-    return JNI_TRUE;
+    if (handle->current_run.load() == run_id) {
+        handle->cancel_requested.store(run_id);
+        qmax_model_cancel(handle->model);
+        return JNI_TRUE;
+    }
+    if (handle->current_run.load() == 0) {
+        // The wrapper published this run before JNI registered it. Hold the
+        // request until nativeGenerate consumes it (or a different run starts).
+        handle->pending_cancel = run_id;
+        return JNI_TRUE;
+    }
+    return JNI_FALSE;  // a different run owns the lease; never cancel it
 }
 
 JNIEXPORT jint JNICALL

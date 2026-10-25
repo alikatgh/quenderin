@@ -26,8 +26,10 @@ The Swift wrapper exposes receipt verification, capability, open, streaming
 generation, cancel and close. `close()` waits for an active generation to drain
 and returns `.busy` when called from the token callback itself. `cancel()` calls
 the native atomic lease directly, so a synchronous generation cannot block
-cancellation. Errors and numeric reports are Swift value types; no transcript,
-path or prompt is put in an error.
+cancellation. Run tokens let a caller cancel a specific run, including a pending
+pre-admission request; a delayed token from an earlier run cannot cancel a later
+one. Errors and numeric reports are Swift value types; no transcript, path or
+prompt is put in an error.
 
 ## Tests
 

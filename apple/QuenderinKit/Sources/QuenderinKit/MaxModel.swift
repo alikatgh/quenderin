@@ -128,6 +128,12 @@ public struct MaxModelPerformance: Equatable, Sendable {
         value.status = 6
         return MaxModelPerformance(value)
     }()
+
+    static let cancelled: MaxModelPerformance = {
+        var value = QMaxModelPerformance()
+        value.status = 1
+        return MaxModelPerformance(value)
+    }()
 }
 
 public struct MaxGenerationResult: Equatable, Sendable {
@@ -208,6 +214,11 @@ private func maxEmitThunk(_ context: UnsafeMutableRawPointer?, _ utf8: UnsafePoi
     let box = Unmanaged<EmitBox>.fromOpaque(context).takeUnretainedValue()
     guard let text = String(data: Data(bytes: utf8, count: bytes), encoding: .utf8) else { return 0 }
     return box.sink(text) ? 1 : 0
+}
+
+private func maxShouldStopThunk(_ context: UnsafeMutableRawPointer?) -> Int32 {
+    guard let context else { return 0 }
+    return Unmanaged<CancelFlag>.fromOpaque(context).takeUnretainedValue().isSet ? 1 : 0
 }
 
 private func maxMessage(_ error: inout QMaxError) -> String {
@@ -291,6 +302,27 @@ public enum MaxModelBinding {
     }
 }
 
+/// A caller-visible run identity. Mint with `MaxModelHandle.makeGenerationToken()`;
+/// a stale token cannot cancel a later run.
+public struct MaxGenerationToken: Equatable, Sendable {
+    fileprivate let value: UInt64
+}
+
+private final class CancelFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    func set() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+    var isSet: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+}
+
 /// One verified installation. Generation is serialized; `cancel()` calls the
 /// native atomic lease directly, and `close()` waits for an active generation
 /// to drain. Never call `close()` from the token callback; it returns `.busy`.
@@ -302,6 +334,10 @@ public final class MaxModelHandle: @unchecked Sendable {
     private var generating = false
     private var model: OpaquePointer?
     private let maxOutputTokens: Int
+    private var nextToken: UInt64 = 0
+    private var currentToken: MaxGenerationToken?
+    private var pendingCancelToken: MaxGenerationToken?
+    private var cancelFlag: CancelFlag?
 
     init(model: OpaquePointer, maxOutputTokens: Int) {
         self.model = model
@@ -336,8 +372,23 @@ public final class MaxModelHandle: @unchecked Sendable {
                             message: message)
     }
 
+    public func makeGenerationToken() -> MaxGenerationToken {
+        condition.lock()
+        nextToken &+= 1
+        let token = MaxGenerationToken(value: nextToken)
+        condition.unlock()
+        return token
+    }
+
+    private var cancelledResult: MaxGenerationResult {
+        MaxGenerationResult(code: Int(qmax_code_value(qmax_code_cancelled())),
+                            performance: .cancelled,
+                            message: "Generation cancelled.")
+    }
+
     public func generate(prompt: String, maxTokens: Int? = nil, temperature: Float = 0.7,
                          topP: Float = 0.9, seed: UInt32 = 0,
+                         token: MaxGenerationToken? = nil,
                          onToken: @escaping (String) -> Bool) -> MaxGenerationResult {
         if DispatchQueue.getSpecific(key: queueKey) != nil { return busyResult }
         let bytes = prompt.utf8.map { Int8(bitPattern: $0) }
@@ -351,16 +402,28 @@ public final class MaxModelHandle: @unchecked Sendable {
         guard (0...2).contains(temperature), topP > 0, topP <= 1 else {
             return invalidResult("Sampling parameters are outside the reviewed range.")
         }
+        let run = token ?? makeGenerationToken()
         condition.lock()
         if generating {
             condition.unlock()
             return busyResult
         }
+        if pendingCancelToken == run {
+            pendingCancelToken = nil
+            condition.unlock()
+            return cancelledResult
+        }
+        pendingCancelToken = nil
         generating = true
+        currentToken = run
+        let flag = CancelFlag()
+        cancelFlag = flag
         condition.unlock()
         defer {
             condition.lock()
             generating = false
+            currentToken = nil
+            cancelFlag = nil
             condition.broadcast()
             condition.unlock()
         }
@@ -371,6 +434,7 @@ public final class MaxModelHandle: @unchecked Sendable {
                 return closedResult
             }
             pointerLock.unlock()
+            if flag.isSet { return cancelledResult }
             var request = QMaxModelRequest()
             request.max_tokens = UInt32(budget)
             request.temperature = temperature
@@ -383,9 +447,13 @@ public final class MaxModelHandle: @unchecked Sendable {
                 request.prompt = buffer.baseAddress
                 request.prompt_bytes = buffer.count
                 return withExtendedLifetime(box) {
-                    qmax_model_generate(model, &request, maxEmitThunk,
-                                        Unmanaged.passUnretained(box).toOpaque(), nil, nil,
-                                        &performance, &error)
+                    withExtendedLifetime(flag) {
+                        qmax_model_generate(model, &request, maxEmitThunk,
+                                            Unmanaged.passUnretained(box).toOpaque(),
+                                            maxShouldStopThunk,
+                                            Unmanaged.passUnretained(flag).toOpaque(),
+                                            &performance, &error)
+                    }
                 }
             }
             let message = maxMessage(&error)
@@ -395,13 +463,46 @@ public final class MaxModelHandle: @unchecked Sendable {
         }
     }
 
-    /// Cancels the active run. Safe from the token callback or another thread.
-    /// Holds the pointer lock across the bounded native call so a concurrent
-    /// close cannot free the model between the null check and cancellation.
-    public func cancel() {
+    /// Cancels the current run. Holds the pointer lock across the bounded native
+    /// call so a concurrent close cannot free the model between check and cancel.
+    @discardableResult
+    public func cancel() -> Bool {
+        condition.lock()
+        let active = currentToken
+        condition.unlock()
+        if let active { return cancel(active) }
         pointerLock.lock()
         defer { pointerLock.unlock() }
-        if let current = model { qmax_model_cancel(current) }
+        guard let model else { return false }
+        qmax_model_cancel(model)
+        return true
+    }
+
+    /// Cancels [token], including a run that has not reached native admission.
+    /// A stale token never cancels a different active run.
+    @discardableResult
+    public func cancel(_ token: MaxGenerationToken) -> Bool {
+        condition.lock()
+        if generating {
+            if currentToken == token {
+                cancelFlag?.set()
+                condition.unlock()
+                return cancelNative()
+            }
+            condition.unlock()
+            return false
+        }
+        pendingCancelToken = token
+        condition.unlock()
+        return true
+    }
+
+    private func cancelNative() -> Bool {
+        pointerLock.lock()
+        defer { pointerLock.unlock() }
+        guard let model else { return false }
+        qmax_model_cancel(model)
+        return true
     }
 
     /// Waits for an active generation to drain, then closes. Returns `.busy`
