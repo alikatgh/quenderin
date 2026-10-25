@@ -29,11 +29,22 @@ def main() -> None:
     subprocess.run(["/usr/bin/cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1", "-g",
                     "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
                     "-I", str(ROOT / "include"), "-I", str(work / "include"), "-I", str(ROOT / "tests"),
-                    str(ROOT / "src/quenderin_max.c"), str(ROOT / "tests/fake_max.c"), "-o", str(executable)],
+                    str(ROOT / "src/quenderin_max.c"), str(ROOT / "tests/fake_max.c"),
+                    str(ROOT / "fixture/status_diagnostics.c"),
+                    "-Wl,--wrap=M_initModel,--wrap=M_waitForModel", "-o", str(executable)],
                    env=env, timeout=30, check=True)
     graph = work / "inert-abi-test.mef"
     graph.write_bytes(b"TEST-not-a-real-MEF")
-    subprocess.run([str(executable), str(graph)], env=env, timeout=15, check=True)
+    result = subprocess.run([str(executable), str(graph)], env=env, timeout=15, check=True,
+                            capture_output=True, text=True)
+    # The real fixture must distinguish immediate init failures from async
+    # failures at the wait, without multiline/control output or unbounded logs.
+    message = "injected failure   " + "x" * (1024 - len("injected failure   ")) + " [truncated]"
+    expected = [f"MAX synthetic fixture SDK {stage}: {message}"
+                for stage in ["M_initModel", "M_waitForModel"]]
+    if result.stderr.splitlines() != expected:
+        raise ValueError("Synthetic SDK status diagnostics were not bounded and flattened")
+    print(result.stdout, end="")
 
 
 if __name__ == "__main__":

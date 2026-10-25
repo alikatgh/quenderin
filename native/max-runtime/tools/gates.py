@@ -116,6 +116,9 @@ def runtime_environment(scratch: pathlib.Path, sdk: pathlib.Path, libraries: lis
         "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC",
         "HOME": str(scratch), "TMPDIR": str(scratch), "XDG_CACHE_HOME": str(scratch / "cache"),
         "XDG_STATE_HOME": str(scratch / "state"), "MODULAR_HOME": str(scratch / "modular"),
+        # Match pinned Mojo/python/mojo/run.py: C JIT resources are resolved
+        # from mojo-max.package_root, separately from LD_LIBRARY_PATH.
+        "MODULAR_MOJO_MAX_PACKAGE_ROOT": str(sdk / "modular"),
         "MODULAR_CACHE_DIR": str(scratch / "cache"), "MODULAR_TELEMETRY_ENABLED": "0",
         "MODULAR_CRASH_REPORTING_ENABLED": "0", "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONNOUSERSITE": "1", "PYTHONPATH": str(sdk), "OMP_NUM_THREADS": "2",

@@ -20,6 +20,9 @@ import urllib.request
 import zipfile
 
 from gates import ROOT, load_lock, require_hosted, verify_dependency_versions, verify_license_review
+from native_audit import inspect_native
+from cpu_profile import build_projection, canonical_sha, hash_file, prepare_installation, validate_profile, verify_loader_absence
+from source_shmem import validate_recipe
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -187,6 +190,9 @@ def main() -> None:
     require_hosted()
     lock = load_lock(reviewed=args.reviewed_lock)
     verify_dependency_versions(lock)
+    recipe = validate_recipe(lock["cpu_fixture_profile"])
+    if sum(item["size"] for item in lock["packages"] + lock["headers"] + recipe["sources"]) > lock["maximum_download_bytes"]:
+        raise ValueError("SDK/header/source aggregate transfer budget exceeded")
     work = args.work.resolve()
     runner_temp = pathlib.Path(os.environ["RUNNER_TEMP"]).resolve()
     if not work.is_relative_to(runner_temp) or work == runner_temp or work.exists():
@@ -198,6 +204,8 @@ def main() -> None:
     deadline = time.monotonic() + lock["maximum_network_seconds"]
     header_dir = work / "include/max/c"
     header_dir.mkdir(parents=True)
+    source_dir = work / "cpu-sources/shmem"
+    source_dir.mkdir(parents=True)
     def expired(signum, frame):
         raise TimeoutError("Aggregate network deadline exceeded")
     previous_handler = signal.signal(signal.SIGALRM, expired)
@@ -207,6 +215,8 @@ def main() -> None:
             download(package, wheels / package["filename"], deadline)
         for header in lock["headers"]:
             download(header, header_dir / header["filename"], deadline)
+        for source in recipe["sources"]:
+            download(source, source_dir / source["filename"], deadline)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
@@ -214,6 +224,17 @@ def main() -> None:
     if sum(len(x["text"].encode()) for x in {x["sha256"]: x for x in licenses}.values()) > 524288:
         raise ValueError("Distinct license text exceeds the 512 KiB review log budget")
     facts = audit_facts(lock, licenses, inventories)
+    facts["nativeEvidence"] = inspect_native(lock, wheels, work / "native-inspection")
+    facts["cpuSourceRecipe"] = {"recipeSHA256": canonical_sha(recipe), "sourceFiles": len(recipe["sources"]),
+                               "sourceBytes": sum(item["size"] for item in recipe["sources"]), "compilerExecuted": False}
+    projection = None
+    if lock.get("cpu_fixture_profile") is not None:
+        facts["cpuFixtureProfileEvidence"] = validate_profile(lock, facts["nativeEvidence"])
+        projection = build_projection(lock, wheels, facts["nativeEvidence"])
+        facts["cpuProjectionEvidence"] = {"sourceProjectionSHA256": canonical_sha(projection),
+            "retainedFiles": len(projection["expected"]), "retainedBytes": sum(item["size"] for item in projection["expected"].values()),
+            "retainedPackages": projection["retainedPackages"], "omittedPackages": projection["omittedPackages"],
+            "runtimeAdmissionInferred": False}
     (work / "inspection.json").write_text(json.dumps(facts, indent=2) + "\n")
     print("QUENDERIN_MAX_SDK_INSPECTION_BEGIN")
     print(json.dumps(facts, indent=2))
@@ -230,6 +251,8 @@ def main() -> None:
     if args.mode == "audit":
         return
     verify_license_review(lock, licenses)
+    if projection is None:
+        raise ValueError("Exact reviewed CPU fixture projection required before installation")
     if sum(bool(p["nativeLibraries"]) for p in inventories) != 1:
         raise ValueError("Exactly one pinned SDK libmax.so is required; no conda/unpinned fallback is permitted")
     # Wheel installation has no build backend or lifecycle scripts. Dependency
@@ -237,13 +260,30 @@ def main() -> None:
     result = subprocess.run([
         sys.executable, "-I", "-m", "pip", "--isolated", "install", "--no-index", "--no-deps",
         "--disable-pip-version-check", "--no-cache-dir", "--no-compile", "--target", str(work / "sdk"),
-        *[str(wheels / p["filename"]) for p in lock["packages"]]],
+        *[str(wheels / p["filename"]) for p in lock["packages"] if p["name"] in projection["retainedPackages"]]],
         env={"PATH": "/usr/bin:/bin", "HOME": str(work), "TMPDIR": str(work), "LANG": "C.UTF-8"},
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90, check=False)
     if result.returncode:
         raise ValueError("Exact offline wheel installation failed")
-    (work / "installed.json").write_text(json.dumps({"lockSHA256": lock["lock_sha256"]}) + "\n")
-    print(json.dumps({"sdkInstalled": True, "runtimeExecuted": False}))
+    manifest = prepare_installation(work / "sdk", projection, lock["cpu_fixture_profile"])
+    manifest_raw = (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    if len(manifest_raw) > 4194304:
+        raise ValueError("CPU installation manifest exceeds 4 MiB")
+    (work / "cpu-install-manifest.json").write_bytes(manifest_raw)
+    # Staging use is over. Remove every exact verified session-owned wheel so
+    # neither the NVSHMEM payload nor its container is available to SDK code.
+    for package in lock["packages"]:
+        path = wheels / package["filename"]
+        if hash_file(path) != (package["sha256"], package["size"]):
+            raise ValueError("Owned wheel changed before staging cleanup")
+        path.unlink()
+    wheels.rmdir()
+    absence = verify_loader_absence(work / "sdk", facts["nativeEvidence"], time.monotonic() + 15)
+    (work / "installed.json").write_text(json.dumps({"lockSHA256": lock["lock_sha256"],
+        "cpuProfileSHA256": projection["profileSHA256"], "manifestSHA256": hashlib.sha256(manifest_raw).hexdigest(),
+        "stagingWheelsRemoved": True}) + "\n")
+    print(json.dumps({"sdkInstalled": True, "retainedPackages": projection["retainedPackages"],
+                      "omittedPackages": projection["omittedPackages"], "loaderAbsence": absence, "runtimeExecuted": False}))
 
 
 if __name__ == "__main__":

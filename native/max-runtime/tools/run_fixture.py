@@ -13,9 +13,14 @@ import subprocess
 import time
 
 from gates import ROOT, assert_network, assert_status, load_lock, require_hosted, runtime_environment, verify_license_review
+from cpu_profile import validate_profile, verify_installation, verify_loader_absence
+from source_shmem import generate_module
 
 
-def bounded(command: list[str], *, env: dict[str, str], cwd: pathlib.Path, deadline: float) -> tuple[bytes, bytes]:
+def bounded(command: list[str], *, env: dict[str, str], cwd: pathlib.Path, deadline: float,
+            max_output_bytes: int = 65536) -> tuple[bytes, bytes]:
+    if type(max_output_bytes) is not int or not 1 <= max_output_bytes <= 1048576:
+        raise ValueError("Invalid bounded process output budget")
     if time.monotonic() >= deadline:
         raise ValueError("Aggregate CPU fixture deadline exceeded")
     process = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
@@ -36,11 +41,11 @@ def bounded(command: list[str], *, env: dict[str, str], cwd: pathlib.Path, deadl
                 if not data:
                     selector.unregister(key.fileobj)
                     continue
-                remaining_bytes = max(0, 65536 - output_bytes)
+                remaining_bytes = max(0, max_output_bytes - output_bytes)
                 output[key.data].extend(data[:remaining_bytes])
                 output_bytes += len(data)
-                if output_bytes > 65536:
-                    raise ValueError("CPU fixture output exceeded 64 KiB")
+                if output_bytes > max_output_bytes:
+                    raise ValueError(f"CPU fixture output exceeded {max_output_bytes // 1024} KiB")
         process.wait(timeout=max(0.001, deadline - time.monotonic()))
         if process.returncode:
             # The canned public fixture has no credentials, prompts or model
@@ -73,6 +78,8 @@ def main() -> None:
     lock = load_lock(reviewed=args.reviewed_lock)
     work = args.work.resolve(strict=True)
     inspection = json.loads((work / "inspection.json").read_text())
+    native = inspection.get("nativeEvidence", {})
+    profile = validate_profile(lock, native)
     review = lock.get("runtime_license_review")
     license_hashes = inspection.get("licenseSHA256")
     if not isinstance(license_hashes, dict) or any(not isinstance(key, str) or "/" not in key for key in license_hashes):
@@ -86,6 +93,17 @@ def main() -> None:
             or not inspection.get("licenseSHA256") or review.get("license_sha256") != inspection["licenseSHA256"]):
         raise ValueError("Owned reviewed offline SDK installation required")
     sdk = work / "sdk"
+    manifest_path = work / "cpu-install-manifest.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 4194304:
+        raise ValueError("Bounded exact CPU installation manifest required")
+    manifest_raw = manifest_path.read_bytes()
+    receipt = json.loads((work / "installed.json").read_text())
+    if (receipt.get("cpuProfileSHA256") != profile["profileSHA256"]
+            or receipt.get("manifestSHA256") != hashlib.sha256(manifest_raw).hexdigest()
+            or receipt.get("stagingWheelsRemoved") is not True or (work / "wheels").exists()):
+        raise ValueError("CPU installation profile receipt differs")
+    manifest = json.loads(manifest_raw)
+    verify_installation(sdk, manifest, lock, native)
     libraries = sorted({path.parent for path in sdk.rglob("*.so*") if path.is_file()})
     max_libraries = [path for path in sdk.rglob("libmax.so") if path.is_file() and not path.is_symlink()]
     if len(max_libraries) != 1 or len(libraries) > 64:
@@ -106,15 +124,30 @@ def main() -> None:
         raise ValueError("Included CPU runner required")
     os.sched_setaffinity(0, allowed)
     deadline = time.monotonic() + lock["maximum_runtime_seconds"]
+    absence = verify_loader_absence(sdk, native, deadline)
+    manifest, module_receipt = generate_module(work, sdk, scratch, manifest, lock["cpu_fixture_profile"], env, deadline, bounded)
+    manifest_raw = (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    if len(manifest_raw) > 4194304:
+        raise ValueError("Attested generated-module manifest exceeds 4 MiB")
+    manifest_path.write_bytes(manifest_raw)
+    receipt["manifestSHA256"] = hashlib.sha256(manifest_raw).hexdigest()
+    (work / "installed.json").write_text(json.dumps(receipt) + "\n")
+    verify_installation(sdk, manifest, lock, native, require_generated=True)
     executable = scratch / "max-cpu-fixture"
     compile_command = ["/usr/bin/cc", "-std=c11", "-O1", "-Wall", "-Wextra", "-Werror",
                        "-I", str(ROOT / "include"), "-I", str(work / "include"),
                        str(ROOT / "src/quenderin_max.c"), str(ROOT / "fixture/smoke.c"),
+                       str(ROOT / "fixture/status_diagnostics.c"),
+                       "-Wl,--wrap=M_initModel,--wrap=M_waitForModel",
                        "-L", str(max_libraries[0].parent), "-lmax", "-o", str(executable)]
     bounded(compile_command, env=env, cwd=scratch, deadline=deadline)
     graph = scratch / "weighted-multiply.mef"
-    bounded(["/usr/bin/python3", "-B", str(ROOT / "fixture/export_graph.py"), str(graph)],
+    verify_installation(sdk, manifest, lock, native, require_generated=True)
+    absence = verify_loader_absence(sdk, native, deadline)
+    bounded(["/usr/bin/python3", "-S", "-B", str(ROOT / "fixture/export_graph.py"), str(graph)],
             env=env, cwd=scratch, deadline=deadline)
+    verify_installation(sdk, manifest, lock, native, require_generated=True)
+    absence = verify_loader_absence(sdk, native, deadline)
     facts, _diagnostics = bounded([str(executable), str(graph)], env=env, cwd=scratch, deadline=deadline)
     parsed = json.loads(facts)
     if (parsed.get("schema") != 1 or parsed.get("output") != [2, 6, 12, 20]
@@ -123,7 +156,9 @@ def main() -> None:
     print("QUENDERIN_MAX_CPU_FACTS_BEGIN")
     print(json.dumps({**parsed, "lockSHA256": lock["lock_sha256"],
                       "mefSHA256": hashlib.sha256(graph.read_bytes()).hexdigest(),
-                      "networkIsolated": True, "telemetryOptOut": True, "crashReportingOptOut": True}))
+                      "networkIsolated": True, "telemetryOptOut": True, "crashReportingOptOut": True,
+                      "cpuProfileSHA256": profile["profileSHA256"], "installedManifestSHA256": hashlib.sha256(manifest_raw).hexdigest(),
+                      "loaderAbsence": absence, "sourceModuleReceipt": module_receipt}))
     print("QUENDERIN_MAX_CPU_FACTS_END")
 
 
