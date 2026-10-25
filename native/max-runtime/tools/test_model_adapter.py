@@ -37,6 +37,7 @@ def main() -> None:
     executable = work / "max-model-double"
     command = [
         args.cc, "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1", "-g",
+        "-DQMAX_MODEL_TEST_ADMISSION=1",
         "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-pthread",
         "-I", str(ROOT / "include"), "-I", str(ROOT / "tests"),
         str(ROOT / "src/quenderin_max_model.c"),

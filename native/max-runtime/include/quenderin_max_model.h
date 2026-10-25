@@ -173,8 +173,8 @@ QMaxCode qmax_model_generate(QMaxModel *model, const QMaxModelRequest *request,
 /* Requests cancellation of the generation currently in flight. Safe to call
  * from the emit callback or another thread. The runner's current callback is
  * not preempted; the next token boundary observes it. A request made while the
- * model is idle is cleared when the next generation starts, so callers must
- * cancel after generate has begun (for example from emit).
+ * model is idle has no effect, so callers must cancel after generate has
+ * begun (for example from emit).
  */
 void qmax_model_cancel(QMaxModel *model);
 

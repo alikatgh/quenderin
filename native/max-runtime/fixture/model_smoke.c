@@ -138,6 +138,26 @@ static QMaxModelRequest request(const char *prompt, uint32_t max_tokens) {
   return value;
 }
 
+#ifdef QMAX_MODEL_TEST_ADMISSION
+static int cancel_at_admission;
+
+void qmax_model_test_admitted(QMaxModel *model) {
+  if (!cancel_at_admission) return;
+  cancel_at_admission = 0;
+  QMaxModelRequest nested = request("x", 1);
+  QMaxError error;
+  Sink sink = {0};
+  assert(qmax_model_generate(model, &nested, sink_emit, &sink, NULL, NULL,
+                             NULL, &error) == QMAX_BUSY);
+  assert(qmax_model_close(model) == QMAX_BUSY);
+  qmax_model_cancel(model);
+  assert(qmax_model_generate(model, &nested, sink_emit, &sink, NULL, NULL,
+                             NULL, &error) == QMAX_BUSY);
+  assert(qmax_model_close(model) == QMAX_BUSY);
+  assert(sink.calls == 0);
+}
+#endif
+
 static QMaxModelReceipt receipt_for(const char *directory, QMaxModelFile *files,
                                     char graph[QMAX_MODEL_MAX_PATH_BYTES],
                                     char tokens[QMAX_MODEL_MAX_PATH_BYTES],
@@ -311,6 +331,27 @@ int main(int argc, char **argv) {
   assert(performance.prefill_ms >= 0.0 && performance.decode_ms >= 0.0 &&
          performance.first_token_ms >= 0.0 && performance.max_gap_ms >= 0.0);
   assert(isfinite(performance.prefill_ms) && isfinite(performance.decode_ms));
+
+#ifdef QMAX_MODEL_TEST_ADMISSION
+  /* A BUSY observer can cancel before admitted generation initializes. */
+  fake_model_reset(0, 0, 0, 0, -1);
+  memset(&sink, 0, sizeof(sink));
+  cancel_at_admission = 1;
+  assert(qmax_model_generate(model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_CANCELLED);
+  assert(cancel_at_admission == 0 && sink.calls == 0 && sink.length == 0);
+  assert(performance.status == 1 && performance.prompt_tokens == 2 &&
+         performance.decoded_tokens == 0 && error.code == QMAX_CANCELLED);
+
+  /* The cancelled lease releases, and cancellation while idle has no effect. */
+  qmax_model_cancel(model);
+  fake_model_reset(0, 0, 0, 0, -1);
+  memset(&sink, 0, sizeof(sink));
+  assert(qmax_model_generate(model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_OK);
+  expect_text(&sink, "hello \xc3\xa9!");
+  assert(performance.status == 0 && performance.decoded_tokens == 6);
+#endif
 
   /* Three- and four-byte characters, invalid sequences and a truncated tail. */
   fake_model_reset(0, 0, 0, 0, -1);

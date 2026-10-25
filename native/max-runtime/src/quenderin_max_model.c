@@ -376,8 +376,7 @@ struct QMaxModel {
   void *runner_state;
   uint32_t context_tokens;
   uint32_t max_output_tokens;
-  atomic_int busy;
-  atomic_int cancelled;
+  atomic_int busy; /* 0 idle, 1 running, 2 cancelled. */
 };
 
 QMaxCode qmax_model_capability(const QMaxModelRunner *runner,
@@ -446,13 +445,15 @@ QMaxCode qmax_model_open(const QMaxModelRunner *runner,
   model->context_tokens = receipt->context_tokens;
   model->max_output_tokens = receipt->max_output_tokens;
   atomic_init(&model->busy, 0);
-  atomic_init(&model->cancelled, 0);
   *out = model;
   return fail(error, QMAX_OK, "");
 }
 
 void qmax_model_cancel(QMaxModel *model) {
-  if (model) atomic_store_explicit(&model->cancelled, 1, memory_order_relaxed);
+  if (model) {
+    int expected = 1;
+    atomic_compare_exchange_strong(&model->busy, &expected, 2);
+  }
 }
 
 QMaxCode qmax_model_close(QMaxModel *model) {
@@ -493,7 +494,10 @@ QMaxCode qmax_model_generate(QMaxModel *model, const QMaxModelRequest *request,
   int expected = 0;
   if (!atomic_compare_exchange_strong(&model->busy, &expected, 1))
     return fail(error, QMAX_BUSY, "Generation is already in progress for this model");
-  atomic_store_explicit(&model->cancelled, 0, memory_order_relaxed);
+#ifdef QMAX_MODEL_TEST_ADMISSION
+  extern void qmax_model_test_admitted(QMaxModel *model);
+  qmax_model_test_admitted(model);
+#endif
 
   int32_t *tokens = malloc(sizeof(int32_t) * model->context_tokens);
   if (!tokens) {
@@ -547,7 +551,7 @@ QMaxCode qmax_model_generate(QMaxModel *model, const QMaxModelRequest *request,
         fail(error, QMAX_CANCELLED, "Generation stopped before the next token");
         goto finished;
       }
-      if (atomic_load_explicit(&model->cancelled, memory_order_relaxed)) {
+      if (atomic_load_explicit(&model->busy, memory_order_relaxed) == 2) {
         status = 1;
         result = QMAX_CANCELLED;
         fail(error, QMAX_CANCELLED, "Generation cancelled at a token boundary");
