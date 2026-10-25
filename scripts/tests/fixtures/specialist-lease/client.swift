@@ -9,6 +9,13 @@ enum ModelArtifactSet {
     static func verify(_ model: ModelEntry, firstFile: URL) throws { fatalError("Unexpected multipart fixture") }
     static func inBackground<T: Sendable>(_ work: @escaping @Sendable () throws -> T) async throws -> T { try await Task.detached { try work() }.value }
 }
+// This standalone fixture exercises specialist suspension/restoration. Automatic
+// transactions use the full integrity implementation in the native controller tests.
+enum InferencePerformanceIdentity {
+    static func verifyInstalled(_ model: ModelEntry, firstFile: URL) throws {
+        fatalError("Unexpected Automatic transaction in specialist-only fixture")
+    }
+}
 final class RunState: @unchecked Sendable {
     private let lock = NSLock()
     private var stopped = false
