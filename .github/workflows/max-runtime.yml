@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'native/max-runtime/**'
+      - 'shared/model-catalog.json'
       - '.github/workflows/max-runtime.yml'
   workflow_dispatch:
     inputs:
@@ -43,9 +44,13 @@ jobs:
         run: |
           /usr/bin/python3 -B -m unittest discover -s native/max-runtime/tests -p 'test_*.py'
           /usr/bin/python3 -B native/max-runtime/tools/check_source.py
+          /usr/bin/python3 -B native/max-runtime/tools/check_mobile_lock.py
       - name: Exercise C ownership and injected failures without the SDK
         run: |
           /usr/bin/python3 -B native/max-runtime/tools/test_c_lifecycle.py --work "$RUNNER_TEMP/max-c-lifecycle"
+      - name: Exercise the portable model-adapter boundary without the SDK
+        run: |
+          /usr/bin/python3 -B native/max-runtime/tools/test_model_adapter.py --work "$RUNNER_TEMP/max-model-adapter"
       - name: Inspect exact inert SDK bytes and embedded license terms
         if: github.event_name == 'workflow_dispatch'
         timeout-minutes: 7

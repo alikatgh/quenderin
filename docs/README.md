@@ -37,6 +37,7 @@ The iOS/Android rebuild has its own docs under `apple/`:
 | [../apple/ROADMAP.md](../apple/ROADMAP.md) | Milestones M1–M4 and what's left |
 | [../apple/QuenderinKit/README.md](../apple/QuenderinKit/README.md) | The Swift package module catalog |
 | [../apple/QuenderinKit/INTEGRATION.md](../apple/QuenderinKit/INTEGRATION.md) | How to link llama.cpp on a device |
+| [max-mobile-integration.md](max-mobile-integration.md) | Mobile MAX/Bonsai status — portable adapter boundary, blocked vendor runtime, deferred phone validation |
 
 ## One-paragraph summary
 

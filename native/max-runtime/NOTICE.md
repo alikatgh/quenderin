@@ -13,3 +13,8 @@ official PyPI metadata. Their exact embedded terms must be inspected and
 recorded before runtime execution. The older Community License in the source
 tag is not substituted for those binary terms. This repository redistributes
 no MAX binary, compiler, pretrained model, or model weights.
+
+The portable model-adapter boundary in `include/quenderin_max_model.h`,
+`src/quenderin_max_model.c` and its fixtures is original Quenderin code. It
+copies no Modular source, links no vendor runtime and contains no model
+semantics; a separately reviewed runner supplies those.

@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased — mobile MAX adapter boundary (2026-10-25)
+
+- Add a vendor-neutral model-adapter boundary for a future mobile MAX backend:
+  exact file sizes and SHA-256 receipts, exact runner ABI, telemetry/crash
+  opt-outs, single-flight leases, bounded prompt/output/context/stream budgets,
+  UTF-8 reassembly, token-boundary cancellation, capability probing and
+  numeric-only performance reports. It loads no vendor runtime and contains no
+  tokenizer, sampler, weights or GGUF loader.
+- Add an inert runner double and sanitizer fixture covering verification
+  failures, symlinks, opt-outs, streaming, split UTF-8, cancellation, sink
+  abort, runner failure, output caps, context clamping, invalid requests and
+  cleanup. Host compilation only; no SDK, weights or device.
+- Record the mobile MAX audit in `native/max-runtime/mobile-lock.json`: pinned
+  MAX 26.7 source contains no Android/Adreno/Qualcomm/Dragonfly paths, the
+  Bonsai 2B GGUF is pinned but has no reviewed MEF/tokenizer/cache contract,
+  mobile redistribution and telemetry are unreviewed, and the reported
+  Snapdragon demonstration is not reproducible from public sources.
+- Keep mobile MAX out of Automatic and reject unverified support, inference,
+  phone-performance and store claims in a checked lock. Phone validation and
+  store submission remain deferred; no model-weight download, simulator or
+  physical-device run was performed.
+
 ## Unreleased — October open-model integrations (2026-10-18)
 
 - Add nine pinned experimental text entries across all catalogs: MiniCPM-V 4.7

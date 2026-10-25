@@ -18,7 +18,8 @@ typedef enum {
   QMAX_UNAVAILABLE = 2,
   QMAX_RUNTIME_ERROR = 3,
   QMAX_CANCELLED = 4,
-  QMAX_CONTRACT_MISMATCH = 5
+  QMAX_CONTRACT_MISMATCH = 5,
+  QMAX_BUSY = 6
 } QMaxCode;
 
 typedef struct {
