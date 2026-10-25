@@ -8,6 +8,24 @@ import kotlin.math.abs
 // AgentToolsExtra.swift. Every entry point tolerates LLM-generated garbage and
 // returns a message rather than throwing; the planner's input is never trusted.
 
+// --- Numeric contract ---
+
+/**
+ * The digit contract both twins implement (twin-drift audit, agent-session P3): a digit is one
+ * Unicode **category-Nd** character and contributes its DECIMAL VALUE — so Arabic-Indic `٥` and
+ * fullwidth `５` both read as 5 on either platform (`Integer.parseInt` already accepted them
+ * here while Swift's `Int`/`Double` are ASCII-only, which is the drift this closes). Characters
+ * that merely *have* a numeric value (`²`, `½`, `Ⅷ`) are NOT digits: in the unit parser they stay
+ * part of the unit token, which is why `5² m to ft` is a cross-dimension error on both.
+ *
+ * `Char.isDigit()` is already Nd-only; `Character.digit` supplies the value. Twin of Swift
+ * `decimalDigitValue`.
+ */
+internal fun decimalDigitValue(c: Char): Int? {
+    if (!c.isDigit()) return null
+    return Character.digit(c, 10).takeIf { it in 0..9 }
+}
+
 // --- Unit conversion ---
 
 /** Converts between common units fully offline — length, temperature, mass, volume, speed.
@@ -89,8 +107,13 @@ object UnitConverter {
         val left = parts[0].trim()
         val numStr = StringBuilder()
         var i = 0
-        while (i < left.length && (left[i].isDigit() || left[i] == '.' || left[i] == '-')) {
-            numStr.append(left[i]); i++
+        while (i < left.length) {
+            val ch = left[i]
+            val digit = decimalDigitValue(ch)
+            if (digit != null) numStr.append(digit)
+            else if (ch == '.' || ch == '-') numStr.append(ch)
+            else break
+            i++
         }
         val value = numStr.toString().toDoubleOrNull() ?: return null
         val fromUnit = canonical(left.substring(i))
@@ -158,7 +181,8 @@ object DateCalc {
     private fun firstInteger(text: String): Int? {
         val digits = StringBuilder()
         for (c in text) {
-            if (c.isDigit()) digits.append(c) else if (digits.isNotEmpty()) break
+            val digit = decimalDigitValue(c)
+            if (digit != null) digits.append(digit) else if (digits.isNotEmpty()) break
         }
         return digits.toString().toIntOrNull()
     }
