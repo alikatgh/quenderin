@@ -218,7 +218,7 @@ private func maxEmitThunk(_ context: UnsafeMutableRawPointer?, _ utf8: UnsafePoi
 
 private func maxShouldStopThunk(_ context: UnsafeMutableRawPointer?) -> Int32 {
     guard let context else { return 0 }
-    return Unmanaged<CancelFlag>.fromOpaque(context).takeUnretainedValue().isSet ? 1 : 0
+    return Unmanaged<MaxCancelFlag>.fromOpaque(context).takeUnretainedValue().isSet ? 1 : 0
 }
 
 private func maxMessage(_ error: inout QMaxError) -> String {
@@ -308,7 +308,7 @@ public struct MaxGenerationToken: Equatable, Sendable {
     fileprivate let value: UInt64
 }
 
-private final class CancelFlag: @unchecked Sendable {
+private final class MaxCancelFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var cancelled = false
     func set() {
@@ -337,7 +337,7 @@ public final class MaxModelHandle: @unchecked Sendable {
     private var nextToken: UInt64 = 0
     private var currentToken: MaxGenerationToken?
     private var pendingCancelToken: MaxGenerationToken?
-    private var cancelFlag: CancelFlag?
+    private var cancelFlag: MaxCancelFlag?
 
     init(model: OpaquePointer, maxOutputTokens: Int) {
         self.model = model
@@ -416,7 +416,7 @@ public final class MaxModelHandle: @unchecked Sendable {
         pendingCancelToken = nil
         generating = true
         currentToken = run
-        let flag = CancelFlag()
+        let flag = MaxCancelFlag()
         cancelFlag = flag
         condition.unlock()
         defer {
