@@ -186,6 +186,10 @@ receipt. Details and the blocked matrix are in
   claims in a checked lock.
 - [x] Exercise the boundary on a host with an inert runner double, including
   failure injection and sanitizers. No vendor runtime was loaded.
+- [x] Wrap the boundary for Android (JNI + pure-Kotlin facade) and Apple
+  (byte-verified SwiftPM C target + Swift wrapper). Both link no production
+  runner, fail closed, bind cancellation to the active run, and stay out of
+  model selection.
 
 This boundary accepts an exported float32 graph or a vendor runner. It does not
 load GGUF, tokenize chat itself, implement autoregressive decoding, package an

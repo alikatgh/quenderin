@@ -40,6 +40,13 @@ demonstration was located. The lock fails validation if any of those become supp
 inference or phone-performance claims. See
 [docs/max-mobile-integration.md](../../docs/max-mobile-integration.md).
 
+Native wrappers now exist on both platforms but link no production runner:
+Android uses `android/jni/max_jni.cpp` plus
+`MaxModelBinding.kt` ([binding record](../../docs/max-android-binding.md)); Apple
+uses a byte-staged SwiftPM C target plus `MaxModel.swift`
+([binding record](../../docs/max-apple-binding.md)). Opening reports unavailable
+until a reviewed runner exists, and MAX is not selectable in the app.
+
 ## Source and SDK identity
 
 The C interface and graph exporter follow Modular source

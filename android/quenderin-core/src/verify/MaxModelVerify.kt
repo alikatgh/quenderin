@@ -85,7 +85,7 @@ fun main(args: Array<String>) {
     MaxModelTestControl.releaseTokenize()
     initThread.join(5000)
     if (initThread.isAlive) fail("pre-initialization cancel did not finish")
-    if (beforeInit?.code != MaxModelCode.CANCELLED || beforeInit?.performance?.status != 1) {
+    if (beforeInit?.let { it.code == MaxModelCode.CANCELLED && it.performance.status == 1 } != true) {
         fail("pre-initialization cancellation did not stop generation")
     }
 
