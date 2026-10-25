@@ -17,8 +17,8 @@ and no device or simulator was run for this increment.
 | Portable model-adapter boundary | Source + host fixture | `native/max-runtime/{include,src}/quenderin_max_model.*`, `native/max-runtime/tools/test_model_adapter.py` |
 | Android arm64 / iOS SDK compile probes | Compile-only CI gates; inspect the exact candidate's checks | `native/max-runtime/android-check`, `native-remote-sdk.yml` steps |
 | Mobile audit receipt | Recorded and gated | `native/max-runtime/mobile-lock.json`, `tools/check_mobile_lock.py` |
-| Android MAX runtime | Blocked | Pinned MAX 26.7 source has zero Android/Adreno/Qualcomm/Dragonfly paths |
-| Bonsai MEF/tokenizer/cache contract | Blocked | Only the official GGUF is pinned; no reviewed MEF or mapping exists |
+| Android MAX runtime | Blocked | Pinned 26.7 and main `8d5597…` have zero Android/Adreno/Qualcomm/Dragonfly paths; no Android wheel |
+| Bonsai MEF/tokenizer/cache contract | Blocked | GGUF pinned; no MEF; the MLX tokenizer candidate is unadopted and unverified |
 | Apple iOS MAX artifact | Blocked | MAX's Apple target is Apple Silicon macOS; no iOS application artifact |
 | Phone speed, memory, thermals, rendered UI | Unverified | Standing restriction forbids device and simulator runs |
 | Store submission | Deferred | — |
@@ -82,12 +82,31 @@ head revision and retain its run links in the PR validation record. These checks
 establish host fixture execution and compile compatibility, not MAX execution
 or a distributable mobile runtime.
 
+## Backend input refresh — 25 October 2026
+
+Only metadata was inspected; no weights, wheels or vendor SDKs were downloaded.
+The refresh did not clear any support flag.
+
+| Input | Status | Evidence |
+| --- | --- | --- |
+| MAX host runtime releases | Supplied, host only | The latest official tag is still `max/v26.7.0` (2026-10-22); main is an unreleased `26.8.0.dev` pin. |
+| MAX Android/Adreno/Qualcomm backend | Missing | main `8d559749621418f39f31df7da998bcce884fa5b1` (2026-10-25) has 16,637 paths and none match Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly. |
+| MAX iOS application artifact | Missing | 26.7.0 publishes 15 `max` wheels for macOS arm64, manylinux aarch64 and manylinux x86_64; none are Android or iOS. `max-core` matches that host set. |
+| Bonsai 2B weights | Supplied and pinned | `prism-ml/Ternary-Bonsai-2-2B-gguf` at `683f7be…`, 429,183,456 bytes, SHA-256 `36061ad4…`. |
+| Bonsai MEF | Missing | The `prism-ml` organization exposes GGUF/MLX/unpacked/AWQ artifacts; no `.mef` artifact was found. |
+| Tokenizer candidate | Unadopted | `prism-ml/Ternary-Bonsai-2-2B-mlx-2bit` at `1c6cbae…` has `tokenizer.json` (12,807,982 bytes, SHA-256 `5f9e4d49…`). It is MLX metadata, not verified against the pinned GGUF tokenizer, prompt template, sampling or cache contract. |
+| Prompt/sampling/stop/cache contract | Missing | No publisher or Modular conversion recipe maps PTQ1_0/Hadamard weights, tokenizer, stops and multi-turn cache into a MAX runner. |
+| Demo build recipe | Missing | The author's 61 public repositories and 3 gists contain no matching MAX/Android/Bonsai build source by name, description or public code search; no author contact was made. |
+| Mobile redistribution terms | Not reviewed | The inspected SDK embeds the 2026-08-18 Community License; mobile components, notices and distribution requirements remain unreviewed. |
+| Telemetry controls | Unproven on mobile | Opt-outs are required by the boundary and proven for the host CPU fixture only. |
+
 ## Why mobile MAX is still blocked
 
-1. **No public mobile backend.** The pinned source revision
-   `527d069ee11a41ac5320af1f9402db0a66b2b868` (26.7.0) has 13,588 paths and none
-   match Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly. The official blog
-   defers those plugins. The demo's custom port is not public.
+1. **No public mobile backend.** Both the pinned source revision
+   `527d069ee11a41ac5320af1f9402db0a66b2b868` (26.7.0, 13,588 paths) and main
+   `8d5597…` (16,637 paths) contain no Android, Adreno, Qualcomm, Hexagon, QNN
+   or Dragonfly path. The official blog defers those plugins. The demo's custom
+   port is not public, and no Android or iOS wheel is published.
 2. **No Bonsai MEF contract.** The official
    `prism-ml/Ternary-Bonsai-2-2B-gguf` file is pinned
    (`683f7be2629342a50987627b40881e54761a2430`, 429,183,456 bytes, SHA-256

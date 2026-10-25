@@ -24,6 +24,36 @@
     "publishedBinaryTerms": "LicenseRef-MAX-Platform-Software-License",
     "redistribution": "not-cleared-for-mobile"
   },
+  "refresh": {
+    "checkedAt": "2026-10-25",
+    "mainRevision": "8d559749621418f39f31df7da998bcce884fa5b1",
+    "mainCommitDate": "2026-10-25",
+    "mainTreePaths": 16637,
+    "mainMobileBackendPaths": 0,
+    "officialRelease": "max/v26.7.0",
+    "officialReleaseDate": "2026-10-22",
+    "pypiVersion": "26.7.0",
+    "pypiWheelPlatforms": [
+      "macosx_13_0_arm64",
+      "manylinux_2_34_aarch64",
+      "manylinux_2_34_x86_64"
+    ],
+    "androidOrIosWheels": 0,
+    "prismMlMefArtifacts": 0,
+    "demoPublicReposChecked": 61,
+    "demoReposMatchingMaxMobile": 0,
+    "demoPublicGistsChecked": 3,
+    "demoSearchScope": "Public repository names/descriptions, gists and public code search; no author contact.",
+    "bonsaiTokenizerCandidate": {
+      "repo": "prism-ml/Ternary-Bonsai-2-2B-mlx-2bit",
+      "revision": "1c6cbae21f8c38830ce337972b46fdae7b18eaaa",
+      "filename": "tokenizer.json",
+      "bytes": 12807982,
+      "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+      "adopted": false,
+      "note": "MLX-variant tokenizer metadata only; not verified against the pinned GGUF tokenizer, prompt template, sampling or cache contract."
+    }
+  },
   "demonstration": {
     "reportedBy": "https://x.com/mav3ri3k/status/2113730606215397523",
     "reportedDevice": "Snapdragon 8 Elite Gen 5",
@@ -49,7 +79,7 @@
     {
       "id": "public-mobile-backend",
       "satisfied": false,
-      "detail": "The pinned 26.7 source contains no Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly path. The official statement defers those plugins."
+      "detail": "Both the pinned 26.7 source and main 8d5597 contain no Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly path. The official statement defers those plugins."
     },
     {
       "id": "reviewed-mef-contract",

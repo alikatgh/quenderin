@@ -194,8 +194,10 @@ remaining tasks stay unchecked:
 
 - [ ] Pin the Android demo's source, compiler, runtime, device backend, build
   recipe and exact Bonsai artifact. **Blocked:** no public demonstration source
-  or build recipe was located, and the pinned 26.7 tree has no mobile backend
-  in the recorded audit. Record a source receipt and all licenses when one exists.
+  or build recipe was located, the pinned 26.7 tree has no mobile backend, and
+  the 25 October refresh of main `8d5597…`, official releases and PyPI found no
+  Android/iOS wheel or MEF. Record a source receipt and all licenses when one
+  exists.
 - [ ] Verify redistribution and telemetry behavior for the exact components.
   The wheels declare `LicenseRef-MAX-Platform-Software-License`; the inspected
   SDK embeds the same Community License hash recorded for the pinned source.
