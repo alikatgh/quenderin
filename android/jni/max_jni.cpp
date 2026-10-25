@@ -46,6 +46,7 @@ struct MaxHandle {
     std::atomic<jlong> cancel_requested{0};
     std::atomic<bool> running{false};
     std::mutex run_mutex;
+    std::mutex model_mutex;
 };
 
 struct StopContext {
@@ -409,7 +410,12 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
     QMaxModelPerformance performance{};
     performance.status = 6;
     auto handle = handle_for(id);
-    if (!handle || !handle->model) {
+    QMaxModel* model = nullptr;
+    if (handle) {
+        std::lock_guard<std::mutex> lock(handle->model_mutex);
+        model = handle->model;
+    }
+    if (!handle || !model) {
         set_performance(env, performance_out, performance);
         set_error(env, error_out, "MAX model handle is closed or unknown.");
         return QMAX_INVALID_ARGUMENT;
@@ -424,6 +430,15 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
         MaxHandle* handle;
         ~RunningGuard() { handle->running.store(false); }
     } running_guard{handle.get()};
+    {
+        std::lock_guard<std::mutex> lock(handle->model_mutex);
+        model = handle->model;
+    }
+    if (!model) {
+        set_performance(env, performance_out, performance);
+        set_error(env, error_out, "MAX model handle is closed or unknown.");
+        return QMAX_INVALID_ARGUMENT;
+    }
     {
         std::lock_guard<std::mutex> lock(handle->run_mutex);
         handle->current_run.store(run_id);
@@ -480,7 +495,7 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
     request.seed = static_cast<uint32_t>(seed);
     EmitContext emit{handle->vm, sink_ref, on_token};
     StopContext stop{handle.get(), run_id};
-    const QMaxCode code = qmax_model_generate(handle->model, &request, emit_token, &emit,
+    const QMaxCode code = qmax_model_generate(model, &request, emit_token, &emit,
                                               stop_requested, &stop, &performance, &error);
     if (!env->ExceptionCheck()) {
         set_performance(env, performance_out, performance);
@@ -492,8 +507,10 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
 JNIEXPORT jboolean JNICALL
 Java_ai_quenderin_core_MaxModelNative_nativeCancel(JNIEnv*, jclass, jlong id, jlong run_id) {
     auto handle = handle_for(id);
-    if (!handle || !handle->model) return JNI_FALSE;
-    std::lock_guard<std::mutex> lock(handle->run_mutex);
+    if (!handle) return JNI_FALSE;
+    std::lock_guard<std::mutex> model_lock(handle->model_mutex);
+    if (!handle->model) return JNI_FALSE;
+    std::lock_guard<std::mutex> run_lock(handle->run_mutex);
     if (handle->current_run.load() != run_id) return JNI_FALSE;
     handle->cancel_requested.store(run_id);
     qmax_model_cancel(handle->model);
@@ -506,12 +523,20 @@ Java_ai_quenderin_core_MaxModelNative_nativeClose(JNIEnv*, jclass, jlong id) {
     if (!handle) return QMAX_INVALID_ARGUMENT;
     bool expected = false;
     if (!handle->running.compare_exchange_strong(expected, true)) return QMAX_BUSY;
-    const QMaxCode code = qmax_model_close(handle->model);
+    QMaxCode code = QMAX_RUNTIME_ERROR;
+    {
+        std::lock_guard<std::mutex> model_lock(handle->model_mutex);
+        if (!handle->model) {
+            handle->running.store(false);
+            return QMAX_OK;
+        }
+        code = qmax_model_close(handle->model);
+        if (code == QMAX_OK) handle->model = nullptr;
+    }
     if (code != QMAX_OK) {
         handle->running.store(false);
         return code;
     }
-    handle->model = nullptr;
     {
         std::lock_guard<std::mutex> lock(g_registry_mutex);
         const auto found = g_handles.find(id);
