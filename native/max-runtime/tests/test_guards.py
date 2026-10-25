@@ -88,6 +88,14 @@ class Guards(unittest.TestCase):
         self.assertEqual(env["MODULAR_TELEMETRY_ENABLED"], "0")
         self.assertEqual(env["MODULAR_CRASH_REPORTING_ENABLED"], "0")
 
+    def test_c_api_resources_use_the_reviewed_sdk_package_root(self):
+        sdk = pathlib.Path("/tmp/reviewed-sdk")
+        with patch.dict(os.environ, {"MODULAR_MOJO_MAX_PACKAGE_ROOT": "/unreviewed-sdk"}):
+            env = runtime_environment(pathlib.Path("/tmp/owned"), sdk, [sdk / "modular/lib"])
+        # The standalone C API cannot inherit Python's SDK initialization.
+        # MojoConfig resolves compiler_rt relative to this package root.
+        self.assertEqual(env["MODULAR_MOJO_MAX_PACKAGE_ROOT"], str(sdk / "modular"))
+
     def test_unreviewed_license_fixture_fails_closed(self):
         lock = {"packages": [{"name": "max-core", "version": "26.7.0"}], "runtime_license_review": None}
         licenses = [{"package": "max-core", "path": "dist-info/LICENSE", "sha256": "1" * 64}]

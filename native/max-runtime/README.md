@@ -73,6 +73,12 @@ Ten retained dependency modules, compiler bytes, arguments and generated output
 are checked and receipted before SDK Python import. Missing components cause
 failure; there is no fallback installation of the original binary.
 
+The standalone C executor also needs the reviewed SDK resource root. Its
+allowlisted `MODULAR_MOJO_MAX_PACKAGE_ROOT` points to `sdk/modular`, following the
+[pinned official launcher](https://github.com/modular/modular/blob/527d069ee11a41ac5320af1f9402db0a66b2b868/Mojo/python/mojo/run.py#L42).
+An ambient value is never inherited. `LD_LIBRARY_PATH` alone cannot supply the
+compiler runtime and other JIT resources resolved relative to that root.
+
 The lock binds the exact profile, metadata receipt and versioned terms coverage.
 Before every SDK process, guards verify retained files and notices against the
 source archives, reject omitted or renamed payloads, and check loader cache,

@@ -1,6 +1,6 @@
 # Native acceleration: MAX/Mojo and measured automatic selection
 
-Updated 24 October 2026. This extends Quenderin's native inference work; it does
+Updated 25 October 2026. This extends Quenderin's native inference work; it does
 not replace the [Remote Harness/Bot delivery](deepseek-bot-sol-implementation.md).
 Store submission remains deferred. The current restriction on local weights,
 native builds and simulator/physical-device runs remains in force.
@@ -153,8 +153,14 @@ passed installation, file/loader absence checks and SDK import. Graph compilatio
 then failed because the deliberately omitted `shmem.mojoc` is required even for
 the CPU graph. Its upstream Linux build links NVIDIA device bitcode into that
 module. Restoring the packaged module would invalidate the omission argument.
-Execution stays held pending a verified source build without that bitcode or
-applicable clearance. The native graph has not executed successfully.
+The replacement profile pins nine Apache/LLVM source files and rebuilds the module
+with the upstream precompile recipe without GPU bitcode. In
+[attempt 40108358239](https://github.com/alikatgh/quenderin/actions/runs/40108358239),
+that source build and real SDK CPU graph compilation/export passed. Native C
+initialization then exposed a missing SDK resource root. The fixture now supplies
+the same explicit package root as Modular's pinned official launcher, with an
+ambient-override regression test. Actual native graph execution is tracked
+separately below; source compilation/export alone does not establish it.
 
 This boundary accepts an exported float32 graph. It does not load GGUF, tokenize
 chat, implement autoregressive decoding, package an Android/iOS runtime, or make
