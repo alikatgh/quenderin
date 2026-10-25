@@ -1,0 +1,20 @@
+{
+  "files": {
+    "quenderin_max.h": {
+      "bytes": 2493,
+      "sha256": "70ff06fffcc12e54936ddb19afdbd9bd7638805b8957dacfcd92e984b056279d",
+      "source": "native/max-runtime/include/quenderin_max.h"
+    },
+    "quenderin_max_model.c": {
+      "bytes": 24646,
+      "sha256": "ab5576ef4e77bd20fed53d3e076cedf6d4568fc84a873653668cdd45f53c6c12",
+      "source": "native/max-runtime/src/quenderin_max_model.c"
+    },
+    "quenderin_max_model.h": {
+      "bytes": 7665,
+      "sha256": "a5e57263cf5252c851e3f4c2a1fb68b5ec99f8e198305a07db062e01fd0da701",
+      "source": "native/max-runtime/include/quenderin_max_model.h"
+    }
+  },
+  "schema": 1
+}
