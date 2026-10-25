@@ -1,7 +1,7 @@
 # Builds libquenderin_llama.so (the JNI bridge) and links it against llama.cpp.
 # Driven by the app module's externalNativeBuild. See android/INTEGRATION.md.
 cmake_minimum_required(VERSION 3.22.1)
-project(quenderin_llama LANGUAGES CXX)
+project(quenderin_llama LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -120,6 +120,16 @@ if(EXISTS "${LLAMA_DIR}/include/llama.h")
         target_compile_definitions(quenderin_llama PRIVATE QUENDERIN_LLAMA_PENALTIES_VOCAB=1)
     endif()
 endif()
+# Portable MAX model binding. The app build links no vendor runner, so the
+# library reports unavailable; a hosted test build adds the synthetic runner.
+add_library(quenderin_max_jni SHARED max_jni.cpp
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../native/max-runtime/src/quenderin_max_model.c")
+set_target_properties(quenderin_max_jni PROPERTIES
+    C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+target_include_directories(quenderin_max_jni PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../native/max-runtime/include")
+
 # Do NOT link ggml-cpu: with BACKEND_DL the CPU kernels are separate libggml-cpu-android_armv*.so
 # plugins, and ggml_threadpool_* is resolved at runtime from the CPU backend registry.
 target_link_libraries(quenderin_llama PRIVATE llama ggml android log)

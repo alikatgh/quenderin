@@ -15,7 +15,7 @@ inline void fail(JNIEnv* env, const char* type, const char* message) noexcept {
     if (env->ExceptionCheck()) return;
     if (auto cls = env->FindClass(type)) { env->ThrowNew(cls, message); env->DeleteLocalRef(cls); }
 }
-inline std::string utf8(JNIEnv* env, jstring value, size_t maximum) {
+inline std::string utf8(JNIEnv* env, jstring value, size_t maximum, bool allow_nul = false) {
     if (env->ExceptionCheck()) throw std::runtime_error("Pending Java exception");
     if (!value) throw std::runtime_error("Missing string");
     const jsize count = env->GetStringLength(value);
@@ -26,7 +26,12 @@ inline std::string utf8(JNIEnv* env, jstring value, size_t maximum) {
     std::string result;
     for (jsize i = 0; i < count; ++i) {
         uint32_t c = chars[i];
-        if (!c) throw std::runtime_error("NUL is unavailable in native strings");
+        if (!c) {
+            // Paths cannot carry U+0000; prompt bytes can because the C boundary
+            // takes an explicit length. Keep both policies explicit.
+            if (allow_nul) { result += '\0'; continue; }
+            throw std::runtime_error("NUL is unavailable in native strings");
+        }
         if (c >= 0xD800 && c <= 0xDBFF) {
             if (++i >= count || chars[i] < 0xDC00 || chars[i] > 0xDFFF) throw std::runtime_error("Unpaired UTF-16 surrogate");
             c = 0x10000 + ((c - 0xD800) << 10) + (chars[i] - 0xDC00);
