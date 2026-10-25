@@ -11,6 +11,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 NATIVE = ROOT / "native/max-runtime"
@@ -55,11 +56,16 @@ def main() -> None:
     cxx = tool("g++", args.cxx)
     kotlinc = tool("kotlinc", args.kotlinc)
     java = tool("java", args.java)
-    jni_includes = [f"-I{java_home}/include", f"-I{java_home}/include/linux"]
+    jni_includes = [f"-I{java_home}/include"]
+    for platform_include in ("linux", "darwin", "win32"):
+        candidate = pathlib.Path(java_home) / "include" / platform_include
+        if candidate.is_dir():
+            jni_includes.append(f"-I{candidate}")
     model = work / "model.o"
     fake = work / "fake.o"
     bridge = work / "max_jni.o"
-    library = work / "libquenderin_max_jni.so"
+    suffix = ".dylib" if sys.platform == "darwin" else ".so"
+    library = work / f"libquenderin_max_jni{suffix}"
     jar = work / "max-binding.jar"
     run([cc, "-std=c11", "-O1", "-g", "-fPIC", "-Wall", "-Wextra", "-Werror",
          f"-I{NATIVE / 'include'}", "-c", str(NATIVE / "src/quenderin_max_model.c"), "-o", str(model)], env)

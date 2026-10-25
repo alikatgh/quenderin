@@ -54,7 +54,11 @@ not establish a vendor backend or phone execution.
 
 - Kotlin facade compiled locally with kotlinc; the JNI C++ passes
   `clang++ -fsyntax-only -Wall -Wextra -Werror` against the JDK headers.
+- The host-only JNI/JVM fixture passed locally on Darwin arm64 (clang, JDK 25)
+  on 26 October 2026: receipt/tamper, capability, text, supplementary scalar
+  plus NUL, sink cancellation, pre-first-token cancellation, BUSY,
+  close-while-busy, reuse and idempotent close.
 - Hosted JNI/JVM and arm64 app compilation are wired into CI; check the exact
-  PR head.
+  PR head for their results.
 - No MAX runner, weights, device or simulator was used. Phone speed and UI
   remain unverified.

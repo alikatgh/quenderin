@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased — mobile MAX bindings (2026-10-26)
+
+- Refresh the missing mobile MAX inputs: main `8d5597…` still has no
+  Android/Adreno/Qualcomm/Dragonfly source, the only official release is
+  `max/v26.7.0`, 26.7.0 publishes no Android/iOS wheel, no MEF exists, and the
+  demo author has no public build source. The MLX tokenizer is recorded as an
+  unadopted, unverified candidate. MAX stays blocked and unselectable.
+- Add an Android JNI bridge and pure-Kotlin facade over the canonical C
+  boundary: registry IDs, run-scoped callbacks/cancellation, supplementary
+  Unicode and embedded NUL, explicit close-while-busy, and a hosted JNI/JVM
+  fixture with a test-only synthetic runner. Production links no runner.
+- Add an Apple SwiftPM C target staged byte-for-byte from the canonical C
+  boundary with a SHA-256 receipt, plus a Swift wrapper for receipts,
+  capability, streaming, cancel and close. Close waits for the active run;
+  tests use a test-only Swift runner. Production links no runner.
+- No vendor SDK, runner, weights, simulator or device was used. Neither binding
+  is wired into model selection; phone performance/UI and store submission
+  remain deferred.
+
 ## Unreleased — mobile MAX adapter boundary (2026-10-25)
 
 - Add a vendor-neutral model-adapter boundary for a future mobile MAX backend:

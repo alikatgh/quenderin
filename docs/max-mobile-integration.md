@@ -1,13 +1,13 @@
 # Mobile MAX/Bonsai integration status
 
-Updated 25 October 2026. This records the mobile half of the
+Updated 26 October 2026. This records the mobile half of the
 [MAX acceleration work](modular-acceleration-plan.md). It separates the
-portable adapter boundary that now exists from the mobile vendor runtime that
-has not been integrated.
+portable adapter boundary and native bindings that now exist from the mobile
+vendor runtime that has not been integrated.
 
-**Current status: not integrated, not validated on a phone, store submission
-deferred.** No model weights were downloaded, no MAX SDK was installed locally,
-and no device or simulator was run for this increment.
+**Current status: bindings exist, no vendor runtime is linked, not validated on a
+phone, store submission deferred.** No model weights were downloaded, no MAX SDK
+was installed locally, and no device or simulator was run for this increment.
 
 ## What is actually true
 
@@ -15,6 +15,8 @@ and no device or simulator was run for this increment.
 | --- | --- | --- |
 | MAX CPU tensor bridge | Foundation merged | [PR #185](https://github.com/alikatgh/quenderin/pull/185), real SDK run [40174916756](https://github.com/alikatgh/quenderin/actions/runs/40174916756) |
 | Portable model-adapter boundary | Source + host fixture | `native/max-runtime/{include,src}/quenderin_max_model.*`, `native/max-runtime/tools/test_model_adapter.py` |
+| Android JNI/Kotlin binding | Source + hosted fixture; unavailable without a runner | [max-android-binding.md](max-android-binding.md) |
+| Apple C/Swift binding | Source + hosted tests; unavailable without a runner | [max-apple-binding.md](max-apple-binding.md) |
 | Android arm64 / iOS SDK compile probes | Compile-only CI gates; inspect the exact candidate's checks | `native/max-runtime/android-check`, `native-remote-sdk.yml` steps |
 | Mobile audit receipt | Recorded and gated | `native/max-runtime/mobile-lock.json`, `tools/check_mobile_lock.py` |
 | Android MAX runtime | Blocked | Pinned 26.7 and main `8d5597…` have zero Android/Adreno/Qualcomm/Dragonfly paths; no Android wheel |
@@ -64,6 +66,27 @@ final hash and the vendor open. Receipts therefore require app-private storage;
 never stage these files in shared or user-writable external storage. The adapter
 cannot close this gap without a vendor API that accepts an already-open
 descriptor.
+
+## Native bindings
+
+Both bindings wrap the canonical C implementation and link no vendor runner, so
+opening reports unavailable and MAX stays out of model pickers and Automatic.
+
+- **Android** — `android/jni/max_jni.cpp` compiles the canonical C boundary once,
+  uses registry IDs rather than raw pointers, binds callbacks and cancellation
+  to the active run ID, preserves supplementary Unicode and embedded NUL, and
+  refuses close while busy. The pure-Kotlin facade is
+  `MaxModelBinding.kt`; a hosted JNI/JVM fixture links the synthetic runner only
+  in the test build. See [max-android-binding.md](max-android-binding.md).
+- **Apple** — `apple/QuenderinKit/Sources/CMaxModel` is a byte-verified SwiftPM
+  staging of the same C files. The Swift wrapper exposes receipts, capability,
+  streaming generation, cancel and close; close waits for an active run and
+  cancel reaches the native lease directly. Tests use a test-only Swift runner.
+  See [max-apple-binding.md](max-apple-binding.md).
+
+Neither binding is compiled with a production runner, and no weights or vendor
+SDK were downloaded. Hosted JNI/JVM and Swift tests are compilation/fixture
+evidence, not MAX execution or phone performance.
 
 ```sh
 python3 -B native/max-runtime/tools/test_model_adapter.py --work "$HOME/quenderin-max-scratch"
