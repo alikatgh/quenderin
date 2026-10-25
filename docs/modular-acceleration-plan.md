@@ -193,13 +193,14 @@ Android/iOS runtime, or make MAX an eligible Automatic candidate. Those
 remaining tasks stay unchecked:
 
 - [ ] Pin the Android demo's source, compiler, runtime, device backend, build
-  recipe and exact Bonsai artifact. **Blocked:** the demonstration's source is
-  not public and the pinned 26.7 tree contains no mobile backend. Record a
-  source receipt and all licenses when one exists.
+  recipe and exact Bonsai artifact. **Blocked:** no public demonstration source
+  or build recipe was located, and the pinned 26.7 tree has no mobile backend
+  in the recorded audit. Record a source receipt and all licenses when one exists.
 - [ ] Verify redistribution and telemetry behavior for the exact components.
-  The source tag's Community License differs from the published wheels'
-  `LicenseRef-MAX-Platform-Software-License`, and mobile redistribution remains
-  unreviewed. MAX usage data is described as collected by default.
+  The wheels declare `LicenseRef-MAX-Platform-Software-License`; the inspected
+  SDK embeds the same Community License hash recorded for the pinned source.
+  Exact mobile component terms, notices and redistribution remain unreviewed.
+  MAX usage data is described as collected by default.
   [MAX uses mixed licenses](https://www.modular.com/blog/max-license): some are
   Apache/LLVM and others use the community/platform terms. Retain notices and
   terms; do not assume the whole tree is Apache-2.0.
@@ -216,8 +217,8 @@ remaining tasks stay unchecked:
   load probe pass. Use its measured performance; back off on regression/failure.
 - [ ] Develop Apple MAX support as a separate adapter/build/validation milestone.
   **Added:** a hosted probe compiles the portable boundary against the iOS SDK
-  (pending run). An actual iOS artifact, ahead-of-time story and license review
-  remain.
+  as a per-candidate CI gate. An actual iOS artifact, ahead-of-time compilation
+  path and license review remain.
   Existing Metal support in MAX does not establish an iOS application artifact.
 
 Do not rewrite Modular's compiler or copy a second token pipeline. Reuse its

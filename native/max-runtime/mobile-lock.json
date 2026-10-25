@@ -59,7 +59,7 @@
     {
       "id": "exact-binary-terms",
       "satisfied": false,
-      "detail": "Mobile redistribution is unreviewed. Published wheel terms differ from the source tag's Community License and no mobile package exists."
+      "detail": "Mobile redistribution is unreviewed. The inspected SDK embeds the same Community License hash as the source receipt; exact mobile components, third-party notices and distribution requirements still need review. No mobile package is pinned."
     },
     {
       "id": "telemetry-proof",

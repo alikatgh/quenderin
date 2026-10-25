@@ -16,7 +16,7 @@
   MAX 26.7 source contains no Android/Adreno/Qualcomm/Dragonfly paths, the
   Bonsai 2B GGUF is pinned but has no reviewed MEF/tokenizer/cache contract,
   mobile redistribution and telemetry are unreviewed, and the reported
-  Snapdragon demonstration is not reproducible from public sources.
+  Snapdragon demonstration has no located public source/build recipe.
 - Keep mobile MAX out of Automatic and reject unverified support, inference,
   phone-performance and store claims in a checked lock. Phone validation and
   store submission remain deferred; no model-weight download, simulator or

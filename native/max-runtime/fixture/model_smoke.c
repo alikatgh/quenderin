@@ -28,6 +28,10 @@ static const char kVectorSha[] =
     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
 static const char kBulkSha[] =
     "72a2f8d2643328a2e03dcb1b66fdc6610b95ba3019d88d8849ce060d0be634ce";
+static const char kPaddingSha[] =
+    "b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a";
+static const char kTailSha[] =
+    "635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0";
 
 static const FakePiece kThreeFourByte[] = {
     {"\xe2\x82", 2, 0}, {"\xac", 1, 0}, {"\xf0\x9f", 2, 0},
@@ -40,6 +44,8 @@ static const FakePiece kSurrogate[] = {
     {"\xed\xa0\x80", 3, 0}, {"!", 1, 1},
 };
 static const FakePiece kTruncated[] = {{"\xe2\x82", 2, 1}};
+static const FakePiece kCappedTruncated[] = {{"\xe2\x82", 2, 0}};
+static const FakePiece kTextTruncated[] = {{"a\xe2\x82", 3, 0}};
 
 typedef struct {
   char text[512];
@@ -189,6 +195,32 @@ int main(int argc, char **argv) {
   expect_no_path(&error);
   assert(qmax_model_verify(&receipt, &error) == QMAX_OK && error.message[0] == '\0');
 
+  /* SHA-256 two-block padding and a nonaligned multi-block tail. */
+  char boundary_path[QMAX_MODEL_MAX_PATH_BYTES], boundary_data[65];
+  join(boundary_path, sizeof(boundary_path), directory, "sha-boundary.bin");
+  memset(boundary_data, 'a', sizeof(boundary_data));
+  QMaxModelFile boundary_file = {.path = boundary_path, .bytes = 56};
+  memcpy(boundary_file.sha256, kPaddingSha, 64);
+  QMaxModelReceipt boundary_receipt = receipt;
+  boundary_receipt.files = &boundary_file;
+  boundary_receipt.file_count = 1;
+  write_file(boundary_path, boundary_data, 56);
+  assert(qmax_model_verify(&boundary_receipt, &error) == QMAX_OK);
+  boundary_data[55] = 'b';
+  write_file(boundary_path, boundary_data, 56);
+  assert(qmax_model_verify(&boundary_receipt, &error) == QMAX_CONTRACT_MISMATCH);
+  expect_no_path(&error);
+
+  boundary_data[55] = 'a';
+  boundary_file.bytes = sizeof(boundary_data);
+  memcpy(boundary_file.sha256, kTailSha, 64);
+  write_file(boundary_path, boundary_data, sizeof(boundary_data));
+  assert(qmax_model_verify(&boundary_receipt, &error) == QMAX_OK);
+  boundary_data[64] = 'b';
+  write_file(boundary_path, boundary_data, sizeof(boundary_data));
+  assert(qmax_model_verify(&boundary_receipt, &error) == QMAX_CONTRACT_MISMATCH);
+  expect_no_path(&error);
+
   bad = receipt;
   bad.files = files;
   files[0].bytes -= 1;
@@ -311,6 +343,50 @@ int main(int argc, char **argv) {
   expect_text(&sink, "\xef\xbf\xbd");
   assert(performance.status == 0);
 
+  /* A token cap also terminates a partial character, while holding the lease. */
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_script(kCappedTruncated,
+                    sizeof(kCappedTruncated) / sizeof(kCappedTruncated[0]));
+  ask = request("hi", 1);
+  memset(&sink, 0, sizeof(sink));
+  sink.busy_model = model;
+  sink.close_model = model;
+  assert(qmax_model_generate(model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_OK);
+  expect_text(&sink, "\xef\xbf\xbd");
+  assert(sink.calls == 1 && sink.busy_code == QMAX_BUSY &&
+         sink.close_code == QMAX_BUSY);
+  assert(performance.status == 3 && performance.decoded_tokens == 1 &&
+         performance.prompt_tokens == 2 && error.code == QMAX_OK &&
+         error.message[0] == '\0');
+
+  /* A sink refusal during that terminal flush still cancels generation. */
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_script(kCappedTruncated,
+                    sizeof(kCappedTruncated) / sizeof(kCappedTruncated[0]));
+  memset(&sink, 0, sizeof(sink));
+  sink.abort_after = 1;
+  assert(qmax_model_generate(model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_CANCELLED);
+  expect_text(&sink, "\xef\xbf\xbd");
+  assert(sink.calls == 1 && performance.status == 4 &&
+         performance.decoded_tokens == 1 && error.code == QMAX_CANCELLED);
+
+  /* Cancellation before the next token does not flush unfinished text. */
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_script(kTextTruncated,
+                    sizeof(kTextTruncated) / sizeof(kTextTruncated[0]));
+  ask = request("hi", 2);
+  memset(&sink, 0, sizeof(sink));
+  sink.cancel_after = 1;
+  sink.cancel_model = model;
+  assert(qmax_model_generate(model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_CANCELLED);
+  expect_text(&sink, "a");
+  assert(sink.calls == 1 && performance.status == 1 &&
+         performance.decoded_tokens == 1);
+  ask = request("hi", 16);
+
   /* Single-flight: a nested generate from the sink returns busy. */
   fake_model_reset(0, 0, 0, 0, -1);
   memset(&sink, 0, sizeof(sink));
@@ -392,6 +468,17 @@ int main(int argc, char **argv) {
   assert(performance.status == 5 && performance.prompt_tokens == 63 &&
          performance.decoded_tokens == 1);
 
+  /* Context exhaustion without EOG retains clamped status and flushes UTF-8. */
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_script(kCappedTruncated,
+                    sizeof(kCappedTruncated) / sizeof(kCappedTruncated[0]));
+  memset(&sink, 0, sizeof(sink));
+  assert(qmax_model_generate(model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_OK);
+  expect_text(&sink, "\xef\xbf\xbd");
+  assert(performance.status == 5 && performance.prompt_tokens == 63 &&
+         performance.decoded_tokens == 1);
+
   /* Invalid requests are rejected before generation and say so. */
   ask = request("hi", 17);
   memset(&performance, 0, sizeof(performance));
@@ -437,6 +524,43 @@ int main(int argc, char **argv) {
                              &performance, &error) == QMAX_CONTRACT_MISMATCH);
   assert(performance.status == 2 && sink.length == QMAX_MODEL_MAX_STREAM_BYTES);
   expect_no_path(&error);
+
+  /* A cap's replacement character must fit within the same stream limit. */
+  char full_piece[QMAX_MODEL_MAX_PIECE_BYTES];
+  char partial_piece[QMAX_MODEL_MAX_PIECE_BYTES];
+  memset(full_piece, 'a', sizeof(full_piece));
+  memset(partial_piece, 'a', sizeof(partial_piece));
+  partial_piece[sizeof(partial_piece) - 3] = '\xe2';
+  partial_piece[sizeof(partial_piece) - 2] = '\x82';
+  FakePiece capped_stream[QMAX_MODEL_MAX_STREAM_BYTES / QMAX_MODEL_MAX_PIECE_BYTES];
+  const size_t capped_steps = sizeof(capped_stream) / sizeof(capped_stream[0]);
+  for (size_t index = 0; index < capped_steps; ++index)
+    capped_stream[index] = (FakePiece){full_piece, sizeof(full_piece), 0};
+  capped_stream[capped_steps - 1] =
+      (FakePiece){partial_piece, sizeof(partial_piece) - 1, 0};
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_script(capped_stream, capped_steps);
+  ask = request("hi", (uint32_t)capped_steps);
+  memset(&sink, 0, sizeof(sink));
+  sink.discard = 1;
+  assert(qmax_model_generate(flood_model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_OK);
+  assert(performance.status == 3 && performance.decoded_tokens == capped_steps &&
+         sink.length == QMAX_MODEL_MAX_STREAM_BYTES);
+
+  partial_piece[sizeof(partial_piece) - 3] = 'a';
+  partial_piece[sizeof(partial_piece) - 2] = '\xe2';
+  partial_piece[sizeof(partial_piece) - 1] = '\x82';
+  capped_stream[capped_steps - 1].length = sizeof(partial_piece);
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_script(capped_stream, capped_steps);
+  memset(&sink, 0, sizeof(sink));
+  sink.discard = 1;
+  assert(qmax_model_generate(flood_model, &ask, sink_emit, &sink, NULL, NULL,
+                             &performance, &error) == QMAX_CONTRACT_MISMATCH);
+  assert(performance.status == 2 && performance.decoded_tokens == capped_steps &&
+         sink.length == QMAX_MODEL_MAX_STREAM_BYTES - 2);
+  expect_no_path(&error);
   assert(qmax_model_close(flood_model) == QMAX_OK);
   fake_model_flood(0);
 
@@ -461,7 +585,21 @@ int main(int argc, char **argv) {
   assert(run.result == QMAX_OK);
   expect_text(&run.sink, "hello \xc3\xa9!");
 
-  /* NULL diagnostics and performance pointers are tolerated. */
+  /* Cross-thread cancellation waits for the blocked runner's token boundary. */
+  fake_model_reset(0, 0, 0, 0, -1);
+  fake_model_block(1);
+  memset(&run, 0, sizeof(run));
+  run.model = model;
+  run.request = request("hi", 16);
+  assert(pthread_create(&thread, NULL, thread_generate, &run) == 0);
+  fake_model_wait_entered();
+  qmax_model_cancel(model);
+  fake_model_release();
+  assert(pthread_join(thread, NULL) == 0);
+  assert(run.result == QMAX_CANCELLED);
+  expect_text(&run.sink, "he");
+
+  /* Reuse after cancellation also tolerates NULL diagnostic/performance pointers. */
   fake_model_reset(0, 0, 0, 0, -1);
   memset(&sink, 0, sizeof(sink));
   ask = request("hi", 16);

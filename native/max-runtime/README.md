@@ -35,8 +35,8 @@ python3 -B native/max-runtime/tools/check_mobile_lock.py
 `mobile-lock.json` records the 25 October 2026 audit: pinned MAX 26.7 source has
 no Android/Adreno/Qualcomm/Dragonfly paths, the Bonsai 2B GGUF is pinned but no
 MEF/tokenizer/cache contract exists, redistribution and telemetry are
-unreviewed, and the reported Snapdragon demonstration is not reproducible from
-public sources. The lock fails validation if any of those become support,
+unreviewed, and no public source/build recipe for the reported Snapdragon
+demonstration was located. The lock fails validation if any of those become support,
 inference or phone-performance claims. See
 [docs/max-mobile-integration.md](../../docs/max-mobile-integration.md).
 

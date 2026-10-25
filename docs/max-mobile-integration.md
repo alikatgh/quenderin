@@ -2,7 +2,8 @@
 
 Updated 25 October 2026. This records the mobile half of the
 [MAX acceleration work](modular-acceleration-plan.md). It separates the
-portable adapter boundary that now exists from the vendor runtime that does not.
+portable adapter boundary that now exists from the mobile vendor runtime that
+has not been integrated.
 
 **Current status: not integrated, not validated on a phone, store submission
 deferred.** No model weights were downloaded, no MAX SDK was installed locally,
@@ -14,7 +15,7 @@ and no device or simulator was run for this increment.
 | --- | --- | --- |
 | MAX CPU tensor bridge | Foundation merged | [PR #185](https://github.com/alikatgh/quenderin/pull/185), real SDK run [40174916756](https://github.com/alikatgh/quenderin/actions/runs/40174916756) |
 | Portable model-adapter boundary | Source + host fixture | `native/max-runtime/{include,src}/quenderin_max_model.*`, `native/max-runtime/tools/test_model_adapter.py` |
-| Android arm64 / iOS SDK compile probes | Added, pending hosted run | `native/max-runtime/android-check`, `native-remote-sdk.yml` steps |
+| Android arm64 / iOS SDK compile probes | Compile-only CI gates; inspect the exact candidate's checks | `native/max-runtime/android-check`, `native-remote-sdk.yml` steps |
 | Mobile audit receipt | Recorded and gated | `native/max-runtime/mobile-lock.json`, `tools/check_mobile_lock.py` |
 | Android MAX runtime | Blocked | Pinned MAX 26.7 source has zero Android/Adreno/Qualcomm/Dragonfly paths |
 | Bonsai MEF/tokenizer/cache contract | Blocked | Only the official GGUF is pinned; no reviewed MEF or mapping exists |
@@ -70,11 +71,16 @@ python3 -B -m unittest discover -s native/max-runtime/tests -p 'test_*.py'
 python3 -B native/max-runtime/tools/check_mobile_lock.py
 ```
 
-The compile/run check uses an inert runner double and sanitizers. On 25 October
-2026 it passed locally on Darwin arm64 with Apple clang and ASan/UBSan; it is
-wired into the hosted Linux MAX job. The Android arm64 and iOS SDK steps are
-compile-only probes and have not yet run on a hosted runner. This is host
-compilation and fixture execution, not MAX execution.
+The compile/run check uses an inert runner double and sanitizers. The author of
+the original source increment (`fb1bcb7`) recorded a local Darwin arm64 pass with
+Apple clang and ASan/UBSan on 25 October 2026. Subsequent candidates require their
+own hosted results: the [MAX workflow](https://github.com/alikatgh/quenderin/actions/workflows/max-runtime.yml)
+runs the C fixture under ASan/UBSan; the
+[native SDK workflow](https://github.com/alikatgh/quenderin/actions/workflows/native-remote-sdk.yml)
+contains the Android arm64 build and iOS SDK syntax probes. Check the exact PR
+head revision and retain its run links in the PR validation record. These checks
+establish host fixture execution and compile compatibility, not MAX execution
+or a distributable mobile runtime.
 
 ## Why mobile MAX is still blocked
 
@@ -89,10 +95,11 @@ compilation and fixture execution, not MAX execution.
    sampling/stops and multi-turn cache behavior are all missing. Matching the
    PTQ1_0/Hadamard layout is not optional.
 3. **Licensing and telemetry are unresolved for mobile.** Published 26.7.0
-   wheels declare `LicenseRef-MAX-Platform-Software-License`; the source tag
-   carries the Modular MAX Community License. The latter permits object-code
-   distribution with notice/attribution conditions, but mobile redistribution
-   has not been reviewed against the exact components. MAX usage data is
+   wheels declare `LicenseRef-MAX-Platform-Software-License`; the inspected SDK
+   embeds the August 18, 2026 Community License with the same SHA-256 recorded
+   for the pinned source license. That metadata label does not establish
+   different terms. Mobile redistribution still needs review of the exact
+   components, third-party notices and distribution requirements. MAX usage data is
    described as collected by default, so opt-outs must be proven in the actual
    mobile artifact.
 4. **No iOS artifact.** MAX supports Apple Silicon through Metal on macOS. That

@@ -606,8 +606,8 @@ QMaxCode qmax_model_generate(QMaxModel *model, const QMaxModelRequest *request,
         complete = 1;
         break;
       }
-      if (total >= model->context_tokens) {
-        status = 3;
+      if (total >= model->context_tokens || index + 1 == budget) {
+        if (status != 5) status = 3;
         complete = 1;
         break;
       }
