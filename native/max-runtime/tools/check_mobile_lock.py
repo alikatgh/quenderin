@@ -75,6 +75,38 @@ def validate(lock: dict, entry: dict) -> None:
             or not re.fullmatch(r"[a-f0-9]{64}", _text(license_record.get("sha256"), 64))):
         raise ValueError("Pinned source license receipt required")
 
+    refresh = lock.get("refresh", {})
+    if (not re.fullmatch(r"2026-[0-9]{2}-[0-9]{2}", _text(refresh.get("checkedAt"), 10))
+            or not re.fullmatch(r"[a-f0-9]{40}", _text(refresh.get("mainRevision"), 40))
+            or refresh["mainRevision"] == movement.get("sourceRevision")
+            or not re.fullmatch(r"2026-[0-9]{2}-[0-9]{2}", _text(refresh.get("mainCommitDate"), 10))
+            or refresh.get("mainTreePaths") != 16637
+            or refresh.get("mainMobileBackendPaths") != 0
+            or refresh.get("officialRelease") != "max/v26.7.0"
+            or not re.fullmatch(r"2026-[0-9]{2}-[0-9]{2}", _text(refresh.get("officialReleaseDate"), 10))
+            or refresh.get("pypiVersion") != "26.7.0"
+            or set(refresh.get("pypiWheelPlatforms", [])) != {
+                "macosx_13_0_arm64", "manylinux_2_34_aarch64", "manylinux_2_34_x86_64"}
+            or refresh.get("androidOrIosWheels") != 0
+            or refresh.get("prismMlMefArtifacts") != 0
+            or not isinstance(refresh.get("demoPublicReposChecked"), int)
+            or refresh["demoPublicReposChecked"] < 1
+            or refresh.get("demoReposMatchingMaxMobile") != 0
+            or not isinstance(refresh.get("demoPublicGistsChecked"), int)
+            or refresh["demoPublicGistsChecked"] < 0):
+        raise ValueError("MAX refresh evidence is incomplete or claims mobile support")
+    _text(refresh.get("demoSearchScope"), 512)
+
+    candidate = refresh.get("bonsaiTokenizerCandidate", {})
+    if (candidate.get("repo") != "prism-ml/Ternary-Bonsai-2-2B-mlx-2bit"
+            or candidate.get("revision") != "1c6cbae21f8c38830ce337972b46fdae7b18eaaa"
+            or candidate.get("filename") != "tokenizer.json"
+            or candidate.get("bytes") != 12807982
+            or candidate.get("sha256") != "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+            or candidate.get("adopted") is not False):
+        raise ValueError("Bonsai tokenizer candidate must stay unadopted and pinned")
+    _text(candidate.get("note"), 512)
+
     demo = lock.get("demonstration", {})
     if (demo.get("publicSourceAvailable") is not False
             or demo.get("independentlyReproduced") is not False):
@@ -122,6 +154,10 @@ def main() -> None:
         "status": lock["status"],
         "sourceRevision": lock["movement"]["sourceRevision"],
         "mobileBackendPaths": lock["movement"]["mobileBackendPaths"],
+        "refreshMainRevision": lock["refresh"]["mainRevision"],
+        "refreshMobileBackendPaths": lock["refresh"]["mainMobileBackendPaths"],
+        "androidOrIosWheels": lock["refresh"]["androidOrIosWheels"],
+        "prismMlMefArtifacts": lock["refresh"]["prismMlMefArtifacts"],
         "artifact": lock["artifact"]["filename"],
         "blockedPrerequisites": len(lock["prerequisites"]),
         "phoneValidation": "not-run",
