@@ -2,6 +2,7 @@ import ai.quenderin.core.MaxCloseResult
 import ai.quenderin.core.MaxModelBinding
 import ai.quenderin.core.MaxModelCode
 import ai.quenderin.core.MaxModelFile
+import ai.quenderin.core.MaxModelNative
 import ai.quenderin.core.MaxModelReceipt
 import ai.quenderin.core.MaxOpenResult
 import java.io.File
@@ -43,10 +44,35 @@ fun main(args: Array<String>) {
     )
 
     if (!MaxModelBinding.verify(receipt).succeeded) fail("verified receipt was rejected")
-    val tampered = receipt.copy(files = receipt.files.mapIndexed { index, value ->
-        if (index == 0) value.copy(sha256 = "0".repeat(64)) else value
-    })
+    val tampered = MaxModelReceipt(
+        files = receipt.files.mapIndexed { index, value ->
+            if (index == 0) value.copy(sha256 = "0".repeat(64)) else value
+        },
+        runnerName = receipt.runnerName, backend = receipt.backend,
+        contextTokens = receipt.contextTokens, maxOutputTokens = receipt.maxOutputTokens,
+    )
     if (MaxModelBinding.verify(tampered).succeeded) fail("tampered receipt was accepted")
+
+    // Snapshot: mutating the caller-owned list after construction cannot change the receipt.
+    val mutableFiles = receipt.files.toMutableList()
+    val snapshot = MaxModelReceipt(mutableFiles, receipt.runnerName, receipt.backend,
+        receipt.contextTokens, receipt.maxOutputTokens)
+    mutableFiles[0] = mutableFiles[0].copy(sha256 = "")
+    if (snapshot.files[0].sha256.length != 64) fail("receipt did not snapshot its file list")
+    if (!MaxModelBinding.verify(snapshot).succeeded) fail("snapshot receipt changed after list mutation")
+
+    // The JNI boundary must reject malformed hash lengths before copying 64 bytes.
+    val paths = receipt.files.map { it.path }.toTypedArray()
+    val sizes = receipt.files.map { it.bytes }.toLongArray()
+    for (badHash in listOf("", "a", "a".repeat(63))) {
+        val error = arrayOf("")
+        val code = MaxModelNative.nativeVerify(
+            paths, sizes,
+            arrayOf(badHash, receipt.files[1].sha256, receipt.files[2].sha256),
+            receipt.runnerName, receipt.backend, receipt.contextTokens, receipt.maxOutputTokens, error,
+        )
+        if (code == MaxModelCode.OK) fail("JNI accepted a ${badHash.length}-byte hash")
+    }
     if (runCatching {
             MaxModelReceipt(listOf(MaxModelFile("relative.mef", 1, "0".repeat(64))),
                 "runner", "cpu", 16, 4)
