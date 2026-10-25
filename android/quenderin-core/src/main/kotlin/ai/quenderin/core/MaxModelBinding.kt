@@ -164,9 +164,7 @@ internal object MaxModelNative {
         try {
             System.loadLibrary("quenderin_max_jni")
             nativeBridgeAbi() == 1
-        } catch (_: UnsatisfiedLinkError) {
-            false
-        } catch (_: SecurityException) {
+        } catch (_: Throwable) {
             false
         }
     }
