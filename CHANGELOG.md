@@ -18,6 +18,8 @@
 - Harden the boundary: Android validates exactly 64 lowercase hash bytes before
   copying and snapshots the caller's file list; Apple cancel holds the model
   pointer lock across the bounded native call so close cannot free it mid-cancel.
+  Both bindings add run-specific pending cancellation so a cancel before native
+  admission is honored and a delayed token cannot cancel a later run.
 - No vendor SDK, runner, weights, simulator or device was used. Neither binding
   is wired into model selection; phone performance/UI and store submission
   remain deferred.

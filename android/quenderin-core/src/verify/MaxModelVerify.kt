@@ -115,6 +115,37 @@ fun main(args: Array<String>) {
         fail("pre-initialization cancellation did not stop generation")
     }
 
+    // A token may be cancelled before native admission; the pending request must
+    // cancel exactly that run and leave the handle reusable.
+    val preAdmitted = handle.newRunToken()
+    if (!handle.cancel(preAdmitted)) fail("pre-admission cancel was not accepted")
+    val preResult = handle.generate("hi", token = preAdmitted) { true }
+    if (preResult.code != MaxModelCode.CANCELLED || preResult.performance.status != 1) {
+        fail("pre-admission cancellation did not stop the run")
+    }
+    if (!handle.generate("hi") { true }.succeeded) fail("handle was not reusable after pre-admission cancel")
+
+    // A delayed token from an earlier run must not cancel the active run.
+    val stale = handle.newRunToken()
+    val blocked = CountDownLatch(1)
+    val unblock = CountDownLatch(1)
+    val first = java.util.concurrent.atomic.AtomicBoolean(true)
+    var activeResult: ai.quenderin.core.MaxGenerationResult? = null
+    val active = thread {
+        activeResult = handle.generate("hi", token = handle.newRunToken()) {
+            if (first.compareAndSet(true, false)) {
+                blocked.countDown()
+                unblock.await(5, TimeUnit.SECONDS)
+            }
+            true
+        }
+    }
+    if (!blocked.await(5, TimeUnit.SECONDS)) fail("active run never reached the sink")
+    if (handle.cancel(stale)) fail("stale token cancelled an active run")
+    unblock.countDown()
+    active.join(5000)
+    if (active.isAlive || activeResult?.succeeded != true) fail("active run was affected by a stale cancel")
+
     // A second run is BUSY while the first is inside the sink; close refuses.
     val entered = CountDownLatch(1)
     val release = CountDownLatch(1)

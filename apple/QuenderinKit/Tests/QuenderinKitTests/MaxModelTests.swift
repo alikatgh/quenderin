@@ -288,4 +288,47 @@ final class MaxModelTests: XCTestCase {
         XCTAssertEqual(closeBox.value, .closed)
         XCTAssertTrue(handle.isClosed)
     }
+
+    func testPendingCancelBeforeAdmission() throws {
+        let value = try receipt()
+        var runner = makeFakeRunner()
+        let opened = MaxModelBinding.open(value, runner: &runner)
+        guard case .success(let handle) = opened else { return XCTFail("open failed") }
+        let token = handle.makeGenerationToken()
+        XCTAssertTrue(handle.cancel(token))
+        let result = handle.generate(prompt: "hi", token: token) { _ in true }
+        XCTAssertEqual(result.code, Int(qmax_code_value(qmax_code_cancelled())))
+        XCTAssertEqual(result.performance.status, 1)
+        XCTAssertTrue(handle.generate(prompt: "hi") { _ in true }.succeeded)
+        XCTAssertEqual(handle.close(), .closed)
+    }
+
+    func testStaleTokenDoesNotCancelActiveRun() throws {
+        let value = try receipt()
+        var runner = makeFakeRunner()
+        let opened = MaxModelBinding.open(value, runner: &runner)
+        guard case .success(let handle) = opened else { return XCTFail("open failed") }
+        let stale = handle.makeGenerationToken()
+        let entered = DispatchSemaphore(value: 0)
+        let release = DispatchSemaphore(value: 0)
+        let first = FirstCall()
+        let worker = ResultBox()
+        let workerDone = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            worker.value = handle.generate(prompt: "hi", token: handle.makeGenerationToken()) { _ in
+                if first.take() {
+                    entered.signal()
+                    release.wait()
+                }
+                return true
+            }
+            workerDone.signal()
+        }
+        XCTAssertEqual(entered.wait(timeout: .now() + 5), .success)
+        XCTAssertFalse(handle.cancel(stale))
+        release.signal()
+        XCTAssertEqual(workerDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(worker.value?.succeeded, true)
+        XCTAssertEqual(handle.close(), .closed)
+    }
 }

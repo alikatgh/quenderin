@@ -52,6 +52,14 @@ class MaxModelBindingTest {
         assertFalse(handle.cancel(), "completed run must not accept a stale cancel")
     }
 
+    @Test fun explicitRunTokenReachesTheBridge() {
+        val api = FakeApi()
+        val handle = MaxModelHandle(10, receipt, api)
+        val token = handle.newRunToken()
+        assertTrue(handle.generate("hi", token = token) { true }.succeeded)
+        assertEquals(token.id, api.generatedRun)
+    }
+
     @Test fun closeRefusesBusyThenClosesOnce() {
         val api = FakeApi()
         val handle = MaxModelHandle(8, receipt, api)

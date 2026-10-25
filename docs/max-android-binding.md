@@ -24,7 +24,9 @@ lease and the C lease must both admit before generation touches the model.
 Callbacks are resolved to `MaxTokenSink.onToken(String): Boolean`; the callback
 runs on the generation thread. Cancellation is an atomic run ID plus the C
 lease and may arrive from the sink, another thread or the UI. A stale run ID is
-ignored. `nativeClose` refuses with `QMAX_BUSY` while a run is active.
+ignored. A token cancelled before native admission is held as a pending request
+for exactly that run; a delayed token from an earlier run cannot cancel the
+active run. `nativeClose` refuses with `QMAX_BUSY` while a run is active.
 
 Prompt conversion preserves supplementary Unicode and embedded NUL; paths use
 the strict converter and reject NUL. The bridge never treats JNI modified UTF-8

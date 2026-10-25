@@ -320,6 +320,9 @@ object MaxModelBinding {
     fun open(receipt: MaxModelReceipt): MaxOpenResult = api.open(receipt)
 }
 
+/** A caller-visible run identity; only [MaxModelHandle.newRunToken] can mint one. */
+data class MaxRunToken internal constructor(val id: Long)
+
 /**
  * One verified installation. Generation is single-flight; [cancel] may be called
  * from the sink, another thread or the UI and only affects the run that is
@@ -337,6 +340,9 @@ class MaxModelHandle internal constructor(
 
     val isClosed: Boolean get() = closed
 
+    /** Mint a token before starting an asynchronous run; a stale token cannot cancel a later run. */
+    fun newRunToken(): MaxRunToken = MaxRunToken(runIds.incrementAndGet())
+
     private fun busy() = MaxGenerationResult(
         MaxModelCode.BUSY,
         MaxGenerationPerformance(0, 0, 0.0, 0.0, 0.0, 0.0, MaxModelStatus.REJECTED, 0),
@@ -349,6 +355,7 @@ class MaxModelHandle internal constructor(
         temperature: Float = 0.7f,
         topP: Float = 0.9f,
         seed: Int = 0,
+        token: MaxRunToken = newRunToken(),
         sink: MaxTokenSink,
     ): MaxGenerationResult {
         check(!closed) { "The MAX model handle is closed." }
@@ -359,8 +366,9 @@ class MaxModelHandle internal constructor(
         require(temperature in 0f..2f && topP > 0f && topP <= 1f) {
             "Sampling parameters are outside the reviewed range."
         }
+        require(token.id > 0) { "A run token is required." }
         if (!running.compareAndSet(false, true)) return busy()
-        val runId = runIds.incrementAndGet()
+        val runId = token.id
         activeRunId = runId
         try {
             return api.generate(id, runId, prompt, maxTokens, temperature, topP, seed, sink)
@@ -374,6 +382,12 @@ class MaxModelHandle internal constructor(
     fun cancel(): Boolean {
         val runId = activeRunId
         return runId != 0L && api.cancel(id, runId)
+    }
+
+    /** Cancels [token] (including a run that has not reached native admission yet). */
+    fun cancel(token: MaxRunToken): Boolean {
+        require(token.id > 0) { "A run token is required." }
+        return api.cancel(id, token.id)
     }
 
     fun close(): MaxCloseResult {
