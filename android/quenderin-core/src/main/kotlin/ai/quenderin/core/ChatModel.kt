@@ -349,15 +349,16 @@ class ChatModel(
     /**
      * Stop the in-flight reply where it is: bump the generation id so no more tokens land, and ask the
      * engine to interrupt its native decode now (the flag-only break lands one token late and does nothing
-     * during a non-interruptible prefill — Q-005/Q-217). Idempotent; no-op when nothing is generating.
+     * during a non-interruptible prefill — Q-005/Q-217). Also invalidates prepared-but-unstarted
+     * turns; only an active send needs native cancellation or settlement.
      * The streamed partial already in the transcript stays AND becomes persistable: an explicit Stop is
      * a decision about the user's time, not an unfinished turn. Twin of iOS `ChatModel.stopGenerating`.
      */
     fun stopGenerating() {
         val revision: Long
         synchronized(lock) {
+            revision = ++activeGeneration   // reject queued admissions as well as superseding a running send
             if (!isGenerating) return
-            revision = ++activeGeneration   // supersede the running send → its remaining writes become no-ops
             isGenerating = false
             inFlightAssistantId = null      // explicit Stop settles the partial; never discard it
         }

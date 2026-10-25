@@ -67,6 +67,7 @@ final class ConversationCoordinatorTests: XCTestCase {
     }
 
     /// A chat whose reply the test drives token by token (see `ControlledStreamEngine`).
+    @MainActor
     private func streamingChat() async -> (ChatModel, ControlledStreamEngine) {
         let engine = ControlledStreamEngine()
         try? await engine.load(model: ModelCatalog.smallest, at: URL(fileURLWithPath: "/dev/null"))
