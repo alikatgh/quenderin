@@ -169,6 +169,9 @@ final class MaxModelTests: XCTestCase {
         XCTAssertEqual(generated.performance.promptTokens, 2)
         XCTAssertEqual(generated.performance.decodedTokens, 6)
 
+        let exotic = handle.generate(prompt: "\u{1F642}\0x", maxTokens: 4) { _ in true }
+        XCTAssertTrue(exotic.succeeded)
+
         let cancelled = handle.generate(prompt: "hi") { _ in handle.cancel(); return true }
         XCTAssertEqual(cancelled.code, Int(qmax_code_value(qmax_code_cancelled())))
         XCTAssertEqual(cancelled.performance.status, 1)
