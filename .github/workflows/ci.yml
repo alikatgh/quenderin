@@ -416,6 +416,8 @@ jobs:
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/CoreVerify.kt -include-runtime -d /tmp/qcore.jar
           java -jar /tmp/qcore.jar
+      - name: Verify MAX JNI/JVM binding with the synthetic runner
+        run: python3 -B native/max-runtime/tools/test_android_binding.py --work "$RUNNER_TEMP/max-jni-binding"
       - name: Verify measured Automatic selection and native decode counters (no weights or network)
         run: |
           set -o pipefail
