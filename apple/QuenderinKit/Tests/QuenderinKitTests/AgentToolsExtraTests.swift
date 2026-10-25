@@ -55,11 +55,18 @@ final class UnitConverterToolTests: XCTestCase {
 
         // Category-Nd digits parse by DECIMAL VALUE on both platforms (Swift's Int/Double would
         // otherwise reject them while Android's parser accepts them — the drift this closes).
-        XCTAssertEqual(try await tool.run("\u{0665} km to m"), "5 km = 5000 m")   // ARABIC-INDIC FIVE
-        XCTAssertEqual(try await tool.run("\u{FF15} km to m"), "5 km = 5000 m")   // FULLWIDTH FIVE
+        let arabic = try await tool.run("\u{0665} km to m")       // ARABIC-INDIC FIVE
+        XCTAssertEqual(arabic, "5 km = 5000 m")
+        let fullwidth = try await tool.run("\u{FF15} km to m")    // FULLWIDTH FIVE
+        XCTAssertEqual(fullwidth, "5 km = 5000 m")
+        // Supplementary-plane Nd: one scalar here, a UTF-16 surrogate pair on Android. Both must
+        // read it as 5 (Kotlin scans by code point — see its `decimalDigitValue`).
+        let astral = try await tool.run("\u{1D7DD} km to m")      // MATHEMATICAL DOUBLE-STRUCK FIVE
+        XCTAssertEqual(astral, "5 km = 5000 m")
 
         // Ordinary ASCII input is unchanged, including the fractional rendering.
-        XCTAssertEqual(try await tool.run("5 m to ft"), "5 m = 16.4042 ft")
+        let ordinary = try await tool.run("5 m to ft")
+        XCTAssertEqual(ordinary, "5 m = 16.4042 ft")
     }
 }
 
@@ -103,13 +110,19 @@ final class DateCalcToolTests: XCTestCase {
     /// includes `²`: it appended the superscript and then `Int("5²")` failed, so Swift rejected an
     /// offset that Kotlin (category-Nd scan) read as 5 days. Regression for that exact split.
     func testDigitClassContract() async throws {
-        XCTAssertEqual(try await tool.run("2026-06-08 plus 5² days"), "2026-06-13")
+        let superscript = try await tool.run("2026-06-08 plus 5² days")
+        XCTAssertEqual(superscript, "2026-06-13")
 
         // Nd digits read by value on both twins — Android's Integer.parseInt already did this.
-        XCTAssertEqual(try await tool.run("2026-06-08 plus \u{0665} days"), "2026-06-13")
+        let arabic = try await tool.run("2026-06-08 plus \u{0665} days")
+        XCTAssertEqual(arabic, "2026-06-13")
+        // Supplementary-plane Nd must read the same way through the code-point scan.
+        let astral = try await tool.run("2026-06-08 plus \u{1D7DD} days")
+        XCTAssertEqual(astral, "2026-06-13")
 
         // Ordinary ASCII offsets are unchanged.
-        XCTAssertEqual(try await tool.run("2026-06-25 minus 17 days"), "2026-06-08")
+        let ordinary = try await tool.run("2026-06-25 minus 17 days")
+        XCTAssertEqual(ordinary, "2026-06-08")
     }
 
     /// Calendar-invalid dates must be REJECTED, not silently rolled over. DateFormatter would turn

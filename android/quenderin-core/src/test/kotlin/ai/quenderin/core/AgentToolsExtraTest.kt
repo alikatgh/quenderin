@@ -46,6 +46,14 @@ class AgentToolsExtraTest {
         assertEquals("2026-06-13", date.run("2026-06-08 plus \u0665 days"))
     }
 
+    @Test fun supplementaryPlaneDecimalDigitsParseByValue() {
+        // U+1D7DD MATHEMATICAL DOUBLE-STRUCK DIGIT FIVE is one Nd scalar but a UTF-16 surrogate
+        // pair, so a Char-by-Char scan used to drop it while Swift read 5. The code-point scan must
+        // match Swift for both tools.
+        assertEquals("5 km = 5000 m", units.run("\uD835\uDFDD km to m"))
+        assertEquals("2026-06-13", date.run("2026-06-08 plus \uD835\uDFDD days"))
+    }
+
     @Test fun ordinaryDateMathIsUnchanged() {
         assertEquals("2026-09-06", date.run("2026-06-08 plus 90 days"))
         assertEquals("2026-06-08", date.run("2026-06-25 minus 17 days"))
