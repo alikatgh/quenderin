@@ -62,14 +62,19 @@ that is compilation, not an iOS MAX runtime.
 
 ## Verification status
 
-- `110b67e`: staged C bytes pass `--check`; Swift source parsing, mobile-lock,
-  receipt and diff checks pass. The closed-handle and token-state fixtures are
-  included in the source tree.
-- **Swift runtime tests were not run for `110b67e`.** The hosted `swift test` and
-  iOS app results that were green belong to the earlier `065b740` revision and do
-  not cover this correction. The accepted local evidence for `110b67e` is the
-  Android host JNI/JVM fixture and nine Kotlin unit tests, plus the two negative
-  controls that failed as expected; see [max-android-binding.md](max-android-binding.md).
-- No MAX SDK, runner, weights, simulator or device was used. Phone speed and UI
-  remain unverified, and Apple MAX packaging remains a separate artifact/license
-  milestone.
+- The prior Swift-runtime gap is closed for this source by the existing narrow
+  hosted route: [`native-remote-sdk.yml` run 40221763739](https://github.com/alikatgh/quenderin/actions/runs/40221763739)
+  on branch `codex/max-cancel-verification-20261026` at
+  `a56a382f7f4272b904becae3888d8f1af551f1d4`. Both jobs completed SUCCESS:
+  the [apple job 121254652114](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652114)
+  includes the QuenderinKit `swift test` step and the Apple/iOS SDK/app compile
+  checks; the [android job 121254652255](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652255)
+  covers Android core tests and the SDK/app build.
+- This is a **narrow two-job run**, not the full CI matrix. The earlier full-CI
+  green set at `065b740` remains separate evidence and is not replaced by this
+  run. The local host JNI/JVM synthetic fixture remains separate evidence
+  described in [max-android-binding.md](max-android-binding.md).
+- `110b67e` remains the accepted production-source revision; `a56a382` only
+  updates documentation.
+- No vendor MAX backend, model contract, physical phone, rendered UI or store
+  verification is established. MAX remains disabled.

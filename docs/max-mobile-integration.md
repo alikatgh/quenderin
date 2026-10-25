@@ -87,10 +87,15 @@ opening reports unavailable and MAX stays out of model pickers and Automatic.
 
 Neither binding is compiled with a production runner, and no weights or vendor
 SDK were downloaded. Hosted JNI/JVM and Swift tests are compilation/fixture
-evidence, not MAX execution or phone performance. The hosted green results cover
-`065b740` only: the later `110b67e` cancellation correction has the local
-JNI/JVM fixture, nine Kotlin unit tests, negative controls and Swift source
-parsing, but its Swift runtime tests have not run.
+evidence, not MAX execution or phone performance. The cancellation correction at
+`110b67e` (docs commit `a56a382`) now has narrow hosted verification on
+`codex/max-cancel-verification-20261026`: [`native-remote-sdk.yml` run 40221763739](https://github.com/alikatgh/quenderin/actions/runs/40221763739)
+completed both the apple job (QuenderinKit `swift test`, Apple/iOS SDK/app
+compile) and the android job (core tests, SDK/app build) successfully. This is a
+**two-job run**, not the full CI matrix, and it does not execute the local host
+JNI/JVM synthetic fixture. The earlier full-CI green set at `065b740` remains
+separate evidence. No vendor backend, physical phone, rendered UI or store
+verification is established.
 
 ```sh
 python3 -B native/max-runtime/tools/test_model_adapter.py --work "$HOME/quenderin-max-scratch"

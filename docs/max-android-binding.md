@@ -72,10 +72,20 @@ not establish a vendor backend or phone execution.
   failed as expected. The fixture covers independent pending requests,
   completed/foreign/retired tokens, the 64 pending / 1,024 completed bounds,
   old unknown-ID expiry, delayed/current-run successor isolation, UTF-8/NUL,
-  cancellation, BUSY, close and reuse.
-- Swift source parsing, C staging, mobile-lock, receipt and diff checks pass for
-  this correction. **Swift runtime tests were not run for `110b67e`.**
-- Hosted JNI/JVM and arm64 app results that were green belong to `065b740` only;
-  no hosted run exists for `110b67e`.
-- No MAX runner, weights, device or simulator was used. Phone speed and UI
-  remain unverified.
+  cancellation, BUSY, close and reuse. This local host evidence remains separate
+  from the hosted run below.
+- The narrow hosted route now passes on the exact docs/source revision:
+  [`native-remote-sdk.yml` run 40221763739](https://github.com/alikatgh/quenderin/actions/runs/40221763739)
+  on branch `codex/max-cancel-verification-20261026` at
+  `a56a382f7f4272b904becae3888d8f1af551f1d4`. The
+  [android job 121254652255](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652255)
+  passed Android core tests (including the nine facade tests) and the real
+  Android SDK/app build. The
+  [apple job 121254652114](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652114)
+  passed the QuenderinKit `swift test` step and Apple/iOS SDK/app compile checks.
+- This is a **narrow two-job run**, not the full CI matrix, and it does not
+  execute `test_android_binding.py`. The earlier full-CI green set at `065b740`
+  remains separate evidence. `110b67e` remains the accepted production source;
+  `a56a382` only updates documentation.
+- No vendor MAX backend, model contract, physical phone, rendered UI or store
+  verification is established. MAX remains disabled.
