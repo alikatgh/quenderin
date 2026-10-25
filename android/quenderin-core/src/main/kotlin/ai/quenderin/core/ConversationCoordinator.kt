@@ -71,15 +71,25 @@ class ConversationCoordinator(
      *  untouched "New conversation" rows don't pile up, and when nothing new was said since the
      *  last save (see [savedCount]). */
     fun persist() {
-        // Stop any in-flight reply BEFORE snapshotting: persist() runs on a conversation switch/back, and
-        // saving a half-streamed transcript (or letting the zombie send keep writing into it after this
-        // conversation is left) is the corruption this guards. reset()/restore() also stop, so every
-        // lifecycle path that mutates the chat is now preceded by a stop. (Q-004/Q-168.)
-        chat.stopGenerating()
-        val id = manager.currentId ?: return
-        if (chat.messages.isEmpty() || chat.messages.size <= savedCount) return
-        manager.save(id, chat.messages)
-        savedCount = chat.messages.size
+        val id = manager.currentId
+        if (chat.messages.isEmpty()) {
+            if (chat.isGenerating) chat.stopGenerating()
+            return
+        }
+        val generating = chat.isGenerating
+        // Snapshot the COMPLETED turns before stopping. A streaming send keeps an assistant
+        // placeholder/half reply in `messages`; the Swift twin trims that final in-flight assistant
+        // (ConversationCoordinator.persist), so Android must not persist it either. Kotlin still
+        // stops first so a conversation switch cannot leave a zombie writer behind (Q-004/Q-168).
+        val completed = if (generating && chat.messages.lastOrNull()?.role == Role.ASSISTANT) {
+            chat.messages.dropLast(1)
+        } else {
+            chat.messages.toList()
+        }
+        if (generating) chat.stopGenerating()
+        if (id == null || completed.size <= savedCount) return
+        manager.save(id, completed)
+        savedCount = completed.size
         refresh()
     }
     fun persistIfOwned(id: String?, revision: Long, ownsJob: () -> Boolean): Boolean {

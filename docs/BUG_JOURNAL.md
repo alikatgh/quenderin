@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **Stopping a stream is not the same as removing its partial reply.** `ConversationCoordinator.persist()` used to stop
+  generation and then save `chat.messages`; the half-streamed assistant placeholder was still in that list, so navigating
+  away persisted a truncated reply. Snapshot the COMPLETED turns before stopping (trim the final in-flight assistant), then
+  save. Swift already trimmed; Kotlin now matches. CoreVerify pins the mid-stream persist/reopen case. (2026-10-26)
+
 - **An over-RAM model on a near-full disk can watchdog-panic macOS — free disk (≥ model size) before benchmarking.**
   A 12.3 GiB MoE on an 18 GB Mac with the disk 97 % full has no swap headroom; `llama-bench -ngl 999` thrashed until
   `watchdogd` stopped checking in and the kernel force-restarted (`watchdog timeout: no checkins from watchdogd in 93

@@ -102,8 +102,14 @@ public final class ConversationCoordinator: ObservableObject {
     /// completed turns) is still persisted instead of silently dropped.
     public func persist() {
         guard let id = manager.currentID, !chat.messages.isEmpty else { return }
+        // Snapshot before stopping: a streaming send leaves an assistant placeholder/partial
+        // reply in `messages`; save only completed turns and the user's message, matching the
+        // Kotlin twin. Stop the reply as well so a conversation switch cannot leave a zombie
+        // writer behind (Q-004/Q-168).
         var toSave = chat.messages
-        if chat.isGenerating, toSave.last?.role == .assistant {
+        let wasGenerating = chat.isGenerating
+        if wasGenerating { chat.stopGenerating() }
+        if wasGenerating, toSave.last?.role == .assistant {
             toSave.removeLast()
         }
         guard toSave.count > savedCount else { return }

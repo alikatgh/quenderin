@@ -1757,6 +1757,34 @@ fun main() {
         chat2.messages.map { it.text } == listOf("first question", "hello there") &&
             c2.summaries.size == 1 && c2.summaries[0].title == "first question"
     })
+    check("ConversationCoordinator.persist never saves an in-flight partial assistant", run {
+        val p = InMemoryConversationPersistence()
+        lateinit var coordinator: ConversationCoordinator
+        var persistedDuringStream: List<String>? = null
+        var mid: (() -> Unit)? = null
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "stream"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                onToken("partial")
+                mid?.invoke()                 // navigate/persist while the reply is still streaming
+                onToken(" tail")
+                return "partial tail"
+            }
+        }
+        val chat = ChatModel(engine)
+        mid = {
+            coordinator.persist()
+            persistedDuringStream = p.loadTranscript(coordinator.currentId!!).map { it.text }
+        }
+        coordinator = ConversationCoordinator(chat, p, now = { 42L })
+        chat.send("question")
+        val after = p.loadTranscript(coordinator.currentId!!).map { it.text }
+        persistedDuringStream == listOf("question") && after == listOf("question") &&
+            !chat.isGenerating && coordinator.summaries.map { it.title } == listOf("question")
+    })
     check("ConversationCoordinator.startNew is a no-op on an empty chat", run {
         val p = InMemoryConversationPersistence()
         val c = ConversationCoordinator(ChatModel(ScriptedInferenceEngine(listOf("x"))), p, now = { 1L })
