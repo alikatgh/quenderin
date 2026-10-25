@@ -13,6 +13,33 @@ and Android requires an actual NDK/Adreno port. MAX's public synchronous C API
 cannot interrupt an execution already in flight; a supervising process deadline
 is required. No pretrained model is used by this module's tests.
 
+## Mobile model-adapter boundary
+
+`include/quenderin_max_model.h` and `src/quenderin_max_model.c` add the
+vendor-neutral lifecycle a mobile backend must satisfy: receipt files that are
+always hashed (exact sizes and SHA-256), an exact runner ABI,
+telemetry/crash-reporting opt-outs, single-flight generation, bounded
+prompt/output/context/stream budgets, strict UTF-8 reassembly across token
+pieces, cancellation at token boundaries, capability probing and numeric
+performance reports. `qmax_model_close` refuses with `QMAX_BUSY` while a
+generation is active. It owns no tokenizer, sampler, weights or GGUF loader;
+those stay in the vendor runner.
+
+Run the inert fixture (no SDK, network, weights or device):
+
+```sh
+python3 -B native/max-runtime/tools/test_model_adapter.py --work "$HOME/quenderin-max-scratch"
+python3 -B native/max-runtime/tools/check_mobile_lock.py
+```
+
+`mobile-lock.json` records the 25 October 2026 audit: pinned MAX 26.7 source has
+no Android/Adreno/Qualcomm/Dragonfly paths, the Bonsai 2B GGUF is pinned but no
+MEF/tokenizer/cache contract exists, redistribution and telemetry are
+unreviewed, and no public source/build recipe for the reported Snapdragon
+demonstration was located. The lock fails validation if any of those become support,
+inference or phone-performance claims. See
+[docs/max-mobile-integration.md](../../docs/max-mobile-integration.md).
+
 ## Source and SDK identity
 
 The C interface and graph exporter follow Modular source

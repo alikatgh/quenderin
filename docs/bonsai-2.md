@@ -12,6 +12,12 @@ chat paths. Model-weight inference for
 these additions has **not** been run. This section describes engineering in the
 candidate, not a new public installer or store release.
 
+Mobile MAX execution of Bonsai is a separate, blocked milestone: the pinned MAX
+26.7 source has no Android backend, no reviewed Bonsai MEF/tokenizer/cache
+contract exists, and no phone run was performed. See
+[Mobile MAX/Bonsai integration status](max-mobile-integration.md). No Bonsai
+result below is a MAX result.
+
 Beam's four-part download is **133,885,310,500 bytes**, including its 5,954,020-byte
 metadata entry point. All four parts are required. Its minimum whole-model
 memory floor is 160 GiB before context overhead. Muse requires all 22 Q2_K parts,

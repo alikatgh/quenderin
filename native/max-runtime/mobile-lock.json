@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "updated": "2026-10-25",
+  "status": "blocked-no-public-mobile-backend",
+  "movement": {
+    "product": "MAX",
+    "sourceRevision": "527d069ee11a41ac5320af1f9402db0a66b2b868",
+    "sourceVersion": "26.7.0",
+    "auditDate": "2026-10-25",
+    "treePaths": 13588,
+    "mobileBackendPaths": 0,
+    "mobilePatterns": ["adreno", "android", "qualcomm", "hexagon", "qnn", "dragonfly"],
+    "blog": {
+      "url": "https://www.modular.com/blog/26-7",
+      "statement": "We plan to release source for the MAX plugins for other chips, including Qualcomm Dragonfly and Google TPU, in the coming months."
+    },
+    "sourceLicense": {
+      "path": "Licenses/LICENSE",
+      "title": "Modular MAX Community License",
+      "lastModified": "2026-08-18",
+      "bytes": 13342,
+      "sha256": "f35ac2dfeb4a3e9482468874a50ce4dfb16fc11c3aefd2a1b4d51c44515ed02d"
+    },
+    "publishedBinaryTerms": "LicenseRef-MAX-Platform-Software-License",
+    "redistribution": "not-cleared-for-mobile"
+  },
+  "demonstration": {
+    "reportedBy": "https://x.com/mav3ri3k/status/2113730606215397523",
+    "reportedDevice": "Snapdragon 8 Elite Gen 5",
+    "reportedTokensPerSecond": 40,
+    "reportedBackend": "GPU",
+    "backendDescription": "https://x.com/mav3ri3k/status/2113833316768002102",
+    "customAdditionNote": "https://x.com/clattner_llvm/status/2113819429373194517",
+    "publicSourceAvailable": false,
+    "independentlyReproduced": false,
+    "note": "Author-reported social post. No public source, compiler profile or build recipe was located in the pinned Modular tree or by a public web search; the speed is not a Quenderin measurement."
+  },
+  "artifact": {
+    "modelId": "bonsai2-2b",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "filename": "Ternary-Bonsai-2-2B-PTQ1_0.gguf",
+    "bytes": 429183456,
+    "sha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+    "format": "GGUF PTQ1_0",
+    "mef": null,
+    "note": "The official GGUF is pinned in the catalog. No reviewed MEF conversion, weight mapping, tokenizer contract or KV-cache contract exists."
+  },
+  "prerequisites": [
+    {
+      "id": "public-mobile-backend",
+      "satisfied": false,
+      "detail": "The pinned 26.7 source contains no Android, Adreno, Qualcomm, Hexagon, QNN or Dragonfly path. The official statement defers those plugins."
+    },
+    {
+      "id": "reviewed-mef-contract",
+      "satisfied": false,
+      "detail": "A Bonsai 2B MEF plus exact tokenizer, sampling, stop and multi-turn cache mapping with publisher checksums is required."
+    },
+    {
+      "id": "exact-binary-terms",
+      "satisfied": false,
+      "detail": "Mobile redistribution is unreviewed. The inspected SDK embeds the same Community License hash as the source receipt; exact mobile components, third-party notices and distribution requirements still need review. No mobile package is pinned."
+    },
+    {
+      "id": "telemetry-proof",
+      "satisfied": false,
+      "detail": "Telemetry and crash reporting must be proven disabled in the exact mobile runtime before any device execution."
+    },
+    {
+      "id": "android-jni-packaging",
+      "satisfied": false,
+      "detail": "arm64 JNI, API level, driver dependencies, 16 KiB alignment and optional-load fallback must be built and verified on a hosted runner."
+    },
+    {
+      "id": "apple-ios-artifact",
+      "satisfied": false,
+      "detail": "MAX's Apple Silicon Metal implementation is a macOS host target; it is not an iOS application artifact."
+    },
+    {
+      "id": "phone-validation",
+      "satisfied": false,
+      "detail": "On-device generation, memory, thermal, sustained speed and rendered UI are unverified. The standing restriction forbids device and simulator runs."
+    }
+  ],
+  "claims": {
+    "mobileMaxSupported": false,
+    "bonsaiMaxGeneration": false,
+    "automaticEligible": false,
+    "phonePerformanceVerified": false,
+    "storeSubmission": "deferred"
+  }
+}

@@ -173,19 +173,41 @@ commands are in the [bridge README](../native/max-runtime/README.md).
 This completes the real CPU tensor-bridge foundation. It does not establish
 mobile packaging, Bonsai generation, phone inference, or a speed improvement.
 
-This boundary accepts an exported float32 graph. It does not load GGUF, tokenize
-chat, implement autoregressive decoding, package an Android/iOS runtime, or make
-MAX an eligible Automatic candidate. Those remaining tasks stay unchecked:
+The mobile increment adds a portable adapter boundary and a fail-closed source
+receipt. Details and the blocked matrix are in
+[Mobile MAX/Bonsai integration status](max-mobile-integration.md).
+
+- [x] Define a vendor-neutral model receipt/runner boundary with verified files,
+  exact sizes and SHA-256 values, telemetry opt-outs, single-flight generation,
+  bounded prompt/output/context/stream budgets, UTF-8 streaming, cancellation,
+  capability probing and numeric performance reports.
+- [x] Record the mobile audit outcome against pinned source `527d069e…` and the
+  pinned Bonsai 2B GGUF; reject unverified support, MEF and phone-performance
+  claims in a checked lock.
+- [x] Exercise the boundary on a host with an inert runner double, including
+  failure injection and sanitizers. No vendor runtime was loaded.
+
+This boundary accepts an exported float32 graph or a vendor runner. It does not
+load GGUF, tokenize chat itself, implement autoregressive decoding, package an
+Android/iOS runtime, or make MAX an eligible Automatic candidate. Those
+remaining tasks stay unchecked:
 
 - [ ] Pin the Android demo's source, compiler, runtime, device backend, build
-  recipe and exact Bonsai artifact. Record a source receipt and all licenses.
+  recipe and exact Bonsai artifact. **Blocked:** no public demonstration source
+  or build recipe was located, and the pinned 26.7 tree has no mobile backend
+  in the recorded audit. Record a source receipt and all licenses when one exists.
 - [ ] Verify redistribution and telemetry behavior for the exact components.
+  The wheels declare `LicenseRef-MAX-Platform-Software-License`; the inspected
+  SDK embeds the same Community License hash recorded for the pinned source.
+  Exact mobile component terms, notices and redistribution remain unreviewed.
+  MAX usage data is described as collected by default.
   [MAX uses mixed licenses](https://www.modular.com/blog/max-license): some are
-  Apache/LLVM and others use the [MAX License](https://raw.githubusercontent.com/modular/modular/main/Licenses/MAX_LICENSE).
-  Retain notices and terms; do not assume the whole tree is Apache-2.0.
-- [ ] Build a narrow native boundary for load, streaming generation, cancel,
-  unload, capability and numeric performance reports. Use existing generation
-  leases; bound concurrency, context, token count and allocation failures.
+  Apache/LLVM and others use the community/platform terms. Retain notices and
+  terms; do not assume the whole tree is Apache-2.0.
+- [ ] Implement a real mobile runner behind the new boundary (load, streaming
+  generation, cancel, unload, capability and numeric performance reports) using
+  the existing generation leases; bound concurrency, context, token count and
+  allocation failures.
 - [ ] Package Android arm64/JNI and exact driver dependencies through the existing
   hosted build route. Verify API levels, ABI, 16 KiB page alignment and release
   packaging. Keep the app functional when the optional backend fails to load.
@@ -194,6 +216,9 @@ MAX an eligible Automatic candidate. Those remaining tasks stay unchecked:
 - [ ] Admit MAX to Automatic only after its real compiled capability and model
   load probe pass. Use its measured performance; back off on regression/failure.
 - [ ] Develop Apple MAX support as a separate adapter/build/validation milestone.
+  **Added:** a hosted probe compiles the portable boundary against the iOS SDK
+  as a per-candidate CI gate. An actual iOS artifact, ahead-of-time compilation
+  path and license review remain.
   Existing Metal support in MAX does not establish an iOS application artifact.
 
 Do not rewrite Modular's compiler or copy a second token pipeline. Reuse its
@@ -227,8 +252,9 @@ behavior remain unverified. Store release follows the existing release checklist
 2. Policy worker: bounded store, selection policy, shared fixtures and core tests.
 3. Primary integration: Automatic preference, composition, loader/speed controls,
    integrated validation and fresh independent review.
-4. Backend worker, after the source receipt exists: MAX adapter and hosted ABI
-   packaging. The policy must work with existing engines before MAX is admitted.
+4. Backend worker, after a public mobile backend receipt exists: MAX adapter and
+   hosted ABI packaging. The policy must work with existing engines before MAX is
+   admitted.
 
 Use separate file ownership and preserve concurrent edits. Keep all benchmark
 numbers attributable to the exact source, artifact and hardware that produced them.
@@ -243,7 +269,13 @@ python3 -B -m unittest scripts.tests.test_inference_performance_contract
 python3 -B scripts/check_inference_performance.py
 python3 -B -m unittest discover -s native/max-runtime/tests -p 'test_*.py'
 python3 -B native/max-runtime/tools/check_source.py
+python3 -B native/max-runtime/tools/check_mobile_lock.py
+python3 -B native/max-runtime/tools/test_model_adapter.py --work "$HOME/quenderin-max-scratch"
 ```
+
+The model-adapter fixture compiles the portable boundary with an inert runner
+double under sanitizers. It is host compilation only: no MAX SDK, weights,
+network, simulator or device is used.
 
 After intentionally editing any runtime-fingerprint input, run the generator
 without `--check` and commit both generated native identity files. Do not hand
