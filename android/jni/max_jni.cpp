@@ -212,7 +212,11 @@ public:
         if (!vm_) return;
         const jint state = vm_->GetEnv(reinterpret_cast<void**>(&env_), JNI_VERSION_1_6);
         if (state == JNI_EDETACHED) {
+#ifdef __ANDROID__
+            if (vm_->AttachCurrentThread(&env_, nullptr) == JNI_OK) attached_ = true;
+#else
             if (vm_->AttachCurrentThread(reinterpret_cast<void**>(&env_), nullptr) == JNI_OK) attached_ = true;
+#endif
             else env_ = nullptr;
         } else if (state != JNI_OK) {
             env_ = nullptr;
