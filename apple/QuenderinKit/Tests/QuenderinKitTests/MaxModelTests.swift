@@ -20,6 +20,10 @@ private final class CloseBox: @unchecked Sendable {
     var value: MaxCloseResult?
 }
 
+private final class BoolBox: @unchecked Sendable {
+    var value: Bool?
+}
+
 private final class FirstCall: @unchecked Sendable {
     private let lock = NSLock()
     private var first = true
@@ -261,7 +265,7 @@ final class MaxModelTests: XCTestCase {
         XCTAssertEqual(handle.close(), .closed)
     }
 
-    func testCancelWaitsForCloseLease() throws {
+    func testIdleCancelDuringCloseDoesNotTouchTheModel() throws {
         let value = try receipt()
         var runner = makeFakeRunner()
         let opened = MaxModelBinding.open(value, runner: &runner)
@@ -275,16 +279,18 @@ final class MaxModelTests: XCTestCase {
             closeDone.signal()
         }
         XCTAssertEqual(state.closeEntered.wait(timeout: .now() + 5), .success)
+        let cancelBox = BoolBox()
         let cancelDone = DispatchSemaphore(value: 0)
         DispatchQueue.global().async {
-            handle.cancel()
+            cancelBox.value = handle.cancel()
             cancelDone.signal()
         }
-        // cancel must block on the pointer lock while close owns the model lease.
-        XCTAssertEqual(cancelDone.wait(timeout: .now() + 0.2), .timedOut)
+        // Idle cancellation uses no native pointer, including while native close
+        // is blocked inside the runner. No pointer-lifetime lease is needed.
+        XCTAssertEqual(cancelDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(cancelBox.value, false)
         state.closeRelease.signal()
         XCTAssertEqual(closeDone.wait(timeout: .now() + 5), .success)
-        XCTAssertEqual(cancelDone.wait(timeout: .now() + 5), .success)
         XCTAssertEqual(closeBox.value, .closed)
         XCTAssertTrue(handle.isClosed)
     }
@@ -330,5 +336,118 @@ final class MaxModelTests: XCTestCase {
         XCTAssertEqual(workerDone.wait(timeout: .now() + 5), .success)
         XCTAssertEqual(worker.value?.succeeded, true)
         XCTAssertEqual(handle.close(), .closed)
+    }
+
+    func testPendingCancellationSurvivesCompletedAndUnrelatedTokens() throws {
+        let value = try receipt()
+        var runner = makeFakeRunner()
+        guard case .success(let handle) = MaxModelBinding.open(value, runner: &runner) else {
+            return XCTFail("open failed")
+        }
+        let completed = handle.makeGenerationToken()
+        XCTAssertTrue(handle.generate(prompt: "hi", token: completed) { _ in true }.succeeded)
+        let pending = handle.makeGenerationToken()
+        let otherPending = handle.makeGenerationToken()
+        XCTAssertTrue(handle.cancel(pending))
+        XCTAssertFalse(handle.cancel(completed))
+        XCTAssertTrue(handle.cancel(otherPending))
+        var callbacks = 0
+        XCTAssertEqual(handle.generate(prompt: "hi", token: otherPending) { _ in callbacks += 1; return true }.code,
+                       Int(qmax_code_value(qmax_code_cancelled())))
+        XCTAssertEqual(handle.generate(prompt: "hi", token: pending) { _ in callbacks += 1; return true }.code,
+                       Int(qmax_code_value(qmax_code_cancelled())))
+        XCTAssertEqual(callbacks, 0)
+        XCTAssertFalse(handle.cancel(pending))
+        XCTAssertFalse(handle.cancel(completed))
+        XCTAssertEqual(handle.generate(prompt: "hi", token: completed) { _ in true }.code,
+                       Int(qmax_code_value(qmax_code_invalid())))
+        XCTAssertFalse(handle.cancel())
+        XCTAssertTrue(handle.generate(prompt: "hi") { _ in true }.succeeded)
+        XCTAssertEqual(handle.close(), .closed)
+    }
+
+    func testForeignTokenCannotCancelOrGenerate() throws {
+        let value = try receipt()
+        var runner = makeFakeRunner()
+        guard case .success(let first) = MaxModelBinding.open(value, runner: &runner),
+              case .success(let second) = MaxModelBinding.open(value, runner: &runner) else {
+            return XCTFail("open failed")
+        }
+        let token = first.makeGenerationToken()
+        XCTAssertFalse(second.cancel(token))
+        XCTAssertEqual(second.generate(prompt: "hi", token: token) { _ in true }.code,
+                       Int(qmax_code_value(qmax_code_invalid())))
+        XCTAssertTrue(first.generate(prompt: "hi", token: token) { _ in true }.succeeded)
+        XCTAssertEqual(first.close(), .closed)
+        XCTAssertEqual(second.close(), .closed)
+    }
+
+    private func assertDelayedCancellationIsRunOwned(tokenless: Bool) throws {
+        let value = try receipt()
+        var runner = makeFakeRunner()
+        guard case .success(let handle) = MaxModelBinding.open(value, runner: &runner),
+              let state = fakeLastState else { return XCTFail("open failed") }
+        let token = handle.makeGenerationToken()
+        let firstEntered = DispatchSemaphore(value: 0)
+        let firstRelease = DispatchSemaphore(value: 0)
+        let firstDone = DispatchSemaphore(value: 0)
+        let first = FirstCall()
+        let firstResult = ResultBox()
+        DispatchQueue.global().async {
+            firstResult.value = handle.generate(prompt: "hi", token: token) { _ in
+                if first.take() {
+                    firstEntered.signal()
+                    _ = firstRelease.wait(timeout: .now() + 5)
+                }
+                return true
+            }
+            firstDone.signal()
+        }
+        XCTAssertEqual(firstEntered.wait(timeout: .now() + 5), .success)
+        let selected = DispatchSemaphore(value: 0)
+        let resumeCancel = DispatchSemaphore(value: 0)
+        let cancelDone = DispatchSemaphore(value: 0)
+        let cancelResult = BoolBox()
+        DispatchQueue.global().async {
+            let pause = {
+                selected.signal()
+                _ = resumeCancel.wait(timeout: .now() + 5)
+            }
+            cancelResult.value = tokenless
+                ? handle.cancel(beforeStopRequest: pause)
+                : handle.cancel(token, beforeStopRequest: pause)
+            cancelDone.signal()
+        }
+        XCTAssertEqual(selected.wait(timeout: .now() + 5), .success)
+        // The cancellation selected A but has not touched its stop flag. Finish
+        // A and admit B before resuming precisely that delayed stop operation.
+        firstRelease.signal()
+        XCTAssertEqual(firstDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(firstResult.value?.succeeded, true)
+        XCTAssertFalse(handle.cancel(token))
+        let secondResult = ResultBox()
+        let secondDone = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            secondResult.value = handle.generate(prompt: "__block__ hi") { _ in true }
+            secondDone.signal()
+        }
+        XCTAssertEqual(state.entered.wait(timeout: .now() + 5), .success)
+        resumeCancel.signal()
+        XCTAssertEqual(cancelDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(cancelResult.value, true)
+        state.release.signal()
+        XCTAssertEqual(secondDone.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(secondResult.value?.succeeded, true)
+        XCTAssertFalse(handle.cancel())
+        XCTAssertTrue(handle.generate(prompt: "hi") { _ in true }.succeeded)
+        XCTAssertEqual(handle.close(), .closed)
+    }
+
+    func testDelayedTokenCancelCannotAffectSuccessor() throws {
+        try assertDelayedCancellationIsRunOwned(tokenless: false)
+    }
+
+    func testDelayedCurrentRunCancelCannotAffectSuccessor() throws {
+        try assertDelayedCancellationIsRunOwned(tokenless: true)
     }
 }
