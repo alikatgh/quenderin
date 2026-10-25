@@ -159,8 +159,19 @@ with the upstream precompile recipe without GPU bitcode. In
 that source build and real SDK CPU graph compilation/export passed. Native C
 initialization then exposed a missing SDK resource root. The fixture now supplies
 the same explicit package root as Modular's pinned official launcher, with an
-ambient-override regression test. Actual native graph execution is tracked
-separately below; source compilation/export alone does not establish it.
+ambient-override regression test.
+
+[Actual SDK run 40174916756](https://github.com/alikatgh/quenderin/actions/runs/40174916756)
+passed at `dfa3db7494be35706608a285b7ce298d3013826a`: source precompile, graph
+export and real C execution succeeded. Three executions returned `[2, 6, 12, 20]`;
+wrong shapes and stop-before-execution were rejected. All 35 Python guards and
+the injected C lifecycle/sanitizer suite passed. Runtime was offline and
+unprivileged with telemetry disabled; the forbidden payload/loader checks and
+hosted cleanup passed. Exact lock/profile/output receipts and reproduction
+commands are in the [bridge README](../native/max-runtime/README.md).
+
+This completes the real CPU tensor-bridge foundation. It does not establish
+mobile packaging, Bonsai generation, phone inference, or a speed improvement.
 
 This boundary accepts an exported float32 graph. It does not load GGUF, tokenize
 chat, implement autoregressive decoding, package an Android/iOS runtime, or make
