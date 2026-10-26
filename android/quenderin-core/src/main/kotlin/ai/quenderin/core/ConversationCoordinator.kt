@@ -48,6 +48,14 @@ class ConversationCoordinator(
      */
     private var savedCount = 0
 
+    /**
+     * The [ChatModel.transcriptRevision] of the last save. A settle can change the last assistant
+     * text WITHOUT changing the message count (explicit Stop after the flushed prefix was already
+     * saved), so the count alone would skip the corrected save. Persisted together with
+     * [savedCount] from one atomic snapshot.
+     */
+    private var savedRevision = 0L
+
     init {
         manager.pruneEmptyConversations()   // GC blank rows left by the old create-immediately startNew()
         manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
@@ -56,6 +64,7 @@ class ConversationCoordinator(
         if (recent != null) {
             chat.restore(manager.open(recent.id))
             savedCount = chat.messages.size
+            savedRevision = chat.transcriptRevision
         } else {
             manager.startNew()
         }
@@ -78,10 +87,12 @@ class ConversationCoordinator(
     fun persist() {
         chat.discardUnsettledTurn()
         val id = manager.currentId ?: return
-        val completed = chat.completedMessages()
-        if (completed.isEmpty() || completed.size <= savedCount) return
+        val (completed, revision) = chat.persistSnapshot()
+        if (completed.isEmpty()) return
+        if (completed.size <= savedCount && revision == savedRevision) return
         manager.save(id, completed)
         savedCount = completed.size
+        savedRevision = revision
         refresh()
     }
     fun persistIfOwned(id: String?, revision: Long, ownsJob: () -> Boolean): Boolean {
@@ -98,11 +109,16 @@ class ConversationCoordinator(
     fun startNew() {
         lifecycleRevision++
         chat.invalidatePreparedTurns()
-        if (chat.messages.isEmpty()) return // Keep the existing empty draft reachable; only its pending send is invalidated.
+        if (chat.messages.isEmpty()) {
+            savedCount = 0
+            savedRevision = chat.transcriptRevision
+            return // Keep the existing empty draft reachable; only its pending send is invalidated.
+        }
         persist()
         manager.startNew()
         chat.reset()
         savedCount = 0
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 
@@ -113,6 +129,7 @@ class ConversationCoordinator(
         persist()
         chat.restore(manager.open(id))
         savedCount = chat.messages.size
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 
@@ -128,8 +145,9 @@ class ConversationCoordinator(
             if (recent != null) {
                 chat.restore(manager.open(recent.id))
                 savedCount = chat.messages.size
+                savedRevision = chat.transcriptRevision
             } else {
-                manager.startNew(); chat.reset(); savedCount = 0
+                manager.startNew(); chat.reset(); savedCount = 0; savedRevision = chat.transcriptRevision
             }
         }
         refresh()
@@ -144,6 +162,7 @@ class ConversationCoordinator(
         manager.startNew()
         chat.reset()
         savedCount = 0
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 }

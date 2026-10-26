@@ -133,23 +133,39 @@ public final class ChatModel: ObservableObject {
     /// finished answer: it stays in the transcript and is persistable even while the stream unwinds.
     public var didRequestStop: Bool { stopRequested }
 
+    /// Monotonic count of actual transcript TEXT changes (in-place edits, not appends). The
+    /// coordinator saves again when a settle changed the text without changing the message count.
+    public private(set) var transcriptRevision: UInt64 = 0
+
     /// Stop the current reply where it is — the streamed partial stays in the transcript
     /// (stopping is a decision about YOUR time, not a failure; no error styling), and it remains
     /// persistable: `completedMessages` includes it once `stopRequested` is set.
+    ///
+    /// Transcript ownership is retained until the send settles the text accepted BEFORE the Stop
+    /// exactly once; a concurrent `send` is a no-op meanwhile. An engine may ignore
+    /// `requestCancel` — nothing here promises a cancellation latency, and the turn stays busy
+    /// until the engine actually returns.
     public func stopGenerating() {
+        conversationRevision &+= 1   // active AND idle: reject queued/prepared admissions
+        guard isGenerating, !stopRequested else { return }
         stopRequested = true
-        // The token loop below only lands a stop AT a token boundary, and never during prefill
-        // (before the first token) — so also tell the engine to interrupt its native decode now,
-        // ending generation in <500ms even mid-prefill (Q-005/Q-217).
         engine.requestCancel()
     }
 
     /// Messages that belong to SETTLED turns — the only transcript a caller may persist. While a
-    /// reply streams, its assistant message is excluded; after an explicit Stop the partial is the
-    /// user's answer and is included. Twin of Kotlin `ChatModel.completedMessages`.
+    /// reply streams, its assistant message is excluded; an explicit Stop makes the accepted partial
+    /// persistable immediately (ownership is retained only to settle its text). Twin of Kotlin
+    /// `ChatModel.completedMessages`.
     public func completedMessages() -> [ChatMessage] {
         guard let pending = inFlightAssistantID, !stopRequested else { return messages }
         return messages.filter { $0.id != pending }
+    }
+
+    /// Atomic persistence snapshot: the completed transcript AND the text revision it reflects.
+    /// Reading them separately could record a revision newer than the saved text, so a count-only
+    /// check would never save the corrected text. Twin of Kotlin `ChatModel.persistSnapshot`.
+    public func persistSnapshot() -> ([ChatMessage], UInt64) {
+        (completedMessages(), transcriptRevision)
     }
 
     /// Abandon the unsettled turn (Back, new chat, open another conversation): stop the decode and
@@ -331,11 +347,17 @@ public final class ChatModel: ObservableObject {
                 // message up by id each token: a captured index would crash (out of range) or write
                 // to the wrong message. If it's gone, the user moved on — stop streaming into it.
                 guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
-                if flushGate.shouldFlush() { messages[i] = assistant }
+                if flushGate.shouldFlush(), messages[i].text != assistant.text {
+                    messages[i] = assistant
+                    transcriptRevision &+= 1
+                }
             }
         } catch {
             assistant.text = "⚠️ " + OnboardingModel.describe(error)
-            if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
+            if let i = messages.firstIndex(where: { $0.id == assistantID }), messages[i].text != assistant.text {
+                messages[i] = assistant
+                transcriptRevision &+= 1
+            }
             inFlightAssistantID = nil   // the error notice is the settled answer for this turn
             return
         }
@@ -352,7 +374,10 @@ public final class ChatModel: ObservableObject {
             lastHitTokenCap = true
         }
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {
-            messages[i] = assistant
+            if messages[i].text != assistant.text {
+                messages[i] = assistant
+                transcriptRevision &+= 1
+            }
             inFlightAssistantID = nil   // normal settle: this turn is a finished answer
         }
     }

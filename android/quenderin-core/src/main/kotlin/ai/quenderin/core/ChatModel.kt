@@ -82,7 +82,7 @@ class ChatModel(
 ) {
     fun <T> withSelectedModel(expectedID: String, action: () -> T): T = engine.withLoadedModel(expectedID, action)
     fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = engine.pendingChatFits(model, request)
-    fun captureTurnAdmission(isCurrent: () -> Boolean = { true }): ChatTurnAdmission = synchronized(lock) { ChatTurnAdmission(activeGeneration, isCurrent) }
+    fun captureTurnAdmission(isCurrent: () -> Boolean = { true }): ChatTurnAdmission = synchronized(lock) { ChatTurnAdmission(admissionRevision, isCurrent) }
     fun isRevisionCurrent(revision: Long): Boolean = synchronized(lock) { activeGeneration == revision }
     private val lock = Any()
     private val _messages = mutableListOf<ChatMessage>()
@@ -96,6 +96,33 @@ class ChatModel(
      * by [invalidatePreparedTurns]/[reset]/[restore].
      */
     private var inFlightAssistantId: Long? = null
+
+    /**
+     * True while an explicitly stopped send is settling the text it accepted BEFORE the Stop.
+     * Ownership stays with that send (its [activeGeneration] is not bumped until the settle write),
+     * so a concurrent [send] is a no-op and the accepted pre-Stop text is written exactly once.
+     * Cleared by the settle's finally or by navigation. Engines may ignore `requestCancel`: nothing
+     * here assumes a cancellation latency — the turn stays busy until the engine actually returns.
+     */
+    @Volatile
+    private var stopRequested = false
+
+    /**
+     * Revision used ONLY by [captureTurnAdmission]/[send]. An explicit Stop bumps it for active and
+     * idle stops, so an admission captured before the Stop is rejected, WITHOUT revoking the active
+     * send's transcript ownership (which must survive to settle the accepted text).
+     */
+    private var admissionRevision: Long = 0L
+
+    /**
+     * Monotonic count of actual transcript TEXT changes (in-place edits, not appends). The
+     * conversation library uses it to persist a settle that changed a message without changing the
+     * transcript length — the Stop settle can arrive after a persist already saved the flushed
+     * prefix. Guarded by [lock].
+     */
+    @Volatile
+    var transcriptRevision: Long = 0L
+        private set
 
     /** Monotonic id of the generation allowed to write the transcript. A send captures its id at start;
      *  [stopGenerating]/[reset]/[restore] bump this so a superseded (zombie) send stops writing. */
@@ -162,6 +189,7 @@ class ChatModel(
         synchronized(lock) {
             if (isGenerating) return
             revision = ++activeGeneration
+            admissionRevision++
             _messages += ChatMessage(Role.USER, trimmed, documents)
             _messages += ChatMessage(Role.ASSISTANT, assistantText)
             snapshot = _messages.toList()
@@ -202,10 +230,12 @@ class ChatModel(
         val afterUser: List<ChatMessage>
         val afterPlaceholder: List<ChatMessage>
         synchronized(lock) {
-            if (admission != null && (admission.revision != activeGeneration || !admission.isCurrent())) throw AutomaticSelectionChangedException()
+            if (admission != null && (admission.revision != admissionRevision || !admission.isCurrent())) throw AutomaticSelectionChangedException()
             if (isGenerating) return ""
             isGenerating = true
+            stopRequested = false                // a fresh turn is never a stopped one
             myGen = ++activeGeneration
+            admissionRevision++                  // consume the admission token: a re-used one is stale
             generationPhase = GenerationPhase.LOADING_PROMPT
             lastHitTokenCap = false
             _messages += ChatMessage(Role.USER, trimmed, documents)
@@ -258,6 +288,10 @@ class ChatModel(
                 // delivering pieces, and every one must be dropped here (bounded per-piece work, no
                 // appends, no extra checks) — the streamed prefix below is the settled answer.
                 if (hitDegeneration) return@completeChatOwned
+                // Explicit Stop: drop every piece emitted after the request. Ownership is retained
+                // (activeGeneration was NOT bumped) so the settle below writes the text accepted
+                // BEFORE the Stop exactly once.
+                if (stopRequested) return@completeChatOwned
                 if (!ownsGeneration()) { engine.requestCancel(); return@completeChatOwned }
                 tokenCount += 1
                 if (tokenCount == 1) publishPhase(myGen, GenerationPhase.WRITING)
@@ -287,7 +321,7 @@ class ChatModel(
             // Stop supersedes it (activeGeneration bumped), and then the streamed partial should stand,
             // exactly as iOS's `!stopRequested` guard. (writeAssistant also drops a superseded write.)
             val stillActive = ownsGeneration()
-            val finalText = if (settled.isBlank() && stillActive) {
+            val finalText = if (settled.isBlank() && stillActive && !stopRequested) {
                 // Locale-aware notice (ru/ko/ja/zh); default EN for tests / unknown locales.
                 ChatUserFacing.emptyReply(java.util.Locale.getDefault().language)
             } else {
@@ -297,26 +331,37 @@ class ChatModel(
             // the native loop (perfDecodeTok >= maxTokens), not a piece count (UTF-8 reassembly merges
             // pieces so a piece-count would undercount). A degeneration stop is NOT a mid-sentence cap
             // even if the native loop also reports one — no "Continue into the loop" affordance, exactly
-            // as iOS's `!hitDegeneration` guard. User Stop supersedes → stillActive false.
+            // as iOS's `!hitDegeneration` guard. A Stop is not a mid-sentence cap affordance either.
             if (stillActive) {
-                val hitCap = engine.lastHitTokenCap() && !hitDegeneration
+                val hitCap = engine.lastHitTokenCap() && !hitDegeneration && !stopRequested
                 synchronized(lock) { if (myGen == activeGeneration) lastHitTokenCap = hitCap }
             }
             if (stillActive) writeAssistant(myGen, placeholderIndex, finalText)
-            // Normal settle: this turn is now a finished answer. A Stop/abandon already cleared the
-            // id (and a superseded send must not touch state a newer turn owns).
+            // Normal settle: this turn is now a finished answer. A navigation abandon already bumped
+            // activeGeneration and removed the message, so a superseded send writes nothing.
             synchronized(lock) { if (myGen == activeGeneration) inFlightAssistantId = null }
             return finalText
         } finally {
+            var phaseRevision = myGen
             val finished = synchronized(lock) {
                 // Only the CURRENT generation owns isGenerating; a superseded send must not clear a flag a
                 // newer send/lifecycle op already re-set (M10 finally-safety, same as AgentSession).
                 if (activeGeneration == myGen) {
                     isGenerating = false
+                    if (stopRequested) {
+                        stopRequested = false
+                        // Close transcript ownership only AFTER the settle write above. A concurrent
+                        // send was a no-op while isGenerating, so nothing can interleave here.
+                        activeGeneration++
+                        phaseRevision = activeGeneration
+                    }
                     true
-                } else false
+                } else {
+                    stopRequested = false   // navigation already superseded this turn
+                    false
+                }
             }
-            if (finished) publishPhase(myGen, GenerationPhase.IDLE)
+            if (finished) publishPhase(phaseRevision, GenerationPhase.IDLE)
         }
     }
 
@@ -337,7 +382,10 @@ class ChatModel(
             if (gen != activeGeneration || index >= _messages.size) return@synchronized null
             // copy() (not a fresh ChatMessage) so the row keeps its stable [ChatMessage.id] across
             // every streamed token — the UI list key stays put instead of churning per token.
-            _messages[index] = _messages[index].copy(text = textValue)
+            val current = _messages[index]
+            if (current.text == textValue) return@synchronized null   // no content change → no dirtying
+            _messages[index] = current.copy(text = textValue)
+            transcriptRevision++
             _messages.toList()
         }
         if (snapshot != null) publish(gen, snapshot)
@@ -345,13 +393,26 @@ class ChatModel(
 
     /**
      * Messages that belong to SETTLED turns — the only transcript a caller may persist. While a
-     * reply streams, its assistant message is excluded (an engine that throws mid-stream leaves the
-     * partial excluded too); after an explicit Stop the id is already cleared, so the partial is the
-     * user's answer and is included. Twin of Swift `ChatModel.completedMessages`.
+     * reply streams, its assistant message is excluded; an explicit Stop makes the accepted partial
+     * persistable immediately (ownership is retained only to settle its text). Twin of Swift
+     * `ChatModel.completedMessages`.
      */
     fun completedMessages(): List<ChatMessage> = synchronized(lock) {
         val pending = inFlightAssistantId
-        if (pending == null) _messages.toList() else _messages.filterNot { it.id == pending }
+        if (pending == null || stopRequested) _messages.toList() else _messages.filterNot { it.id == pending }
+    }
+
+    /**
+     * Atomic persistence snapshot: the completed transcript AND the text revision it reflects.
+     * Reading them separately would let an in-place settle slip between the two reads and record a
+     * revision newer than the saved text — a count-only check would then never save the corrected
+     * text. Twin of Swift `ChatModel.persistSnapshot`.
+     */
+    fun persistSnapshot(): Pair<List<ChatMessage>, Long> = synchronized(lock) {
+        val pending = inFlightAssistantId
+        val snapshot = if (pending == null || stopRequested) _messages.toList()
+        else _messages.filterNot { it.id == pending }
+        snapshot to transcriptRevision
     }
 
     /**
@@ -361,28 +422,33 @@ class ChatModel(
      * `ChatModel.abandonInFlightTurn` called from `ConversationCoordinator.persist`.
      */
     fun discardUnsettledTurn() {
-        val owned = synchronized(lock) { isGenerating || inFlightAssistantId != null }
+        val owned = synchronized(lock) { !stopRequested && (isGenerating || inFlightAssistantId != null) }
         if (owned) invalidatePreparedTurns()
     }
 
     /**
-     * Stop the in-flight reply where it is: bump the generation id so no more tokens land, and ask the
-     * engine to interrupt its native decode now (the flag-only break lands one token late and does nothing
-     * during a non-interruptible prefill — Q-005/Q-217). Also invalidates prepared-but-unstarted
-     * turns; only an active send needs native cancellation or settlement.
-     * The streamed partial already in the transcript stays AND becomes persistable: an explicit Stop is
-     * a decision about the user's time, not an unfinished turn. Twin of iOS `ChatModel.stopGenerating`.
+     * Stop the in-flight reply where it is: mark the active send stopped so it drops every later
+     * piece, ask the engine to interrupt its decode now, and reject queued admissions for BOTH an
+     * active and an idle Stop. Transcript ownership is NOT revoked: the send settles the text it
+     * accepted before the Stop exactly once and its finally closes ownership. Repeated Stop is a
+     * no-op (one cancellation); an idle Stop only rejects queued admissions.
+     *
+     * Nothing assumes a cancellation latency. An engine may ignore `requestCancel`; the turn then
+     * stays busy (a concurrent send is a no-op) until the engine actually returns. Twin of iOS
+     * `ChatModel.stopGenerating`.
      */
     fun stopGenerating() {
-        val revision: Long
+        val active: Boolean
         synchronized(lock) {
-            revision = ++activeGeneration   // reject queued admissions as well as superseding a running send
-            if (!isGenerating) return
-            isGenerating = false
-            inFlightAssistantId = null      // explicit Stop settles the partial; never discard it
+            if (stopRequested) return           // repeated Stop: one cancellation, one settle
+            admissionRevision++                  // active AND idle: reject queued admissions
+            active = isGenerating
+            // Ownership stays with the running send: its settle must still write the text accepted
+            // BEFORE this Stop exactly once. An engine may ignore requestCancel and return much
+            // later; the turn stays busy (a concurrent send is a no-op) until it actually returns.
+            if (active) stopRequested = true
         }
-        engine.requestCancel()
-        publishPhase(revision, GenerationPhase.IDLE)
+        if (active) engine.requestCancel()
     }
 
     /**
@@ -397,10 +463,15 @@ class ChatModel(
         val snapshot: List<ChatMessage>?
         synchronized(lock) {
             revision = ++activeGeneration
+            admissionRevision++                 // navigation also rejects queued admissions
             cancel = isGenerating
             isGenerating = false
+            stopRequested = false               // navigation wins over a pending Stop settle
             val pending = inFlightAssistantId
             inFlightAssistantId = null
+            // A stopped send still owns its placeholder id (ownership is retained for the settle), so
+            // removing the pending id removes the accepted partial too. The late settle then finds a
+            // superseded generation and writes nothing.
             val index = if (pending == null) -1 else _messages.indexOfFirst { it.id == pending }
             if (index >= 0) _messages.removeAt(index)
             snapshot = if (index >= 0) _messages.toList() else null
@@ -415,7 +486,7 @@ class ChatModel(
     fun reset() {
         val revision: Long
         val cancel: Boolean
-        synchronized(lock) { revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false; inFlightAssistantId = null; _messages.clear() }
+        synchronized(lock) { revision = ++activeGeneration; admissionRevision++; cancel = isGenerating; isGenerating = false; stopRequested = false; lastHitTokenCap = false; inFlightAssistantId = null; _messages.clear() }
         if (cancel) engine.requestCancel()
         publishPhase(revision, GenerationPhase.IDLE)
         publish(revision, emptyList())
@@ -429,7 +500,8 @@ class ChatModel(
         val revision: Long
         val cancel: Boolean
         synchronized(lock) {
-            revision = ++activeGeneration; cancel = isGenerating; isGenerating = false; lastHitTokenCap = false
+            revision = ++activeGeneration; admissionRevision++; cancel = isGenerating; isGenerating = false
+            stopRequested = false; lastHitTokenCap = false
             inFlightAssistantId = null
             _messages.clear()
             _messages.addAll(saved)

@@ -38,6 +38,12 @@ public final class ConversationCoordinator: ObservableObject {
     /// untouched chat, so last night's conversation read "25 min ago" this morning.
     private var savedCount = 0
 
+    /// The `ChatModel.transcriptRevision` of the last save. A settle can change the last assistant
+    /// text WITHOUT changing the message count (explicit Stop after the flushed prefix was already
+    /// saved), so the count alone would skip the corrected save. Persisted with `savedCount` from
+    /// one atomic snapshot.
+    private var savedRevision: UInt64 = 0
+
     public init(
         chat: ChatModel,
         persistence: ConversationPersistence,
@@ -54,6 +60,7 @@ public final class ConversationCoordinator: ObservableObject {
             pinnedModelID = recent.automaticModelID
             chat.restore(manager.open(recent.id), hasOrdinaryInference: recent.hasOrdinaryInference)
             savedCount = chat.messages.count
+            savedRevision = chat.transcriptRevision
         } else {
             manager.startNew()
         }
@@ -105,11 +112,12 @@ public final class ConversationCoordinator: ObservableObject {
     public func persist() {
         if chat.isGenerating, !chat.didRequestStop { chat.abandonInFlightTurn() }
         guard let id = manager.currentID else { return }
-        let toSave = chat.completedMessages()
-        guard !toSave.isEmpty, toSave.count > savedCount else { return }
+        let (toSave, revision) = chat.persistSnapshot()
+        guard !toSave.isEmpty, toSave.count > savedCount || revision != savedRevision else { return }
         manager.save(id: id, messages: toSave, modelID: activeModelID,
                      automaticModelID: pinnedModelID, hasOrdinaryInference: chat.hasOrdinaryInference)
         savedCount = toSave.count
+        savedRevision = revision
         refresh()
     }
 
@@ -118,10 +126,13 @@ public final class ConversationCoordinator: ObservableObject {
     public func startNew() {
         defer { newChatSignal += 1 }   // even a storage no-op must surface the empty chat
         stashComposer()
+        // Definite navigation: abandon an unsettled turn (including a stopped partial that has not
+        // settled yet) BEFORE the save, so it cannot be persisted as a completed answer.
+        chat.abandonInFlightTurn()
         guard !chat.messages.isEmpty else {
             // Reuse the accessible empty conversation, including its draft, while invalidating
             // any asynchronous first-turn verification/load. No unsaved draft is stranded.
-            chat.reset(); pinnedModelID = nil; savedCount = 0
+            chat.reset(); pinnedModelID = nil; savedCount = 0; savedRevision = chat.transcriptRevision
             restoreComposer()
             return
         }
@@ -130,6 +141,7 @@ public final class ConversationCoordinator: ObservableObject {
         chat.reset()
         pinnedModelID = nil
         savedCount = 0
+        savedRevision = chat.transcriptRevision
         restoreComposer()
         refresh()
     }
@@ -137,12 +149,14 @@ public final class ConversationCoordinator: ObservableObject {
     /// Open a past conversation into the chat, saving the current one first.
     public func open(_ id: String) {
         stashComposer()
+        chat.abandonInFlightTurn()   // navigation abandons an unsettled/stopped partial
         persist()
         let summary = manager.list().first(where: { $0.id == id })
         pinnedModelID = summary?.automaticModelID
         chat.restore(manager.open(id), hasOrdinaryInference: summary?.hasOrdinaryInference)
         restoreComposer()
         savedCount = chat.messages.count
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 
@@ -157,11 +171,13 @@ public final class ConversationCoordinator: ObservableObject {
                 pinnedModelID = recent.automaticModelID
                 chat.restore(manager.open(recent.id), hasOrdinaryInference: recent.hasOrdinaryInference)
                 savedCount = chat.messages.count
+                savedRevision = chat.transcriptRevision
             } else {
                 manager.startNew()
                 pinnedModelID = nil
                 chat.reset()
                 savedCount = 0
+                savedRevision = chat.transcriptRevision
             }
             restoreComposer()
         }
@@ -184,11 +200,13 @@ public final class ConversationCoordinator: ObservableObject {
                 pinnedModelID = recent.automaticModelID
                 chat.restore(manager.open(recent.id), hasOrdinaryInference: recent.hasOrdinaryInference)
                 savedCount = chat.messages.count
+                savedRevision = chat.transcriptRevision
             } else {
                 manager.startNew()
                 pinnedModelID = nil
                 chat.reset()
                 savedCount = 0
+                savedRevision = chat.transcriptRevision
             }
             restoreComposer()
         }
@@ -204,6 +222,7 @@ public final class ConversationCoordinator: ObservableObject {
         pinnedModelID = nil
         chat.reset()
         savedCount = 0
+        savedRevision = chat.transcriptRevision
         restoreComposer()
         refresh()
     }
