@@ -1,0 +1,1290 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "local-attention-v1",
+  "claim": "Synthetic local policy only; no OS push delivery, upstream attention support, or execution authorization.",
+  "baseScope": {
+    "origin": "https://harness.example",
+    "clientDeviceID": "client-1",
+    "hostID": "host-1",
+    "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "workspaceID": "workspace-1",
+    "sessionID": "session-1"
+  },
+  "baseEvent": {
+    "eventID": "event-1",
+    "kind": "turn-ended",
+    "generation": 1,
+    "issuedAt": 99000,
+    "expiresAt": 160000,
+    "authenticatedAndNegotiated": true,
+    "historical": false
+  },
+  "cases": [
+    {
+      "id": "ordinary-completion",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "foreground-exact-session",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": true,
+          "expect": "suppress",
+          "reason": "viewed",
+          "remembered": 1,
+          "viewing": true
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1,
+          "viewing": false
+        }
+      ]
+    },
+    {
+      "id": "foreground-other-session",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": true,
+          "expect": "inApp",
+          "reason": "eligible",
+          "remembered": 1,
+          "viewedScope": {
+            "sessionID": "other-session"
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreground-other-host",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": true,
+          "expect": "inApp",
+          "reason": "eligible",
+          "remembered": 1,
+          "viewedScope": {
+            "hostID": "other-host"
+          }
+        }
+      ]
+    },
+    {
+      "id": "background-intent",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "viewing": true
+        }
+      ]
+    },
+    {
+      "id": "disabled-by-default",
+      "steps": [
+        {
+          "action": "evaluateDefaultEnabled",
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "disabled",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "disabled-remembered",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": false,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "disabled",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "unvalidated-by-default",
+      "steps": [
+        {
+          "action": "evaluateDefaultValidation",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "unvalidated",
+          "remembered": 0
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "unvalidated-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "unvalidated",
+          "remembered": 0,
+          "event": {
+            "authenticatedAndNegotiated": false
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "wrong-origin",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "origin": "https://other.example"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "wrong-client-device-id",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "clientDeviceID": "client-2"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "wrong-host-id",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "hostID": "host-2"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "wrong-host-fingerprint",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "hostFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "wrong-workspace-id",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "workspaceID": "workspace-2"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "wrong-session-id",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "sessionID": "session-2"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "stale-generation",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "staleGeneration",
+          "remembered": 0,
+          "event": {
+            "generation": 2
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "reconnect-dedup",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1,
+          "currentGeneration": 2,
+          "event": {
+            "generation": 2
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 2,
+          "currentGeneration": 2,
+          "event": {
+            "generation": 2,
+            "eventID": "event-2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "zero-current-generation",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "staleGeneration",
+          "remembered": 0,
+          "currentGeneration": 0
+        }
+      ]
+    },
+    {
+      "id": "future-generation",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "staleGeneration",
+          "remembered": 0,
+          "event": {
+            "generation": 9007199254740992
+          }
+        }
+      ]
+    },
+    {
+      "id": "unicode-confusable-scope",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "sessionID": "sessiоn-1"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "unicode-nonnormalized-scope",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "wrongDestination",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "sessionID": "café"
+            }
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ],
+      "scope": {
+        "sessionID": "café"
+      }
+    },
+    {
+      "id": "unicode-identical-byte-scope",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": true,
+          "expect": "suppress",
+          "reason": "viewed",
+          "remembered": 1,
+          "viewing": true
+        }
+      ],
+      "scope": {
+        "sessionID": "café"
+      }
+    },
+    {
+      "id": "unicode-distinct-event-ids",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "event": {
+            "eventID": "café"
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 2,
+          "event": {
+            "eventID": "café"
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 2,
+          "event": {
+            "eventID": "café"
+          }
+        }
+      ]
+    },
+    {
+      "id": "unicode-viewed-scope",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": true,
+          "expect": "inApp",
+          "reason": "eligible",
+          "remembered": 1,
+          "viewedScope": {
+            "sessionID": "café"
+          }
+        }
+      ],
+      "scope": {
+        "sessionID": "café"
+      }
+    },
+    {
+      "id": "history-and-duplicate",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "history",
+          "remembered": 1,
+          "event": {
+            "historical": true
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1,
+          "event": {
+            "historical": false
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1,
+          "currentGeneration": 2,
+          "event": {
+            "generation": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "failed-generic-intent",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "event": {
+            "kind": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "stopped-generic-intent",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "event": {
+            "kind": "stopped"
+          }
+        }
+      ]
+    },
+    {
+      "id": "approval-generic-intent",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "event": {
+            "kind": "approval"
+          }
+        }
+      ]
+    },
+    {
+      "id": "question-generic-intent",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "event": {
+            "kind": "question"
+          }
+        }
+      ]
+    },
+    {
+      "id": "unknown-kind",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidEvent",
+          "remembered": 0,
+          "event": {
+            "kind": "execute-tool"
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        }
+      ]
+    },
+    {
+      "id": "empty-event-id",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidEvent",
+          "remembered": 0,
+          "event": {
+            "eventID": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "event-id-control-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidEvent",
+          "remembered": 0,
+          "event": {
+            "eventID": "event\nprivate"
+          }
+        }
+      ]
+    },
+    {
+      "id": "event-id-del-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidEvent",
+          "remembered": 0,
+          "event": {
+            "eventID": "eventprivate"
+          }
+        }
+      ]
+    },
+    {
+      "id": "event-id-length-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidEvent",
+          "remembered": 0,
+          "event": {
+            "eventID": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "id": "unsafe-origin-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidScope",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "origin": "https://harness.example/path?private=1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "noncanonical-origin-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidScope",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "origin": "https://HARNESS.example/"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-pin-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidScope",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "hostFingerprint": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scope-controls-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidScope",
+          "remembered": 0,
+          "event": {
+            "scope": {
+              "sessionID": "session\n1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-current-scope",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidScope",
+          "remembered": 0,
+          "currentScope": {
+            "clientDeviceID": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "future-event-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidTime",
+          "remembered": 0,
+          "event": {
+            "issuedAt": 100001
+          }
+        }
+      ]
+    },
+    {
+      "id": "expired-event-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "expired",
+          "remembered": 0,
+          "event": {
+            "expiresAt": 100000
+          }
+        }
+      ]
+    },
+    {
+      "id": "reversed-times-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidTime",
+          "remembered": 0,
+          "event": {
+            "issuedAt": 160000,
+            "expiresAt": 99000
+          }
+        }
+      ]
+    },
+    {
+      "id": "lifetime-over-ten-minutes",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidTime",
+          "remembered": 0,
+          "event": {
+            "issuedAt": 1,
+            "expiresAt": 600002
+          }
+        }
+      ]
+    },
+    {
+      "id": "max-lifetime-boundary",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "event": {
+            "issuedAt": 100000,
+            "expiresAt": 700000
+          }
+        }
+      ]
+    },
+    {
+      "id": "negative-issued-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidTime",
+          "remembered": 0,
+          "event": {
+            "issuedAt": -9223372036854775808
+          }
+        }
+      ]
+    },
+    {
+      "id": "timestamp-overflow-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidTime",
+          "remembered": 0,
+          "event": {
+            "expiresAt": 9223372036854775807
+          }
+        }
+      ]
+    },
+    {
+      "id": "safe-integer-time-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "invalidTime",
+          "remembered": 0,
+          "event": {
+            "expiresAt": 9007199254740992
+          }
+        }
+      ]
+    },
+    {
+      "id": "zero-clock-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "clock",
+          "remembered": 0,
+          "nowEpoch": 0
+        }
+      ]
+    },
+    {
+      "id": "negative-monotonic-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "clock",
+          "remembered": 0,
+          "nowMonotonic": -1
+        }
+      ]
+    },
+    {
+      "id": "monotonic-overflow-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "clock",
+          "remembered": 0,
+          "nowMonotonic": 9007199254740991
+        }
+      ]
+    },
+    {
+      "id": "clock-regression-rejected",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "clock",
+          "remembered": 1,
+          "nowEpoch": 99999,
+          "event": {
+            "eventID": "event-2"
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "clock",
+          "remembered": 1,
+          "nowMonotonic": 999,
+          "event": {
+            "eventID": "event-2"
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 2,
+          "event": {
+            "eventID": "event-2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "expiry-prunes-history",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "history",
+          "remembered": 1,
+          "event": {
+            "historical": true
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "nowEpoch": 160000,
+          "nowMonotonic": 61000,
+          "event": {
+            "eventID": "event-2",
+            "issuedAt": 159000,
+            "expiresAt": 200000
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "expired",
+          "remembered": 1,
+          "nowEpoch": 160000,
+          "nowMonotonic": 61000
+        }
+      ]
+    },
+    {
+      "id": "monotonic-expiry-bounds-replay",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "expired",
+          "remembered": 0,
+          "nowEpoch": 160000,
+          "nowMonotonic": 61000
+        }
+      ]
+    },
+    {
+      "id": "capacity-fails-closed-and-recovers",
+      "steps": [
+        {
+          "action": "fill",
+          "count": 256,
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 256
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "capacity",
+          "remembered": 256,
+          "event": {
+            "eventID": "overflow",
+            "expiresAt": 200000
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 256,
+          "event": {
+            "eventID": "fill-0"
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1,
+          "nowEpoch": 160000,
+          "nowMonotonic": 61000,
+          "event": {
+            "eventID": "overflow",
+            "issuedAt": 99000,
+            "expiresAt": 200000
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "duplicate",
+          "remembered": 1,
+          "nowEpoch": 160000,
+          "nowMonotonic": 61000,
+          "event": {
+            "eventID": "overflow",
+            "expiresAt": 200000
+          }
+        }
+      ]
+    },
+    {
+      "id": "scoped-event-id-reuse",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 2,
+          "currentScope": {
+            "sessionID": "session-2"
+          },
+          "event": {
+            "scope": {
+              "sessionID": "session-2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "frozen-wall-monotonic-expiry",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "system",
+          "reason": "eligible",
+          "remembered": 1
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "expired",
+          "remembered": 0,
+          "nowMonotonic": 61000
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "expired",
+          "remembered": 0,
+          "nowMonotonic": 61000,
+          "event": {
+            "eventID": "never-seen"
+          }
+        }
+      ]
+    },
+    {
+      "id": "effective-clock-addition-overflow",
+      "steps": [
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "expired",
+          "remembered": 0,
+          "nowEpoch": 9007199254740990,
+          "event": {
+            "issuedAt": 9007199254740900,
+            "expiresAt": 9007199254740980
+          }
+        },
+        {
+          "action": "evaluate",
+          "enabled": true,
+          "foreground": false,
+          "expect": "suppress",
+          "reason": "clock",
+          "remembered": 0,
+          "nowEpoch": 9007199254740990,
+          "nowMonotonic": 1002
+        }
+      ]
+    }
+  ]
+}

@@ -48,6 +48,8 @@ jobs:
           python3 -B -m unittest discover -s native/remote-crypto/tools -p 'test_*.py'
           python3 -B scripts/generate_inference_performance_identity.py --check
           python3 -B -m unittest scripts.tests.test_inference_performance_contract
+          python3 -B -m unittest scripts.tests.test_remote_attention_contract
+          python3 -B scripts/check_remote_attention_contract.py
       - name: Verify native Swift controller fixtures before the cross-target SDK build
         env:
           QUENDERIN_REQUIRE_REMOTE_CRYPTO: '0'
@@ -55,6 +57,7 @@ jobs:
           set -o pipefail
           swift test --package-path apple/QuenderinKit 2>&1 | tee "$RUNNER_TEMP/inference-performance-swift.log"
           python3 -B scripts/check_inference_performance.py --results "$RUNNER_TEMP/inference-performance-swift.log"
+          python3 -B scripts/check_remote_attention_contract.py --results "$RUNNER_TEMP/inference-performance-swift.log"
       - name: Compile the portable MAX model-adapter boundary for iOS (no vendor runtime)
         run: |
           xcrun --sdk iphoneos clang -std=c11 -Wall -Wextra -Werror -fsyntax-only \

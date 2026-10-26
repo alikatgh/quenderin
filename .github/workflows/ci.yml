@@ -113,6 +113,7 @@ jobs:
           python3 ../../scripts/check_remote_harness_secure_link.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 ../../scripts/check_remote_harness_control_wire.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 -B ../../scripts/check_inference_performance.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
+          python3 -B ../../scripts/check_remote_attention_contract.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
       - name: Exercise the actual Swift vision client with a synthetic C ABI (no weights)
         run: python3 -m unittest scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_image_native_cleanup scripts.tests.test_granite_native
 
@@ -466,6 +467,20 @@ jobs:
             android/quenderin-core/src/verify/RemoteHarnessBotReadVerify.kt \
             -include-runtime -d "$RUNNER_TEMP/remote-bot-read.jar"
           java -jar "$RUNNER_TEMP/remote-bot-read.jar" shared/remote-harness-bot-read-fixtures.json
+      - name: Verify native attention policy and bounded remote Markdown (no push delivery)
+        run: |
+          set -o pipefail
+          python3 -B -m unittest scripts.tests.test_remote_attention_contract
+          python3 -B scripts/check_remote_attention_contract.py
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/RemoteHarnessAttentionVerify.kt \
+            -include-runtime -d "$RUNNER_TEMP/remote-attention.jar"
+          java -jar "$RUNNER_TEMP/remote-attention.jar" shared/remote-harness-attention-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-attention.log"
+          python3 -B scripts/check_remote_attention_contract.py --results "$RUNNER_TEMP/quenderin-kotlin-attention.log"
+          kotlinc android/app/src/main/kotlin/ai/quenderin/app/ui/MarkdownParsing.kt \
+            android/app/src/verify/MarkdownPresentationVerify.kt \
+            -include-runtime -d "$RUNNER_TEMP/remote-markdown.jar"
+          java -jar "$RUNNER_TEMP/remote-markdown.jar"
       - name: Verify native Harness fragments (synthetic byte fixtures only)
         run: |
           set -o pipefail

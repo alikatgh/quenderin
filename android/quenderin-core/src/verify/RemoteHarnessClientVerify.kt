@@ -30,6 +30,17 @@ private class ClientState : RemoteHarnessClientStateStore {
         source = RemoteHarnessClientRecords.state(state)
     }
 }
+private class ClientRecoveryIntent : RemoteHarnessClientRecoveryIntentStore {
+    var allowed = false; var failRead = false; var failWrite = false
+    override fun read(): Boolean {
+        if (failRead) throw IllegalStateException("fixture recovery intent")
+        return allowed
+    }
+    override fun write(allowed: Boolean) {
+        if (failWrite) throw IllegalStateException("fixture recovery intent")
+        this.allowed = allowed
+    }
+}
 private class SyntheticClientCrypto : RemoteHarnessCryptoBackend {
     override val isAvailable = true
     override fun publicKey(privateSeed: ByteArray) = ByteArray(32) { 7 }
@@ -72,6 +83,9 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
     val queue = java.util.ArrayDeque<() -> Unit>()
     val hosts = listOf(RemoteHarnessClientHost("host-a", "My laptop", "account-fixture", true))
     var key = ByteArray(32) { 8 }; var logins = 0; var registrations = 0; var refreshes = 0; var prompts = 0
+    val recoveryIntent = ClientRecoveryIntent()
+    var hostLists = 0; var hostDetails = 0
+    var lastPromptText: String? = null
     var failRefresh = false; var badMembership = false; var connectionCount = 0; var selectedRelay = false
     var clientDeviceID = ""; var sequence = 3L; var eventCounter = 0L
     val sessions = mutableListOf("session-a")
@@ -100,7 +114,7 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
     val rejectedLoginOrigins = mutableSetOf<String>()
     var id = 0
     fun newClient(crypto: RemoteHarnessCryptoBackend = SyntheticClientCrypto()) = RemoteHarnessClient(this, credentials, saved, this,
-        crypto, clock, { ByteArray(32) { 2 } }, { "00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}" })
+        crypto, clock, { ByteArray(32) { 2 } }, { "00000000-0000-4000-8000-${(++id).toString().padStart(12, '0')}" }, recoveryIntent)
     fun pump() { var limit = 0; while (queue.isNotEmpty()) { check(++limit < 500); queue.removeFirst().invoke() } }
     fun pumpOne() { check(queue.isNotEmpty()); queue.removeFirst().invoke() }
     override fun login(origin: String, email: String, password: CharArray): RemoteHarnessClientLogin {
@@ -120,9 +134,12 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
         refreshes++; if (failRefresh) throw IllegalStateException("lost refresh response")
         return pair(record.refreshExpiresAt)
     }
-    override fun hosts(record: RemoteHarnessClientCredentials) = hosts
-    override fun host(record: RemoteHarnessClientCredentials, summary: RemoteHarnessClientHost) = RemoteHarnessClientHost(summary.deviceID,
-        summary.name, if (badMembership) "different-account" else summary.membershipID, true, key, RemoteHarnessClientRecords.fingerprint(key))
+    override fun hosts(record: RemoteHarnessClientCredentials): List<RemoteHarnessClientHost> { hostLists++; return hosts }
+    override fun host(record: RemoteHarnessClientCredentials, summary: RemoteHarnessClientHost): RemoteHarnessClientHost {
+        hostDetails++
+        return RemoteHarnessClientHost(summary.deviceID, summary.name, if (badMembership) "different-account" else summary.membershipID,
+            true, key, RemoteHarnessClientRecords.fingerprint(key))
+    }
     override fun revoke(record: RemoteHarnessClientCredentials) {}
     override fun connect(origin: String, listener: RemoteHarnessClientSocketListener): RemoteHarnessClientSocket {
         val socket = FixtureSocket(listener, "noise-connection-${++connectionCount}")
@@ -258,7 +275,10 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
                                     "reasoning" to obj("efforts" to RemoteHarnessJSON.ArrayValue(listOf(obj("id" to str("high"), "name" to str("High"))))))))))))
                         "session/selectModel" -> { modelSelections++; val r = args.rhRequired("request").objectValue(); obj("selected" to obj("provider" to r.rhRequired("provider"),
                             "model" to r.rhRequired("model"), "reasoningEffort" to r["reasoningEffort"])) }
-                        "session/prompt" -> { prompts++; promptResult }
+                        "session/prompt" -> { prompts++
+                            lastPromptText = (args.rhRequired("request").objectValue().rhRequired("content") as RemoteHarnessJSON.ArrayValue)
+                                .values.single().objectValue().rhString("text")
+                            promptResult }
                         "session/cancel" -> { cancellations++; obj("accepted" to RemoteHarnessJSON.BooleanValue(true)) }
                         "session/page" -> { pages++; obj("records" to RemoteHarnessJSON.ArrayValue(pageRecords), "hasMore" to RemoteHarnessJSON.BooleanValue(false)) }
                         "quenderin/approval" -> { approvalDecisions++; obj("accepted" to RemoteHarnessJSON.BooleanValue(true)) }
@@ -350,6 +370,237 @@ fun main(args: Array<String>) {
             verify(rejected, "unsupported numeric action fails closed ${fixture.rhString("id")}")
         }
     }
+    // Drafts are data, never an implicit request. Exercise real controller navigation and restart.
+    val draftFixture = ClientFixture().apply {
+        additionalWorkspaces = listOf(obj("workspaceId" to str("workspace-b"), "title" to str("Second"), "path" to str("/computer/second"),
+            "sessionIds" to RemoteHarnessJSON.ArrayValue(listOf(str("session-a")))))
+    }
+    var draftClient = draftFixture.newClient()
+    draftClient.authorize("https://relay.example.org", "fixture@example.org", "fixture-only-password".toCharArray())
+    draftClient.chooseHost("host-a"); draftClient.confirmHost(draftClient.snapshot.pendingHost!!.fingerprint!!); draftFixture.pump()
+    draftClient.chooseWorkspace("workspace-a"); draftFixture.pump()
+    draftClient.draft("New session draft\r\n  exact spacing ")
+    val workspaceDraft = draftFixture.saved.read()!!
+    val workspaceWire = RemoteHarnessClientRecords.state(workspaceDraft)
+    verify(RemoteHarnessClientRecords.state(workspaceWire).drafts.single().scope.sessionID == null &&
+        RemoteHarnessClientRecords.state(workspaceWire).draft == "New session draft\r\n  exact spacing ",
+        "nonempty new-session draft round-trips with an explicit nullable sessionId")
+    val legacyWorkspace = RemoteHarnessJSON.write(RemoteHarnessJSON.ObjectValue(RemoteHarnessJSON.parse(workspaceWire).objectValue()
+        .filterKeys { it != "drafts" && it != "foregroundReconnectAllowed" }))
+    val upgradedWorkspace = RemoteHarnessClientRecords.state(legacyWorkspace)
+    verify(upgradedWorkspace.drafts.single().scope.sessionID == null && upgradedWorkspace.drafts.single().text == workspaceDraft.draft &&
+        upgradedWorkspace.foregroundReconnectAllowed && RemoteHarnessClientRecords.state(RemoteHarnessClientRecords.state(upgradedWorkspace)).draft == workspaceDraft.draft,
+        "legacy workspace-only draft upgrades and re-encodes without losing its nullable scope")
+    draftClient.chooseSession("session-a"); draftFixture.pump()
+    verify(draftClient.snapshot.draft.isEmpty(), "opening A does not inherit the new-session draft")
+    val aDraft = "A draft\r\n\n  keep **raw** 🦊 "
+    draftClient.draft(aDraft); val aScope = draftClient.snapshot.draftScope
+    draftClient.createSession(); draftFixture.pump()
+    verify(draftClient.snapshot.sessionID == "session-b" && draftClient.snapshot.draft.isEmpty() && draftFixture.prompts == 0,
+        "creating B starts an empty composer without sending A")
+    draftClient.draft("B draft")
+    draftClient.draft(aDraft, aScope); draftClient.send(aScope); draftFixture.pump()
+    verify(draftClient.snapshot.draft == "B draft" && draftFixture.prompts == 0, "late A edits remain A data and stale Send cannot mutate or send B")
+    draftClient.chooseWorkspace("workspace-b"); draftFixture.pump(); draftClient.chooseSession("session-a"); draftFixture.pump()
+    verify(draftClient.snapshot.draft.isEmpty(), "same session ID in another workspace has an isolated composer")
+    draftClient.draft("Workspace B / A")
+    draftClient.chooseWorkspace("workspace-a"); draftFixture.pump()
+    verify(draftClient.snapshot.draft == "New session draft\r\n  exact spacing ", "new-session scope restores its own draft")
+    draftClient.chooseSession("session-a"); draftFixture.pump()
+    verify(draftClient.snapshot.draft == aDraft, "A restores exact raw draft after B and workspace changes")
+    val healthyConnection = draftFixture.connectionCount
+    repeat(4) { draftClient.foreground() }; draftFixture.pump()
+    verify(draftFixture.connectionCount == healthyConnection && draftFixture.prompts == 0, "foreground does not interrupt a healthy stream or send")
+    draftClient.disconnect(); repeat(4) { draftClient.foreground() }; draftFixture.pump()
+    verify(draftFixture.connectionCount == healthyConnection, "foreground respects an explicit Disconnect in this owner lifetime")
+    draftClient = draftFixture.newClient()
+    verify(draftClient.snapshot.draft == aDraft && draftClient.snapshot.draftScope == aScope && draftFixture.prompts == 0,
+        "process restart restores selected scoped draft without sending")
+    repeat(4) { draftClient.foreground() }; draftFixture.pump()
+    verify(draftFixture.connectionCount == healthyConnection && !draftFixture.saved.read()!!.foregroundReconnectAllowed,
+        "manual Disconnect survives owner recreation and foreground performs zero network connection work")
+    draftClient.resume(); draftFixture.pump()
+    verify(draftFixture.connectionCount == healthyConnection + 1 && draftFixture.saved.read()!!.foregroundReconnectAllowed,
+        "explicit Reconnect durably clears manual Disconnect intent")
+    draftClient.close(); draftClient = draftFixture.newClient()
+    repeat(4) { draftClient.foreground() }; draftFixture.pump()
+    verify(draftFixture.connectionCount == healthyConnection + 2 && draftFixture.prompts == 0,
+        "lifecycle close preserves pinned foreground recovery and repeated transitions coalesce without replay")
+    draftClient.chooseSession("session-b"); draftFixture.pump()
+    verify(draftClient.snapshot.draft == "B draft", "B survives process restart independently of selected A")
+    draftClient.chooseWorkspace("workspace-b"); draftFixture.pump(); draftClient.chooseSession("session-a"); draftFixture.pump()
+    verify(draftClient.snapshot.draft == "Workspace B / A", "other-workspace draft survives process restart")
+    draftClient.disconnect(); val beforeExplicitHost = draftFixture.connectionCount
+    draftClient.refreshHosts(); draftClient.chooseHost("host-a"); draftFixture.pump()
+    draftClient.chooseSession("session-a"); draftFixture.pump()
+    verify(draftFixture.saved.read()!!.foregroundReconnectAllowed, "validated explicit Host/session selection re-enables foreground recovery")
+    draftFixture.current!!.listener.closed(); draftFixture.clock.mono += 5_001
+    repeat(4) { draftClient.foreground() }; draftFixture.pump()
+    verify(draftFixture.connectionCount == beforeExplicitHost + 3 && draftFixture.prompts == 0,
+        "Disconnect to Computers to Host/session then transport loss can recover once on foreground")
+    draftClient.disconnect()
+    val draftRecord = draftFixture.saved.read()!!
+    val encodedDrafts = RemoteHarnessClientRecords.state(draftRecord)
+    val encodedTree = RemoteHarnessJSON.parse(encodedDrafts).objectValue()
+    val legacy = RemoteHarnessJSON.write(RemoteHarnessJSON.ObjectValue(encodedTree.filterKeys { it != "drafts" }))
+    val migratedDraft = RemoteHarnessClientRecords.state(legacy)
+    verify(migratedDraft.drafts.single().text == "Workspace B / A" && migratedDraft.drafts.single().scope.workspaceID == "workspace-b",
+        "legacy selected draft migrates to its exact destination")
+    val originalSource = draftFixture.saved.source
+    draftFixture.saved.source = encodedDrafts.replace("\"text\":\"B draft\"", "\"text\":\"\"")
+    val malformedDrafts = draftFixture.saved.source
+    val malformedDraftClient = draftFixture.newClient(); malformedDraftClient.resume(); malformedDraftClient.draft("replacement"); malformedDraftClient.send()
+    verify(malformedDraftClient.snapshot.phase == RemoteHarnessClientPhase.BLOCKED && draftFixture.saved.source == malformedDrafts && draftFixture.prompts == 0,
+        "malformed drafts block writes and sends while preserving original bytes")
+    draftFixture.saved.source = originalSource
+    val fullRows = (0 until RemoteHarnessClientSavedState.MAX_DRAFTS).map { index ->
+        RemoteHarnessClientDraft(RemoteHarnessClientDraftScope(draftRecord.origin, "host-a", draftRecord.hostFingerprint!!,
+            "workspace-a", "full-$index"), "Kept $index")
+    }
+    val fullState = RemoteHarnessClientSavedState(draftRecord.origin, draftRecord.deviceID, draftRecord.hostID, draftRecord.hostName,
+        draftRecord.hostFingerprint, "workspace-a", "Project", "session-a", "", emptyList(), emptyList(), drafts = fullRows)
+    draftFixture.saved.source = RemoteHarnessClientRecords.state(fullState)
+    val fullSource = draftFixture.saved.source
+    draftFixture.recoveryIntent.write(true)
+    val fullDraftClient = draftFixture.newClient(); fullDraftClient.draft("Keep this unpersisted draft")
+    verify(fullDraftClient.snapshot.phase == RemoteHarnessClientPhase.BLOCKED && fullDraftClient.snapshot.draft == "Keep this unpersisted draft" &&
+        draftFixture.saved.source == fullSource, "draft capacity preserves existing records and the unsaved current text")
+    fullDraftClient.draft("Latest accepted text after capacity failure")
+    verify(fullDraftClient.snapshot.draft == "Latest accepted text after capacity failure" && draftFixture.saved.source == fullSource,
+        "already accepted edits retain their latest text in memory after capacity blocks storage")
+    fullDraftClient.disconnect()
+    val fullNetworkBefore = Triple(draftFixture.connectionCount, draftFixture.hostLists, draftFixture.hostDetails)
+    val fullRecreated = draftFixture.newClient(); repeat(4) { fullRecreated.foreground() }; draftFixture.pump()
+    verify(!draftFixture.recoveryIntent.read() && draftFixture.saved.source == fullSource &&
+        Triple(draftFixture.connectionCount, draftFixture.hostLists, draftFixture.hostDetails) == fullNetworkBefore,
+        "manual Disconnect commits outside an over-capacity draft journal and recreation performs zero automatic network work")
+    fullRecreated.resume(); draftFixture.pump()
+    verify(draftFixture.recoveryIntent.read() && draftFixture.connectionCount == fullNetworkBefore.first + 1,
+        "explicit Reconnect still works after independent intent survives draft-capacity exhaustion")
+    fullRecreated.close()
+    val fullFields = RemoteHarnessJSON.parse(fullSource!!).objectValue()
+    val existingRows = (fullFields.rhRequired("drafts") as RemoteHarnessJSON.ArrayValue).values
+    draftFixture.saved.source = RemoteHarnessJSON.write(RemoteHarnessJSON.ObjectValue(fullFields + ("drafts" to
+        RemoteHarnessJSON.ArrayValue(existingRows + existingRows.first()))))
+    val overCapacitySource = draftFixture.saved.source
+    val overCapacityClient = draftFixture.newClient(); overCapacityClient.draft("replacement"); overCapacityClient.resume()
+    verify(overCapacityClient.snapshot.phase == RemoteHarnessClientPhase.BLOCKED && draftFixture.saved.source == overCapacitySource,
+        "over-capacity persisted input blocks recovery without dropping rows")
+    val failedJournalSource = RemoteHarnessJSON.write(RemoteHarnessJSON.ObjectValue(encodedTree +
+        ("foregroundReconnectAllowed" to RemoteHarnessJSON.BooleanValue(true))))
+    draftFixture.saved.source = failedJournalSource
+    draftFixture.recoveryIntent.write(true)
+    val failedDraftWrite = draftFixture.newClient(); draftFixture.saved.failWrite = true
+    failedDraftWrite.draft("Still available after storage failure")
+    verify(failedDraftWrite.snapshot.phase == RemoteHarnessClientPhase.BLOCKED && failedDraftWrite.snapshot.draft == "Still available after storage failure" &&
+        draftFixture.saved.source == failedJournalSource, "failed write preserves other drafts and current unsaved text")
+    failedDraftWrite.disconnect()
+    draftFixture.saved.failWrite = false
+    val failedNetworkBefore = Triple(draftFixture.connectionCount, draftFixture.hostLists, draftFixture.hostDetails)
+    val failedRecreated = draftFixture.newClient(); repeat(4) { failedRecreated.foreground() }; draftFixture.pump()
+    verify(!draftFixture.recoveryIntent.read() && draftFixture.saved.source == failedJournalSource &&
+        Triple(draftFixture.connectionCount, draftFixture.hostLists, draftFixture.hostDetails) == failedNetworkBefore,
+        "manual Disconnect survives failed journal writes and journal recovery cannot silently re-enable foreground network work")
+    failedRecreated.resume(); draftFixture.pump()
+    verify(draftFixture.recoveryIntent.read() && draftFixture.connectionCount == failedNetworkBefore.first + 1,
+        "only explicit Reconnect clears the separately persisted false intent after journal write failure")
+    failedRecreated.close()
+    val bytesRows = (0 until 16).map { index ->
+        RemoteHarnessClientDraft(RemoteHarnessClientDraftScope(draftRecord.origin, "host-a", draftRecord.hostFingerprint!!,
+            "workspace-a", "bytes-$index"), "x".repeat(RemoteHarnessBounds.TEXT_BYTES))
+    }
+    var aggregateRejected = false
+    try {
+        RemoteHarnessClientSavedState(draftRecord.origin, draftRecord.deviceID, draftRecord.hostID, draftRecord.hostName,
+            draftRecord.hostFingerprint, "workspace-a", "Project", "session-a", "", emptyList(), emptyList(),
+            drafts = bytesRows + RemoteHarnessClientDraft(aScope!!, "one byte over the aggregate"))
+    } catch (error: RemoteHarnessException) { aggregateRejected = error.code == "client-storage" }
+    verify(aggregateRejected, "draft aggregate byte cap rejects new storage without eviction")
+    val foreignScope = RemoteHarnessClientDraftScope(draftRecord.origin, "host-other", draftRecord.hostFingerprint!!, "workspace-a", "session-a")
+    verify(foreignScope != aScope && foreignScope.copy(hostDeviceID = "host-a", hostFingerprint = "f".repeat(64)) != aScope,
+        "Host and pin form part of the draft destination")
+    verify(listOf("https://example.org/path?q=1", "http://localhost:8080", "mailto:person@example.org?subject=Hello").all(MarkdownLinkPolicy::allows),
+        "safe explicit web and email Markdown destinations are allowed")
+    verify(listOf("javascript:alert(1)", "data:text/html,hello", "intent://remote/#Intent;end", "file:///private/file", "//example.org", "HTTPS://user:pass@example.org",
+        "https://example.org/\nunsafe", "mailto:person@example.org?subject=x%0D%0ABcc:other@example.org", "https://").none(MarkdownLinkPolicy::allows),
+        "unsafe and malformed Markdown destinations never become links")
+
+    fun inputFixture(): Pair<ClientFixture, RemoteHarnessClient> {
+        val f = ClientFixture().apply { sessions.add("session-b") }
+        val c = f.newClient()
+        c.authorize("https://relay.example.org", "fixture@example.org", "fixture-only-password".toCharArray())
+        c.chooseHost("host-a"); c.confirmHost(c.snapshot.pendingHost!!.fingerprint!!); f.pump()
+        c.chooseWorkspace("workspace-a"); f.pump(); c.chooseSession("session-b"); f.pump()
+        return f to c
+    }
+    run {
+        val (f, c) = inputFixture(); val beforeFailure = Triple(f.connectionCount, f.hostLists, f.hostDetails)
+        f.recoveryIntent.failWrite = true; c.disconnect(); repeat(4) { c.foreground() }; f.pump()
+        verify(c.snapshot.phase == RemoteHarnessClientPhase.BLOCKED && c.snapshot.error?.contains("automatic reconnect preference could not be saved") == true &&
+            Triple(f.connectionCount, f.hostLists, f.hostDetails) == beforeFailure,
+            "intent-store write failure closes the owner and explicitly reports that persistence failed")
+        f.recoveryIntent.failRead = true
+        val unreadableIntent = f.newClient(); repeat(4) { unreadableIntent.foreground() }; f.pump()
+        verify(unreadableIntent.snapshot.phase == RemoteHarnessClientPhase.BLOCKED &&
+            Triple(f.connectionCount, f.hostLists, f.hostDetails) == beforeFailure,
+            "unreadable independent recovery intent fails closed after recreation")
+    }
+    // Actual facade scheduling seam, with its owner blocked until all three UI calls are accepted.
+    for (laterText in listOf("two", "one")) {
+        val (f, c) = inputFixture(); f.deferPromptResponse = true
+        val ownerTasks = java.util.ArrayDeque<() -> Unit>()
+        val inputs = RemoteHarnessClientInputQueue({ ownerTasks.addLast(it) }, { scope, text -> c.draft(text, scope) })
+        val scope = c.snapshot.draftScope
+        verify(inputs.draft(scope, "one") && inputs.command { c.send(scope) } && inputs.draft(scope, laterText),
+            "draft then Send then later edit are accepted in distinct ordered batches")
+        verify(ownerTasks.size == 3, "Send seals the preceding draft batch before later IME edits")
+        while (ownerTasks.isNotEmpty()) ownerTasks.removeFirst().invoke()
+        verify(f.prompts == 1 && f.lastPromptText == "one" && c.snapshot.busy && c.snapshot.draft == laterText,
+            "Send latches pre-click text while later accepted edits survive busy state, including identical text")
+        f.heldPromptResponses.removeFirst().invoke(); f.pump()
+        verify(c.snapshot.draft == laterText && f.saved.read()!!.draft == laterText && f.prompts == 1,
+            "receipt clears only its admitted draft revision and preserves later accepted text durably")
+        c.close()
+    }
+    run {
+        val (f, c) = inputFixture(); val originalScope = c.snapshot.draftScope
+        val ownerTasks = java.util.ArrayDeque<() -> Unit>()
+        val inputs = RemoteHarnessClientInputQueue({ ownerTasks.addLast(it) }, { scope, text -> c.draft(text, scope) })
+        inputs.draft(originalScope, "old"); inputs.command { c.chooseSession("session-a") }
+        inputs.draft(originalScope, "latest original-session text"); inputs.command { c.send(originalScope) }
+        while (ownerTasks.isNotEmpty()) ownerTasks.removeFirst().invoke()
+        f.pump()
+        verify(c.snapshot.sessionID == "session-a" && c.snapshot.draft.isEmpty() && f.prompts == 0,
+            "navigation cannot move a late accepted draft or stale Send into another session")
+        c.chooseSession("session-b"); f.pump()
+        verify(c.snapshot.draft == "latest original-session text", "late accepted navigation edit is saved to its original destination")
+        c.chooseSession("session-a"); f.pump(); f.saved.failWrite = true
+        c.draft("retain failed late edit", originalScope)
+        verify(c.snapshot.phase == RemoteHarnessClientPhase.BLOCKED && c.snapshot.unsavedScopedDraft?.text == "retain failed late edit" &&
+            c.snapshot.unsavedScopedDraft?.scope == originalScope && c.snapshot.draft.isEmpty(),
+            "failed late scoped write exposes its unsaved original-destination text without replacing current draft")
+        c.draft("latest accepted failed late edit", originalScope)
+        verify(c.snapshot.unsavedScopedDraft?.text == "latest accepted failed late edit" && c.snapshot.draft.isEmpty(),
+            "queued late edits remain recoverable after a storage failure without changing the visible destination")
+    }
+    run {
+        val ownerTasks = java.util.ArrayDeque<() -> Unit>(); val applied = mutableListOf<String>(); var commands = 0
+        val inputs = RemoteHarnessClientInputQueue({ ownerTasks.addLast(it) }, { _, text -> applied.add(text) })
+        var accepted = true
+        repeat(50_000) { accepted = inputs.draft(aScope, "edit-$it") && accepted }
+        verify(accepted && ownerTasks.size == 1, "IME flood coalesces to one bounded pending edit batch")
+        repeat(RemoteHarnessClientInputQueue.MAX_COMMANDS) { index ->
+            accepted = inputs.command { commands++ } && inputs.draft(aScope, "boundary-$index") && accepted
+        }
+        verify(accepted && ownerTasks.size == RemoteHarnessClientInputQueue.MAX_COMMANDS + RemoteHarnessClientInputQueue.MAX_EDIT_BATCHES &&
+            !inputs.command { error("rejected command executed") } && !inputs.draft(foreignScope, "not accepted") && inputs.draft(aScope, "latest accepted"),
+            "command and edit-batch floods reject before acceptance while preserving the latest accepted tail")
+        while (ownerTasks.isNotEmpty()) ownerTasks.removeFirst().invoke()
+        verify(commands == 32 && applied.first() == "edit-49999" && applied.last() == "latest accepted" &&
+            inputs.command { commands++ }, "bounded queue drains in order and releases capacity")
+        while (ownerTasks.isNotEmpty()) ownerTasks.removeFirst().invoke()
+    }
+
     val fixture = ClientFixture(); val client = fixture.newClient()
     val password = "fixture-only-password".toCharArray()
     client.authorize("https://relay.example.org", "fixture@example.org", password)

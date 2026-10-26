@@ -2,6 +2,7 @@ package ai.quenderin.app.ui
 
 import ai.quenderin.app.RemoteHarnessController
 import ai.quenderin.core.*
+import android.content.ContextWrapper
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -9,6 +10,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -28,24 +38,59 @@ import androidx.compose.ui.viewinterop.AndroidView
 @Composable
 fun RemoteHarnessScreen(controller: RemoteHarnessController, onBack: () -> Unit) {
     val state = controller.state
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val lifecycle = remember(context) { generateSequence(context) { (it as? ContextWrapper)?.baseContext?.takeIf { parent -> parent !== it } }
+        .filterIsInstance<LifecycleOwner>().firstOrNull()?.lifecycle }
+    DisposableEffect(controller, lifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_START) controller.foreground() }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer) }
+    }
+    var more by remember { mutableStateOf(false) }
+    var details by remember { mutableStateOf(false) }
+    var presentation by remember { mutableStateOf(false) }
     BackHandler(onBack = onBack)
+    if (details) AlertDialog(onDismissRequest = { details = false }, title = { Text("Connection details") },
+        text = { SelectionContainer { Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(state.origin)
+            state.host?.let { Text("Computer: ${it.name}") }
+            if (state.workspaceID != null) Text("Workspace: ${state.workspaceTitle}")
+            state.sessionID?.let { Text("Session: $it", fontFamily = FontFamily.Monospace) }
+            state.model?.let { Text("Model: ${state.provider} / $it${state.effort?.let { effort -> " · $effort" } ?: ""}") }
+        } } }, confirmButton = { TextButton(onClick = { details = false }) { Text("Done") } })
+    if (presentation) RemotePresentation(controller, onDismiss = { presentation = false })
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = onBack, modifier = Modifier.testTag("remote.back")) { Text("Back") }
-                if (state.phase !in setOf(RemoteHarnessClientPhase.SETUP, RemoteHarnessClientPhase.AUTHORIZING)) {
-                    TextButton(onClick = controller::disconnect, modifier = Modifier.testTag("remote.disconnect")) { Text("Disconnect") }
+                Text("My computer", style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f).padding(vertical = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Box {
+                    TextButton(onClick = { more = true }, modifier = Modifier.testTag("remote.more")) { Text("More") }
+                    DropdownMenu(more, onDismissRequest = { more = false }) {
+                        DropdownMenuItem(text = { Text("Connection details") }, onClick = { more = false; details = true })
+                        state.sessionID?.let { id -> DropdownMenuItem(text = { Text("Copy session ID") }, onClick = {
+                            more = false; clipboard.setText(AnnotatedString(id))
+                        }, modifier = Modifier.testTag("remote.copySessionID")) }
+                        DropdownMenuItem(text = { Text("Reading preferences") }, onClick = { more = false; presentation = true })
+                        if (state.workspaces.isNotEmpty()) state.workspaces.forEach { workspace ->
+                            DropdownMenuItem(text = { Text("Sessions · ${workspace.title}") }, enabled = !state.busy, onClick = {
+                                more = false; controller.workspace(workspace.id)
+                            })
+                        }
+                        if (state.phase !in setOf(RemoteHarnessClientPhase.SETUP, RemoteHarnessClientPhase.AUTHORIZING))
+                            DropdownMenuItem(text = { Text("Disconnect") }, onClick = { more = false; controller.disconnect() },
+                                modifier = Modifier.testTag("remote.disconnect"))
+                    }
                 }
             }
-            Text("My computer", style = MaterialTheme.typography.headlineSmall)
-            Text("DeepSeek Harness runs on your computer.", style = MaterialTheme.typography.bodyMedium)
-            if (state.origin.isNotEmpty()) Text(state.origin, style = MaterialTheme.typography.labelMedium, modifier = Modifier.testTag("remote.server"))
-            state.host?.let { Text("Computer: ${it.name}", modifier = Modifier.testTag("remote.host"), style = MaterialTheme.typography.labelLarge) }
-            if (state.workspaceID != null) Text("Workspace: ${state.workspaceTitle}", modifier = Modifier.testTag("remote.workspace"), style = MaterialTheme.typography.labelMedium)
-            state.sessionID?.let { Text("Session: $it", modifier = Modifier.testTag("remote.session"), style = MaterialTheme.typography.labelSmall) }
-            state.model?.let { Text("Model: ${state.provider} / $it${state.effort?.let { effort -> " · $effort" } ?: ""}", style = MaterialTheme.typography.labelMedium) }
+            val destination = listOfNotNull(state.host?.name, state.workspaceTitle.takeIf { state.workspaceID != null }).joinToString(" · ")
+            if (destination.isNotEmpty()) Text(destination, style = MaterialTheme.typography.labelMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("remote.destination"))
             Text(status(state), modifier = Modifier.testTag("remote.status"), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            controller.inputError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("remote.error").padding(vertical = 8.dp)) }
             if (!state.approvalSupported && state.phase in setOf(RemoteHarnessClientPhase.WORKSPACES, RemoteHarnessClientPhase.SESSIONS, RemoteHarnessClientPhase.SESSION))
                 Text("This Host is read-only. Install and enable the Quenderin Remote companion on your computer, approve this device there, then reconnect.",
@@ -109,7 +154,17 @@ fun RemoteHarnessScreen(controller: RemoteHarnessController, onBack: () -> Unit)
                 }
                 RemoteHarnessClientPhase.BLOCKED -> {
                     if (state.error?.contains("refresh") == true) RemoteSetup(controller, state)
-                    else Text("Your saved connection and conversations remain on this device.")
+                    else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        Text("Your saved connection and conversations remain on this device.")
+                        state.unsavedScopedDraft?.let { unsaved ->
+                            Text("Unsaved draft · ${unsaved.scope.sessionID ?: "new session"}", style = MaterialTheme.typography.titleSmall)
+                            RemoteRawText(unsaved.text, controller, "draft", monospace = false)
+                        }
+                        if (state.draft.isNotEmpty()) {
+                            Text("Current draft", style = MaterialTheme.typography.titleSmall)
+                            RemoteRawText(state.draft, controller, "draft", monospace = false)
+                        }
+                    }
                 }
             }
         }
@@ -225,8 +280,8 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
 }
 
 @Composable private fun RemoteSession(controller: RemoteHarnessController, state: RemoteHarnessClientSnapshot, modifier: Modifier) {
-    var localDraft by remember(state.sessionID) { mutableStateOf(state.draft) }
-    LaunchedEffect(state.draft) { if (state.draft.isEmpty() || localDraft.isEmpty()) localDraft = state.draft }
+    var localDraft by remember(state.draftScope) { mutableStateOf(state.draft) }
+    LaunchedEffect(state.draftScope, state.draft) { if (state.draft.isEmpty() || localDraft.isEmpty()) localDraft = state.draft }
     val sessionMutationsAllowed = !state.botSessionReadOnly && !state.botSessionClassificationPending
     val modelChangesAllowed = sessionMutationsAllowed && state.approvalSupported && state.historyReady && state.models.isNotEmpty() && !state.busy
     Column(modifier.fillMaxWidth()) {
@@ -250,9 +305,22 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                     if (item.reasoning.isNotEmpty()) {
                         var expanded by remember(item.id) { mutableStateOf(false) }
                         TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) { Text(if (expanded) "Hide reasoning" else "Show reasoning") }
-                        if (expanded) SelectionContainer { Text(item.reasoning, style = MaterialTheme.typography.bodySmall) }
+                        if (expanded) RemoteRawText(item.reasoning, controller, "reasoning", monospace = false)
                     }
-                    if (item.text.isNotEmpty()) SelectionContainer { Text(item.text, fontFamily = if (item.kind == "tool") FontFamily.Monospace else FontFamily.Default) }
+                    if (item.text.isNotEmpty()) {
+                        if (item.kind == "assistant") {
+                            val clipboard = LocalClipboardManager.current
+                            if (remoteMarkdownFormattingAllowed(item.text)) {
+                                MarkdownText(item.text, MaterialTheme.colorScheme.onSurface,
+                                    baseStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = if (controller.largeText) 18.sp else 16.sp),
+                                    wrapCode = controller.wrapCode, codeFontSize = if (controller.largeText) 15.sp else 13.sp, showsCodeCopyButton = true)
+                                TextButton(onClick = { clipboard.setText(AnnotatedString(item.text)) }) { Text("Copy response") }
+                            } else {
+                                Text("Formatting is limited for this long or complex response. Exact text remains available below.", style = MaterialTheme.typography.bodySmall)
+                                RemoteRawText(item.text, controller, "response", monospace = false)
+                            }
+                        } else RemoteRawText(item.text, controller, if (item.kind == "tool") "tool output" else "message", monospace = item.kind == "tool")
+                    }
                 }
             }
             if (!state.approvalSupported) item { Text("Tool approval requires the Quenderin Remote companion extension on your computer.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -267,11 +335,10 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                         Text("Tool: ${action.toolName}", style = MaterialTheme.typography.labelLarge)
                         SelectionContainer { Text("Call ID: ${action.callID}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
                         Text("Exact arguments", style = MaterialTheme.typography.labelMedium)
-                        SelectionContainer { Text(action.arguments, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.testTag("remote.approvalArguments.${approval.eventID}")) }
+                        RemoteRawText(action.arguments, controller, "arguments", Modifier.testTag("remote.approvalArguments.${approval.eventID}"))
                     }
                     Text("Approval request metadata", style = MaterialTheme.typography.labelMedium)
-                    SelectionContainer { Text(RemoteHarnessJSON.write(approval.request), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
+                    RemoteRawText(RemoteHarnessJSON.write(approval.request), controller, "approval metadata")
                     Text("Applies once to this device, workspace, session and active turn. Expires in at most two minutes.", style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { controller.decideApproval(approval.eventID, true) }, enabled = action != null && state.historyReady && !state.busy,
@@ -282,10 +349,10 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                 }
             }
         }
-        var showModels by remember(state.sessionID) { mutableStateOf(false) }
+        var showModels by remember(state.draftScope) { mutableStateOf(false) }
         LaunchedEffect(modelChangesAllowed) { if (!modelChangesAllowed) showModels = false }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            if (!state.botSessionReadOnly) Box {
+            if (!state.botSessionReadOnly) Box(Modifier.weight(1f)) {
                 TextButton(onClick = { showModels = true }, enabled = modelChangesAllowed,
                     modifier = Modifier.testTag("remote.models")) { Text("Model and effort") }
                 DropdownMenu(showModels && modelChangesAllowed, onDismissRequest = { showModels = false }) {
@@ -301,15 +368,58 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
             }
             if (state.status in setOf(RemoteSessionStatus.RUNNING, RemoteSessionStatus.AWAITING_APPROVAL, RemoteSessionStatus.STOP_REQUESTED))
                 TextButton(onClick = controller::stop, enabled = state.historyReady && state.status != RemoteSessionStatus.STOP_REQUESTED,
-                    modifier = Modifier.testTag("remote.stop")) { Text("Stop on computer") }
+                    modifier = Modifier.weight(1f).testTag("remote.stop")) { Text("Stop on computer") }
         }
         if (!state.botSessionReadOnly) {
-            OutlinedTextField(localDraft, { localDraft = it; controller.draft(it) }, label = { Text("Task for your computer") }, minLines = 2, maxLines = 6,
+            OutlinedTextField(localDraft, { localDraft = it; controller.draft(it, state.draftScope) }, label = { Text("Task for your computer") }, minLines = 2, maxLines = 6,
                 modifier = Modifier.fillMaxWidth().testTag("remote.composer"), enabled = sessionMutationsAllowed && !state.busy)
-            Button(onClick = controller::send, enabled = sessionMutationsAllowed && state.approvalSupported && state.historyReady && !state.busy && localDraft.isNotBlank() && state.status != RemoteSessionStatus.OUTCOME_UNKNOWN,
+            Button(onClick = { controller.send(state.draftScope, localDraft) }, enabled = sessionMutationsAllowed && state.approvalSupported && state.historyReady && !state.busy && localDraft.isNotBlank() && state.status != RemoteSessionStatus.OUTCOME_UNKNOWN,
                 modifier = Modifier.fillMaxWidth().testTag("remote.send").padding(vertical = 8.dp)) { Text("Send to computer") }
         }
     }
+}
+
+/** Full source stays available for copying. Rendering is limited to one 16 KiB section. */
+@Composable private fun RemoteRawText(text: String, controller: RemoteHarnessController, label: String,
+    modifier: Modifier = Modifier, monospace: Boolean = true) {
+    val clipboard = LocalClipboardManager.current
+    var expanded by remember(text) { mutableStateOf(false) }
+    var section by remember(text) { mutableIntStateOf(0) }
+    val sections = remember(text) { remoteTextSections(text) }
+    val displayed = if (expanded) sections[section] else remoteTextPreview(text)
+    Column(modifier.fillMaxWidth()) {
+        SelectionContainer {
+            Text(displayed, style = MaterialTheme.typography.bodyMedium.copy(fontSize = if (controller.largeText) 18.sp else 14.sp),
+                fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
+                modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())
+                    .then(if (!monospace || controller.wrapCode) Modifier else Modifier.horizontalScroll(rememberScrollState())))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = { clipboard.setText(AnnotatedString(text)) }) { Text("Copy exact $label") }
+            if (text.length > 2_048) TextButton(onClick = { expanded = !expanded; section = 0 }) { Text(if (expanded) "Collapse" else "Expand") }
+        }
+        if (expanded && sections.size > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = { section-- }, enabled = section > 0) { Text("Previous") }
+            Text("${section + 1} / ${sections.size}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 16.dp))
+            TextButton(onClick = { section++ }, enabled = section < sections.lastIndex) { Text("Next") }
+        }
+    }
+}
+
+@Composable private fun RemotePresentation(controller: RemoteHarnessController, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Reading preferences") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            Text("Saved on this Android device.", style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Wrap code and tool output", Modifier.weight(1f).padding(top = 12.dp))
+                Switch(controller.wrapCode, controller::wrapCode, modifier = Modifier.testTag("remote.wrapCode"))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Larger conversation text", Modifier.weight(1f).padding(top = 12.dp))
+                Switch(controller.largeText, controller::largeText, modifier = Modifier.testTag("remote.largeText"))
+            }
+        }
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
 }
 
 /** Password entry is intentionally excluded from SavedState, autofill, content capture and IME learning. */

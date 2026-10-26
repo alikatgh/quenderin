@@ -17,12 +17,16 @@ import SwiftUI
 struct MarkdownText: View {
     let text: String
     let color: Color
+    // Remote presentation is device-local; existing local chat keeps its defaults.
+    var wrapsCode = true
+    var codeTextStyle: Font.TextStyle = .footnote
+    var showsCodeCopyButton = false
 
     var body: some View {
         let blocks = cachedBlocks(text)
         VStack(alignment: .leading, spacing: 6) {
             ForEach(blocks.indices, id: \.self) { i in
-                blocks[i].view(color: color)
+                blocks[i].view(color: color, wrapsCode: wrapsCode, codeTextStyle: codeTextStyle, showsCodeCopyButton: showsCodeCopyButton)
             }
         }
     }
@@ -58,19 +62,19 @@ private func cachedBlocks(_ text: String) -> [MdBlock] {
 private enum MdBlock {
     case heading(level: Int, text: AttributedString)
     case paragraph(AttributedString)
-    case code(raw: String, segments: [CodeSeg])
+    case code(raw: String, copyRaw: String, segments: [CodeSeg])
     case list(items: [AttributedString], ordered: Bool, start: Int)
     case quote(AttributedString)
     case rule
 
-    @ViewBuilder func view(color: Color) -> some View {
+    @ViewBuilder func view(color: Color, wrapsCode: Bool, codeTextStyle: Font.TextStyle, showsCodeCopyButton: Bool) -> some View {
         switch self {
         case let .heading(level, text):
             Text(text).font(headingFont(level)).fontWeight(.bold).foregroundStyle(color)
         case let .paragraph(t):
             Text(t).foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
-        case let .code(raw, segments):
-            CodeBlockView(raw: raw, segments: segments, plain: color)
+        case let .code(raw, copyRaw, segments):
+            CodeBlockView(raw: raw, copyRaw: copyRaw, segments: segments, plain: color, wrapsCode: wrapsCode, textStyle: codeTextStyle, showsCopyButton: showsCodeCopyButton)
         case let .list(items, ordered, start):
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(Array(items.enumerated()), id: \.offset) { i, item in
@@ -121,8 +125,35 @@ func sanitizeLinks(_ attr: AttributedString) -> AttributedString {
 }
 
 // ── Block parsing (line-oriented; a blank line separates blocks) ──────────────
+
+/// Clipboard contents come from ranges in the original source, independently
+/// of display parsing's CRLF normalization. Fence delimiters stay excluded;
+/// indentation, Unicode, and every content line ending/blank line stay intact.
+func markdownFencedCodeCopies(in text: String) -> [String] {
+    // Use UTF-8 ranges: Swift treats CRLF as one Character, so looking for a
+    // Character("\n") would skip Windows line endings entirely.
+    let source = text.utf8
+    var result: [String] = []
+    var lineStart = source.startIndex
+    var contentStart: String.UTF8View.Index?
+    while lineStart < source.endIndex {
+        let newline = source[lineStart...].firstIndex(of: 10)
+        let lineEnd = newline ?? source.endIndex
+        let nextLine = newline.map { source.index(after: $0) } ?? source.endIndex
+        if String(decoding: source[lineStart..<lineEnd], as: UTF8.self).trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+            if let start = contentStart {
+                result.append(String(decoding: source[start..<lineStart], as: UTF8.self)); contentStart = nil
+            } else { contentStart = nextLine }
+        }
+        lineStart = nextLine
+    }
+    if let contentStart { result.append(String(decoding: source[contentStart..<source.endIndex], as: UTF8.self)) }
+    return result
+}
+
 private func parseMarkdownBlocks(_ text: String) -> [MdBlock] {
     let lines = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
+    var codeCopies = markdownFencedCodeCopies(in: text).makeIterator()
     var blocks: [MdBlock] = []
     var i = 0
     var para = ""
@@ -145,7 +176,7 @@ private func parseMarkdownBlocks(_ text: String) -> [MdBlock] {
             }
             i += 1 // consume closing fence (or EOF)
             let raw = buf.joined(separator: "\n")
-            blocks.append(.code(raw: raw, segments: tokenizeCode(raw, language: lang.isEmpty ? nil : lang)))
+            blocks.append(.code(raw: raw, copyRaw: codeCopies.next() ?? raw, segments: tokenizeCode(raw, language: lang.isEmpty ? nil : lang)))
         } else if trimmed.isEmpty {
             flush(); i += 1
         } else if let h = matchHeading(line) {
@@ -316,22 +347,39 @@ func tokenizeCode(_ code: String, language: String?) -> [CodeSeg] {
 /// memoized per (code, scheme) — recycled LazyVStack rows must not rebuild it every body pass.
 private struct CodeBlockView: View {
     let raw: String
+    let copyRaw: String
     let segments: [CodeSeg]
     let plain: Color
+    let wrapsCode: Bool
+    let textStyle: Font.TextStyle
+    let showsCopyButton: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Text(highlighted())
-            .font(.system(.footnote, design: .monospaced))
+        VStack(alignment: .leading, spacing: 6) {
+            if showsCopyButton {
+                Button { copyToPasteboard(copyRaw) } label: { Label("Copy code", systemImage: "doc.on.doc") }
+                    .font(.caption).buttonStyle(.borderless).accessibilityIdentifier("remote-copy-code")
+            }
+            if wrapsCode {
+                codeText.fixedSize(horizontal: false, vertical: true)
+            } else {
+                ScrollView(.horizontal) { codeText.fixedSize(horizontal: true, vertical: true) }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(plain.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var codeText: some View {
+        Text(highlighted()).font(.system(textStyle, design: .monospaced)).textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(plain.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-            .textSelection(.enabled)
     }
 
     @MainActor
     private func highlighted() -> AttributedString {
-        let key = "\(scheme == .dark ? "D" : "L")|\(raw)" as NSString
+        let key = "\(scheme == .dark ? "D" : "L")|\(plain)|\(raw)" as NSString
         if let hit = codeCache.object(forKey: key) { return hit.value }
         let p = QuenderinPalette.of(scheme)
         var out = AttributedString()

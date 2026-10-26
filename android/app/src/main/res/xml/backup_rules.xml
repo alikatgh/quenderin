@@ -13,4 +13,5 @@
     <exclude domain="sharedpref" path="deepseek_profile.xml" />
     <exclude domain="file" path="remote-harness/" />
     <exclude domain="sharedpref" path="remote_harness_credentials.xml" />
+    <exclude domain="sharedpref" path="remote-presentation.xml" />
 </full-backup-content>
