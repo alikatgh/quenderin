@@ -481,7 +481,12 @@ private fun verifyLifecycleTurnAdmission() {
     releaseIndex.countDown(); worker.join(2000); newChat.join(2000)
     check(lifecycleDidNotWaitOnIO && !worker.isAlive && !newChat.isAlive && failure.get() == null)
     check(raw.generationEntered!!.count == 1L) // completeChat never started/reset native cancellation.
-    check(backing.loadIndex().single().preview.isEmpty()) // Blocked old metadata cannot overwrite the newer placeholder snapshot.
+    check(backing.loadTranscript(originalID!!).map { it.role to it.text } == listOf(
+        Role.USER to "existing", Role.ASSISTANT to "existing reply", Role.USER to "outgoing turn",
+    )) // Navigation removes only the unfinished assistant, retaining the prior exchange and outgoing user.
+    check(backing.loadIndex().single().let {
+        it.id == originalID && it.preview == ConversationLibrary.youPrefix() + "outgoing turn"
+    }) // Blocked old metadata cannot overwrite the newer saved user-turn preview.
     check(chat.messages.isEmpty() && !chat.isGenerating && chat.generationPhase == GenerationPhase.IDLE && !chat.lastHitTokenCap)
     check(queuedFrames.filter { chat.isRevisionCurrent(it.first) }.all { it.second.isEmpty() })
     check(queuedPhases.filter { chat.isRevisionCurrent(it.first) }.all { it.second == GenerationPhase.IDLE })
@@ -489,7 +494,7 @@ private fun verifyLifecycleTurnAdmission() {
     check(chat.messages.isEmpty())
     val idleStopChat = ChatModel(engine)
     val beforeStopAdmission = idleStopChat.captureTurnAdmission()
-    idleStopChat.invalidatePreparedTurns() // The actual Stop path must invalidate even before isGenerating becomes true.
+    idleStopChat.stopGenerating() // The actual Stop path must invalidate even before isGenerating becomes true.
     check(runCatching { idleStopChat.withSelectedModel(a.id) {
         idleStopChat.send("synchronous IO after Stop", model = a, admission = beforeStopAdmission)
     } }.isFailure)

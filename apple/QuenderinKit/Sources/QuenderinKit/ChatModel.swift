@@ -122,14 +122,65 @@ public final class ChatModel: ObservableObject {
     private var stopRequested = false
     private var conversationRevision: UInt64 = 0
 
+    /// The assistant message owned by the send that is still streaming, or nil when the transcript
+    /// has no unsettled turn. While it is set, `completedMessages` excludes it and
+    /// `abandonInFlightTurn` removes it, so a partial reply the user navigated away from is never
+    /// persisted as a finished turn. Cleared by a normal settle, by `reset`/`restore`, and by
+    /// abandonment. An explicit Stop keeps it (the partial becomes the user's answer).
+    private var inFlightAssistantID: UUID?
+
+    /// True once the user explicitly stopped the current reply. An explicitly stopped partial is a
+    /// finished answer: it stays in the transcript and is persistable even while the stream unwinds.
+    public var didRequestStop: Bool { stopRequested }
+
+    /// Monotonic count of transcript edits and removals (not appends). The
+    /// coordinator saves again when a settle changed the text without changing the message count.
+    public private(set) var transcriptRevision: UInt64 = 0
+
     /// Stop the current reply where it is — the streamed partial stays in the transcript
-    /// (stopping is a decision about YOUR time, not a failure; no error styling).
+    /// (stopping is a decision about YOUR time, not a failure; no error styling), and it remains
+    /// persistable: `completedMessages` includes it once `stopRequested` is set.
+    ///
+    /// Transcript ownership is retained until the send settles the text accepted BEFORE the Stop
+    /// exactly once; a concurrent `send` is a no-op meanwhile. An engine may ignore
+    /// `requestCancel` — nothing here promises a cancellation latency, and the turn stays busy
+    /// until the engine actually returns.
     public func stopGenerating() {
+        conversationRevision &+= 1   // active AND idle: reject queued/prepared admissions
+        guard isGenerating, !stopRequested else { return }
         stopRequested = true
-        // The token loop below only lands a stop AT a token boundary, and never during prefill
-        // (before the first token) — so also tell the engine to interrupt its native decode now,
-        // ending generation in <500ms even mid-prefill (Q-005/Q-217).
         engine.requestCancel()
+    }
+
+    /// Messages that belong to SETTLED turns — the only transcript a caller may persist. While a
+    /// reply streams, its assistant message is excluded; an explicit Stop makes the accepted partial
+    /// persistable immediately (ownership is retained only to settle its text). Twin of Kotlin
+    /// `ChatModel.completedMessages`.
+    public func completedMessages() -> [ChatMessage] {
+        guard let pending = inFlightAssistantID, !stopRequested else { return messages }
+        return messages.filter { $0.id != pending }
+    }
+
+    /// Atomic persistence snapshot: the completed transcript AND the text revision it reflects.
+    /// Reading them separately could record a revision newer than the saved text, so a count-only
+    /// check would never save the corrected text. Twin of Kotlin `ChatModel.persistSnapshot`.
+    public func persistSnapshot() -> ([ChatMessage], UInt64) {
+        (completedMessages(), transcriptRevision)
+    }
+
+    /// Abandon the unsettled turn (Back, new chat, open another conversation): stop the decode and
+    /// REMOVE the partial assistant message, so it is neither shown as an answer nor persisted later
+    /// when the stream settles. Explicit Stop is different — `stopGenerating` keeps the partial.
+    /// Twin of Kotlin `ChatModel.invalidatePreparedTurns`.
+    public func abandonInFlightTurn() {
+        stopRequested = true          // also invalidates a prepared-but-unstarted turn
+        engine.requestCancel()
+        guard let pending = inFlightAssistantID else { return }
+        inFlightAssistantID = nil
+        if let index = messages.firstIndex(where: { $0.id == pending }) {
+            messages.remove(at: index)
+            transcriptRevision &+= 1   // replace an interim durable Stop partial on navigation
+        }
     }
 
     /// Extend the previous reply after a token-cap stop. Sends a short continue cue so the model
@@ -271,6 +322,7 @@ public final class ChatModel: ObservableObject {
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
+        inFlightAssistantID = assistantID
 
         var tokenCount = 0
         var hitDegeneration = false
@@ -278,6 +330,13 @@ public final class ChatModel: ObservableObject {
         // Markdown re-parse of the reply, and at 80 tok/s that — not the engine — is the stall users
         // see. The first piece always lands; the settle write below always lands (StreamFlushGate).
         var flushGate = StreamFlushGate()
+        func discardCancelledAssistant() {
+            inFlightAssistantID = nil
+            if let index = messages.firstIndex(where: { $0.id == assistantID }) {
+                messages.remove(at: index)
+                transcriptRevision &+= 1
+            }
+        }
         do {
             let stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
             for try await token in stream {
@@ -298,11 +357,45 @@ public final class ChatModel: ObservableObject {
                 // message up by id each token: a captured index would crash (out of range) or write
                 // to the wrong message. If it's gone, the user moved on — stop streaming into it.
                 guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
-                if flushGate.shouldFlush() { messages[i] = assistant }
+                if flushGate.shouldFlush(), messages[i].text != assistant.text {
+                    messages[i] = assistant
+                    transcriptRevision &+= 1
+                }
             }
         } catch {
+            // A stale A must not write or clear a newer B's ownership.
+            guard inFlightAssistantID == assistantID else { return }
+            if stopRequested {
+                // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
+                // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
+                assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+                if let i = messages.firstIndex(where: { $0.id == assistantID }),
+                   messages[i].text != assistant.text {
+                    messages[i] = assistant
+                    transcriptRevision &+= 1
+                }
+                inFlightAssistantID = nil
+                return
+            }
+            if error is CancellationError || Task.isCancelled {
+                // External cancellation is not an answer: drop the owned partial and clear its
+                // ownership so it can never enter the next turn's history or become durable.
+                discardCancelledAssistant()
+                return
+            }
             assistant.text = "⚠️ " + OnboardingModel.describe(error)
-            if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
+            if let i = messages.firstIndex(where: { $0.id == assistantID }), messages[i].text != assistant.text {
+                messages[i] = assistant
+                transcriptRevision &+= 1
+            }
+            inFlightAssistantID = nil   // the error notice is the settled answer for this turn
+            return
+        }
+        guard inFlightAssistantID == assistantID else { return }
+        // A continuation-backed stream can finish next() with nil on task cancellation instead
+        // of throwing. Explicit Stop still owns and settles its accepted pre-Stop text.
+        if Task.isCancelled, !stopRequested {
+            discardCancelledAssistant()
             return
         }
         // Settle: collapse any exact-duplicate paragraph runs that slipped through (covers
@@ -317,7 +410,13 @@ public final class ChatModel: ObservableObject {
         if !stopRequested, !hitDegeneration, tokenCount >= resolvedOptions.maxTokens {
             lastHitTokenCap = true
         }
-        if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
+        if let i = messages.firstIndex(where: { $0.id == assistantID }) {
+            if messages[i].text != assistant.text {
+                messages[i] = assistant
+                transcriptRevision &+= 1
+            }
+            inFlightAssistantID = nil   // normal settle: this turn is a finished answer
+        }
     }
 
     func invalidatePendingPreparation() { conversationRevision &+= 1 }
@@ -331,6 +430,7 @@ public final class ChatModel: ObservableObject {
         // loop keeps appending tokens into a transcript that's just been replaced (cross-chat bleed).
         if !messages.isEmpty { engine.requestCancel() }
         lastHitTokenCap = false
+        inFlightAssistantID = nil
         messages.removeAll()
     }
 
@@ -342,6 +442,7 @@ public final class ChatModel: ObservableObject {
         preparationError = nil; automaticSelectionStatus = nil
         engine.requestCancel()   // Q-323: same — stop the decode before swapping the transcript out
         lastHitTokenCap = false
+        inFlightAssistantID = nil
         messages = saved
     }
 }

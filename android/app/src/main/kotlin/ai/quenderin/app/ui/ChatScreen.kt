@@ -281,7 +281,9 @@ fun ChatScreen(
             onNew = {
                 stashVisibleDraft()
                 val previousOwner = draftOwner
-                sendJob?.cancel(); chat.stopGenerating(); coordinator.startNew()
+                // New chat abandons an in-flight reply before startNew persists the old transcript;
+                // it is not an explicit Stop, so a half-streamed answer is never saved as finished.
+                sendJob?.cancel(); coordinator.startNew()
                 if (previousOwner == coordinator.currentId) {
                     val draft = coordinator.draft(previousOwner); input = draft.text; pendingDocuments = draft.documents
                 }
@@ -354,7 +356,7 @@ fun ChatScreen(
                     withContext(Dispatchers.IO) { chat.withSelectedModel(prepared.model.id) {
                         if (!prepared.accepts() || coordinator.lifecycleRevision != lifecycleRevision) throw ai.quenderin.core.AutomaticSelectionChangedException()
                         check(!automaticEnabled || chat.pendingChatFits(prepared.model, request)) { "This pending turn does not fit the selected model's actual context. Your draft is kept." }
-                        chat.send(text, docs, prepared.model, admission = admission, onAdmitted = {
+                        chat.send(text, docs, prepared.model, admission = admission, isCancelled = { !myJob.isActive }, onAdmitted = {
                             if (useDraft) coordinator.saveDraft(conversationID, "", emptyList())
                             coordinator.recordLocalAdmission(prepared.model.id, automaticEnabled, conversationID)
                         })
@@ -588,8 +590,10 @@ fun ChatScreen(
             onSend = { sendCurrent() },
             onStop = {
                 // Real stop: end the native decode now (not one token late / dead during prefill) and
-                // cancel the coroutine so its blocking send unwinds. The streamed partial stays. (Q-005)
-                chat.invalidatePreparedTurns()
+                // cancel the coroutine so its blocking send unwinds. This is the EXPLICIT-Stop path,
+                // so the streamed partial stays AND remains persistable (unlike navigation, which
+                // abandons and removes it). (Q-005)
+                chat.stopGenerating()
                 sendJob?.cancel()
             },
         )
