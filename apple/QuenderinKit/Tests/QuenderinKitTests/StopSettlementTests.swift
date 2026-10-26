@@ -29,6 +29,7 @@ final class StopSettlementTests: XCTestCase {
         private var release: CheckedContinuation<Void, Never>?
         private var releaseReady = false
         private var latePiece: String?
+        private var errorAfterGate: Error?
 
         init(firstPieces: [String], laterReply: String = "next reply") {
             self.firstPieces = firstPieces
@@ -45,14 +46,15 @@ final class StopSettlementTests: XCTestCase {
             await withCheckedContinuation { parkedWaiters.append($0) }
         }
 
-        func openGate(latePiece: String? = nil) {
+        func openGate(latePiece: String? = nil, error: Error? = nil) {
             self.latePiece = latePiece
+            self.errorAfterGate = error
             releaseReady = true
             release?.resume()
             release = nil
         }
 
-        private func nextPiece() async -> String? {
+        private func nextPiece() async throws -> String? {
             if nextIndex < firstPieces.count {
                 defer { nextIndex += 1 }
                 return firstPieces[nextIndex]
@@ -64,7 +66,8 @@ final class StopSettlementTests: XCTestCase {
             if !releaseReady {
                 await withCheckedContinuation { release = $0 }
             }
-            defer { latePiece = nil }
+            defer { latePiece = nil; errorAfterGate = nil }
+            if let errorAfterGate { throw errorAfterGate }
             return latePiece
         }
 
@@ -79,7 +82,7 @@ final class StopSettlementTests: XCTestCase {
                 }
             }
             return AsyncThrowingStream(unfolding: { [weak self] in
-                await self?.nextPiece()
+                try await self?.nextPiece()
             })
         }
     }
@@ -243,6 +246,100 @@ final class StopSettlementTests: XCTestCase {
         XCTAssertEqual(engine.cancellations, 1)
         let loadedID = await contract.loadedModelID()
         XCTAssertNotNil(loadedID)
+    }
+
+    func testStopPreservesAcceptedTextWhenCompletionThrows() async {
+        let engine = await loaded(StopEngine(firstPieces: ["part", "ial"]))
+        let chat = ChatModel(engine: engine)
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked()   // proves both pieces were consumed before Stop
+        chat.stopGenerating()
+        await engine.openGate(error: InferenceError.generationFailed(reason: "engine cancelled"))
+        await task.value
+
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "partial"])
+        XCTAssertEqual(engine.cancellations, 1)
+        XCTAssertFalse(chat.lastHitTokenCap)
+        XCTAssertFalse(chat.isGenerating)
+    }
+
+    func testZeroTokenStopThenCompletionErrorStaysEmpty() async {
+        let engine = await loaded(StopEngine(firstPieces: []))
+        let chat = ChatModel(engine: engine)
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked()
+        chat.stopGenerating()
+        await engine.openGate(error: InferenceError.generationFailed(reason: "engine cancelled"))
+        await task.value
+
+        XCTAssertEqual(chat.messages.map(\.text), ["question", ""])
+    }
+
+    func testUnstoppedGenuineErrorKeepsTheWarning() async {
+        let engine = await loaded(StopEngine(firstPieces: ["part"]))
+        let chat = ChatModel(engine: engine)
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked()
+        await engine.openGate(error: InferenceError.generationFailed(reason: "genuine failure"))
+        await task.value
+
+        let text = chat.messages.last?.text ?? ""
+        XCTAssertTrue(text.hasPrefix("⚠️"), "unstopped errors keep the existing warning")
+        XCTAssertFalse(chat.isGenerating)
+    }
+
+    func testExternalCancellationDoesNotWarnAndKeepsTheTurnUnsettled() async {
+        let engine = await loaded(StopEngine(firstPieces: ["part"]))
+        let chat = ChatModel(engine: engine)
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked()
+        await engine.openGate(error: CancellationError())
+        await task.value
+
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "part"])
+        XCTAssertEqual(chat.completedMessages().map(\.text), ["question"])
+        XCTAssertFalse(chat.isGenerating)
+    }
+
+    func testStaleErrorAfterNavigationCannotTouchTheNewChat() async {
+        let persistence = CountingPersistence()
+        let engine = await loaded(StopEngine(firstPieces: ["A-part"]))
+        let chat = ChatModel(engine: engine)
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 4 })
+        let oldID = coord.currentID!
+        let task = Task { await chat.send("A") }
+
+        await engine.waitUntilParked()
+        coord.startNew()
+        await engine.openGate(error: InferenceError.generationFailed(reason: "stale A"))
+        await task.value
+
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertEqual(persistence.loadTranscript(id: oldID).map(\.text), ["A"])
+    }
+
+    func testStoppedErrorPersistsAndReopensExactlyOnce() async {
+        let persistence = CountingPersistence()
+        let engine = await loaded(StopEngine(firstPieces: ["part", "ial"]))
+        let chat = ChatModel(engine: engine)
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 6 })
+        let id = coord.currentID!
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked()
+        chat.stopGenerating()
+        await engine.openGate(error: InferenceError.generationFailed(reason: "engine cancelled"))
+        await task.value
+        coord.persist()
+        coord.open(id)
+
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "partial"])
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question", "partial"])
+        XCTAssertEqual(persistence.writes, 1)
     }
 
 }

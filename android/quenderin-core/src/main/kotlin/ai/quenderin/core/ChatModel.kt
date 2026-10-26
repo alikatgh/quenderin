@@ -282,7 +282,8 @@ class ChatModel(
             val flushGate = StreamFlushGate()
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
             // blank for the whole (multi-second) generation. Mirrors iOS `ChatModel`.
-            val reply = engine.completeChatOwned(systemPrompt, history, ::ownsGeneration) { piece ->
+            val reply = try {
+            engine.completeChatOwned(systemPrompt, history, ::ownsGeneration) { piece ->
                 sawEmission = true               // count the callback, not the text
                 if (hitDegeneration || stopRequested) return@completeChatOwned
                 // A stale send may neither append to nor cancel a newer generation.
@@ -307,6 +308,18 @@ class ChatModel(
                 if (beganWriting) publishPhase(myGen, GenerationPhase.WRITING)
                 if (cancelDegeneration) engine.requestCancel()
                 textToFlush?.let { writeAssistant(myGen, placeholderIndex, it) }
+            }
+            } catch (t: Exception) {
+                val current: Boolean
+                val stopped: Boolean
+                synchronized(lock) { current = myGen == activeGeneration; stopped = stopRequested }
+                // Coroutine/lifecycle cancellation is not a stopped-turn error: preserve its
+                // propagation unless THIS turn's Stop is what ended generation. Never let a stale
+                // send touch a newer turn's state.
+                if (t is java.util.concurrent.CancellationException && !(current && stopped)) throw t
+                if (!current) return ""       // stale A: no writes, no B state changes
+                if (!stopped) throw t         // ordinary unstopped error unchanged
+                ""                            // Stop: fall through to the existing settlement
             }
             // Settle on what the user actually saw: the streamed pieces. The engine's return value is
             // only the NON-STREAMING fallback for an unstopped turn, never a replacement

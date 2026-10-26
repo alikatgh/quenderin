@@ -356,6 +356,25 @@ public final class ChatModel: ObservableObject {
                 }
             }
         } catch {
+            // A stale A must not write or clear a newer B's ownership.
+            guard inFlightAssistantID == assistantID else { return }
+            if stopRequested {
+                // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
+                // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
+                assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+                if let i = messages.firstIndex(where: { $0.id == assistantID }),
+                   messages[i].text != assistant.text {
+                    messages[i] = assistant
+                    transcriptRevision &+= 1
+                }
+                inFlightAssistantID = nil
+                return
+            }
+            if error is CancellationError || Task.isCancelled {
+                // Coroutine/lifecycle cancellation: keep the accepted partial unsettled and do not
+                // fabricate a warning. Navigation abandons it; a later send starts cleanly.
+                return
+            }
             assistant.text = "⚠️ " + OnboardingModel.describe(error)
             if let i = messages.firstIndex(where: { $0.id == assistantID }), messages[i].text != assistant.text {
                 messages[i] = assistant

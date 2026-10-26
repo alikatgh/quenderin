@@ -31,6 +31,7 @@ class StopSettlementTest {
         private val latePieces: List<String> = emptyList(),
     ) : InferenceEngine {
         var onFirst: (() -> Unit)? = null
+        var errorAfterHook: Exception? = null
         var calls = 0
         var cancellations = 0
         override val loadedModelId: String? = "stop-engine"
@@ -50,6 +51,7 @@ class StopSettlementTest {
             }
             for (piece in firstPieces) onToken(piece)
             onFirst?.invoke()
+            errorAfterHook?.let { throw it }
             for (piece in latePieces) onToken(piece)
             return firstReply ?: firstPieces.joinToString("")
         }
@@ -356,6 +358,88 @@ class StopSettlementTest {
             chat.send("queued", admission = queuedAfterFirstStop)
         }
         assertEquals(1, engine.calls)
+    }
+
+    @Test fun stopPreservesAcceptedTextWhenCompletionThrows() {
+        val engine = StopEngine(listOf("part", "ial"))
+        val chat = ChatModel(engine)
+        engine.onFirst = { chat.stopGenerating() }
+        engine.errorAfterHook = IllegalStateException("engine cancelled")
+
+        val result = chat.send("question")
+
+        assertEquals("partial", result)
+        assertEquals(listOf("question", "partial"), chat.messages.map { it.text })
+        assertEquals(1, engine.cancellations)
+        assertFalse(chat.lastHitTokenCap, "a stopped error must not offer Continue")
+        assertFalse(chat.isGenerating)
+    }
+
+    @Test fun zeroTokenStopThenCompletionErrorStaysEmpty() {
+        val engine = StopEngine(emptyList())
+        val chat = ChatModel(engine)
+        engine.onFirst = { chat.stopGenerating() }
+        engine.errorAfterHook = IllegalStateException("engine cancelled")
+
+        assertEquals("", chat.send("question"))
+        assertEquals(listOf("question", ""), chat.messages.map { it.text })
+    }
+
+    @Test fun unstoppedCompletionErrorStillPropagates() {
+        val engine = StopEngine(listOf("part"))
+        val chat = ChatModel(engine)
+        engine.errorAfterHook = IllegalStateException("genuine engine failure")
+
+        assertFailsWith<IllegalStateException> { chat.send("question") }
+
+        assertFalse(chat.isGenerating)
+        assertEquals(listOf("part"), chat.messages.drop(1).map { it.text })
+        assertEquals(listOf("question"), chat.completedMessages().map { it.text })
+    }
+
+    @Test fun staleThrowingSendCannotTouchTheNewTurn() {
+        val engine = StopEngine(listOf("A-part"))
+        val chat = ChatModel(engine)
+        var bResult = ""
+        engine.onFirst = {
+            chat.invalidatePreparedTurns()   // navigation supersedes A and removes its partial
+            bResult = chat.send("B")
+        }
+        engine.errorAfterHook = IllegalStateException("stale A failed")
+
+        assertEquals("", chat.send("A"))
+        assertEquals("next reply", bResult)
+        assertEquals(listOf("B", "next reply"), chat.messages.map { it.text })
+    }
+
+    @Test fun stoppedErrorPersistsAndReopensCollapsedTextExactlyOnce() {
+        val persistence = CountingPersistence()
+        val engine = StopEngine(listOf("part", "ial"))
+        val chat = ChatModel(engine)
+        val coordinator = ConversationCoordinator(chat, persistence, now = { 5L }, makeId = { "chat" })
+        val id = coordinator.currentId!!
+        engine.onFirst = { chat.stopGenerating() }
+        engine.errorAfterHook = IllegalStateException("engine cancelled")
+
+        assertEquals("partial", chat.send("question"))
+        coordinator.persist()
+        coordinator.open(id)
+
+        assertEquals(listOf("question", "partial"), chat.messages.map { it.text })
+        assertEquals(listOf("question", "partial"), persistence.loadTranscript(id).map { it.text })
+        assertEquals(1, persistence.writes)
+    }
+
+    @Test fun externalCancellationStillPropagatesAndLeavesTheTurnUnsettled() {
+        val engine = StopEngine(listOf("part"))
+        val chat = ChatModel(engine)
+        engine.errorAfterHook = java.util.concurrent.CancellationException("external cancellation")
+
+        assertFailsWith<java.util.concurrent.CancellationException> { chat.send("question") }
+
+        assertFalse(chat.isGenerating)
+        assertEquals(listOf("part"), chat.messages.drop(1).map { it.text })
+        assertEquals(listOf("question"), chat.completedMessages().map { it.text })
     }
 
 }
