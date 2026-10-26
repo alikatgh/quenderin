@@ -180,6 +180,17 @@ That evidence does not cover `73de70e` or subsequent corrections.
   case asserts exact UTF-8 preservation for a Unicode-equivalent subsequent edit.
 - Hosted compilation and rendered/native interaction remain pending.
 
+Hosted candidate `41ed67e` compiled the Swift suite and ran 779 tests (six
+skipped). Eleven assertions in one new Host-switch fixture failed because its
+synthetic server provided computer B's descriptor but omitted B's required
+presence endpoint. The fixture now supplies exact-ID online presence and checks
+selection/trust immediately; production Host validation was preserved. The
+focused crypto-backend job also needed the client-only input queue excluded
+alongside the client types already excluded from that source closure. Full-core
+compilation and the queue regressions remain enabled. Both corrections require
+the next hosted run. Current candidate and final hosted results are tracked in
+[PR #190](https://github.com/alikatgh/quenderin/pull/190).
+
 Local source/JVM checks, hosted compilation, actual native interaction,
 provider inference and store availability are separate evidence categories.
 Use synthetic fixtures for development. Before any permitted source push,

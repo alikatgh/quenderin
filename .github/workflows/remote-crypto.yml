@@ -166,7 +166,7 @@ jobs:
         run: |
           sources=()
           for source in ../../android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt; do
-            case "$source" in */RemoteHarnessClient.kt|*/RemoteHarnessClientModels.kt) continue ;; esac
+            case "$source" in */RemoteHarnessClient.kt|*/RemoteHarnessClientModels.kt|*/RemoteHarnessClientInputQueue.kt) continue ;; esac
             sources+=("$source")
           done
           timeout 180s env JAVA_HOME="$JAVA_HOME_17_X64" "$RUNNER_TEMP/remote-kotlin-toolchain/kotlinc/bin/kotlinc" \

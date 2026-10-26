@@ -116,6 +116,9 @@ import XCTest
         if let secondHostID, path == "/api/v1/devices/" + secondHostID {
             requestedHostIDs.append(secondHostID); return try journeyJSON(host(descriptor: true, id: secondHostID))
         }
+        if let secondHostID, path == "/api/v1/devices/" + secondHostID + "/presence" {
+            return try journeyJSON(["deviceId": secondHostID, "online": true, "lastSeenAt": now])
+        }
         switch path {
         case "/api/v1/auth/login": return try journeyJSON(["account": "synthetic@example.test", "profile": ["displayName": "Synthetic"], "token": "synthetic-account-token", "expiresAt": now + 28_800_000])
         case "/api/v1/devices/register":
@@ -719,7 +722,11 @@ import XCTest
         await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
         native.updateDraft("Keep computer A draft")
         let oldComputer = try XCTUnwrap(server.sockets.last)
-        await native.selectHost(try XCTUnwrap(native.hosts.first { $0.deviceID == secondID })); await native.trustHost()
+        await native.selectHost(try XCTUnwrap(native.hosts.first { $0.deviceID == secondID }))
+        XCTAssertNil(native.failure); XCTAssertEqual(native.screen, .trust)
+        XCTAssertEqual(try XCTUnwrap(native.pendingHost).deviceID, secondID)
+        await native.trustHost()
+        XCTAssertNil(native.failure); XCTAssertEqual(native.journal.recoveryHost?.hostID, secondID)
         XCTAssertTrue(oldComputer.closed)
         XCTAssertEqual(native.host?.deviceID, secondID); XCTAssertNil(native.journal.profile); XCTAssertNil(native.journal.sessionID)
         XCTAssertTrue(native.journal.savedSessions.contains { $0.hostID == server.hostID && $0.draft == "Keep computer A draft" })
