@@ -371,8 +371,13 @@ public final class ChatModel: ObservableObject {
                 return
             }
             if error is CancellationError || Task.isCancelled {
-                // Coroutine/lifecycle cancellation: keep the accepted partial unsettled and do not
-                // fabricate a warning. Navigation abandons it; a later send starts cleanly.
+                // External cancellation is not an answer: drop the owned partial and clear its
+                // ownership so it can never enter the next turn's history or become durable.
+                inFlightAssistantID = nil
+                if let index = messages.firstIndex(where: { $0.id == assistantID }) {
+                    messages.remove(at: index)
+                    transcriptRevision &+= 1
+                }
                 return
             }
             assistant.text = "⚠️ " + OnboardingModel.describe(error)

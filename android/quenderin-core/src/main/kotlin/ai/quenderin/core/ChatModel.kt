@@ -313,13 +313,19 @@ class ChatModel(
                 val current: Boolean
                 val stopped: Boolean
                 synchronized(lock) { current = myGen == activeGeneration; stopped = stopRequested }
-                // Coroutine/lifecycle cancellation is not a stopped-turn error: preserve its
-                // propagation unless THIS turn's Stop is what ended generation. Never let a stale
-                // send touch a newer turn's state.
-                if (t is java.util.concurrent.CancellationException && !(current && stopped)) throw t
-                if (!current) return ""       // stale A: no writes, no B state changes
-                if (!stopped) throw t         // ordinary unstopped error unchanged
-                ""                            // Stop: fall through to the existing settlement
+                if (t is java.util.concurrent.CancellationException) {
+                    // External/lifecycle cancellation is not an answer: discard a current turn's
+                    // accepted partial so it cannot enter the next turn's history or be persisted.
+                    // A Stop on THIS turn is different — it falls through to the normal settlement.
+                    if (!(current && stopped)) {
+                        if (current) discardCancelledTurn(myGen)
+                        throw t
+                    }
+                } else {
+                    if (!current) return ""       // stale A: no writes, no B state changes
+                    if (!stopped) throw t         // ordinary unstopped error unchanged
+                }
+                ""                                // Stop: fall through to the existing settlement
             }
             // Settle on what the user actually saw: the streamed pieces. The engine's return value is
             // only the NON-STREAMING fallback for an unstopped turn, never a replacement
@@ -427,6 +433,32 @@ class ChatModel(
     fun discardUnsettledTurn() {
         val owned = synchronized(lock) { !stopRequested && (isGenerating || inFlightAssistantId != null) }
         if (owned) invalidatePreparedTurns()
+    }
+
+    /**
+     * External cancellation is not a finished answer. Remove the owned placeholder and bump the
+     * content revision (a removal, like an edit), so the partial cannot become the next turn's
+     * history or a durable turn. The cancellation exception still propagates to its caller.
+     */
+    private fun discardCancelledTurn(gen: Long) {
+        val revision: Long
+        val snapshot: List<ChatMessage>?
+        synchronized(lock) {
+            if (gen != activeGeneration) return
+            val pending = inFlightAssistantId
+            inFlightAssistantId = null
+            val index = if (pending == null) -1 else _messages.indexOfFirst { it.id == pending }
+            if (index >= 0 && _messages[index].role == Role.ASSISTANT) {
+                _messages.removeAt(index)
+                transcriptRevision++
+                revision = activeGeneration
+                snapshot = _messages.toList()
+            } else {
+                revision = activeGeneration
+                snapshot = null
+            }
+        }
+        snapshot?.let { publish(revision, it) }
     }
 
     /**

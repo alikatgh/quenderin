@@ -32,6 +32,7 @@ class StopSettlementTest {
     ) : InferenceEngine {
         var onFirst: (() -> Unit)? = null
         var errorAfterHook: Exception? = null
+        var secondHistory: List<String> = emptyList()
         var calls = 0
         var cancellations = 0
         override val loadedModelId: String? = "stop-engine"
@@ -46,6 +47,7 @@ class StopSettlementTest {
         ): String {
             calls++
             if (calls > 1) {
+                secondHistory = history.map { it.text }
                 onToken(laterReply)
                 return laterReply
             }
@@ -398,11 +400,15 @@ class StopSettlementTest {
     }
 
     @Test fun staleThrowingSendCannotTouchTheNewTurn() {
+        val persistence = InMemoryConversationPersistence()
         val engine = StopEngine(listOf("A-part"))
         val chat = ChatModel(engine)
+        var ids = 0
+        val coordinator = ConversationCoordinator(chat, persistence, now = { 4L }, makeId = { "chat-${++ids}" })
+        val oldId = coordinator.currentId!!
         var bResult = ""
         engine.onFirst = {
-            chat.invalidatePreparedTurns()   // navigation supersedes A and removes its partial
+            coordinator.startNew()            // true navigation: save A's user turn, then reset
             bResult = chat.send("B")
         }
         engine.errorAfterHook = IllegalStateException("stale A failed")
@@ -410,6 +416,7 @@ class StopSettlementTest {
         assertEquals("", chat.send("A"))
         assertEquals("next reply", bResult)
         assertEquals(listOf("B", "next reply"), chat.messages.map { it.text })
+        assertEquals(listOf("A"), persistence.loadTranscript(oldId).map { it.text })
     }
 
     @Test fun stoppedErrorPersistsAndReopensCollapsedTextExactlyOnce() {
@@ -430,16 +437,27 @@ class StopSettlementTest {
         assertEquals(1, persistence.writes)
     }
 
-    @Test fun externalCancellationStillPropagatesAndLeavesTheTurnUnsettled() {
+    @Test fun externalCancellationDiscardsThePartialBeforeTheNextTurn() {
+        val persistence = InMemoryConversationPersistence()
         val engine = StopEngine(listOf("part"))
         val chat = ChatModel(engine)
+        val coordinator = ConversationCoordinator(chat, persistence, now = { 6L }, makeId = { "chat" })
+        val id = coordinator.currentId!!
         engine.errorAfterHook = java.util.concurrent.CancellationException("external cancellation")
 
         assertFailsWith<java.util.concurrent.CancellationException> { chat.send("question") }
 
         assertFalse(chat.isGenerating)
-        assertEquals(listOf("part"), chat.messages.drop(1).map { it.text })
+        assertEquals(listOf("question"), chat.messages.map { it.text })
         assertEquals(listOf("question"), chat.completedMessages().map { it.text })
+
+        assertEquals("next reply", chat.send("next"))
+        assertEquals(listOf("question", "next"), engine.secondHistory)
+        coordinator.persist()
+        coordinator.open(id)
+
+        assertEquals(listOf("question", "next", "next reply"), chat.messages.map { it.text })
+        assertEquals(listOf("question", "next", "next reply"), persistence.loadTranscript(id).map { it.text })
     }
 
 }

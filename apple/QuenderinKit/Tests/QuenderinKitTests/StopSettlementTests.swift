@@ -20,6 +20,7 @@ final class StopSettlementTests: XCTestCase {
         private let laterReply: String
         private var loaded: String? = "stop-engine"
         private(set) var calls = 0
+        private(set) var secondHistory: [ChatMessage] = []
         // Same synchronous lock pattern as CancelTrackingEngine: protocol cancellation cannot hop actors.
         private nonisolated let cancelState = OSAllocatedUnfairLock(initialState: 0)
         nonisolated var cancellations: Int { cancelState.withLock { $0 } }
@@ -84,6 +85,11 @@ final class StopSettlementTests: XCTestCase {
             return AsyncThrowingStream(unfolding: { [weak self] in
                 try await self?.nextPiece()
             })
+        }
+
+        func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+            if calls >= 1 { secondHistory = history }
+            return try await generate(prompt: system, options: options)
         }
     }
 
@@ -291,18 +297,29 @@ final class StopSettlementTests: XCTestCase {
         XCTAssertFalse(chat.isGenerating)
     }
 
-    func testExternalCancellationDoesNotWarnAndKeepsTheTurnUnsettled() async {
+    func testExternalCancellationDiscardsThePartialBeforeTheNextTurn() async {
+        let persistence = CountingPersistence()
         let engine = await loaded(StopEngine(firstPieces: ["part"]))
         let chat = ChatModel(engine: engine)
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 7 })
+        let id = coord.currentID!
         let task = Task { await chat.send("question") }
 
         await engine.waitUntilParked()
         await engine.openGate(error: CancellationError())
         await task.value
 
-        XCTAssertEqual(chat.messages.map(\.text), ["question", "part"])
+        XCTAssertEqual(chat.messages.map(\.text), ["question"])
         XCTAssertEqual(chat.completedMessages().map(\.text), ["question"])
-        XCTAssertFalse(chat.isGenerating)
+
+        await chat.send("next")
+        let history = await engine.secondHistory
+        XCTAssertEqual(history.map(\.text), ["question", "next"])
+        coord.persist()
+        coord.open(id)
+
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "next", "next reply"])
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question", "next", "next reply"])
     }
 
     func testStaleErrorAfterNavigationCannotTouchTheNewChat() async {
