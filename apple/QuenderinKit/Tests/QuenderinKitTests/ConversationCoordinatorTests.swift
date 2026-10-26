@@ -75,6 +75,7 @@ final class ConversationCoordinatorTests: XCTestCase {
     }
 
     /// Wait until `send` has connected the engine stream, so `emit` cannot be dropped.
+    @MainActor
     private func waitUntilStreaming(_ engine: ControlledStreamEngine) async {
         while true {
             if await engine.isStarted() { return }
