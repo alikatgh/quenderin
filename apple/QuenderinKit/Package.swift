@@ -155,6 +155,11 @@ if hasDiffusionFramework {
     optionalTargets.append(.binaryTarget(name: "QuenderinDiffusion", path: diffusionFrameworkPath))
 }
 
+// Portable MAX boundary. The staged C sources are byte-verified by
+// scripts/stage_apple_max_model.py; no vendor runner is linked.
+qkDependencies.append("CMaxModel")
+optionalTargets.append(.target(name: "CMaxModel", path: "Sources/CMaxModel", publicHeadersPath: "include"))
+
 if prismRuntime {
     qkSwiftSettings.append(.define("QUENDERIN_PRISM_LLAMA"))
     // Reaching this point requires the exact Muse source patch or sealed framework.
