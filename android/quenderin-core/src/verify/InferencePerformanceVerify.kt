@@ -534,7 +534,7 @@ private fun verifyLifecycleTurnAdmission() {
         override fun load(model: ModelEntry, filePath: String) {}
         override fun unload() {}
         override fun complete(prompt: String) = "late"
-        override fun lastHitTokenCap() = true
+        override fun chatCapStatus() = ChatCapStatus.HIT
         override fun completeChatOwned(systemPrompt: String, history: List<ChatMessage>, isCurrent: () -> Boolean, onToken: (String) -> Unit): String {
             nativeCalls++; check(isCurrent()); nativeEntered.countDown(); check(nativeRelease.await(3, TimeUnit.SECONDS))
             onToken("late token"); return "late authoritative answer"

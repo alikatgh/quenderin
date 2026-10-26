@@ -113,8 +113,8 @@ public final class ChatModel: ObservableObject {
     @Published public private(set) var isGenerating = false
     /// Prefill vs decode — UI shows "Loading prompt…" until the first token, then "Writing…".
     @Published public private(set) var generationPhase: GenerationPhase = .idle
-    /// True when the last settled reply stopped because it hit `options.maxTokens` (not Stop, not
-    /// EOG). The chat UI surfaces a "Continue" chip so a mid-sentence cut is recoverable
+    /// True when the engine positively observed a token-budget stop (not Stop, not EOG).
+    /// The chat UI surfaces a "Continue" chip so a mid-sentence cut is recoverable
     /// (KNOWN_FAILURE_MODES). Cleared on the next send / reset / restore.
     @Published public private(set) var lastHitTokenCap = false
 
@@ -398,6 +398,18 @@ public final class ChatModel: ObservableObject {
             discardCancelledAssistant()
             return
         }
+        let capStatus = if !stopRequested, !hitDegeneration {
+            await engine.chatCapStatus()
+        } else {
+            ChatCapStatus.unknown
+        }
+        // Reading engine status yields the actor: navigation can abandon this assistant, or Stop
+        // can retain it for settlement. Recheck ownership and suppression after that await.
+        guard inFlightAssistantID == assistantID else { return }
+        if Task.isCancelled, !stopRequested {
+            discardCancelledAssistant()
+            return
+        }
         // Settle: collapse any exact-duplicate paragraph runs that slipped through (covers
         // the guard's between-checkpoints window and the Stop path alike), and never leave a
         // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
@@ -405,11 +417,7 @@ public final class ChatModel: ObservableObject {
         if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !stopRequested {
             assistant.text = ChatUserFacing.emptyReply()
         }
-        // Token-cap mid-sentence → Continue. Count is per streamed piece from the UTF-8 decoder
-        // (≈ per token on iOS). Not Stop, not degeneration, and we hit the budget.
-        if !stopRequested, !hitDegeneration, tokenCount >= resolvedOptions.maxTokens {
-            lastHitTokenCap = true
-        }
+        lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {
             if messages[i].text != assistant.text {
                 messages[i] = assistant

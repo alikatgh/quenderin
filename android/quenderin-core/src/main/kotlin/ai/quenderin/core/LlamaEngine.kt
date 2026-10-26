@@ -92,6 +92,15 @@ class LlamaEngine(
     private var cancelRequested: Boolean = false
 
     /**
+     * Completion reason of the most recent generation. Reset to UNKNOWN at every run/load/unload;
+     * set only when this run still owns [capRun]. HIT/NOT_HIT are never inferred from piece counts.
+     */
+    @Volatile
+    private var lastCapStatus: ChatCapStatus = ChatCapStatus.UNKNOWN
+    private var capRun: Long = 0L
+
+
+    /**
      * Live thermal pressure, supplied by the app (which reads `PowerManager.currentThermalStatus`
      * via [ThermalMonitor.levelFromStatus]; the core stays free of `android.os`). Read at load to
      * size the thread count — launch while the phone is already hot → start with fewer threads so a
@@ -207,15 +216,18 @@ class LlamaEngine(
     override fun setThinkingEnabled(enabled: Boolean) { enableThinking = enabled }
 
     /**
-     * True when the most recent native generation stopped because it hit [maxTokens] (not EOG /
-     * cancel / context-full). ChatModel uses this for the "Continue" affordance. False when no
-     * model is loaded or the native lib is absent.
+     * True when the most recent native generation reports a token-budget stop. This is the legacy
+     * boolean contract and is intentionally independent of [chatCapStatus]: it can be true even
+     * when the new status is UNKNOWN because no trustworthy measured completion was available.
      */
     override fun lastHitTokenCap(): Boolean = synchronized(lock) {
         if (!NATIVE_AVAILABLE || handle == 0L) false else nativeLastHitTokenCap(handle)
     }
 
+    override fun chatCapStatus(): ChatCapStatus = lastCapStatus
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
+        capRun++
+        lastCapStatus = ChatCapStatus.UNKNOWN
         val loadStarted = System.nanoTime()
         ModelArtifacts.validate(model)
         check(ModelRuntimeSupport.supports(model)) { ModelRuntimeSupport.unavailableMessage(model) }
@@ -280,6 +292,8 @@ class LlamaEngine(
     }
 
     override fun unload() = synchronized(lock) {
+        capRun++
+        lastCapStatus = ChatCapStatus.UNKNOWN
         if (handle != 0L) {
             nativeFree(handle)
             handle = 0L
@@ -295,6 +309,8 @@ class LlamaEngine(
     }
 
     override fun complete(prompt: String): String = synchronized(lock) {
+        capRun++
+        lastCapStatus = ChatCapStatus.UNKNOWN
         ensureReady()
         check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
@@ -307,6 +323,8 @@ class LlamaEngine(
         prompt: String, grammar: String, maxTokens: Int,
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
     ): String = synchronized(lock) {
+        capRun++
+        lastCapStatus = ChatCapStatus.UNKNOWN
         ensureReady()
         check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
@@ -317,6 +335,8 @@ class LlamaEngine(
      *  reasoning can't starve the grammar-forced decision that follows. Reuses [nativeComplete] with a
      *  per-call token cap; the grammar decode is a separate call. */
     override fun completeThinking(prompt: String, maxTokens: Int): String = synchronized(lock) {
+        capRun++
+        lastCapStatus = ChatCapStatus.UNKNOWN
         ensureReady()
         check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
@@ -328,6 +348,8 @@ class LlamaEngine(
      * also returns the full text. Lets the Compose layer render tokens as they arrive.
      */
     override fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
+        capRun++
+        lastCapStatus = ChatCapStatus.UNKNOWN
         ensureReady()
         check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
@@ -346,6 +368,8 @@ class LlamaEngine(
 
     override fun completeChatOwned(systemPrompt: String, history: List<ChatMessage>, isCurrent: () -> Boolean, onToken: (String) -> Unit): String =
         synchronized(lock) {
+            val myCapRun = ++capRun
+            lastCapStatus = ChatCapStatus.UNKNOWN
             ensureReady()
             check(!loadedSpecialist) { "Hy-Memory requires its specialist proposal workflow." }
             if (!isCurrent()) return ""
@@ -368,12 +392,14 @@ class LlamaEngine(
             val env = context?.let { environment(it, loadedKVCacheNativeId, loadedBaseThreads) }
             generationThermalLevel = currentThermal()
             var report: InferencePerformanceSample? = null
+            var measuredStatus: Int? = null
             fun generate(disableThinking: Boolean, sink: TokenSink): String {
                 if (onPerformance == null || !supportsPerformance || artifact == null || modelID == null || context == null || env == null || backend == null) {
                     return nativeCompleteChatStreaming(handle, payload, cap, disableThinking, sink)
                 }
                 return nativeCompleteChatMeasured(handle, payload, cap, disableThinking, sink,
                     PerformanceSink { prompt, prefill, decoded, prefillMs, decodeMs, firstMs, gapMs, cache, status ->
+                        measuredStatus = status
                         if (status == 0 && !cancelRequested) report = InferencePerformanceSample(
                             modelID, artifact, InferencePerformanceRuntime.ID, backend, env, context,
                             prompt, prefill, decoded, prefillMs, decodeMs, firstMs, gapMs, loadedLoadMs,
@@ -407,6 +433,16 @@ class LlamaEngine(
                 generate(!enableThinking, TokenSink { onToken(it) })
             }
             // Filtering/validation above must finish successfully before the evidence leaves the engine.
+            if (myCapRun == capRun) {
+                val observed = NATIVE_AVAILABLE && handle != 0L
+                val nativeHit = if (observed) runCatching { nativeLastHitTokenCap(handle) }.getOrNull() else null
+                lastCapStatus = capStatusFor(
+                    nativeHit = nativeHit == true,
+                    cancelled = cancelRequested,
+                    observed = nativeHit != null,
+                    measuredStatus = measuredStatus,
+                )
+            }
             val endingThermal = currentThermal()
             if (endingThermal.ordinal > generationThermalLevel.ordinal) generationThermalLevel = endingThermal
             if (!cancelRequested && result.isNotEmpty()) report?.copy(thermalState = generationThermalLevel.name.lowercase())
@@ -497,6 +533,28 @@ class LlamaEngine(
     }
 
     companion object {
+        /**
+         * Map the pinned native measured completion to the public contract. Only a measured status
+         * 0 is a clean completion, where the native budget flag is trustworthy. Status 3 is known
+         * context exhaustion (NOT_HIT, not budget); 1/2/4/5 (cancel/fatal/emit/clamp) and a missing
+         * measured status (performance not collected) are UNKNOWN. The JNI ABI cannot split EOG
+         * from a clean non-budget stop beyond the budget flag; both are NOT_HIT.
+         */
+        internal fun capStatusFor(
+            nativeHit: Boolean,
+            cancelled: Boolean,
+            observed: Boolean,
+            measuredStatus: Int?,
+        ): ChatCapStatus =
+            when {
+                !observed || cancelled -> ChatCapStatus.UNKNOWN
+                measuredStatus == null -> ChatCapStatus.UNKNOWN
+                measuredStatus == 3 -> ChatCapStatus.NOT_HIT
+                measuredStatus != 0 -> ChatCapStatus.UNKNOWN
+                nativeHit -> ChatCapStatus.HIT
+                else -> ChatCapStatus.NOT_HIT
+            }
+
         @JvmStatic private external fun nativeSupportsPerformance(): Boolean
         @JvmStatic private external fun nativeRegisteredRuntime(): String
         val supportsPerformance: Boolean by lazy { NATIVE_AVAILABLE && runCatching { nativeSupportsPerformance() }.getOrDefault(false) }
