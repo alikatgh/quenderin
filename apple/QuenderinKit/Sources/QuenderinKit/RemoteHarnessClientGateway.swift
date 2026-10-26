@@ -70,6 +70,12 @@ public struct RemoteHarnessClientHost: Identifiable, Equatable, NativeConnection
     public var binding: RemoteHarnessBinding? { coordinator.binding }
     public var stopState: RemoteHarnessStopState { coordinator.stopState }
     public var approvals: [RemoteHarnessPendingApproval] { coordinator.pendingApprovalRequests }
+    /// Apply the existing heartbeat/deadline policy immediately after suspension.
+    /// A healthy generation and its active streams are kept intact.
+    func reconcileForeground() {
+        guard expectedBinding != nil, phase == "ready" else { return }
+        tick(generation: generation)
+    }
     public init(backend: any RemoteHarnessCryptoBackend, journal: any RemoteHarnessCommandJournal, clock: (any RemoteHarnessClock)? = nil, makeSocket: @escaping @MainActor () -> any RemoteHarnessClientSocket = { RemoteHarnessClientWebSocket() }) {
         self.backend = backend; self.journal = journal; self.clock = clock ?? RemoteHarnessClientSystemClock(); self.makeSocket = makeSocket
     }

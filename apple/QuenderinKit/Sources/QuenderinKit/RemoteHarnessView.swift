@@ -5,26 +5,29 @@ import SwiftUI
 /// dependencies of this view or its controller.
 public struct RemoteHarnessView: View {
     @ObservedObject private var controller: RemoteHarnessClientController
+    @StateObject private var presentation = RemoteHarnessPresentationPreferences()
     private let showsDoneButton: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var origin = ""
     @State private var email = ""
     @State private var password = ""
     @State private var deviceName = "Quenderin"
     @State private var selectedModel = ""
     @State private var effort = ""
+    @FocusState private var composerFocused: Bool
     public init(controller: RemoteHarnessClientController = .shared, showsDoneButton: Bool = false) {
         self.controller = controller; self.showsDoneButton = showsDoneButton
     }
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if let failure = controller.failure {
+                if let failure = controller.failure, controller.screen != .session {
                     Text(failure.localizedDescription).font(.callout).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
                         .padding().accessibilityIdentifier("remote-error")
                 }
                 if controller.busy { ProgressView("Connecting to your computer…").padding().accessibilityIdentifier("remote-progress") }
-                if !controller.companionAvailable, !controller.busy, [.workspaces, .sessions, .session].contains(controller.screen) {
+                if !controller.companionAvailable, !controller.busy, [.workspaces, .sessions].contains(controller.screen) {
                     Text(RemoteHarnessClientFailure.companionRequired.localizedDescription).font(.callout).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading).padding().accessibilityIdentifier("remote-companion-required")
                 }
@@ -36,6 +39,20 @@ public struct RemoteHarnessView: View {
                 if controller.journal.origin != nil, controller.screen != .setup {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
+                            if let text = controller.unsavedDraftForCopy {
+                                Button { copyToPasteboard(text) } label: { Label("Copy unsaved draft", systemImage: "doc.on.doc") }
+                                    .accessibilityIdentifier("remote-copy-unsaved-draft")
+                            }
+                            if let sessionID = controller.journal.sessionID {
+                                Button { copyToPasteboard(sessionID) } label: { Label("Copy session ID", systemImage: "doc.on.doc") }
+                                    .accessibilityIdentifier("remote-copy-session-id")
+                            }
+                            Section("On this device") {
+                                Toggle("Wrap code", isOn: $presentation.wrapsCode)
+                                Picker("Conversation text size", selection: $presentation.textSize) {
+                                    ForEach(RemoteHarnessPresentationPreferences.TextSize.allCases, id: \.self) { size in Text(size.title).tag(size) }
+                                }
+                            }
                             Button("Reconnect") { Task { await controller.reconnect() } }.disabled(controller.busy)
                             Button("Computer list") { controller.showComputers() }.disabled(controller.busy)
                             Button("Sign in again") { controller.showSetup() }
@@ -47,7 +64,11 @@ public struct RemoteHarnessView: View {
             }
         }
         .onAppear { origin = controller.journal.origin ?? ""; selectedModel = controller.selectedModelID; effort = controller.selectedEffort }
+        .task { if scenePhase == .active { await controller.reconcileForeground() } }
         .onDisappear { password = "" }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { Task { await controller.reconcileForeground() } }
+        }
         .onChange(of: controller.selectedModelID) { selectedModel = $0 }
         .onChange(of: controller.selectedEffort) { effort = $0 }
         #if os(macOS)
@@ -236,42 +257,91 @@ public struct RemoteHarnessView: View {
         }.padding().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private var session: some View {
-        VStack(spacing: 0) {
-            destination.padding(.horizontal).padding(.vertical, 8)
-            HStack {
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    sessionHeader
+                    historyRows
+                }.padding().frame(maxWidth: 920, alignment: .leading).frame(maxWidth: .infinity)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .accessibilityIdentifier("remote-timeline")
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    if !controller.approvals.isEmpty {
+                        ScrollView { approvalControls }
+                            .frame(maxHeight: min(260, max(100, geometry.size.height * 0.35)))
+                            .accessibilityLabel("Pending computer approvals")
+                    }
+                    Divider()
+                    composer
+                }
+                .background(.regularMaterial)
+            }
+        }
+    }
+    private var sessionHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let failure = controller.failure {
+                Text(failure.localizedDescription).font(.callout).foregroundStyle(.red).accessibilityIdentifier("remote-error")
+            }
+            if !controller.companionAvailable, !controller.busy {
+                Text(RemoteHarnessClientFailure.companionRequired.localizedDescription).font(.callout).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("remote-companion-required")
+            }
+            HStack(alignment: .firstTextBaseline) {
                 Text(controller.sessionTitle).font(.headline)
                 Spacer()
                 Button { Task { await controller.refreshSessionState() } } label: { Label("Refresh status", systemImage: "arrow.clockwise") }
                     .labelStyle(.iconOnly).disabled(controller.busy).accessibilityIdentifier("remote-refresh-status")
-                if controller.running { Text("Running on computer").font(.caption) }
-            }.padding(.horizontal)
-            if controller.isBotSessionReadOnly || controller.botReadAvailable || controller.botSessionClassificationPending {
-                sessionBotStatus.padding(.horizontal).padding(.vertical, 6)
             }
-            if !controller.isBotSessionReadOnly { modelControls.padding(.horizontal).padding(.vertical, 6) }
-            Divider()
-            history
-            if !controller.approvals.isEmpty { approvalControls }
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                if !controller.isBotSessionReadOnly {
-                    TextField("Task for this computer", text: Binding(
-                        get: { controller.journal.draft },
-                        set: { value in controller.updateDraft(value) }
-                    ), axis: .vertical)
-                        .lineLimit(2...8).textFieldStyle(.roundedBorder).disabled(controller.botSessionClassificationPending)
-                        .accessibilityIdentifier("remote-composer")
-                }
-                HStack {
-                    Text(stopLabel).font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Stop") { Task { await controller.stop() } }.disabled(!controller.canStop).accessibilityIdentifier("remote-stop")
-                    if !controller.isBotSessionReadOnly {
-                        Button("Send") { Task { await controller.send() } }.buttonStyle(.borderedProminent).disabled(!controller.canSend).accessibilityIdentifier("remote-send")
+            if controller.running { Text("Running on computer").font(.caption.weight(.semibold)) }
+            Text(stopLabel).font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("Computer and session details") {
+                VStack(alignment: .leading, spacing: 8) {
+                    destination
+                    if let sessionID = controller.journal.sessionID {
+                        Text("Session: \(sessionID)").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                     }
+                    if controller.isBotSessionReadOnly || controller.botReadAvailable || controller.botSessionClassificationPending { sessionBotStatus }
+                    if !controller.isBotSessionReadOnly { modelControls }
                 }
-            }.padding()
+            }
         }
+    }
+    private var composer: some View {
+        let destination = controller.composerDestination
+        return VStack(alignment: .leading, spacing: 8) {
+            if controller.unsavedDraftForCopy != nil {
+                Text("This draft hasn’t been saved. Copy it from the Connection menu before leaving.")
+                    .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("remote-unsaved-draft")
+            }
+            if !controller.isBotSessionReadOnly {
+                TextField("Task for this computer", text: Binding(
+                    get: { controller.draft(for: destination) }, set: { controller.updateDraft($0, for: destination) }
+                ), axis: .vertical)
+                    .lineLimit(1...3).textFieldStyle(.roundedBorder).disabled(controller.botSessionClassificationPending)
+                    .focused($composerFocused).accessibilityIdentifier("remote-composer")
+            }
+            HStack {
+                #if os(iOS)
+                if composerFocused {
+                    Button { composerFocused = false } label: { Label("Hide keyboard", systemImage: "keyboard.chevron.compact.down") }
+                        .labelStyle(.iconOnly).accessibilityIdentifier("remote-hide-keyboard")
+                }
+                #endif
+                Spacer()
+                Button("Stop") { Task { await controller.stop() } }.disabled(!controller.canStop)
+                    .accessibilityValue(stopLabel).accessibilityIdentifier("remote-stop")
+                if !controller.isBotSessionReadOnly {
+                    Button("Send") {
+                        guard let submission = controller.submission(for: destination) else { return }
+                        Task { await controller.send(submission) }
+                    }.buttonStyle(.borderedProminent)
+                        .disabled(!controller.canSend).accessibilityIdentifier("remote-send")
+                }
+            }
+        }.padding(.horizontal).padding(.vertical, 8)
     }
     private var sessionBotStatus: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -306,23 +376,53 @@ public struct RemoteHarnessView: View {
     private var history: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
-                if controller.timeline.hasMore { Button("Load earlier messages") { Task { await controller.loadEarlier() } }.disabled(controller.busy) }
-                ForEach(controller.timeline.rows) { row in
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(row.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        if row.kind == "reasoning" {
-                            DisclosureGroup("Reasoning") { Text(row.text).textSelection(.enabled) }
-                        } else { Text(row.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
-                        if row.kind == "tool" {
-                            DisclosureGroup("Tool details") { Text(String(decoding: row.raw, as: UTF8.self)).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
-                        }
-                    }.accessibilityIdentifier("remote-timeline-row")
-                }
+                historyRows
             }.padding().frame(maxWidth: 920, alignment: .leading).frame(maxWidth: .infinity)
         }.accessibilityIdentifier("remote-timeline")
     }
+    private var historyRows: some View {
+        Group {
+            if controller.timeline.hasMore { Button("Load earlier messages") { Task { await controller.loadEarlier() } }.disabled(controller.busy) }
+            ForEach(controller.timeline.rows) { row in
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(row.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    if row.kind == "reasoning" {
+                        DisclosureGroup("Reasoning") { boundedRawText(row.text) }
+                    } else if row.kind == "tool" {
+                        Text(RemoteHarnessRawTextPage(row.text, index: 0).text).lineLimit(3).textSelection(.enabled)
+                        DisclosureGroup("Full tool output") { boundedRawText(row.text) }
+                        DisclosureGroup("Tool details") { boundedRawText(String(decoding: row.raw, as: UTF8.self)) }
+                    } else if row.kind == "assistant" {
+                        RemoteHarnessAssistantText(text: row.text, wrapsCode: presentation.wrapsCode, codeTextStyle: codeTextStyle)
+                    } else if row.text.utf8.count > RemoteHarnessTextBudget.maximumRawPageBytes {
+                        boundedRawText(row.text)
+                    } else {
+                        Text(row.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .font(conversationFont).accessibilityIdentifier("remote-timeline-row")
+            }
+        }
+    }
+    private var conversationFont: Font {
+        switch presentation.textSize {
+        case .standard: return .body
+        case .larger: return .title3
+        case .largest: return .title2
+        }
+    }
+    private var codeTextStyle: Font.TextStyle {
+        switch presentation.textSize {
+        case .standard: return .footnote
+        case .larger: return .callout
+        case .largest: return .body
+        }
+    }
+    private func boundedRawText(_ text: String) -> some View {
+        RemoteHarnessRawText(text: text, textStyle: codeTextStyle)
+    }
     private var modelControls: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 8) {
             Picker("Model on computer", selection: $selectedModel) {
                 ForEach(controller.models) { model in Text(model.name).tag(model.id) }
             }.accessibilityIdentifier("remote-model")
@@ -381,6 +481,51 @@ public struct RemoteHarnessView: View {
         case .receiptReceived: return "Stop received; waiting for computer state."
         case .confirmedStopped: return "Computer confirmed the session is stopped."
         case .outcomeUnknown: return "Stop outcome unknown. Reconnect to verify."
+        }
+    }
+}
+
+/// The budget is checked before reaching the shared parser or its cache. Local
+/// chat keeps the renderer's existing behavior and defaults.
+private struct RemoteHarnessAssistantText: View {
+    let text: String
+    let wrapsCode: Bool
+    let codeTextStyle: Font.TextStyle
+    var body: some View {
+        if RemoteHarnessTextBudget.allowsFormatting(text) {
+            MarkdownText(text: text, color: .primary, wrapsCode: wrapsCode,
+                         codeTextStyle: codeTextStyle, showsCodeCopyButton: true).textSelection(.enabled)
+        } else {
+            RemoteHarnessRawText(text: text, textStyle: codeTextStyle, formattingLimited: true)
+        }
+    }
+}
+
+private struct RemoteHarnessRawText: View {
+    let text: String
+    let textStyle: Font.TextStyle
+    var formattingLimited = false
+    @State private var selectedPage = 0
+    var body: some View {
+        let page = RemoteHarnessRawTextPage(text, index: selectedPage)
+        VStack(alignment: .leading, spacing: 8) {
+            if formattingLimited {
+                Text("Formatting is limited for this long or complex message. The full original text is available below.")
+                    .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("remote-formatting-limited")
+            }
+            Button { copyToPasteboard(text) } label: { Label("Copy full text", systemImage: "doc.on.doc") }
+                .font(.caption).accessibilityIdentifier("remote-copy-raw-text")
+            if page.count > 1 {
+                HStack {
+                    Button("Previous") { selectedPage = page.index - 1 }.disabled(page.index == 0)
+                    Text("Page \(page.index + 1) of \(page.count)").font(.caption).foregroundStyle(.secondary)
+                    Button("Next") { selectedPage = page.index + 1 }.disabled(page.index + 1 >= page.count)
+                }.accessibilityIdentifier("remote-raw-text-pages")
+            }
+            ScrollView([.horizontal, .vertical]) {
+                Text(page.text).font(.system(textStyle, design: .monospaced)).textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: true).privacySensitive()
+            }.frame(maxHeight: 220)
         }
     }
 }

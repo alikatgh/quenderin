@@ -31,11 +31,14 @@ import XCTest
         saves += 1; if saves == failAtSave { throw RemoteHarnessClientFailure.storage }; record = credential
     }
 }
-@MainActor private final class JourneyStorage: RemoteHarnessClientJournalStorage {
+@MainActor private final class JourneyStorage: RemoteHarnessClientJournalStorage, RemoteHarnessClientRecoveryIntentStorage {
     var value: RemoteHarnessClientJournal?
     var failWrites = false
+    private var automaticRecoveryAllowed = true
     func load() throws -> RemoteHarnessClientJournal? { value }
     func save(_ journal: RemoteHarnessClientJournal) throws { if failWrites { throw RemoteHarnessClientFailure.storage }; try journal.validate(); value = journal }
+    func loadAutomaticRecoveryIntent() throws -> Bool { automaticRecoveryAllowed }
+    func saveAutomaticRecoveryIntent(_ allowed: Bool) throws { automaticRecoveryAllowed = allowed }
 }
 @MainActor private func journeyJSON(_ value: Any) throws -> RemoteHarnessJSON { try .init(data: JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])) }
 
@@ -81,9 +84,13 @@ import XCTest
 }
 @MainActor private final class JourneyServer: RemoteHarnessClientHTTP {
     let hostID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
-    let hostKey = RemoteHarnessClientEncoding.base64(Data(repeating: 9, count: 32))
+    var hostKey = RemoteHarnessClientEncoding.base64(Data(repeating: 9, count: 32))
     var deviceID = ""
     var refreshRequests = 0, registrationRequests = 0, prompts = 0, approvals = 0, cancellations = 0
+    var httpRequests = 0
+    var holdPromptReceipts = false
+    var secondHostID: String?
+    var requestedHostIDs: [String] = []
     var creations = 0, modelSelections = 0
     var companionAvailable = true
     var botCapabilities: [String] = []
@@ -100,11 +107,18 @@ import XCTest
     var now: Int64 = 1_000_000
     var lastPromptTimeZone: String?
     func pair(_ suffix: String = "a") -> [String: Any] { ["accessToken": "synthetic-access-token-" + suffix, "refreshToken": "synthetic-refresh-token-" + suffix, "accessTokenExpiresAt": now + 3_600_000, "refreshTokenExpiresAt": now + 2_592_000_000] }
-    func host(descriptor: Bool) -> [String: Any] {
-        var value: [String: Any] = ["deviceId": hostID, "name": "Synthetic computer", "role": "host", "platform": "linux", "membershipId": "synthetic-membership", "online": true, "clientVersion": "0.3.20", "lastSeenAt": now]
+    func host(descriptor: Bool, id: String? = nil) -> [String: Any] {
+        var value: [String: Any] = ["deviceId": id ?? hostID, "name": "Synthetic computer", "role": "host", "platform": "linux", "membershipId": "synthetic-membership", "online": true, "clientVersion": "0.3.20", "lastSeenAt": now]
         if descriptor { value["identityKey"] = hostKey }; return value
     }
     func request(origin: String, path: String, method: String, bearer: String?, body: RemoteHarnessJSON?) async throws -> RemoteHarnessJSON {
+        httpRequests += 1
+        if let secondHostID, path == "/api/v1/devices/" + secondHostID {
+            requestedHostIDs.append(secondHostID); return try journeyJSON(host(descriptor: true, id: secondHostID))
+        }
+        if let secondHostID, path == "/api/v1/devices/" + secondHostID + "/presence" {
+            return try journeyJSON(["deviceId": secondHostID, "online": true, "lastSeenAt": now])
+        }
         switch path {
         case "/api/v1/auth/login": return try journeyJSON(["account": "synthetic@example.test", "profile": ["displayName": "Synthetic"], "token": "synthetic-account-token", "expiresAt": now + 28_800_000])
         case "/api/v1/devices/register":
@@ -114,8 +128,8 @@ import XCTest
         case "/api/v1/auth/refresh":
             refreshRequests += 1; XCTAssertNotNil(credentials?.record?.refreshAttemptID)
             if loseRefresh { throw RemoteHarnessClientFailure.connection }; return try journeyJSON(pair("rotated"))
-        case "/api/v1/devices": return try journeyJSON(["items": [host(descriptor: false)], "nextCursor": NSNull()])
-        case "/api/v1/devices/" + hostID: return try journeyJSON(host(descriptor: true))
+        case "/api/v1/devices": return try journeyJSON(["items": [host(descriptor: false)] + (secondHostID.map { [host(descriptor: false, id: $0)] } ?? []), "nextCursor": NSNull()])
+        case "/api/v1/devices/" + hostID: requestedHostIDs.append(hostID); return try journeyJSON(host(descriptor: true))
         case "/api/v1/devices/" + hostID + "/presence": return try journeyJSON(["deviceId": hostID, "online": true, "lastSeenAt": now])
         default: throw RemoteHarnessClientFailure.protocolMismatch
         }
@@ -129,7 +143,7 @@ import XCTest
     }
 }
 @MainActor private final class JourneySocket: RemoteHarnessClientSocket {
-    private enum FixtureError: Error { case noPendingBotRead }
+    private enum FixtureError: Error { case noPendingBotRead, noPendingPromptReceipt }
     let server: JourneyServer
     let pair = AsyncThrowingStream<Data, Error>.makeStream(bufferingPolicy: .bufferingOldest(64))
     var counter: Int64 = 0
@@ -139,6 +153,7 @@ import XCTest
     var receivedCount = 0
     var officialFrameLimit = 7
     var pendingBotReads: [String] = []
+    var pendingPromptReceipts: [String] = []
     var emittedOfficialFrames: [Int] { server.official?.emittedFrames ?? [] }
     init(server: JourneyServer) { self.server = server }
     func start(origin: String) throws { XCTAssertTrue(origin.hasPrefix("https://")) }
@@ -159,6 +174,11 @@ import XCTest
         guard !pendingBotReads.isEmpty else { throw FixtureError.noPendingBotRead }
         let pending = pendingBotReads; pendingBotReads = []
         for id in pending { try business("rpc.response", ["requestId": id, "result": result ?? server.botResponseOverride ?? server.botResponse()]) }
+    }
+    func releasePromptReceipts() throws {
+        guard !pendingPromptReceipts.isEmpty else { throw FixtureError.noPendingPromptReceipt }
+        let pending = pendingPromptReceipts; pendingPromptReceipts = []
+        for id in pending { try business("rpc.response", ["requestId": id, "result": ["ok": true, "value": NSNull()]]) }
     }
     func drainOfficialFrames() throws {
         guard let official = server.official else { return }
@@ -284,6 +304,7 @@ import XCTest
             case "session/cancel": server.cancellations += 1; value = ["accepted": true]
             default: throw RemoteHarnessClientFailure.protocolMismatch
             }
+            if endpoint == "session/prompt", server.holdPromptReceipts { pendingPromptReceipts.append(rpcID); return }
             try business("rpc.response", ["requestId": rpcID, "result": ["ok": true, "value": value]])
         default: throw RemoteHarnessClientFailure.protocolMismatch
         }
@@ -608,6 +629,211 @@ import XCTest
         await native.selectWorkspace(try XCTUnwrap(native.workspaces.first))
         XCTAssertEqual(native.screen, .sessions); XCTAssertNil(native.failure)
         return native
+    }
+    func testPromptReceiptOnlyClearsTheUneditedSubmittedDraft() async throws {
+        let composed = "\u{e9}", decomposed = "e\u{301}"
+        XCTAssertEqual(composed, decomposed)
+        XCTAssertNotEqual(Array(composed.utf8), Array(decomposed.utf8))
+        let cases: [(String, [String])] = [
+            ("one", []), ("one", ["two", "one"]), ("one", ["one"]),
+            (composed, [decomposed])
+        ]
+        for (submitted, edits) in cases {
+            let server = JourneyServer(); server.holdPromptReceipts = true
+            let native = try await botController(server, storage: JourneyStorage())
+            await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+            let destination = try XCTUnwrap(native.composerDestination)
+            native.updateDraft(submitted, for: destination)
+            let submission = try XCTUnwrap(native.submission(for: destination))
+            let send = Task { await native.send(submission) }
+            let socket = try XCTUnwrap(server.sockets.last)
+            await settle { socket.pendingPromptReceipts.count == 1 && native.busy }
+            for edit in edits { native.updateDraft(edit, for: destination) }
+            try socket.releasePromptReceipts(); await send.value
+            XCTAssertEqual(server.prompts, 1); XCTAssertNil(native.failure)
+            let expected = edits.last ?? ""
+            XCTAssertEqual(Array(native.journal.draft.utf8), Array(expected.utf8))
+            XCTAssertEqual(Array(native.draft(for: destination).utf8), Array(expected.utf8))
+            native.disconnect()
+        }
+    }
+    func testCapturedComposerCallbacksCannotEditOrSendTheNextSession() async throws {
+        let server = JourneyServer()
+        let native = try await botController(server, storage: JourneyStorage())
+        defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        let renderedA = try XCTUnwrap(native.composerDestination)
+        native.updateDraft("Session A draft", for: renderedA)
+        let capturedSend = try XCTUnwrap(native.submission(for: renderedA))
+        let capturedIME: (String) -> Void = { native.updateDraft($0, for: renderedA) }
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first)); await native.createSession(); await settle { native.snapshotReady }
+        let renderedB = try XCTUnwrap(native.composerDestination)
+        native.updateDraft("Session B draft", for: renderedB)
+        capturedIME("Late session A keyboard callback"); await native.send(capturedSend)
+        XCTAssertEqual(native.draft(for: renderedB), "Session B draft"); XCTAssertEqual(native.journal.draft, "Session B draft")
+        XCTAssertEqual(native.draft(for: renderedA), ""); XCTAssertEqual(server.prompts, 0)
+        await native.selectSession(try XCTUnwrap(native.sessions.first { $0.sessionID == "session-real" })); await settle { native.snapshotReady }
+        XCTAssertEqual(native.draft(for: native.composerDestination), "Session A draft")
+    }
+    func testFailedDraftSaveRetainsExactScopedComposerTextAndDurableJournal() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await botController(server, storage: storage)
+        defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        let destination = try XCTUnwrap(native.composerDestination)
+        native.updateDraft("Previous durable draft", for: destination)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let durable = try encoder.encode(try XCTUnwrap(storage.value))
+        storage.failWrites = true
+        let typed = "\r\n  Unsaved 👩🏽‍💻 / 内容\r\n\r\n"
+        native.updateDraft(typed, for: destination)
+        XCTAssertEqual(Array(native.draft(for: destination).utf8), Array(typed.utf8))
+        XCTAssertEqual(native.unsavedDraftForCopy, typed); XCTAssertEqual(native.journal.draft, "Previous durable draft")
+        XCTAssertEqual(try encoder.encode(try XCTUnwrap(storage.value)), durable); XCTAssertFalse(native.canSend)
+        let another = RemoteHarnessClientComposerDestination(origin: destination.origin, hostID: destination.hostID,
+            fingerprint: destination.fingerprint, workspaceID: destination.workspaceID, sessionID: "another-session")
+        native.updateDraft("Wrong destination", for: another)
+        XCTAssertEqual(native.draft(for: another), ""); XCTAssertEqual(native.unsavedDraftForCopy, typed)
+        await native.send(try XCTUnwrap(native.submission(for: destination)))
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(try encoder.encode(try XCTUnwrap(storage.value)), durable)
+        native.updateDraft(typed + "more", for: destination)
+        XCTAssertEqual(native.draft(for: destination), typed + "more"); XCTAssertEqual(native.failure, .storage)
+    }
+    func testExplicitDisconnectPersistsAcrossControllerRecreationUntilManualReconnect() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await botController(server, storage: storage)
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        native.disconnect()
+        let requests = server.httpRequests, connections = server.sockets.count
+        let restored = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials),
+            storage: storage, clock: JourneyClock(), makeSocket: { server.makeSocket() })
+        defer { restored.disconnect() }
+        await restored.reconcileForeground(); await restored.reconcileForeground()
+        XCTAssertEqual(server.httpRequests, requests); XCTAssertEqual(server.sockets.count, connections)
+        XCTAssertEqual(restored.screen, .disconnected)
+        await restored.reconnect(); await settle { restored.snapshotReady }
+        XCTAssertGreaterThan(server.httpRequests, requests); XCTAssertEqual(server.sockets.count, connections + 2)
+    }
+    func testSelectedDiscoveryHostCannotRecoverThePreviousComputerAfterDisconnectOrRecreation() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let secondID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"; server.secondHostID = secondID
+        let native = try await botController(server, storage: storage)
+        defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        native.updateDraft("Keep computer A draft")
+        let oldComputer = try XCTUnwrap(server.sockets.last)
+        await native.selectHost(try XCTUnwrap(native.hosts.first { $0.deviceID == secondID }))
+        XCTAssertNil(native.failure); XCTAssertEqual(native.screen, .trust)
+        XCTAssertEqual(try XCTUnwrap(native.pendingHost).deviceID, secondID)
+        await native.trustHost()
+        XCTAssertNil(native.failure); XCTAssertEqual(native.journal.recoveryHost?.hostID, secondID)
+        XCTAssertTrue(oldComputer.closed)
+        XCTAssertEqual(native.host?.deviceID, secondID); XCTAssertNil(native.journal.profile); XCTAssertNil(native.journal.sessionID)
+        XCTAssertTrue(native.journal.savedSessions.contains { $0.hostID == server.hostID && $0.draft == "Keep computer A draft" })
+        let before = server.requestedHostIDs.count, connections = server.sockets.count
+        try XCTUnwrap(server.sockets.last).close(); await settle { native.screen == .disconnected }
+        await native.reconcileForeground(); await settle { native.screen == .workspaces && !native.busy }
+        XCTAssertEqual(Array(server.requestedHostIDs.dropFirst(before)), [secondID]); XCTAssertEqual(server.sockets.count, connections + 1)
+        try XCTUnwrap(server.sockets.last).close(); await settle { native.screen == .disconnected }
+        let recreated = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials),
+            storage: storage, clock: JourneyClock(), makeSocket: { server.makeSocket() })
+        defer { recreated.disconnect() }
+        let prior = server.requestedHostIDs.count
+        await recreated.reconcileForeground(); await settle { recreated.screen == .workspaces && !recreated.busy }
+        XCTAssertEqual(Array(server.requestedHostIDs.dropFirst(prior)), [secondID]); XCTAssertNil(recreated.journal.sessionID)
+        XCTAssertEqual(server.prompts, 0)
+    }
+    func testForegroundRecoveryCoalescesAndNeverReplaysAnUncertainCommand() async throws {
+        let server = JourneyServer(), storage = JourneyStorage(), clock = JourneyClock()
+        let native = try await botController(server, storage: storage, clock: clock)
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        native.updateDraft("Keep this unfinished task")
+        let binding = try RemoteHarnessBinding(generation: 1, hostID: server.hostID, workspaceID: "workspace-real", sessionID: "session-real", clientDeviceID: server.deviceID)
+        try native.persistBeforeDispatch(.init(commandID: "uncertain-task", rpcID: "uncertain-rpc", binding: binding,
+            operation: .prompt(commandID: "uncertain-task", sessionID: "session-real", text: "Synthetic uncertain task"),
+            preparedAtEpochMilliseconds: clock.nowEpochMilliseconds))
+        try native.recordOutcome(commandID: "uncertain-task", outcome: .outcomeUnknown)
+        try XCTUnwrap(server.sockets.last).close(); await settle { native.screen == .disconnected }
+        let recovered = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials),
+            storage: storage, clock: clock, makeSocket: { server.makeSocket() })
+        defer { recovered.disconnect() }
+        let connections = server.sockets.count
+        let first = Task { await recovered.reconcileForeground() }
+        let second = Task { await recovered.reconcileForeground() }
+        await first.value; await second.value; await settle { recovered.snapshotReady }
+        XCTAssertEqual(server.sockets.count, connections + 2, "One discovery connection and one exact-session connection")
+        XCTAssertEqual(recovered.journal.sessionID, "session-real"); XCTAssertEqual(recovered.journal.draft, "Keep this unfinished task")
+        XCTAssertEqual(recovered.journal.commands.count, 1); XCTAssertEqual(recovered.journal.commands.first?.outcome, "outcomeUnknown")
+        XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.approvals, 0); XCTAssertEqual(server.cancellations, 0)
+        let healthy = try XCTUnwrap(server.sockets.last), healthyConnections = server.sockets.count
+        await recovered.reconcileForeground(); await recovered.reconcileForeground()
+        XCTAssertEqual(server.sockets.count, healthyConnections); XCTAssertFalse(healthy.closed); XCTAssertTrue(recovered.snapshotReady)
+    }
+    func testForegroundKeepsHealthyRunningStreamAndRecoversOnlyAfterExistingDeadline() async throws {
+        let server = JourneyServer(), clock = JourneyClock()
+        server.running = true; server.snapshotActiveAttempt = true
+        let native = try await botController(server, storage: JourneyStorage(), clock: clock)
+        defer { native.disconnect() }
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        let healthy = try XCTUnwrap(server.sockets.last), connections = server.sockets.count
+        await native.reconcileForeground()
+        XCTAssertEqual(server.sockets.count, connections); XCTAssertFalse(healthy.closed); XCTAssertTrue(native.canStop)
+        clock.monotonicMilliseconds += 76_000
+        await native.reconcileForeground(); await settle { native.snapshotReady }
+        XCTAssertTrue(healthy.closed); XCTAssertEqual(server.sockets.count, connections + 2)
+        XCTAssertTrue(native.running); XCTAssertTrue(native.canStop); XCTAssertEqual(server.prompts, 0)
+    }
+    func testExplicitDisconnectAndChangedPinPreventAutomaticForegroundConnection() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await botController(server, storage: storage)
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        native.updateDraft("Retain after identity change"); native.disconnect()
+        let connections = server.sockets.count
+        await native.reconcileForeground()
+        XCTAssertEqual(server.sockets.count, connections); XCTAssertEqual(native.screen, .disconnected)
+        server.hostKey = RemoteHarnessClientEncoding.base64(Data(repeating: 8, count: 32))
+        let restored = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials),
+            storage: storage, clock: JourneyClock(), makeSocket: { server.makeSocket() })
+        defer { restored.disconnect() }
+        await restored.reconnect()
+        XCTAssertEqual(restored.failure, .pinChanged); XCTAssertEqual(server.sockets.count, connections)
+        XCTAssertEqual(restored.journal.draft, "Retain after identity change"); XCTAssertEqual(server.prompts, 0)
+    }
+    func testSelectingHostAfterDisconnectReenablesForegroundRecovery() async throws {
+        let server = JourneyServer()
+        let native = try await botController(server, storage: JourneyStorage())
+        defer { native.disconnect() }
+        native.disconnect()
+        await native.selectHost(try XCTUnwrap(native.hosts.first))
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first))
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        let connections = server.sockets.count
+        try XCTUnwrap(server.sockets.last).close(); await settle { native.screen == .disconnected }
+        await native.reconcileForeground(); await settle { native.snapshotReady }
+        XCTAssertEqual(server.sockets.count, connections + 2); XCTAssertEqual(server.prompts, 0)
+    }
+    func testDraftsStayScopedToHostWorkspaceAndSessionAcrossSwitchAndRestore() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await botController(server, storage: storage); native.disconnect()
+        var journal = try XCTUnwrap(storage.value)
+        journal.savedSessions = [
+            .init(hostID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", workspaceID: "workspace-real", sessionID: "session-real", draft: "Another Host draft", history: []),
+            .init(hostID: server.hostID, workspaceID: "workspace-other", sessionID: "session-real", draft: "Another workspace draft", history: [])
+        ]
+        try storage.save(journal)
+        let restored = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials),
+            storage: storage, clock: JourneyClock(), makeSocket: { server.makeSocket() })
+        defer { restored.disconnect() }
+        await restored.reconnect(); await restored.selectWorkspace(try XCTUnwrap(restored.workspaces.first))
+        await restored.selectSession(try XCTUnwrap(restored.sessions.first)); await settle { restored.snapshotReady }
+        XCTAssertEqual(restored.journal.draft, "", "A same-named session in another Host/workspace cannot lend its draft")
+        restored.updateDraft("This session’s draft")
+        await restored.selectWorkspace(try XCTUnwrap(restored.workspaces.first)); await restored.createSession(); await settle { restored.snapshotReady }
+        XCTAssertEqual(restored.journal.draft, ""); restored.updateDraft("New session draft")
+        await restored.selectSession(try XCTUnwrap(restored.sessions.first { $0.sessionID == "session-real" })); await settle { restored.snapshotReady }
+        XCTAssertEqual(restored.journal.draft, "This session’s draft")
+        XCTAssertTrue(restored.journal.savedSessions.contains { $0.sessionID == "session-created" && $0.draft == "New session draft" })
+        XCTAssertEqual(restored.journal.savedSessions.first?.draft, "Another Host draft"); XCTAssertEqual(server.prompts, 0)
     }
     func testBotReadRequiresBothCapabilitiesAndNeverRequestsDuringDiscovery() async throws {
         for capabilities in [[], ["plugin.route.v1"], ["quenderin.bot.read.v1"]] {

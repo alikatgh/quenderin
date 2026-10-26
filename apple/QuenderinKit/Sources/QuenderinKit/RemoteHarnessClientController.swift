@@ -46,9 +46,12 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     @Published public private(set) var botRoster: RemoteHarnessBotRoster?
     @Published public private(set) var botLoading = false
     @Published public private(set) var botUnavailable = false
+    @Published private var unsavedDraft: RemoteHarnessClientUnsavedDraft?
+    private var draftEditID = UUID()
     private let backend: any RemoteHarnessCryptoBackend
     private let account: RemoteHarnessClientAccount
     private let storage: any RemoteHarnessClientJournalStorage
+    private let recoveryIntent: any RemoteHarnessClientRecoveryIntentStorage
     private let makeSocket: @MainActor () -> any RemoteHarnessClientSocket
     private let clock: any RemoteHarnessClock
     private let clientTimeZone: () -> TimeZone
@@ -57,6 +60,9 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     private var snapshotDeadline: Task<Void, Never>?
     private var workspaceSnapshotWaiter: CheckedContinuation<Void, Error>?
     private var botTask: Task<Void, Never>?
+    private var foregroundTask: Task<Void, Never>?
+    private var foregroundRequestID: UUID?
+    private var foregroundRecoveryAllowed = true
     private var botRequestID: UUID?
     private var botBinding: RemoteHarnessBinding?
     private var sessionsBinding: RemoteHarnessBinding?
@@ -76,11 +82,14 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     }()
     public init(backend: (any RemoteHarnessCryptoBackend)? = nil, http: (any RemoteHarnessClientHTTP)? = nil,
                 credentials: (any RemoteHarnessClientCredentialStorage)? = nil, storage: (any RemoteHarnessClientJournalStorage)? = nil,
+                recoveryIntent: (any RemoteHarnessClientRecoveryIntentStorage)? = nil,
                 clock: (any RemoteHarnessClock)? = nil, makeSocket: @escaping @MainActor () -> any RemoteHarnessClientSocket = { RemoteHarnessClientWebSocket() }, randomSeed: (() throws -> Data)? = nil,
                 clientTimeZone: @escaping () -> TimeZone = { .current }) {
         let backend = backend ?? RemoteHarnessCryptoBackends.native(), clock = clock ?? RemoteHarnessClientSystemClock()
         self.backend = backend; self.clock = clock; self.makeSocket = makeSocket; self.clientTimeZone = clientTimeZone
-        self.storage = storage ?? RemoteHarnessClientFileStorage()
+        let journalStorage = storage ?? RemoteHarnessClientFileStorage()
+        self.storage = journalStorage
+        self.recoveryIntent = recoveryIntent ?? (journalStorage as? any RemoteHarnessClientRecoveryIntentStorage) ?? RemoteHarnessClientRecoveryPreferences()
         account = RemoteHarnessClientAccount(http: http ?? RemoteHarnessClientURLSessionHTTP(), storage: credentials ?? RemoteHarnessClientKeychainStorage(), backend: backend, clock: clock, randomSeed: randomSeed)
         do {
             if let saved = try self.storage.load() {
@@ -88,6 +97,8 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
                 screen = saved.origin == nil ? .setup : .disconnected
             }
         } catch { storageReady = false; failure = .storage }
+        do { foregroundRecoveryAllowed = try self.recoveryIntent.loadAutomaticRecoveryIntent() }
+        catch { foregroundRecoveryAllowed = false; failure = .storage }
     }
     public var cryptoAvailable: Bool { backend.isAvailable }
     public var isBotSessionReadOnly: Bool {
@@ -98,7 +109,7 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
     private var botClassificationReady: Bool {
         !gateway.supportsBotRead || (!botLoading && !botUnavailable && botRoster != nil && Self.sameBinding(botBinding, gateway.binding))
     }
-    public var canSend: Bool { storageReady && !isBotSessionReadOnly && botClassificationReady && companionAvailable && snapshotReady && screen == .session && !busy && !running && !journal.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    public var canSend: Bool { storageReady && !isBotSessionReadOnly && botClassificationReady && companionAvailable && snapshotReady && screen == .session && !busy && !running && !draft(for: composerDestination).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var canCreateSession: Bool { storageReady && companionAvailable && screen == .sessions && !busy }
     public var canChangeModel: Bool { storageReady && !isBotSessionReadOnly && botClassificationReady && companionAvailable && snapshotReady && screen == .session && !busy && !running }
     public var canStop: Bool { snapshotReady && screen == .session && !busy && running }
@@ -113,10 +124,38 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         return try? RemoteHarnessClientEncoding.digest(data)
     }
     public var selectedModel: RemoteHarnessClientModel? { models.first { $0.id == selectedModelID } }
+    public var composerDestination: RemoteHarnessClientComposerDestination? {
+        guard let origin = journal.origin, let hostID = journal.profile?.hostID, let fingerprint = journal.profile?.hostFingerprint,
+              let workspaceID = journal.profile?.workspaceID, let sessionID = journal.sessionID else { return nil }
+        return .init(origin: origin, hostID: hostID, fingerprint: fingerprint, workspaceID: workspaceID, sessionID: sessionID)
+    }
+    public var unsavedDraftForCopy: String? { unsavedDraft?.text }
+    public func draft(for destination: RemoteHarnessClientComposerDestination?) -> String {
+        guard let destination, destination == composerDestination else { return "" }
+        if let unsavedDraft, unsavedDraft.destination == destination { return unsavedDraft.text }
+        return journal.draft
+    }
     public func updateDraft(_ text: String) {
-        guard text.utf8.count <= 65_536, storageReady else { failure = .limit; return }
+        updateDraft(text, for: composerDestination)
+    }
+    public func updateDraft(_ text: String, for destination: RemoteHarnessClientComposerDestination?) {
+        guard let destination, destination == composerDestination else { return }
+        guard text.utf8.count <= 65_536 else { failure = .limit; return }
+        guard storageReady else {
+            guard unsavedDraft == nil || unsavedDraft?.destination == destination else { failure = .storage; return }
+            draftEditID = UUID()
+            unsavedDraft = .init(destination: destination, text: text); failure = .storage; return
+        }
+        // Identical accepted edits are still later user intent. String equality
+        // cannot distinguish them from the text captured by an earlier Send.
+        draftEditID = UUID()
         var next = journal; next.draft = text
-        do { try commit(next) } catch { fail(error) }
+        do { try commit(next); unsavedDraft = nil }
+        catch { unsavedDraft = .init(destination: destination, text: text); fail(error) }
+    }
+    public func submission(for destination: RemoteHarnessClientComposerDestination?) -> RemoteHarnessClientComposerSubmission? {
+        guard let destination, destination == composerDestination else { return nil }
+        return .init(destination: destination, text: draft(for: destination), acceptedEditID: draftEditID)
     }
     public func authorize(origin: String, email: String, password: String, deviceName: String) async {
         await work {
@@ -132,23 +171,45 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         }
     }
     public func reconnect() async {
+        do { try setForegroundRecoveryAllowed(true) } catch { fail(error); return }
         await work {
             self.invalidateBotContext()
             guard self.cryptoAvailable else { throw RemoteHarnessClientFailure.cryptoUnavailable }
             guard let origin = self.journal.origin, let deviceID = self.journal.deviceID else { self.screen = .setup; return }
             let credential = try await self.account.credential(origin: origin, deviceID: deviceID); self.credential = credential
             try self.checkOperation(); let hosts = try await self.account.hosts(credential); try self.checkOperation(); self.hosts = hosts
-            if let profile = self.journal.profile, let summary = self.hosts.first(where: { $0.deviceID == profile.hostID }) {
+            if let target = self.recoveryHost, let summary = self.hosts.first(where: { $0.deviceID.utf8.elementsEqual(target.hostID.utf8) }) {
                 let host = try await self.account.host(summary, credential: credential)
                 try self.checkOperation()
-                guard host.fingerprint == profile.hostFingerprint else { throw RemoteHarnessClientFailure.pinChanged }
+                guard target.matches(host) else { throw RemoteHarnessClientFailure.pinChanged }
                 self.host = host
                 try await self.connect(workspaceID: nil, sessionID: nil)
-                if let workspaceID = profile.workspaceID, let workspace = self.workspaces.first(where: { $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) }), let sessionID = self.journal.sessionID, workspace.sessionIDs.contains(where: { $0.utf8.elementsEqual(sessionID.utf8) }) {
+                if let workspaceID = self.journal.profile?.workspaceID, let workspace = self.workspaces.first(where: { $0.workspaceID.utf8.elementsEqual(workspaceID.utf8) }), let sessionID = self.journal.sessionID, workspace.sessionIDs.contains(where: { $0.utf8.elementsEqual(sessionID.utf8) }) {
                     self.selectedWorkspace = workspace; try await self.openSession(sessionID)
                 } else { self.screen = .workspaces }
             } else { self.screen = .computers }
         }
+    }
+    /// Coalesces scene/window activation. Reuse a healthy stream; only a closed
+    /// generation recovers through the existing pinned-Host path. Recovery reads
+    /// authoritative history and never replays the protected command journal.
+    public func reconcileForeground() async {
+        if let foregroundTask { await foregroundTask.value; return }
+        guard foregroundRecoveryAllowed, !busy, storageReady,
+              [.workspaces, .sessions, .session, .disconnected].contains(screen),
+              let target = recoveryHost, journal.pins[target.hostID]?.utf8.elementsEqual(target.fingerprint.utf8) == true else { return }
+        if let host, !target.matches(host) { return }
+        gateway.reconcileForeground()
+        guard screen == .disconnected, gateway.binding == nil else { return }
+        let requestID = UUID()
+        foregroundRequestID = requestID
+        let task = Task { [weak self] in
+            guard !Task.isCancelled, let self else { return }
+            await self.reconnect()
+        }
+        foregroundTask = task
+        await task.value
+        if foregroundRequestID == requestID { foregroundTask = nil; foregroundRequestID = nil }
     }
     public func selectHost(_ summary: RemoteHarnessClientHost) async {
         await work {
@@ -160,15 +221,18 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
             guard let fingerprint = candidate.fingerprint else { throw RemoteHarnessClientFailure.cryptoUnavailable }
             if let pin = self.journal.pins[candidate.deviceID] {
                 guard pin.utf8.elementsEqual(fingerprint.utf8) else { throw RemoteHarnessClientFailure.pinChanged }
-                self.host = candidate; try await self.connect(workspaceID: nil, sessionID: nil); self.screen = .workspaces
-            } else { self.pendingHost = candidate; self.screen = .trust }
+                try self.checkpointHostSelection(candidate)
+                self.host = candidate; try self.setForegroundRecoveryAllowed(true); try await self.connect(workspaceID: nil, sessionID: nil); self.screen = .workspaces
+            } else { try self.setForegroundRecoveryAllowed(false); self.pendingHost = candidate; self.screen = .trust }
         }
     }
     public func trustHost() async {
         await work {
             guard let host = self.pendingHost, let fingerprint = host.fingerprint else { throw RemoteHarnessClientFailure.protocolMismatch }
-            var next = self.journal; next.pins[host.deviceID] = fingerprint; try self.commit(next)
+            var next = self.journal; next.pins[host.deviceID] = fingerprint
+            try self.checkpointHostSelection(host, journal: next)
             self.host = host; self.pendingHost = nil
+            try self.setForegroundRecoveryAllowed(true)
             try await self.connect(workspaceID: nil, sessionID: nil); self.screen = .workspaces
         }
     }
@@ -260,17 +324,24 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
         waitForSnapshot(binding)
     }
     public func send() async {
+        guard let submission = submission(for: composerDestination) else { return }
+        await send(submission)
+    }
+    public func send(_ submission: RemoteHarnessClientComposerSubmission) async {
+        guard submission.destination == composerDestination else { return }
         guard !isBotSessionReadOnly, botClassificationReady else { return }
         guard companionAvailable else { failure = .companionRequired; return }
-        guard canSend, let sessionID = journal.sessionID else { return }
-        let text = journal.draft, commandID = UUID().uuidString
+        guard canSend, !submission.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, submission.text.utf8.count <= 65_536 else { return }
+        let sessionID = submission.destination.sessionID, text = submission.text, commandID = UUID().uuidString
         await work {
-            guard !self.isBotSessionReadOnly, self.botClassificationReady else { return }
+            guard submission.destination == self.composerDestination, !self.isBotSessionReadOnly, self.botClassificationReady else { return }
             try self.requireCompanion()
             let timeZone = Self.promptTimeZoneIdentifier(self.clientTimeZone().identifier)
             _ = try await self.gateway.call(.prompt(commandID: commandID, sessionID: sessionID, text: text, clientTimeZone: timeZone), commandID: commandID)
             try self.checkOperation()
-            var next = self.journal; if next.draft == text { next.draft = "" }; try self.commit(next)
+            if submission.destination == self.composerDestination, self.draftEditID == submission.acceptedEditID {
+                var next = self.journal; next.draft = ""; try self.commit(next); self.draftEditID = UUID()
+            }
             let listed = try await self.sessionList(); try self.checkOperation()
             // An earlier list receipt cannot erase a validated live turn that
             // has already arrived on session/follow while prompt was pending.
@@ -315,9 +386,15 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
             try self.timeline.prependPage(page); var next = self.journal; next.history = self.timeline.records; try self.commit(next)
         }
     }
-    public func disconnect() { invalidateBotContext(); operationID = nil; workTask?.cancel(); workTask = nil; busy = false; snapshotDeadline?.cancel(); snapshotDeadline = nil; workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.connection); workspaceSnapshotWaiter = nil; gateway.disconnect(); screen = journal.origin == nil ? .setup : .disconnected; snapshotReady = false; companionAvailable = false; approvals = []; approvalCards = []; timeline.clearApprovalEvidence() }
-    public func showSetup() { disconnect(); screen = .setup; failure = nil }
-    public func showComputers() { disconnect(); screen = .computers }
+    /// Explicit user intent; transport/lifecycle teardown must not call this.
+    public func disconnect() {
+        foregroundRecoveryAllowed = false
+        do { try recoveryIntent.saveAutomaticRecoveryIntent(false) } catch { fail(error) }
+        tearDownConnection()
+    }
+    private func tearDownConnection() { foregroundRequestID = nil; foregroundTask?.cancel(); foregroundTask = nil; invalidateBotContext(); operationID = nil; workTask?.cancel(); workTask = nil; busy = false; snapshotDeadline?.cancel(); snapshotDeadline = nil; workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.connection); workspaceSnapshotWaiter = nil; gateway.disconnect(); screen = journal.origin == nil ? .setup : .disconnected; snapshotReady = false; companionAvailable = false; approvals = []; approvalCards = []; timeline.clearApprovalEvidence() }
+    public func showSetup() { tearDownConnection(); screen = .setup; failure = nil }
+    public func showComputers() { tearDownConnection(); screen = .computers }
     /// Read state has its own task and error surface so refresh cannot disable
     /// Stop, consume an approval, or replace a draft/history failure.
     public func refreshBots() async {
@@ -564,7 +641,31 @@ public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPri
             self.invalidateBotContext(); self.gateway.disconnect(); self.failure = .timeout; self.screen = .disconnected; self.snapshotReady = false
         }
     }
-    private func commit(_ next: RemoteHarnessClientJournal) throws { try storage.save(next); journal = next }
+    private func commit(_ next: RemoteHarnessClientJournal) throws {
+        let previousDestination = composerDestination
+        try storage.save(next); journal = next
+        if previousDestination != composerDestination { draftEditID = UUID() }
+    }
+    private var recoveryHost: RemoteHarnessClientRecoveryHost? {
+        if let target = journal.recoveryHost { return target }
+        guard let hostID = journal.profile?.hostID, let fingerprint = journal.profile?.hostFingerprint else { return nil }
+        return .init(hostID: hostID, fingerprint: fingerprint)
+    }
+    private func setForegroundRecoveryAllowed(_ allowed: Bool) throws {
+        try recoveryIntent.saveAutomaticRecoveryIntent(allowed); foregroundRecoveryAllowed = allowed
+    }
+    private func checkpointHostSelection(_ host: RemoteHarnessClientHost, journal supplied: RemoteHarnessClientJournal? = nil) throws {
+        guard let fingerprint = host.fingerprint else { throw RemoteHarnessClientFailure.cryptoUnavailable }
+        var next = supplied ?? journal
+        try preserveSession(&next)
+        next.recoveryHost = .init(hostID: host.deviceID, fingerprint: fingerprint)
+        next.profile = nil; next.sessionID = nil; next.botReadOnlyScope = nil; next.history = []; next.draft = ""
+        try commit(next)
+        // Retire the old session before the next credential await can allow an
+        // old stream callback to write history into the new discovery target.
+        gateway.disconnect(); snapshotReady = false; companionAvailable = false; running = false
+        approvals = []; approvalCards = []; try timeline.restore([]); selectedWorkspace = nil; sessions = []
+    }
     private func preserveSession(_ next: inout RemoteHarnessClientJournal) throws {
         guard let hostID = next.profile?.hostID, let workspaceID = next.profile?.workspaceID, let sessionID = next.sessionID else { return }
         let saved = RemoteHarnessClientSavedSession(hostID: hostID, workspaceID: workspaceID, sessionID: sessionID, draft: next.draft, history: next.history, botReadOnlyScope: next.botReadOnlyScope)

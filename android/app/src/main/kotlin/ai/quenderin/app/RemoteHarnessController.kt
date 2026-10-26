@@ -12,7 +12,6 @@ import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 
 /** Activity composition owns this facade; its dedicated executor owns BOTH Noise and business RPC.
  * UI state returns to Main. HTTP, crypto, persistence and every generation callback stay off Main. */
@@ -24,7 +23,17 @@ class RemoteHarnessController(context: Context) : AutoCloseable {
         .apply { removeOnCancelPolicy = true }
     private var client: RemoteHarnessClient? = null
     @Volatile private var closed = false
-    private val pendingDraft = AtomicReference<String?>()
+    var inputError by mutableStateOf<String?>(null); private set
+    private val inputs = RemoteHarnessClientInputQueue(
+        schedule = { action -> owner.execute(action) },
+        applyDraft = { scope, text -> client?.draft(text, scope) },
+    )
+    private val foregroundQueued = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val presentationStore = context.applicationContext.getSharedPreferences("remote-presentation", Context.MODE_PRIVATE)
+    var wrapCode by mutableStateOf(presentationStore.getBoolean("wrapCode", true)); private set
+    var largeText by mutableStateOf(presentationStore.getBoolean("largeText", false)); private set
+    fun wrapCode(value: Boolean) { wrapCode = value; presentationStore.edit().putBoolean("wrapCode", value).apply() }
+    fun largeText(value: Boolean) { largeText = value; presentationStore.edit().putBoolean("largeText", value).apply() }
     init {
         val application = context.applicationContext
         owner.execute {
@@ -38,47 +47,62 @@ class RemoteHarnessController(context: Context) : AutoCloseable {
                 AndroidRemoteHarnessState(application), RemoteHarnessOkHttpSockets({ action ->
                     if (!closed) owner.execute(action)
                 }, clock::monotonicMilliseconds), backend, clock,
-                { ByteArray(32).also(SecureRandom()::nextBytes) }, { UUID.randomUUID().toString() }).also { model ->
+                { ByteArray(32).also(SecureRandom()::nextBytes) }, { UUID.randomUUID().toString() },
+                AndroidRemoteHarnessRecoveryIntent(application)).also { model ->
                 model.onChange = { next -> main.post { if (!closed) state = next } }
                 val next = model.snapshot; main.post { if (!closed) state = next }
             }
         }
         owner.scheduleAtFixedRate({ if (!closed) client?.tick() }, 250, 250, TimeUnit.MILLISECONDS)
     }
-    private fun dispatch(action: (RemoteHarnessClient) -> Unit) {
-        if (!closed) owner.execute { client?.let(action) }
+    private fun dispatch(action: (RemoteHarnessClient) -> Unit): Boolean {
+        if (closed) return false
+        val accepted = inputs.command { client?.let(action) }
+        if (!accepted) inputError = "Too many queued actions. Wait for the computer connection before trying again."
+        return accepted
     }
     fun authorize(origin: String, email: String, password: CharArray) {
-        if (closed) { password.fill('\u0000'); return }
-        dispatch { it.authorize(origin, email, password) }
+        if (!dispatch { it.authorize(origin, email, password) }) password.fill('\u0000')
     }
-    fun reconnect() = dispatch(RemoteHarnessClient::resume)
-    fun hosts() = dispatch(RemoteHarnessClient::refreshHosts)
-    fun chooseHost(id: String) = dispatch { it.chooseHost(id) }
-    fun confirmHost(pin: String) = dispatch { it.confirmHost(pin) }
-    fun workspace(id: String) = dispatch { it.chooseWorkspace(id) }
-    fun session(id: String) = dispatch { it.chooseSession(id) }
-    fun refreshBots() = dispatch(RemoteHarnessClient::refreshBotRoster)
-    fun bot(id: String) = dispatch { it.chooseBot(id) }
-    fun createSession() = dispatch(RemoteHarnessClient::createSession)
-    fun selectModel(provider: String, model: String, effort: String?) = dispatch { it.selectModel(provider, model, effort) }
-    fun draft(value: String) {
-        if (closed) return
-        // One coalesced queued draft write bounds rapid IME callbacks without losing the latest text.
-        if (pendingDraft.getAndSet(value) == null) dispatch { model ->
-            pendingDraft.getAndSet(null)?.let(model::draft)
+    private fun navigate(action: (RemoteHarnessClient) -> Unit) { dispatch(action) }
+    fun foreground() {
+        if (closed || !foregroundQueued.compareAndSet(false, true)) return
+        if (!dispatch { model -> try { model.foreground() } finally { foregroundQueued.set(false) } }) foregroundQueued.set(false)
+    }
+    fun reconnect() = navigate(RemoteHarnessClient::resume)
+    fun hosts() = navigate(RemoteHarnessClient::refreshHosts)
+    fun chooseHost(id: String) = navigate { it.chooseHost(id) }
+    fun confirmHost(pin: String) = navigate { it.confirmHost(pin) }
+    fun workspace(id: String) = navigate { it.chooseWorkspace(id) }
+    fun session(id: String) = navigate { it.chooseSession(id) }
+    fun refreshBots() { dispatch(RemoteHarnessClient::refreshBotRoster) }
+    fun bot(id: String) = navigate { it.chooseBot(id) }
+    fun createSession() = navigate(RemoteHarnessClient::createSession)
+    fun selectModel(provider: String, model: String, effort: String?) { dispatch { it.selectModel(provider, model, effort) } }
+    fun draft(value: String, scope: RemoteHarnessClientDraftScope?) {
+        if (closed || scope != state.draftScope) return
+        val accepted = inputs.draft(scope, value)
+        inputError = if (accepted) null else "This draft is not saved yet. Keep the text here and wait before trying again."
+    }
+    fun send(scope: RemoteHarnessClientDraftScope?, text: String) {
+        if (closed || scope != state.draftScope) return
+        // Reaccept the visible text before sealing Send; rejected drafts can never send an older value.
+        if (!inputs.draft(scope, text)) {
+            inputError = "This draft is not saved yet. Keep the text here and wait before trying again."
+            return
         }
+        inputError = null
+        dispatch { it.send(scope) }
     }
-    fun send() = dispatch { model -> pendingDraft.getAndSet(null)?.let(model::draft); model.send() }
-    fun stop() = dispatch(RemoteHarnessClient::stop)
-    fun decideApproval(eventID: String, allowedOnce: Boolean) = dispatch { it.decideApproval(eventID, allowedOnce) }
-    fun earlierHistory() = dispatch(RemoteHarnessClient::earlierHistory)
-    fun disconnect() = dispatch(RemoteHarnessClient::disconnect)
-    fun revokeDevice() = dispatch(RemoteHarnessClient::revokeDevice)
+    fun stop() { dispatch(RemoteHarnessClient::stop) }
+    fun decideApproval(eventID: String, allowedOnce: Boolean) { dispatch { it.decideApproval(eventID, allowedOnce) } }
+    fun earlierHistory() { dispatch(RemoteHarnessClient::earlierHistory) }
+    fun disconnect() = navigate(RemoteHarnessClient::disconnect)
+    fun revokeDevice() { dispatch(RemoteHarnessClient::revokeDevice) }
     override fun close() {
         if (closed) return
         closed = true
-        owner.execute { client?.let { model -> pendingDraft.getAndSet(null)?.let(model::draft); model.disconnect() }; client = null }
+        owner.execute { client?.close(); client = null }
         owner.shutdown()
     }
 }

@@ -105,6 +105,25 @@ data class RemoteHarnessClientBotReadOnlyScope(
     }
     override fun toString() = "RemoteHarnessClientBotReadOnlyScope(redacted)"
 }
+/** A composer belongs to one pinned Host and destination; null session means a new session. */
+data class RemoteHarnessClientDraftScope(
+    val origin: String, val hostDeviceID: String, val hostFingerprint: String,
+    val workspaceID: String, val sessionID: String?,
+) {
+    init {
+        rhCheck(origin == ConnectionOrigins.canonicalize(origin), "client-storage")
+        rhID(hostDeviceID); rhID(workspaceID); sessionID?.let(::rhID)
+        rhCheck(hostFingerprint.matches(Regex("^[a-f0-9]{64}$")), "client-storage")
+    }
+    override fun toString() = "RemoteHarnessClientDraftScope(redacted)"
+}
+data class RemoteHarnessClientDraft(val scope: RemoteHarnessClientDraftScope, val text: String) {
+    init {
+        rhUnicode(text)
+        rhCheck(text.isNotEmpty() && text.toByteArray(Charsets.UTF_8).size <= RemoteHarnessBounds.TEXT_BYTES, "client-storage")
+    }
+    override fun toString() = "RemoteHarnessClientDraft(redacted)"
+}
 enum class RemoteHarnessClientPhase { SETUP, AUTHORIZING, HOSTS, CONFIRM_PIN, CONNECTING, WORKSPACES, SESSIONS, SESSION, DISCONNECTED, BLOCKED }
 
 data class RemoteHarnessClientSnapshot(
@@ -116,7 +135,8 @@ data class RemoteHarnessClientSnapshot(
     val botSessionReadOnly: Boolean = false,
     val timeline: List<RemoteHarnessClientTimelineItem> = emptyList(), val models: List<RemoteHarnessClientModel> = emptyList(),
     val provider: String? = null, val model: String? = null, val effort: String? = null,
-    val draft: String = "", val status: RemoteSessionStatus = RemoteSessionStatus.DISCONNECTED,
+    val draft: String = "", val draftScope: RemoteHarnessClientDraftScope? = null,
+    val unsavedScopedDraft: RemoteHarnessClientDraft? = null, val status: RemoteSessionStatus = RemoteSessionStatus.DISCONNECTED,
     val busy: Boolean = false, val error: String? = null, val historyReady: Boolean = false,
     val hasMore: Boolean = false, val approvalSupported: Boolean = false,
     val approvals: List<RemoteHarnessClientApproval> = emptyList(),
@@ -139,9 +159,13 @@ class RemoteHarnessClientSavedState(
     val provider: String? = null, val model: String? = null, val effort: String? = null,
     selectedBotReadOnly: Boolean = false,
     botReadOnlyScopes: List<RemoteHarnessClientBotReadOnlyScope>? = null,
+    drafts: List<RemoteHarnessClientDraft>? = null,
+    // Legacy journal hint only. The controller's independent intent store is authoritative.
+    val foregroundReconnectAllowed: Boolean = true,
 ) {
     val botReadOnlyScopes: List<RemoteHarnessClientBotReadOnlyScope>
     val botSessionReadOnly: Boolean
+    val drafts: List<RemoteHarnessClientDraft>
     init {
         rhCheck(origin == ConnectionOrigins.canonicalize(origin), "client-storage"); rhID(deviceID)
         if (hostID != null) { rhID(hostID); rhCheck(hostName != null && hostFingerprint?.matches(Regex("^[a-f0-9]{64}$")) == true, "client-storage") }
@@ -161,13 +185,33 @@ class RemoteHarnessClientSavedState(
         rhCheck(draft.toByteArray(Charsets.UTF_8).size <= RemoteHarnessBounds.TEXT_BYTES && timeline.size <= 512 &&
             commands.size <= 512 && commands.distinct().size == commands.size, "client-storage")
         commands.forEach(::rhID)
+        rhUnicode(draft)
+        val draftScope = if (hostID != null && hostFingerprint != null && workspaceID != null)
+            RemoteHarnessClientDraftScope(origin, hostID, hostFingerprint, workspaceID, sessionID) else null
+        // Upgrade the original selected-draft format without guessing another destination.
+        val scoped = drafts ?: if (draft.isNotEmpty() && draftScope != null) listOf(RemoteHarnessClientDraft(draftScope, draft)) else emptyList()
+        rhCheck(scoped.size <= MAX_DRAFTS && scoped.map { it.scope }.distinct().size == scoped.size &&
+            scoped.all { it.scope.origin == origin } && scoped.sumOf { it.text.toByteArray(Charsets.UTF_8).size } <= MAX_DRAFT_BYTES, "client-storage")
+        if (drafts != null) rhCheck(draft == (scoped.singleOrNull { it.scope == draftScope }?.text ?: ""), "client-storage")
+        this.drafts = java.util.Collections.unmodifiableList(ArrayList(scoped))
     }
     override fun toString() = "RemoteHarnessClientSavedState(redacted)"
-    companion object { const val MAX_BOT_READ_ONLY_SCOPES = 128 }
+    companion object {
+        const val MAX_BOT_READ_ONLY_SCOPES = 128
+        const val MAX_DRAFTS = 32
+        const val MAX_DRAFT_BYTES = 1_048_576
+    }
 }
 interface RemoteHarnessClientStateStore {
     fun read(): RemoteHarnessClientSavedState?
     fun write(state: RemoteHarnessClientSavedState)
+}
+
+/** User recovery intent must remain writable when the transcript/draft journal is full.
+ * Missing state returns false; failed reads/writes throw rather than claiming persistence. */
+interface RemoteHarnessClientRecoveryIntentStore {
+    fun read(): Boolean
+    fun write(allowed: Boolean)
 }
 
 /** Versioned explicit codecs are shared with the JVM controller fixtures. */
@@ -196,6 +240,12 @@ object RemoteHarnessClientRecords {
             "origin" to s(record.origin), "deviceId" to s(record.deviceID), "hostId" to s(record.hostID),
             "hostName" to s(record.hostName), "pin" to s(record.hostFingerprint), "workspaceId" to s(record.workspaceID),
             "workspaceTitle" to s(record.workspaceTitle), "sessionId" to s(record.sessionID), "draft" to s(record.draft),
+            "drafts" to RemoteHarnessJSON.ArrayValue(record.drafts.map { draft ->
+                RemoteHarnessJSON.obj("origin" to s(draft.scope.origin), "hostDeviceId" to s(draft.scope.hostDeviceID),
+                    "hostFingerprint" to s(draft.scope.hostFingerprint), "workspaceId" to s(draft.scope.workspaceID),
+                    "sessionId" to (s(draft.scope.sessionID) ?: RemoteHarnessJSON.NullValue), "text" to s(draft.text))
+            }),
+            "foregroundReconnectAllowed" to RemoteHarnessJSON.BooleanValue(record.foregroundReconnectAllowed),
             "botSessionReadOnly" to RemoteHarnessJSON.BooleanValue(record.botSessionReadOnly),
             "botReadOnlyScopes" to RemoteHarnessJSON.ArrayValue(record.botReadOnlyScopes.map { scope ->
                 RemoteHarnessJSON.obj("origin" to s(scope.origin), "hostDeviceId" to s(scope.hostDeviceID),
@@ -221,10 +271,21 @@ object RemoteHarnessClientRecords {
                     scope.rhString("hostFingerprint"), scope.rhString("workspaceId"), scope.rhString("sessionId"))
             }
         }
+        val drafts = p["drafts"]?.let { value ->
+            val rows = value as? RemoteHarnessJSON.ArrayValue ?: throw RemoteHarnessException("client-storage")
+            rhCheck(rows.values.size <= RemoteHarnessClientSavedState.MAX_DRAFTS, "client-storage")
+            rows.values.map { row ->
+                val fields = row.objectValue()
+                rhCheck(fields.keys == setOf("origin", "hostDeviceId", "hostFingerprint", "workspaceId", "sessionId", "text"), "client-storage")
+                RemoteHarnessClientDraft(RemoteHarnessClientDraftScope(fields.rhString("origin"), fields.rhString("hostDeviceId"),
+                    fields.rhString("hostFingerprint"), fields.rhString("workspaceId"), fields.s("sessionId")), fields.rhString("text"))
+            }
+        }
         rhCheck(timeline.size <= 512 && commands.size <= 512 && p.rhString("draft").toByteArray().size <= RemoteHarnessBounds.TEXT_BYTES, "client-storage")
         return RemoteHarnessClientSavedState(p.rhString("origin"), p.rhString("deviceId"), p.s("hostId"), p.s("hostName"), p.s("pin"),
             p.s("workspaceId"), p.rhString("workspaceTitle"), p.s("sessionId"), p.rhString("draft"), timeline, commands,
-            p.s("provider"), p.s("model"), p.s("effort"), p["botSessionReadOnly"]?.booleanValue() ?: false, scopes)
+            p.s("provider"), p.s("model"), p.s("effort"), p["botSessionReadOnly"]?.booleanValue() ?: false, scopes, drafts,
+            p["foregroundReconnectAllowed"]?.booleanValue() ?: true)
     }
     fun fingerprint(key: ByteArray): String {
         rhCheck(key.size == 32, "client-host-key")

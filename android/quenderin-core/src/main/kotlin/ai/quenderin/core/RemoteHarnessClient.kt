@@ -16,6 +16,7 @@ class RemoteHarnessClient(
     private val clock: RemoteHarnessClock,
     private val randomSeed: () -> ByteArray,
     private val identifier: () -> String,
+    private val recoveryIntent: RemoteHarnessClientRecoveryIntentStore,
 ) {
     private val ownerThread = Thread.currentThread()
     private var storageFailureMessage: String? = null
@@ -23,6 +24,10 @@ class RemoteHarnessClient(
     var snapshot = RemoteHarnessClientSnapshot(); private set
     private var record: RemoteHarnessClientCredentials? = null
     private var saved: RemoteHarnessClientSavedState? = null
+    private val drafts = linkedMapOf<RemoteHarnessClientDraftScope, String>()
+    private var lastForegroundRecovery = Long.MIN_VALUE
+    private var foregroundRecoveryAllowed = false
+    private var draftRevision = 0L
     private var trustedHost: RemoteHarnessClientHost? = null
     private var socket: RemoteHarnessClientSocket? = null
     private var link: RemoteHarnessSecureLink? = null
@@ -56,10 +61,13 @@ class RemoteHarnessClient(
     private val botClassificationMessage = "Refresh Bots to verify this session before sending tasks or changing its model."
 
     init {
+        try { foregroundRecoveryAllowed = recoveryIntent.read() }
+        catch (_: Exception) { block("The automatic reconnect preference could not be read. Repair device storage before reconnecting.") }
         try {
             record = credentials.read(); saved = persistence.read()
             val r = record; val s = saved
             rhCheck(s == null || r != null && s.origin == r.origin && s.deviceID == r.deviceID, "client-storage")
+            s?.drafts?.forEach { drafts[it.scope] = it.text }
             knownCommands.addAll(s?.commands ?: emptyList())
             botReadOnlyScopes.addAll(s?.botReadOnlyScopes ?: emptyList())
             update(snapshot.copy(origin = r?.origin ?: "", deviceID = r?.deviceID ?: "",
@@ -77,7 +85,7 @@ class RemoteHarnessClient(
     override fun toString() = "RemoteHarnessClient(redacted)"
     private fun owner() = rhCheck(Thread.currentThread() === ownerThread, "client-owner")
     private fun update(value: RemoteHarnessClientSnapshot) {
-        val classified = value.copy(botSessionClassificationPending = botClassificationPending(value))
+        val classified = value.copy(botSessionClassificationPending = botClassificationPending(value), draftScope = draftScope(value))
         snapshot = storageFailureMessage?.let { classified.copy(phase = RemoteHarnessClientPhase.BLOCKED, busy = false, historyReady = false, error = it) } ?: classified
         onChange?.invoke(snapshot)
     }
@@ -85,9 +93,9 @@ class RemoteHarnessClient(
         if (storageFailure) storageFailureMessage = message
         update(snapshot.copy(phase = RemoteHarnessClientPhase.BLOCKED, busy = false, historyReady = false, error = message))
     }
-    private inline fun action(body: () -> Unit) {
+    private inline fun action(allowBusy: Boolean = false, allowBlocked: Boolean = false, body: () -> Unit) {
         owner()
-        if (snapshot.busy || storageFailureMessage != null) return
+        if ((!allowBusy && snapshot.busy) || (!allowBlocked && storageFailureMessage != null)) return
         try { body() } catch (e: RemoteHarnessException) { fail(e.code) }
         catch (_: Exception) { fail("client-connection") }
     }
@@ -107,13 +115,14 @@ class RemoteHarnessClient(
             "client-bot-read-only" -> "This bot's session is view-only. Run tasks and change its model on your computer."
             "client-bot-classification" -> botClassificationMessage
             "client-bot-safety-limit" -> "This device's Bot safety record is full. Existing restrictions were retained."
+            "client-recovery-intent" -> "The automatic reconnect preference could not be saved. This connection stays closed; repair device storage before relying on this preference after restart."
             "approval-action-unverified" -> "The computer's full tool action is not verified yet. Wait for its authoritative call and arguments, or stop the task."
             else -> "The computer connection failed. Check your server and computer, then reconnect explicitly."
         }
         update(snapshot.copy(busy = false, error = message,
             phase = if (code == "client-reauthorize") RemoteHarnessClientPhase.DISCONNECTED else snapshot.phase,
             historyReady = if (code == "client-history") false else snapshot.historyReady))
-        if (code == "client-storage") block(message)
+        if (code == "client-storage" || code == "client-recovery-intent") block(message)
     }
 
     fun authorize(origin: String, email: String, password: CharArray) {
@@ -186,10 +195,23 @@ class RemoteHarnessClient(
         return record ?: throw RemoteHarnessException("client-storage")
     }
     fun resume() = action {
+        writeRecoveryIntent(true)
+        persist()
         rhCheck(crypto.isAvailable, "client-crypto")
         listHosts()
         val hostID = saved?.hostID
         if (hostID != null) snapshot.hosts.firstOrNull { it.deviceID == hostID }?.let { chooseHostInternal(it) }
+    }
+    /** A foreground transition may recover only the already-pinned disconnected destination.
+     * Never tears down a healthy stream, chooses another Host, or replays a mutation. */
+    fun foreground() {
+        owner()
+        if (!foregroundRecoveryAllowed || storageFailureMessage != null || snapshot.busy || snapshot.phase != RemoteHarnessClientPhase.DISCONNECTED ||
+            saved?.hostID == null || saved?.hostFingerprint == null || record?.phase != RemoteHarnessCredentialPhase.READY) return
+        val now = clock.monotonicMilliseconds()
+        if (lastForegroundRecovery != Long.MIN_VALUE && now - lastForegroundRecovery < 5_000) return
+        lastForegroundRecovery = now
+        resume()
     }
     fun refreshHosts() = action { listHosts() }
     private fun listHosts() {
@@ -210,34 +232,81 @@ class RemoteHarnessClient(
             host.fingerprint == RemoteHarnessClientRecords.fingerprint(host.publicKey), "client-host-key")
         if (saved?.hostID == host.deviceID && saved?.hostFingerprint != null) {
             rhCheck(saved?.hostFingerprint == host.fingerprint, "client-host-key")
-            trustedHost = host; update(snapshot.copy(host = host, pendingHost = null)); connect()
+            trustedHost = host; update(snapshot.copy(host = host, pendingHost = null))
+            writeRecoveryIntent(true); persist(); connect()
         } else update(snapshot.copy(phase = RemoteHarnessClientPhase.CONFIRM_PIN, pendingHost = host, error = null))
     }
     fun confirmHost(fullFingerprint: String) = action {
         val host = snapshot.pendingHost ?: throw RemoteHarnessException("client-host-key")
         rhCheck(fullFingerprint == host.fingerprint, "client-host-key")
+        persist()
         clearBotState()
         trustedHost = host
+        writeRecoveryIntent(true)
         update(snapshot.copy(host = host, pendingHost = null, workspaceID = null, workspaceTitle = "", sessionID = null,
-            botSessionReadOnly = false, timeline = emptyList(), historyReady = false, models = emptyList(), provider = null, model = null, effort = null))
+            botSessionReadOnly = false, draft = "", timeline = emptyList(), historyReady = false, models = emptyList(), provider = null, model = null, effort = null))
         persist(); connect()
     }
-    private fun persist() {
+    private fun draftScope(value: RemoteHarnessClientSnapshot = snapshot): RemoteHarnessClientDraftScope? {
+        val workspace = value.workspaceID ?: return null
+        val hostID = value.host?.deviceID ?: trustedHost?.deviceID ?: saved?.hostID ?: return null
+        val pin = value.host?.fingerprint ?: trustedHost?.fingerprint ?: saved?.hostFingerprint ?: return null
+        if (value.origin.isEmpty()) return null
+        return RemoteHarnessClientDraftScope(value.origin, hostID, pin, workspace, value.sessionID)
+    }
+    private fun draftFor(workspaceID: String?, sessionID: String?): String =
+        draftScope(snapshot.copy(workspaceID = workspaceID, sessionID = sessionID))?.let { drafts[it] } ?: ""
+    private fun writeRecoveryIntent(allowed: Boolean) {
+        // Do not grant automatic recovery until the independent preference is verified durable.
+        foregroundRecoveryAllowed = false
+        try {
+            recoveryIntent.write(allowed)
+            rhCheck(recoveryIntent.read() == allowed, "client-recovery-intent")
+            foregroundRecoveryAllowed = allowed
+        } catch (_: Exception) { disconnectInternal(); throw RemoteHarnessException("client-recovery-intent") }
+    }
+    private fun persist(draftOverride: Pair<RemoteHarnessClientDraftScope, String>? = null) {
         val r = record ?: return
         val host = trustedHost
+        val nextDrafts = LinkedHashMap(drafts)
+        draftScope()?.let { scope -> if (snapshot.draft.isEmpty()) nextDrafts.remove(scope) else nextDrafts[scope] = snapshot.draft }
+        draftOverride?.let { (scope, text) -> if (text.isEmpty()) nextDrafts.remove(scope) else nextDrafts[scope] = text }
         val next = RemoteHarnessClientSavedState(r.origin, r.deviceID, host?.deviceID ?: saved?.hostID,
             host?.name ?: saved?.hostName, host?.fingerprint ?: saved?.hostFingerprint, snapshot.workspaceID,
             snapshot.workspaceTitle, snapshot.sessionID, snapshot.draft, snapshot.timeline, knownCommands.toList(),
-            snapshot.provider, snapshot.model, snapshot.effort, snapshot.botSessionReadOnly, botReadOnlyScopes.toList())
+            snapshot.provider, snapshot.model, snapshot.effort, snapshot.botSessionReadOnly, botReadOnlyScopes.toList(),
+            nextDrafts.map { RemoteHarnessClientDraft(it.key, it.value) }, foregroundRecoveryAllowed)
         try {
             persistence.write(next)
             val checked = persistence.read() ?: throw RemoteHarnessException("client-storage")
             rhCheck(RemoteHarnessClientRecords.state(next) == RemoteHarnessClientRecords.state(checked), "client-storage")
             saved = checked
+            drafts.clear(); checked.drafts.forEach { drafts[it.scope] = it.text }
         } catch (_: Exception) { throw RemoteHarnessException("client-storage") }
     }
-    fun draft(value: String) = action {
+    fun draft(value: String, expectedScope: RemoteHarnessClientDraftScope? = snapshot.draftScope) = action(allowBusy = true, allowBlocked = true) {
         rhCheck(value.toByteArray(Charsets.UTF_8).size <= RemoteHarnessBounds.TEXT_BYTES, "client-bounds")
+        rhUnicode(value)
+        if (storageFailureMessage != null) {
+            // Already-accepted queued edits remain recoverable in memory after a storage failure.
+            // The blocked owner performs no further storage or network work.
+            if (expectedScope == snapshot.draftScope) { draftRevision++; update(snapshot.copy(draft = value)) }
+            else if (expectedScope != null && expectedScope.origin == record?.origin)
+                update(snapshot.copy(unsavedScopedDraft = value.takeIf { it.isNotEmpty() }?.let { RemoteHarnessClientDraft(expectedScope, it) }))
+            return@action
+        }
+        if (expectedScope != snapshot.draftScope) {
+            // Accepted IME callbacks may outlive navigation. Save to their original local
+            // destination without changing the visible composer or authorizing any request.
+            if (expectedScope == null || expectedScope.origin != record?.origin) return@action
+            try { persist(expectedScope to value) }
+            catch (error: Exception) {
+                update(snapshot.copy(unsavedScopedDraft = value.takeIf { it.isNotEmpty() }?.let { RemoteHarnessClientDraft(expectedScope, it) }))
+                throw error
+            }
+            return@action
+        }
+        draftRevision++
         update(snapshot.copy(draft = value)); persist()
     }
 
@@ -444,8 +513,10 @@ class RemoteHarnessClient(
     }
     fun chooseWorkspace(id: String) = action {
         val workspace = snapshot.workspaces.singleOrNull { it.id == id } ?: throw RemoteHarnessException("client-history")
+        writeRecoveryIntent(true)
+        persist()
         clearBotState()
-        update(snapshot.copy(workspaceID = workspace.id, workspaceTitle = workspace.title, sessionID = null, timeline = emptyList(),
+        update(snapshot.copy(draft = draftFor(workspace.id, null), workspaceID = workspace.id, workspaceTitle = workspace.title, sessionID = null, timeline = emptyList(),
             botSessionReadOnly = false, sessions = emptyList(), historyReady = false)); persist(); connect()
     }
     fun chooseSession(id: String) = action {
@@ -568,8 +639,10 @@ class RemoteHarnessClient(
         action { openSession(sessionID, botReadOnly = true) }
     }
     private fun openSession(id: String, botReadOnly: Boolean = false) {
+        writeRecoveryIntent(true)
+        persist()
         if (botReadOnly) rememberBotScopes(listOf(botScope(id) ?: throw RemoteHarnessException("client-history")))
-        update(snapshot.copy(sessionID = id, botSessionReadOnly = knownBotSession(id), timeline = emptyList(), historyReady = false)); persist(); connect()
+        update(snapshot.copy(draft = draftFor(snapshot.workspaceID, id), sessionID = id, botSessionReadOnly = knownBotSession(id), timeline = emptyList(), historyReady = false)); persist(); connect()
     }
     fun createSession() = action {
         requireCompanion()
@@ -620,16 +693,17 @@ class RemoteHarnessClient(
                 effort = actual["reasoningEffort"]?.stringValue())); persist()
         } }
     }
-    fun send() = action {
+    fun send(expectedScope: RemoteHarnessClientDraftScope? = snapshot.draftScope) = action {
+        if (expectedScope != snapshot.draftScope) return@action
         requireSessionMutation()
         requireCompanion()
         rhCheck(snapshot.historyReady && snapshot.draft.isNotBlank() && snapshot.status != RemoteSessionStatus.OUTCOME_UNKNOWN, "client-history")
         val session = snapshot.sessionID ?: throw RemoteHarnessException("client-history")
-        val text = snapshot.draft; val id = identifier(); val g = generation
+        val text = snapshot.draft; val id = identifier(); val g = generation; val sentRevision = draftRevision
         update(snapshot.copy(busy = true, error = null))
         coordinator!!.call(RemoteHarnessOperations.sessionPrompt(session, id, text, "UTC")) { outcome -> if (g == generation) guardedSocket {
             requireSuccess(outcome)
-            update(snapshot.copy(busy = false, draft = if (snapshot.draft == text) "" else snapshot.draft,
+            update(snapshot.copy(busy = false, draft = if (draftRevision == sentRevision && snapshot.draft == text) "" else snapshot.draft,
                 status = snapshot.status))
             append(RemoteHarnessClientTimelineItem("receipt-$id", "status", "Task received by computer.")); persist()
         } }
@@ -855,7 +929,15 @@ class RemoteHarnessClient(
             }
         }
     }
-    fun disconnect() { owner(); disconnectInternal(); try { persist() } catch (_: Exception) { fail("client-storage") } }
+    fun disconnect() {
+        owner(); foregroundRecoveryAllowed = false; disconnectInternal()
+        try { writeRecoveryIntent(false) }
+        catch (_: Exception) { fail("client-recovery-intent"); return }
+        // Journal exhaustion/failure cannot undo the separately committed user intent.
+        try { persist() } catch (_: Exception) { fail("client-storage") }
+    }
+    /** Lifecycle teardown preserves the user's durable reconnect choice. */
+    fun close() { owner(); disconnectInternal(); try { persist() } catch (_: Exception) { fail("client-storage") } }
     private fun disconnectInternal() {
         clearBotState()
         val hadConnection = stage != "idle"
