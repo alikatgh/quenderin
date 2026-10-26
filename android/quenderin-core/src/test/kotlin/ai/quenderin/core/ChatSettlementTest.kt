@@ -9,7 +9,8 @@ import kotlin.test.assertTrue
  * Chat-settlement parity with iOS `ChatModel`:
  *
  * - the transcript settles from the STREAMED pieces; the engine return is only the
- *   non-streaming fallback (an engine that emits A and returns B settles A);
+ *   zero-callback (non-streaming) fallback — an engine that emits A and returns B settles A,
+ *   and an empty or whitespace emission settles blank (the honest notice), never B;
  * - the degeneration checkpoint runs BEFORE appending, so the piece that crosses it is
  *   excluded exactly as iOS's pre-append check + `break` drops the current token;
  * - after the trip every further piece is dropped at the callback's first line, so an
@@ -54,7 +55,26 @@ class ChatSettlementTest {
         assertEquals("streamed answer", chat.messages.last().text)
     }
 
+    @Test fun emptyEmissionWinsOverEngineReturn() {
+        // One onToken("") is still an emission: the return must NOT replace it. The blank settled
+        // stream gives the honest empty-reply notice, exactly as iOS.
+        val chat = ChatModel(ScriptedEngine(listOf(""), reply = "RETURNED TEXT"))
+        val result = chat.send("question")
+
+        assertEquals(ChatUserFacing.emptyReply(java.util.Locale.getDefault().language), result)
+        assertEquals(result, chat.messages.last().text)
+    }
+
+    @Test fun whitespaceEmissionWinsOverEngineReturn() {
+        val chat = ChatModel(ScriptedEngine(listOf("   "), reply = "RETURNED TEXT"))
+        val result = chat.send("question")
+
+        assertEquals(ChatUserFacing.emptyReply(java.util.Locale.getDefault().language), result)
+        assertEquals(result, chat.messages.last().text)
+    }
+
     @Test fun noEmissionFallsBackToEngineReturn() {
+        // Only a ZERO-callback engine may use the return value as its text.
         val chat = ChatModel(ScriptedEngine(emptyList(), reply = "fallback answer"))
         val result = chat.send("question")
 

@@ -240,6 +240,12 @@ class ChatModel(
             val sb = StringBuilder()
             var tokenCount = 0
             var hitDegeneration = false
+            // Whether the engine invoked onToken AT ALL. The return value is the fallback only for a
+            // ZERO-callback engine: an empty ("") or whitespace piece still means the engine streamed,
+            // so its text settles (and a blank stream settles to the empty-reply notice, exactly as
+            // iOS, where the stream is the only channel). Testing `sb.isNotEmpty()` instead would let
+            // a non-streaming return overwrite an empty emission — the reviewed P2.
+            var sawEmission = false
             // Pace transcript writes to display frames (~30 Hz): every write copies the list, re-parses
             // the reply's Markdown and hops to the main thread — at phone token rates that, not the
             // engine, is the jank. First piece always lands; the settle write below always lands.
@@ -247,6 +253,7 @@ class ChatModel(
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
             // blank for the whole (multi-second) generation. Mirrors iOS `ChatModel`.
             val reply = engine.completeChatOwned(systemPrompt, history, ::ownsGeneration) { piece ->
+                sawEmission = true               // count the callback, not the text
                 // A degeneration trip ENDS this turn: an engine that ignores requestCancel keeps
                 // delivering pieces, and every one must be dropped here (bounded per-piece work, no
                 // appends, no extra checks) — the streamed prefix below is the settled answer.
@@ -268,12 +275,12 @@ class ChatModel(
                 if (flushGate.shouldFlush()) writeAssistant(myGen, placeholderIndex, sb.toString())
             }
             // Settle on what the user actually saw: the streamed pieces. The engine's return value is
-            // only the NON-STREAMING fallback (no onToken fired); otherwise a normalized/trimmed return
-            // must never replace the transcript (emitted A + return B settles A, as iOS does by
+            // only the NON-STREAMING fallback (the engine never invoked onToken), never a replacement
+            // for an empty/blank emission (emitted A + return B settles A, as iOS does by
             // construction). Duplicate-paragraph runs are collapsed here either way.
             val streamed = sb.toString()
             val settled = DegenerationGuard.collapseRepeatedParagraphs(
-                if (streamed.isNotEmpty()) streamed else reply,
+                if (sawEmission) streamed else reply,
             )
             // Q-588: never leave a silently EMPTY assistant bubble — an engine that produced zero tokens gets
             // an honest notice, mirroring iOS ChatModel. Only when this generation is still active: a user
