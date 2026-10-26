@@ -133,7 +133,7 @@ public final class ChatModel: ObservableObject {
     /// finished answer: it stays in the transcript and is persistable even while the stream unwinds.
     public var didRequestStop: Bool { stopRequested }
 
-    /// Monotonic count of actual transcript TEXT changes (in-place edits, not appends). The
+    /// Monotonic count of transcript edits and removals (not appends). The
     /// coordinator saves again when a settle changed the text without changing the message count.
     public private(set) var transcriptRevision: UInt64 = 0
 
@@ -177,7 +177,10 @@ public final class ChatModel: ObservableObject {
         engine.requestCancel()
         guard let pending = inFlightAssistantID else { return }
         inFlightAssistantID = nil
-        messages.removeAll { $0.id == pending }
+        if let index = messages.firstIndex(where: { $0.id == pending }) {
+            messages.remove(at: index)
+            transcriptRevision &+= 1   // replace an interim durable Stop partial on navigation
+        }
     }
 
     /// Extend the previous reply after a token-cap stop. Sends a short continue cue so the model

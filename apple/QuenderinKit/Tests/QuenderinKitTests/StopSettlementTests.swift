@@ -1,5 +1,5 @@
 import XCTest
-import Combine
+import os
 @testable import QuenderinKit
 
 /// Explicit Stop retains transcript ownership until the send settles the text accepted BEFORE the
@@ -13,15 +13,22 @@ final class StopSettlementTests: XCTestCase {
     private let paragraph =
         "Quender was a forest elf, a member of the slender and agile forest elves of the deep wood."
 
-    /// Yields the scripted pieces once, then parks until `openGate()`; later calls answer directly.
+    /// Pull-based stream: parking proves ChatModel consumed every pre-Stop piece, including its
+    /// unflushed tail. A gate can then deliver one deliberately late piece without using sleeps.
     private actor StopEngine: InferenceEngine {
         private let firstPieces: [String]
         private let laterReply: String
         private var loaded: String? = "stop-engine"
         private(set) var calls = 0
-        private(set) var cancellations = 0
+        // Same synchronous lock pattern as CancelTrackingEngine: protocol cancellation cannot hop actors.
+        private nonisolated let cancelState = OSAllocatedUnfairLock(initialState: 0)
+        nonisolated var cancellations: Int { cancelState.withLock { $0 } }
+        private var nextIndex = 0
+        private var parked = false
+        private var parkedWaiters: [CheckedContinuation<Void, Never>] = []
         private var release: CheckedContinuation<Void, Never>?
         private var releaseReady = false
+        private var latePiece: String?
 
         init(firstPieces: [String], laterReply: String = "next reply") {
             self.firstPieces = firstPieces
@@ -31,42 +38,49 @@ final class StopSettlementTests: XCTestCase {
         func loadedModelID() async -> String? { loaded }
         func load(model: ModelEntry, at fileURL: URL) async throws { loaded = model.id }
         func unload() async { loaded = nil }
-        func requestCancel() { cancellations += 1 }
+        nonisolated func requestCancel() { cancelState.withLock { $0 += 1 } }
 
-        func openGate() {
-            if let release {
-                self.release = nil
-                release.resume()
-            } else {
-                releaseReady = true
-            }
+        func waitUntilParked() async {
+            if parked { return }
+            await withCheckedContinuation { parkedWaiters.append($0) }
         }
 
-        private func waitForGate() async {
-            if releaseReady { return }
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                release = continuation
+        func openGate(latePiece: String? = nil) {
+            self.latePiece = latePiece
+            releaseReady = true
+            release?.resume()
+            release = nil
+        }
+
+        private func nextPiece() async -> String? {
+            if nextIndex < firstPieces.count {
+                defer { nextIndex += 1 }
+                return firstPieces[nextIndex]
             }
+            parked = true
+            let waiters = parkedWaiters
+            parkedWaiters.removeAll()
+            for waiter in waiters { waiter.resume() }
+            if !releaseReady {
+                await withCheckedContinuation { release = $0 }
+            }
+            defer { latePiece = nil }
+            return latePiece
         }
 
         func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
             guard loaded != nil else { throw InferenceError.modelNotLoaded }
             calls += 1
-            let call = calls
-            let pieces = firstPieces
-            let reply = laterReply
-            return AsyncThrowingStream { continuation in
-                if call > 1 {
+            if calls > 1 {
+                let reply = laterReply
+                return AsyncThrowingStream { continuation in
                     continuation.yield(reply)
-                    continuation.finish()
-                    return
-                }
-                for piece in pieces { continuation.yield(piece) }
-                Task { [weak self] in
-                    await self?.waitForGate()
                     continuation.finish()
                 }
             }
+            return AsyncThrowingStream(unfolding: { [weak self] in
+                await self?.nextPiece()
+            })
         }
     }
 
@@ -88,32 +102,19 @@ final class StopSettlementTests: XCTestCase {
         return engine
     }
 
-    /// Wait for a specific last-message text without polling (bounded by XCTest's timeout).
-    private func waitForMessage(_ chat: ChatModel, _ text: String) async {
-        if chat.messages.last?.text == text { return }
-        let landed = expectation(description: "message landed: \(text)")
-        landed.assertForOverFulfill = false
-        var cancellable: AnyCancellable?
-        cancellable = chat.$messages.sink { messages in
-            if messages.last?.text == text { landed.fulfill() }
-        }
-        await fulfillment(of: [landed], timeout: 5)
-        cancellable?.cancel()
-    }
-
     func testStopSettlesTheCollapsedPreStopWall() async {
         let wall = Array(repeating: paragraph, count: 3).joined(separator: "\n\n")
         let engine = await loaded(StopEngine(firstPieces: [wall]))
         let chat = ChatModel(engine: engine)
         let task = Task { await chat.send("question") }
 
-        await waitForMessage(chat, wall)
+        await engine.waitUntilParked()
         chat.stopGenerating()
         await engine.openGate()
         await task.value
 
         XCTAssertEqual(chat.messages.last?.text, paragraph)
-        let cancellations = await engine.cancellations
+        let cancellations = engine.cancellations
         XCTAssertEqual(cancellations, 1)
         XCTAssertFalse(chat.lastHitTokenCap)
     }
@@ -123,7 +124,7 @@ final class StopSettlementTests: XCTestCase {
         let chat = ChatModel(engine: engine)
         let task = Task { await chat.send("question") }
 
-        await waitForMessage(chat, "partial")
+        await engine.waitUntilParked()
         chat.stopGenerating()
         await chat.send("next")                 // no-op while the stopped turn settles
         let duringCalls = await engine.calls
@@ -141,9 +142,9 @@ final class StopSettlementTests: XCTestCase {
         let chat = ChatModel(engine: engine)
         let task = Task { await chat.send("question") }
 
-        await waitForMessage(chat, "")
+        await engine.waitUntilParked()
         chat.stopGenerating()
-        await engine.openGate()
+        await engine.openGate(latePiece: "late engine value")
         await task.value
 
         XCTAssertEqual(chat.messages.count, 2)
@@ -158,7 +159,7 @@ final class StopSettlementTests: XCTestCase {
         let id = coord.currentID!
         let task = Task { await chat.send("question") }
 
-        await waitForMessage(chat, "partial")
+        await engine.waitUntilParked()
         chat.stopGenerating()
         coord.startNew()
         await engine.openGate()
@@ -177,7 +178,7 @@ final class StopSettlementTests: XCTestCase {
         let id = coord.currentID!
         let task = Task { await chat.send("question") }
 
-        await waitForMessage(chat, wall)
+        await engine.waitUntilParked()
         chat.stopGenerating()
         coord.persist()
         let during = persistence.loadTranscript(id: id).map(\.text)
@@ -191,4 +192,57 @@ final class StopSettlementTests: XCTestCase {
         XCTAssertEqual(persistence.writes, 2)
         XCTAssertEqual(chat.messages.map(\.text), ["question", paragraph])
     }
+
+    func testStopRetainsEveryBufferedPreStopPieceAndDropsTheLatePiece() async {
+        let engine = await loaded(StopEngine(firstPieces: ["part", "ial"]))
+        let chat = ChatModel(engine: engine)
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked() // The next pull proves both pieces were accepted before Stop.
+        chat.stopGenerating()
+        chat.stopGenerating()
+        XCTAssertEqual(engine.cancellations, 1)
+        await engine.openGate(latePiece: " late token")
+        await task.value
+
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "partial"])
+        XCTAssertEqual(engine.cancellations, 1)
+        XCTAssertFalse(chat.isGenerating)
+    }
+
+    func testStopThenInterimPersistThenNewDurablyRemovesThePartial() async {
+        let persistence = CountingPersistence()
+        let engine = await loaded(StopEngine(firstPieces: ["partial"]))
+        let chat = ChatModel(engine: engine)
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 3 })
+        let id = coord.currentID!
+        let task = Task { await chat.send("question") }
+
+        await engine.waitUntilParked()
+        chat.stopGenerating()
+        coord.persist()
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question", "partial"])
+        coord.startNew()
+        XCTAssertEqual(persistence.loadTranscript(id: id).map(\.text), ["question"])
+        await engine.openGate(latePiece: " late token")
+        await task.value
+        coord.persist()
+
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertEqual(persistence.writes, 2)
+        coord.open(id)
+        XCTAssertEqual(chat.messages.map(\.text), ["question"])
+    }
+
+    /// Access through the protocol proves cancellation is synchronous/nonisolated. The gate also
+    /// proves the fixture has not completed generation when cancellation is recorded.
+    func testFixtureCancellationMatchesTheSynchronousProtocolRequirement() async {
+        let engine = await loaded(StopEngine(firstPieces: []))
+        let contract: any InferenceEngine = engine
+        contract.requestCancel()
+        XCTAssertEqual(engine.cancellations, 1)
+        let loadedID = await contract.loadedModelID()
+        XCTAssertNotNil(loadedID)
+    }
+
 }
