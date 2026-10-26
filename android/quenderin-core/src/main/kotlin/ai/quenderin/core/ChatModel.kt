@@ -239,6 +239,7 @@ class ChatModel(
             if (!ownsGeneration()) return ""
             val sb = StringBuilder()
             var tokenCount = 0
+            var hitDegeneration = false
             // Pace transcript writes to display frames (~30 Hz): every write copies the list, re-parses
             // the reply's Markdown and hops to the main thread — at phone token rates that, not the
             // engine, is the jank. First piece always lands; the settle write below always lands.
@@ -246,25 +247,34 @@ class ChatModel(
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
             // blank for the whole (multi-second) generation. Mirrors iOS `ChatModel`.
             val reply = engine.completeChatOwned(systemPrompt, history, ::ownsGeneration) { piece ->
+                // A degeneration trip ENDS this turn: an engine that ignores requestCancel keeps
+                // delivering pieces, and every one must be dropped here (bounded per-piece work, no
+                // appends, no extra checks) — the streamed prefix below is the settled answer.
+                if (hitDegeneration) return@completeChatOwned
                 if (!ownsGeneration()) { engine.requestCancel(); return@completeChatOwned }
-                sb.append(piece)
-                // Degeneration guard: if the tail is verbatim-looping despite the sampler's repetition
-                // penalty, stop paying for tokens — the settle-time collapse below cleans up. Checked every
-                // 32 tokens like iOS; asks the engine to end the native decode now. (Q-237)
                 tokenCount += 1
                 if (tokenCount == 1) publishPhase(myGen, GenerationPhase.WRITING)
+                // Check BEFORE appending so the piece that CROSSES the checkpoint is excluded, exactly
+                // as iOS's pre-append check + `break` drops the current token. Every 32 pieces.
                 if (tokenCount % 32 == 0 && DegenerationGuard.looksDegenerate(sb.toString())) {
+                    hitDegeneration = true
                     engine.requestCancel()
+                    return@completeChatOwned
                 }
+                sb.append(piece)
                 // Drop the write if this generation was superseded (conversation switch/new/reset/restore,
                 // or Stop) — a captured index would otherwise write into the WRONG transcript or throw out
                 // of bounds. Twin of iOS's "look the message up by id each token; if it's gone, stop".
                 if (flushGate.shouldFlush()) writeAssistant(myGen, placeholderIndex, sb.toString())
             }
-            // Settle on the authoritative full text (covers the non-streaming fallback, where onToken never
-            // fired and the placeholder is still empty) — with duplicate-paragraph runs collapsed
-            // (DegenerationGuard; the sampler penalty upstream prevents most, this cleans the rest).
-            val settled = DegenerationGuard.collapseRepeatedParagraphs(reply)
+            // Settle on what the user actually saw: the streamed pieces. The engine's return value is
+            // only the NON-STREAMING fallback (no onToken fired); otherwise a normalized/trimmed return
+            // must never replace the transcript (emitted A + return B settles A, as iOS does by
+            // construction). Duplicate-paragraph runs are collapsed here either way.
+            val streamed = sb.toString()
+            val settled = DegenerationGuard.collapseRepeatedParagraphs(
+                if (streamed.isNotEmpty()) streamed else reply,
+            )
             // Q-588: never leave a silently EMPTY assistant bubble — an engine that produced zero tokens gets
             // an honest notice, mirroring iOS ChatModel. Only when this generation is still active: a user
             // Stop supersedes it (activeGeneration bumped), and then the streamed partial should stand,
@@ -278,9 +288,11 @@ class ChatModel(
             }
             // Token-cap hit mid-sentence → "Continue" affordance (KNOWN_FAILURE_MODES). Real signal from
             // the native loop (perfDecodeTok >= maxTokens), not a piece count (UTF-8 reassembly merges
-            // pieces so a piece-count would undercount). User Stop supersedes → stillActive false.
+            // pieces so a piece-count would undercount). A degeneration stop is NOT a mid-sentence cap
+            // even if the native loop also reports one — no "Continue into the loop" affordance, exactly
+            // as iOS's `!hitDegeneration` guard. User Stop supersedes → stillActive false.
             if (stillActive) {
-                val hitCap = engine.lastHitTokenCap()
+                val hitCap = engine.lastHitTokenCap() && !hitDegeneration
                 synchronized(lock) { if (myGen == activeGeneration) lastHitTokenCap = hitCap }
             }
             if (stillActive) writeAssistant(myGen, placeholderIndex, finalText)
