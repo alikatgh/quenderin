@@ -48,6 +48,14 @@ class ConversationCoordinator(
      */
     private var savedCount = 0
 
+    /**
+     * The [ChatModel.transcriptRevision] of the last save. A settle can change the last assistant
+     * text WITHOUT changing the message count (explicit Stop after the flushed prefix was already
+     * saved), so the count alone would skip the corrected save. Persisted together with
+     * [savedCount] from one atomic snapshot.
+     */
+    private var savedRevision = 0L
+
     init {
         manager.pruneEmptyConversations()   // GC blank rows left by the old create-immediately startNew()
         manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
@@ -56,6 +64,7 @@ class ConversationCoordinator(
         if (recent != null) {
             chat.restore(manager.open(recent.id))
             savedCount = chat.messages.size
+            savedRevision = chat.transcriptRevision
         } else {
             manager.startNew()
         }
@@ -69,17 +78,21 @@ class ConversationCoordinator(
 
     /** Persist the current conversation — call when a turn finishes. No-op on an empty chat so
      *  untouched "New conversation" rows don't pile up, and when nothing new was said since the
-     *  last save (see [savedCount]). */
+     *  last save (see [savedCount]).
+     *
+     *  A reply the model still owns is NOT a finished turn: it is abandoned (removed) before the
+     *  save, so navigating away mid-stream can never leave a partial answer behind — not now, and
+     *  not later when the stream settles. Explicit Stop retains ownership until settlement and
+     *  makes the accepted partial persistable; a changed revision permits the corrective save. */
     fun persist() {
-        // Stop any in-flight reply BEFORE snapshotting: persist() runs on a conversation switch/back, and
-        // saving a half-streamed transcript (or letting the zombie send keep writing into it after this
-        // conversation is left) is the corruption this guards. reset()/restore() also stop, so every
-        // lifecycle path that mutates the chat is now preceded by a stop. (Q-004/Q-168.)
-        chat.stopGenerating()
+        chat.discardUnsettledTurn()
         val id = manager.currentId ?: return
-        if (chat.messages.isEmpty() || chat.messages.size <= savedCount) return
-        manager.save(id, chat.messages)
-        savedCount = chat.messages.size
+        val (completed, revision) = chat.persistSnapshot()
+        if (completed.isEmpty()) return
+        if (completed.size <= savedCount && revision == savedRevision) return
+        manager.save(id, completed)
+        savedCount = completed.size
+        savedRevision = revision
         refresh()
     }
     fun persistIfOwned(id: String?, revision: Long, ownsJob: () -> Boolean): Boolean {
@@ -96,11 +109,16 @@ class ConversationCoordinator(
     fun startNew() {
         lifecycleRevision++
         chat.invalidatePreparedTurns()
-        if (chat.messages.isEmpty()) return // Keep the existing empty draft reachable; only its pending send is invalidated.
+        if (chat.messages.isEmpty()) {
+            savedCount = 0
+            savedRevision = chat.transcriptRevision
+            return // Keep the existing empty draft reachable; only its pending send is invalidated.
+        }
         persist()
         manager.startNew()
         chat.reset()
         savedCount = 0
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 
@@ -111,6 +129,7 @@ class ConversationCoordinator(
         persist()
         chat.restore(manager.open(id))
         savedCount = chat.messages.size
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 
@@ -126,8 +145,9 @@ class ConversationCoordinator(
             if (recent != null) {
                 chat.restore(manager.open(recent.id))
                 savedCount = chat.messages.size
+                savedRevision = chat.transcriptRevision
             } else {
-                manager.startNew(); chat.reset(); savedCount = 0
+                manager.startNew(); chat.reset(); savedCount = 0; savedRevision = chat.transcriptRevision
             }
         }
         refresh()
@@ -142,6 +162,7 @@ class ConversationCoordinator(
         manager.startNew()
         chat.reset()
         savedCount = 0
+        savedRevision = chat.transcriptRevision
         refresh()
     }
 }
