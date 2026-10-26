@@ -80,6 +80,14 @@ public enum InferenceError: Error, Sendable, Equatable {
     case timedOut(seconds: Int)
 }
 
+/// Why the most recent generation ended, for the "Continue" affordance.
+///
+/// `.hit` = positively observed token-budget stop. `.notHit` = positively observed non-budget
+/// completion (EOG, context exhaustion, stop sequence/filter). `.unknown` = no trustworthy
+/// observation: unsupported engine, no run yet, explicit cancellation, error, unloaded/stale.
+/// Twin of Kotlin `ChatCapStatus`; never infer it from a streamed piece count.
+public enum ChatCapStatus: Sendable, Equatable { case hit, notHit, unknown }
+
 /// Runtime-agnostic contract for on-device LLM inference.
 ///
 /// The chosen llama.cpp engine, a future MLX engine, and the mock below all
@@ -128,6 +136,14 @@ public protocol InferenceEngine: Sendable {
     func loadForAutomaticIfIdle(model: ModelEntry, at fileURL: URL, stillCurrent: @escaping @Sendable () async -> Bool, accept: @escaping @Sendable () async -> Bool) async throws -> Bool
     func isSuspendedForSpecialist() async -> Bool
     func suspendForSpecialist() async throws -> SpecialistInferenceLease
+
+    /// Why the most recent generation ended. Default `.unknown`: an engine that has not positively
+    /// observed its completion reason must not turn "no cap signal" into a NOT_HIT claim.
+    func chatCapStatus() async -> ChatCapStatus
+}
+
+public extension InferenceEngine {
+    func chatCapStatus() async -> ChatCapStatus { .unknown }
 }
 
 /// The flat "User:/Assistant:" transcript prompt — the template-less fallback shared by the

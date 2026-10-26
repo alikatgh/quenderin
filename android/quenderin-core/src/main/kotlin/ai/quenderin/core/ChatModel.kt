@@ -350,12 +350,11 @@ class ChatModel(
             val stillActive = ownsGeneration()
             // Engine calls may block: read the cap outside the transcript lock, then decide and
             // commit the final text under the same lock as Stop so a late Stop suppresses notices.
-            val engineHitCap = stillActive && completionFailure == null && mayStartCompletion() && engine.lastHitTokenCap()
-            // Token-cap hit mid-sentence → "Continue" affordance (KNOWN_FAILURE_MODES). Real signal from
-            // the native loop (perfDecodeTok >= maxTokens), not a piece count (UTF-8 reassembly merges
-            // pieces so a piece-count would undercount). A degeneration stop is NOT a mid-sentence cap
-            // even if the native loop also reports one — no "Continue into the loop" affordance, exactly
-            // as iOS's `!hitDegeneration` guard. A Stop is not a mid-sentence cap affordance either.
+            val capStatus = if (stillActive && completionFailure == null && mayStartCompletion()) {
+                engine.chatCapStatus()
+            } else ChatCapStatus.UNKNOWN
+            // Only a positively observed budget stop offers Continue. Stop, cancellation and
+            // degeneration suppress it even if the engine returned HIT before they were observed.
             var failureToThrow: Exception? = null
             val (finalText, finalSnapshot) = synchronized(lock) {
                 val ownsRevision = myGen == activeGeneration
@@ -388,7 +387,7 @@ class ChatModel(
                 } else acceptedText
                 var snapshot: List<ChatMessage>? = null
                 if (current) {
-                    lastHitTokenCap = engineHitCap && !hitDegeneration && !stopped
+                    lastHitTokenCap = capStatus == ChatCapStatus.HIT && !hitDegeneration && !stopped
                     val assistant = _messages.getOrNull(placeholderIndex)
                     if (assistant != null && assistant.text != text) {
                         _messages[placeholderIndex] = assistant.copy(text = text)

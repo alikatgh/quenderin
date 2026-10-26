@@ -1,6 +1,20 @@
 package ai.quenderin.core
 
 /**
+ * Why the most recent generation ended, for the "Continue" affordance.
+ *
+ * HIT = the engine positively observed a token-budget stop.
+ * NOT_HIT = the engine positively observed a non-budget completion (EOG, context exhaustion,
+ *           stop sequence/filter completion).
+ * UNKNOWN = no trustworthy observation: unsupported engine, no run yet, explicit cancellation,
+ *           error, unloaded model, or a stale/superseded run.
+ *
+ * Native casing twin of Swift `ChatCapStatus`. Never infer this from a streamed piece count or
+ * from [InferenceEngine.lastHitTokenCap] returning false.
+ */
+enum class ChatCapStatus { HIT, NOT_HIT, UNKNOWN }
+
+/**
  * Runtime-agnostic on-device inference seam — the Android twin of the Swift
  * `InferenceEngine`. The real implementation (`LlamaEngine`) bridges to llama.cpp
  * through JNI over the NDK; this interface + the mock let the app and tests depend
@@ -105,11 +119,19 @@ interface InferenceEngine {
     fun requestCancel() {}
 
     /**
-     * True when the most recent generation stopped at the token budget (not EOG / cancel).
-     * Default false — mocks and pure-compute tools never hit a real cap. LlamaEngine overrides
-     * via the native hitTokenCap flag so ChatModel can show "Continue".
+     * True when the most recent generation positively observed a token-budget stop. Default false —
+     * mocks and pure-compute tools never hit a real cap. LlamaEngine records its per-run reason;
+     * false also covers NOT_HIT/UNKNOWN (no run, cancel, error, stale).
      */
     fun lastHitTokenCap(): Boolean = false
+
+    /**
+     * Why the most recent generation ended. Default [ChatCapStatus.UNKNOWN]: an engine that has
+     * not positively observed its completion reason must not pretend the legacy boolean's false is
+     * a NOT_HIT. LlamaEngine reports its per-run reason; adapters gate suspension. Twin of Swift
+     * `InferenceEngine.chatCapStatus`.
+     */
+    fun chatCapStatus(): ChatCapStatus = ChatCapStatus.UNKNOWN
 }
 
 class EngineNotLoadedException : IllegalStateException("No model is loaded")

@@ -87,6 +87,34 @@ public actor LlamaEngine: InferenceEngine {
     /// the KV cache doesn't OOM memory-tight phones (M1 + footprint-aware).
     private let deviceBudgetGB: Double
 
+    /// Completion reason for the "Continue" affordance. `capState` is a `let` lock so the
+    /// nonisolated `runGeneration` can record a reason without touching actor-isolated state.
+    private struct CapSnapshot: Sendable {
+        var generation: UInt64 = 0
+        var status: ChatCapStatus = .unknown
+    }
+    private let capState = OSAllocatedUnfairLock(initialState: CapSnapshot())
+
+    /// The honest reasons the pinned loop can distinguish. EOG and context exhaustion are both
+    /// non-budget completions (NOT_HIT); cancellation/unavailability are UNKNOWN.
+    enum CapReason: Sendable { case budget, eog, contextExhausted, cancelled, unavailable }
+
+    static func capStatus(for reason: CapReason) -> ChatCapStatus {
+        switch reason {
+        case .budget: return .hit
+        case .eog, .contextExhausted: return .notHit
+        case .cancelled, .unavailable: return .unknown
+        }
+    }
+
+    /// Reset at every new run/load/unload and invalidate any in-flight run's status write.
+    private func resetCapStatus() {
+        capState.withLock {
+            $0.generation &+= 1
+            $0.status = .unknown
+        }
+    }
+
     #if canImport(llama)
     nonisolated(unsafe) private var model: OpaquePointer?     // llama_model *
     nonisolated(unsafe) private var context: OpaquePointer?   // llama_context *
@@ -119,6 +147,10 @@ public actor LlamaEngine: InferenceEngine {
     /// `nativeLock` (a decode in flight can't stall the chat layer asking for the window size).
     public func loadedContextTokens() async -> Int? { loadedNCtx }
 
+    public func chatCapStatus() async -> ChatCapStatus {
+        capState.withLock { $0.status }
+    }
+
     public func knownExecutionProfiles() async -> [InferenceExecutionProfile] { effectiveProfiles }
 
     public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
@@ -148,6 +180,7 @@ public actor LlamaEngine: InferenceEngine {
     #endif
 
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
+        resetCapStatus()
         // Before file IO, cancellation, or releasing the current working model.
         guard ModelRuntimeSupport.supports(entry) else {
             throw InferenceError.loadFailed(reason: ModelRuntimeSupport.unavailableReason(for: entry))
@@ -200,6 +233,7 @@ public actor LlamaEngine: InferenceEngine {
     }
 
     public func unload() async {
+        resetCapStatus()
         #if canImport(llama)
         cancelState.withLock { $0.cancelAll() }
         unloadLocked()
@@ -222,6 +256,7 @@ public actor LlamaEngine: InferenceEngine {
     }
 
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        resetCapStatus()
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
         guard !loadedSpecialist else { throw InferenceError.generationFailed(reason: "This specialist is available only through its dedicated text workflow.") }
         guard !loadedBeam else { throw InferenceError.generationFailed(reason: "Beam supports structured text chat only; raw/agent requests are unavailable.") }
@@ -234,6 +269,7 @@ public actor LlamaEngine: InferenceEngine {
 
     /// Called only after the public API selected and constructed the appropriate framing.
     private func startGeneration(prompt: String, options: GenerationOptions, generationID: UInt64? = nil, deadline: ContinuousClock.Instant? = nil) async throws -> AsyncThrowingStream<String, Error> {
+        resetCapStatus()
         guard !loadedBeam || options.gbnfGrammar == nil else {
             throw InferenceError.generationFailed(reason: "Beam tools and grammar decoding are unavailable.")
         }
@@ -253,6 +289,7 @@ public actor LlamaEngine: InferenceEngine {
         // `= true` could kill the NEXT generation. With ids, a cancel reaches exactly the
         // generations minted before it.
         let myGen = generationID ?? cancelState.withLock { $0.mint() }
+        capState.withLock { $0.generation = myGen }
         return AsyncThrowingStream { continuation in
             // Run the decode OFF the cooperative pool (M2) so a multi-second generation doesn't
             // pin a Swift-concurrency thread; `nativeLock` (acquired inside) keeps it safe.
@@ -272,6 +309,7 @@ public actor LlamaEngine: InferenceEngine {
     /// hallucinated turns (caught live on the macOS client). Twin of the Android JNI's
     /// `buildChatPrompt` path, including the no-think close for reasoning models.
     public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        resetCapStatus()
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
         guard !loadedSpecialist else { throw InferenceError.generationFailed(reason: "This specialist requires its dedicated workflow.") }
         #if canImport(llama)
@@ -783,6 +821,7 @@ public actor LlamaEngine: InferenceEngine {
         let thermalSampleInterval = 32
 
         var produced = 0
+        var endedByCapReason: LlamaEngine.CapReason?
         var sampledTokens = 0
         var firstTokenMs: Double?
         var fatalDecode = false
@@ -805,7 +844,7 @@ public actor LlamaEngine: InferenceEngine {
                 if let retuned = governor.update(level: level) { llama_set_n_threads(context, Int32(retuned), Int32(retuned)) }
             }
             let next = llama_sampler_sample(sampler, context, -1)
-            if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
+            if llama_vocab_is_eog(vocab, next) { endedByCapReason = .eog; break }   // end-of-generation token
             sampledTokens += 1
             if firstTokenMs == nil { firstTokenMs = Self.ms(ContinuousClock.now - generationStarted) }
             do {
@@ -822,15 +861,15 @@ public actor LlamaEngine: InferenceEngine {
                 if stopScanner.isActive {
                     let (emit, stop) = stopScanner.feed(piece)
                     if !emit.isEmpty { continuation.yield(emit); yieldedAnyText = true }
-                    if stop { break }   // a stop sequence completed — halt here (skip the feedback decode)
+                    if stop { endedByCapReason = .eog; break }   // a stop sequence completed — halt here (skip the feedback decode)
                 } else {
                     continuation.yield(piece)
                     yieldedAnyText = true
                 }
             }
-            if beam && beamFilter.isStopped { break }
-            if muse && museFilter.isStopped { break }
-            if jais && jaisFilter.isStopped { break }
+            if beam && beamFilter.isStopped { endedByCapReason = .eog; break }
+            if muse && museFilter.isStopped { endedByCapReason = .eog; break }
+            if jais && jaisFilter.isStopped { endedByCapReason = .eog; break }
             produced += 1
 
             var one = [next]                               // feed the token back (alive during decode)
@@ -847,7 +886,9 @@ public actor LlamaEngine: InferenceEngine {
                 // cache and mirror so the next turn re-prefills cleanly instead of reusing a
                 // possibly-desynced prefix (audit S3). With partial output already yielded, keep
                 // the text; with nothing yielded, it's a failure.
-                if feedbackRC != 1 {
+                if feedbackRC == 1 {
+                    endedByCapReason = .contextExhausted
+                } else {
                     fatalDecode = true
                     llama_memory_clear(mem, true)
                     cachedTokens = []
@@ -896,6 +937,15 @@ public actor LlamaEngine: InferenceEngine {
                 firstTokenMs: firstTokenMs, maxGapMs: Self.ms(perfMaxGap), loadMs: observation.loadMs,
                 cacheMode: reuse == 0 ? "cold" : "prefix", thermalState: "nominal",
                 recordedAtMs: Int64(Date().timeIntervalSince1970 * 1000)))
+        }
+        let capReason: CapReason
+        if hy { capReason = .unavailable }
+        else if cancelled() { capReason = .cancelled }
+        else if fatalDecode { capReason = .unavailable }
+        else if let endedByCapReason { capReason = endedByCapReason }
+        else { capReason = produced >= options.maxTokens ? .budget : .eog }
+        capState.withLock {
+            if $0.generation == myGen { $0.status = Self.capStatus(for: capReason) }
         }
         continuation.finish()
     }

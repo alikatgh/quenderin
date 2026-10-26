@@ -24,11 +24,27 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
     private var admitted = 0
     private var workflowHolds = 0
     private var selected: Pair<ModelEntry, String>? = null
+
+    @Volatile
+    private var lastCapStatus: ChatCapStatus = ChatCapStatus.UNKNOWN
+    private var capRun: Long = 0L
+
+    private fun invalidateCapStatus(): Long = state.withLock {
+        lastCapStatus = ChatCapStatus.UNKNOWN
+        ++capRun
+    }
+
+    private fun publishCapStatus(run: Long, status: ChatCapStatus) {
+        state.withLock { if (run == capRun && !held) lastCapStatus = status }
+    }
     override val isSuspendedForSpecialist: Boolean get() = state.withLock { held }
     override val automaticSelectionIdle: Boolean get() = state.withLock { !held && admitted == 0 && workflowHolds == 0 }
     override val loadedModelId: String? get() = state.withLock { if (held) null else underlying.loadedModelId }
     override val loadedContextTokens: Int? get() = state.withLock { if (held) null else underlying.loadedContextTokens }
-    override fun requestCancel() = underlying.requestCancel()
+    override fun requestCancel() {
+        invalidateCapStatus()
+        underlying.requestCancel()
+    }
     override fun preventAutomaticModelSwitch(): AutoCloseable {
         state.withLock { workflowHolds++ }
         return object : AutoCloseable {
@@ -55,6 +71,7 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
             admitted++
         }
         try {
+            invalidateCapStatus()
             val snapshot = selected?.takeIf { underlying.loadedModelId == it.first.id }
             if (!isCurrent()) return false
             try {
@@ -75,8 +92,11 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
             }
             return false
         } finally {
-            operations.unlock()
-            state.withLock { admitted--; changed.signalAll() }
+            try { invalidateCapStatus() }
+            finally {
+                operations.unlock()
+                state.withLock { admitted--; changed.signalAll() }
+            }
         }
     }
     private fun <T> ordinary(work: () -> T): T {
@@ -86,27 +106,56 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
         } finally { state.withLock { admitted--; changed.signalAll() } }
     }
     override fun load(model: ModelEntry, filePath: String) = ordinary {
+        invalidateCapStatus()
         underlying.load(model, filePath); selected = model to filePath
     }
     override fun unload() {
         if (isSuspendedForSpecialist) return
-        try { ordinary { underlying.unload(); selected = null } } catch (error: IllegalStateException) { if (!isSuspendedForSpecialist) throw error }
+        try { ordinary { invalidateCapStatus(); underlying.unload(); selected = null } } catch (error: IllegalStateException) { if (!isSuspendedForSpecialist) throw error }
     }
-    override fun complete(prompt: String): String = ordinary { underlying.complete(prompt) }
-    override fun complete(prompt: String, onToken: (String) -> Unit): String = ordinary { underlying.complete(prompt, onToken) }
-    override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String = ordinary { underlying.completeChat(systemPrompt, history, onToken) }
+    override fun complete(prompt: String): String = ordinary {
+        invalidateCapStatus()
+        underlying.complete(prompt)
+    }
+    override fun complete(prompt: String, onToken: (String) -> Unit): String = ordinary {
+        invalidateCapStatus()
+        underlying.complete(prompt, onToken)
+    }
+    override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String = ordinary {
+        val run = invalidateCapStatus()
+        val result = underlying.completeChat(systemPrompt, history, onToken)
+        publishCapStatus(run, underlying.chatCapStatus())
+        result
+    }
     override fun completeChatOwned(systemPrompt: String, history: List<ChatMessage>, isCurrent: () -> Boolean, onToken: (String) -> Unit): String = ordinary {
-        underlying.completeChatOwned(systemPrompt, history, isCurrent, onToken)
+        val run = invalidateCapStatus()
+        val result = underlying.completeChatOwned(systemPrompt, history, isCurrent, onToken)
+        publishCapStatus(run, underlying.chatCapStatus())
+        result
     }
-    override fun completeThinking(prompt: String, maxTokens: Int): String = ordinary { underlying.completeThinking(prompt, maxTokens) }
+    override fun completeThinking(prompt: String, maxTokens: Int): String = ordinary {
+        invalidateCapStatus()
+        underlying.completeThinking(prompt, maxTokens)
+    }
     override fun completeWithGrammar(prompt: String, grammar: String, maxTokens: Int, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String =
-        ordinary { underlying.completeWithGrammar(prompt, grammar, maxTokens, topP, topK, temperature, repeatPenalty, repeatLastN) }
-    override fun lastHitTokenCap(): Boolean = if (isSuspendedForSpecialist) false else underlying.lastHitTokenCap()
+        ordinary {
+            invalidateCapStatus()
+            underlying.completeWithGrammar(prompt, grammar, maxTokens, topP, topK, temperature, repeatPenalty, repeatLastN)
+        }
+    override fun chatCapStatus(): ChatCapStatus = state.withLock {
+        if (held) ChatCapStatus.UNKNOWN else lastCapStatus
+    }
+
+    // Legacy contract: delegate the old boolean independently. A legacy-only engine (no new status
+    // implementation) must keep its true/false behavior; a false is not promoted to NOT_HIT.
+    override fun lastHitTokenCap(): Boolean =
+        if (isSuspendedForSpecialist) false else underlying.lastHitTokenCap()
     override fun setChatTokenBudget(tokens: Int) = underlying.setChatTokenBudget(tokens)
     override fun thinkingEnabled(): Boolean = underlying.thinkingEnabled()
     override fun setThinkingEnabled(enabled: Boolean) = underlying.setThinkingEnabled(enabled)
     override fun suspendForSpecialist(): SpecialistInferenceLease {
         state.withLock { check(!held) { BUSY }; held = true }
+        invalidateCapStatus()
         var interrupted = false
         try {
             // A just-admitted completion can reset its native cancel flag. Repeat until it has
@@ -127,6 +176,7 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
             }
             return SpecialistInferenceLease {
                 try {
+                    invalidateCapStatus()
                     operations.withLock {
                         if (snapshot != null) {
                             val (model, path) = snapshot

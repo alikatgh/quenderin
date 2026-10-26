@@ -41,7 +41,7 @@ class StopSettlementTest {
         override fun unload() {}
         override fun complete(prompt: String): String = error("structured completion expected")
         override fun requestCancel() { cancellations++ }
-        override fun lastHitTokenCap(): Boolean = hitTokenCap
+        override fun chatCapStatus(): ChatCapStatus = if (hitTokenCap) ChatCapStatus.HIT else ChatCapStatus.NOT_HIT
         override fun completeChat(
             systemPrompt: String,
             history: List<ChatMessage>,
@@ -195,7 +195,7 @@ class StopSettlementTest {
             override fun unload() {}
             override fun complete(prompt: String): String = error("structured completion expected")
             override fun requestCancel() { cancellationRequested = true }
-            override fun lastHitTokenCap(): Boolean = true
+            override fun chatCapStatus(): ChatCapStatus = ChatCapStatus.HIT
             override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
                 completionEntries++
                 onToken("next reply")
@@ -243,12 +243,12 @@ class StopSettlementTest {
                 completions++
                 return if (completions == 1) "" else "next reply"
             }
-            override fun lastHitTokenCap(): Boolean {
+            override fun chatCapStatus(): ChatCapStatus {
                 if (completions == 1) {
                     capReadStarted.countDown()
                     check(releaseCapRead.await(5, TimeUnit.SECONDS)) { "token-cap gate timed out" }
                 }
-                return true
+                return ChatCapStatus.HIT
             }
         }
         val chat = ChatModel(engine)

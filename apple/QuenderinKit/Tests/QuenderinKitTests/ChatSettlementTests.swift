@@ -1,6 +1,19 @@
 import XCTest
 @testable import QuenderinKit
 
+private struct CapReportingSettlementEngine: InferenceEngine {
+    let engine: MockInferenceEngine
+    let capStatus: ChatCapStatus
+
+    func loadedModelID() async -> String? { await engine.loadedModelID() }
+    func load(model: ModelEntry, at fileURL: URL) async throws { try await engine.load(model: model, at: fileURL) }
+    func unload() async { await engine.unload() }
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        try await engine.generate(prompt: prompt, options: options)
+    }
+    func chatCapStatus() async -> ChatCapStatus { capStatus }
+}
+
 /// Settlement parity with Kotlin `ChatModel`:
 ///
 /// - the transcript settles from the STREAMED pieces (the stream is Swift's only engine channel,
@@ -39,9 +52,10 @@ final class ChatSettlementTests: XCTestCase {
         let word = String(repeating: "a", count: 100)
         let prefix = Array(repeating: word, count: 31)   // degenerate at the 32nd checkpoint
         let tokens = prefix + ["CROSSING"] + Array(repeating: "LEAK", count: 40)
-        let chat = ChatModel(engine: await loadedMock(tokens.joined(separator: " ")))
+        let engine = CapReportingSettlementEngine(engine: await loadedMock(tokens.joined(separator: " ")), capStatus: .hit)
+        let chat = ChatModel(engine: engine)
 
-        // maxTokens equals the trip count, so the Continue path WOULD fire without `!hitDegeneration`.
+        // Explicit engine evidence would offer Continue without the degeneration guard.
         await chat.send("loop", options: GenerationOptions(maxTokens: 32))
 
         let text = chat.messages.last?.text ?? ""

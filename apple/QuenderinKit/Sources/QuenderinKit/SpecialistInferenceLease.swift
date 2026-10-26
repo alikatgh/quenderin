@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 public enum SpecialistCoordinationError: LocalizedError, Sendable {
     case unavailable
@@ -36,8 +37,28 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     private var agentModelOwners: Set<UUID> = []
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var selected: (model: ModelEntry, file: URL)?
+    private struct CapSnapshot: Sendable {
+        var run: UInt64 = 0
+        var status: ChatCapStatus = .unknown
+    }
+    private let capState = OSAllocatedUnfairLock(initialState: CapSnapshot())
+    @discardableResult
+    private nonisolated func invalidateCapStatus() -> UInt64 {
+        capState.withLock {
+            $0.run &+= 1
+            $0.status = .unknown
+            return $0.run
+        }
+    }
+    private func publishCapStatus(_ status: ChatCapStatus, run: UInt64) {
+        guard held == nil else { return }
+        capState.withLock {
+            if $0.run == run { $0.status = Task.isCancelled ? .unknown : status }
+        }
+    }
     public init(_ underlying: any InferenceEngine) { self.underlying = underlying }
     public func isSuspendedForSpecialist() async -> Bool { held != nil }
+    public func chatCapStatus() async -> ChatCapStatus { held == nil ? capState.withLock { $0.status } : .unknown }
     public func loadedModelID() async -> String? { held == nil ? await underlying.loadedModelID() : nil }
     public func loadedContextTokens() async -> Int? { held == nil ? await underlying.loadedContextTokens() : nil }
     public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
@@ -45,35 +66,42 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         return await underlying.loadedExecutionProfile(system: system, history: history, options: options)
     }
     public func knownExecutionProfiles() async -> [InferenceExecutionProfile] { await underlying.knownExecutionProfiles() }
-    public nonisolated func requestCancel() { underlying.requestCancel() }
+    public nonisolated func requestCancel() {
+        invalidateCapStatus()
+        underlying.requestCancel()
+    }
     private func begin() throws { guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }; starts += 1 }
     private func end() {
         starts -= 1
         if starts == 0 { let pending = waiters; waiters = []; pending.forEach { $0.resume() } }
     }
     public func load(model: ModelEntry, at fileURL: URL) async throws {
+        invalidateCapStatus()
         try begin(); defer { end() }
         try await underlying.load(model: model, at: fileURL)
         selected = (model, fileURL)
     }
     public func unload() async {
         guard held == nil, !automaticSwitching else { return }
+        invalidateCapStatus()
         starts += 1; defer { end() }
         await underlying.unload(); selected = nil
     }
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         try begin(); defer { end() }
+        let myCapRun = invalidateCapStatus()
         let id = UUID(); activeStreams.insert(id)
-        do { return track(try await underlying.generate(prompt: prompt, options: options), id: id) }
+        do { return track(try await underlying.generate(prompt: prompt, options: options), id: id, capRun: myCapRun) }
         catch { activeStreams.remove(id); throw error }
     }
     public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         try begin(); defer { end() }
+        let myCapRun = invalidateCapStatus()
         let id = UUID(); activeStreams.insert(id)
-        do { return track(try await underlying.generateChat(system: system, history: history, options: options), id: id) }
+        do { return track(try await underlying.generateChat(system: system, history: history, options: options), id: id, capRun: myCapRun) }
         catch { activeStreams.remove(id); throw error }
     }
-    private func track(_ stream: AsyncThrowingStream<String, Error>, id: UUID) -> AsyncThrowingStream<String, Error> {
+    private func track(_ stream: AsyncThrowingStream<String, Error>, id: UUID, capRun: UInt64) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -81,9 +109,13 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
                         if Task.isCancelled { break }
                         continuation.yield(piece)
                     }
+                    let status: ChatCapStatus
+                    if Task.isCancelled { status = .unknown } else { status = await underlying.chatCapStatus() }
+                    self.publishCapStatus(status, run: capRun)
                     self.activeStreams.remove(id)
                     continuation.finish()
                 } catch {
+                    self.publishCapStatus(.unknown, run: capRun)
                     self.activeStreams.remove(id)
                     continuation.finish(throwing: error)
                 }
@@ -101,8 +133,9 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
                                        stillCurrent: @escaping @Sendable () async -> Bool,
                                        accept: @escaping @Sendable () async -> Bool) async throws -> Bool {
         guard held == nil, !automaticSwitching, starts == 0, activeStreams.isEmpty, agentModelOwners.isEmpty else { return false }
+        invalidateCapStatus()
         automaticSwitching = true
-        defer { automaticSwitching = false }
+        defer { automaticSwitching = false; invalidateCapStatus() }
         let previous = selected
         do {
             guard await stillCurrent(), !Task.isCancelled else { throw CancellationError() }
@@ -134,6 +167,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     public func suspendForSpecialist() async throws -> SpecialistInferenceLease {
         guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }
         let id = UUID(); held = id
+        invalidateCapStatus()
         underlying.requestCancel()
         // Close already-admitted async load/generate starts before joining native work.
         if starts > 0 { await withCheckedContinuation { waiters.append($0) } }
@@ -144,6 +178,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     }
     private func resume(_ id: UUID, restoring snapshot: (model: ModelEntry, file: URL)?) async throws {
         guard held == id else { return }
+        invalidateCapStatus()
         defer { held = nil }
         guard let snapshot else { return }
         do {

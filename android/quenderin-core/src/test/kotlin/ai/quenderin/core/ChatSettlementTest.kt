@@ -24,7 +24,7 @@ class ChatSettlementTest {
     private class ScriptedEngine(
         private val pieces: List<String>,
         private val reply: String,
-        private val reportsCap: Boolean = false,
+        private val capStatus: ChatCapStatus = ChatCapStatus.UNKNOWN,
     ) : InferenceEngine {
         var cancelCount = 0
         var delivered = 0
@@ -33,7 +33,7 @@ class ChatSettlementTest {
         override fun unload() {}
         override fun complete(prompt: String): String = reply
         override fun requestCancel() { cancelCount++ }
-        override fun lastHitTokenCap(): Boolean = reportsCap
+        override fun chatCapStatus(): ChatCapStatus = capStatus
         override fun completeChat(
             systemPrompt: String,
             history: List<ChatMessage>,
@@ -88,7 +88,7 @@ class ChatSettlementTest {
         val crossing = "CROSSING"                   // the piece that crosses the checkpoint — dropped
         val after = List(40) { "LEAK" }             // engine ignores cancel and keeps delivering
         val all = prefix + crossing + after
-        val engine = ScriptedEngine(all, reply = all.joinToString(""), reportsCap = true)
+        val engine = ScriptedEngine(all, reply = all.joinToString(""), capStatus = ChatCapStatus.HIT)
         val chat = ChatModel(engine)
 
         val result = chat.send("question")

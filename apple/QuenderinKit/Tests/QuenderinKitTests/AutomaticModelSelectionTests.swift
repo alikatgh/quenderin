@@ -18,6 +18,8 @@ private actor SelectionFixtureEngine: InferenceEngine {
     private var isBlocked = false
     private var loadDeadline: Task<Void, Never>?
     private var holdReply = false
+    private var nextCapStatus: ChatCapStatus = .unknown
+    private var capStatus: ChatCapStatus = .unknown
     private var replyEnd: AsyncThrowingStream<String, Error>.Continuation?
     func configure(fail: String? = nil, block: String? = nil) { failID = fail; blockedID = block }
     func blockNextModelQuery(_ gate: SelectionGate) { nextModelQueryGate = gate }
@@ -76,6 +78,8 @@ private actor SelectionFixtureEngine: InferenceEngine {
     }
     func unload() async { loaded = nil }
     func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        capStatus = nextCapStatus
+        nextCapStatus = .unknown
         ordinaryFlags.append(options.collectPerformance)
         generatedModelIDs.append(loaded)
         if holdReply { return openAgentStream() }
@@ -84,6 +88,8 @@ private actor SelectionFixtureEngine: InferenceEngine {
     func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         try await generate(prompt: "", options: options)
     }
+    func setNextChatCapStatus(_ status: ChatCapStatus) { nextCapStatus = status }
+    func chatCapStatus() async -> ChatCapStatus { capStatus }
     func setHoldReply(_ held: Bool) { holdReply = held }
     func finishReply() { replyEnd?.finish(); replyEnd = nil }
     func openAgentStream() -> AsyncThrowingStream<String, Error> {
@@ -822,6 +828,7 @@ extension AutomaticModelSelectionTests {
         let coordinator = ConversationCoordinator(chat: chat, persistence: InMemoryConversationPersistence(), restoreSelectedModel: { id, preparation in
             try await h.onboarding.restoreConversationModel(id, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
         })
+        await raw.setNextChatCapStatus(.hit)
         await chat.send("A capped answer", options: .init(maxTokens: 1), model: a)
         coordinator.persist()
         XCTAssertTrue(chat.lastHitTokenCap)
@@ -854,6 +861,7 @@ extension AutomaticModelSelectionTests {
         let coordinator = ConversationCoordinator(chat: chat, persistence: InMemoryConversationPersistence(), restoreSelectedModel: { id, preparation in
             try await h.onboarding.restoreConversationModel(id, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
         })
+        await raw.setNextChatCapStatus(.hit)
         await chat.send("A capped answer", options: .init(maxTokens: 1), model: a)
         coordinator.persist()
         let original = chat.messages
@@ -899,6 +907,7 @@ extension AutomaticModelSelectionTests {
         let coordinator = ConversationCoordinator(chat: chat, persistence: InMemoryConversationPersistence(), restoreSelectedModel: { id, preparation in
             try await h.onboarding.restoreConversationModel(id, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
         })
+        await raw.setNextChatCapStatus(.hit)
         await chat.send("A capped answer", options: .init(maxTokens: 1), model: a)
         coordinator.persist()
         let original = chat.messages
