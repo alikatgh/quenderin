@@ -201,6 +201,7 @@ public struct ModelSearchView: View {
                                     expanded = (expanded == hit.id) ? nil : hit.id
                                     if expanded == hit.id { controller.loadQuants(for: hit.id) }
                                 },
+                                onRetryFiles: { controller.loadQuants(for: hit.id) },
                                 onGet: { candidate in
                                     SideloadedModels.shared.record(candidate)
                                     library.download(candidate)
@@ -228,6 +229,7 @@ private struct RepoRow: View {
     let library: ModelLibraryController
     let palette: QuenderinPalette
     let onToggle: () -> Void
+    let onRetryFiles: () -> Void
     let onGet: (ModelEntry) -> Void
     let onUse: (ModelEntry) -> Void
     let onCancel: (ModelEntry) -> Void
@@ -342,7 +344,12 @@ private struct RepoRow: View {
                 Text("Loading downloadable files…").font(.caption).foregroundStyle(palette.onSurfaceVariant)
             }
         case .error(let message):
-            Text(message).font(.caption).foregroundStyle(palette.onSurfaceVariant)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message).font(.caption).foregroundStyle(palette.onSurfaceVariant)
+                Button("Retry files", action: onRetryFiles)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
         case .loaded(let raw):
             let quants = filters.apply(to: raw, totalRAMGB: totalRAMGB)
             if raw.isEmpty {
