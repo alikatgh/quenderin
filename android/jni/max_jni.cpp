@@ -211,7 +211,14 @@ public:
         if (!vm_) return;
         const jint state = vm_->GetEnv(reinterpret_cast<void**>(&env_), JNI_VERSION_1_6);
         if (state == JNI_EDETACHED) {
-            if (vm_->AttachCurrentThread(reinterpret_cast<void**>(&env_), nullptr) == JNI_OK) attached_ = true;
+            // jni.h differs by toolchain here: the NDK C++ overload takes JNIEnv** while
+            // OpenJDK (the hosted fixture) takes void**. Cast only for the non-Android build.
+#if defined(__ANDROID__)
+            const jint attached = vm_->AttachCurrentThread(&env_, nullptr);
+#else
+            const jint attached = vm_->AttachCurrentThread(reinterpret_cast<void**>(&env_), nullptr);
+#endif
+            if (attached == JNI_OK) attached_ = true;
             else env_ = nullptr;
         } else if (state != JNI_OK) {
             env_ = nullptr;
