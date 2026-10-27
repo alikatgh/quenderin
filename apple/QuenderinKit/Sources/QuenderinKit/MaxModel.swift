@@ -305,10 +305,24 @@ public enum MaxModelBinding {
 /// A caller-visible run identity. Mint with `MaxModelHandle.makeGenerationToken()`;
 /// a stale token cannot cancel a later run.
 public struct MaxGenerationToken: Equatable, Sendable {
-    fileprivate let value: UInt64
+    fileprivate let state: MaxGenerationState
+
+    public static func == (lhs: Self, rhs: Self) -> Bool { lhs.state === rhs.state }
 }
 
-private final class MaxCancelFlag: @unchecked Sendable {
+// The caller owns pending/terminal state with the token. The handle retains only
+// its active token, so minting tokens does not grow a handle-owned registry.
+// All lifecycle fields are protected by the owning handle's condition.
+fileprivate final class MaxGenerationState: @unchecked Sendable {
+    let owner: UUID
+    let flag = MaxCancelFlag()
+    var cancelRequested = false
+    var completed = false
+
+    init(owner: UUID) { self.owner = owner }
+}
+
+fileprivate final class MaxCancelFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var cancelled = false
     func set() {
@@ -323,8 +337,8 @@ private final class MaxCancelFlag: @unchecked Sendable {
     }
 }
 
-/// One verified installation. Generation is serialized; `cancel()` calls the
-/// native atomic lease directly, and `close()` waits for an active generation
+/// One verified installation. Generation is serialized; `cancel()` sets a
+/// run-owned stop flag, and `close()` waits for an active generation
 /// to drain. Never call `close()` from the token callback; it returns `.busy`.
 public final class MaxModelHandle: @unchecked Sendable {
     private let queue = DispatchQueue(label: "ai.quenderin.max.model")
@@ -334,10 +348,8 @@ public final class MaxModelHandle: @unchecked Sendable {
     private var generating = false
     private var model: OpaquePointer?
     private let maxOutputTokens: Int
-    private var nextToken: UInt64 = 0
+    private let tokenOwner = UUID()
     private var currentToken: MaxGenerationToken?
-    private var pendingCancelToken: MaxGenerationToken?
-    private var cancelFlag: MaxCancelFlag?
 
     init(model: OpaquePointer, maxOutputTokens: Int) {
         self.model = model
@@ -373,11 +385,7 @@ public final class MaxModelHandle: @unchecked Sendable {
     }
 
     public func makeGenerationToken() -> MaxGenerationToken {
-        condition.lock()
-        nextToken &+= 1
-        let token = MaxGenerationToken(value: nextToken)
-        condition.unlock()
-        return token
+        MaxGenerationToken(state: MaxGenerationState(owner: tokenOwner))
     }
 
     private var cancelledResult: MaxGenerationResult {
@@ -404,26 +412,28 @@ public final class MaxModelHandle: @unchecked Sendable {
         }
         let run = token ?? makeGenerationToken()
         condition.lock()
+        guard run.state.owner == tokenOwner, !run.state.completed else {
+            condition.unlock()
+            return invalidResult("The generation token is foreign or already completed.")
+        }
         if generating {
             condition.unlock()
             return busyResult
         }
-        if pendingCancelToken == run {
-            pendingCancelToken = nil
+        if run.state.cancelRequested {
+            run.state.completed = true
             condition.unlock()
             return cancelledResult
         }
-        pendingCancelToken = nil
         generating = true
         currentToken = run
-        let flag = MaxCancelFlag()
-        cancelFlag = flag
+        let flag = run.state.flag
         condition.unlock()
         defer {
             condition.lock()
             generating = false
             currentToken = nil
-            cancelFlag = nil
+            run.state.completed = true
             condition.broadcast()
             condition.unlock()
         }
@@ -463,45 +473,45 @@ public final class MaxModelHandle: @unchecked Sendable {
         }
     }
 
-    /// Cancels the current run. Holds the pointer lock across the bounded native
-    /// call so a concurrent close cannot free the model between check and cancel.
+    /// Cancels the current run; idle cancellation is a no-op.
     @discardableResult
     public func cancel() -> Bool {
+        cancel(beforeStopRequest: nil)
+    }
+
+    @discardableResult
+    func cancel(beforeStopRequest: (() -> Void)?) -> Bool {
         condition.lock()
         let active = currentToken
         condition.unlock()
-        if let active { return cancel(active) }
-        pointerLock.lock()
-        defer { pointerLock.unlock() }
-        guard let model else { return false }
-        qmax_model_cancel(model)
-        return true
+        guard let active else { return false }
+        return cancel(active, beforeStopRequest: beforeStopRequest)
     }
 
     /// Cancels [token], including a run that has not reached native admission.
     /// A stale token never cancels a different active run.
     @discardableResult
     public func cancel(_ token: MaxGenerationToken) -> Bool {
+        cancel(token, beforeStopRequest: nil)
+    }
+
+    // The test seam can suspend a selected cancellation while generation
+    // completes and a new run starts. Only the selected token's flag is retained.
+    @discardableResult
+    func cancel(_ token: MaxGenerationToken, beforeStopRequest: (() -> Void)?) -> Bool {
         condition.lock()
-        if generating {
-            if currentToken == token {
-                cancelFlag?.set()
-                condition.unlock()
-                return cancelNative()
-            }
+        guard token.state.owner == tokenOwner, !token.state.completed,
+              !generating || currentToken == token else {
             condition.unlock()
             return false
         }
-        pendingCancelToken = token
+        token.state.cancelRequested = true
+        let flag = token.state.flag
         condition.unlock()
-        return true
-    }
-
-    private func cancelNative() -> Bool {
-        pointerLock.lock()
-        defer { pointerLock.unlock() }
-        guard let model else { return false }
-        qmax_model_cancel(model)
+        beforeStopRequest?()
+        // This flag belongs to one token, even if its run completed while this
+        // thread was preempted. Never dispatch a delayed model-wide cancel.
+        flag.set()
         return true
     }
 

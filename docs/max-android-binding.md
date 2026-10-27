@@ -22,11 +22,14 @@ fork it. Handles are registry IDs, not raw pointers. Each call holds a
 lease and the C lease must both admit before generation touches the model.
 
 Callbacks are resolved to `MaxTokenSink.onToken(String): Boolean`; the callback
-runs on the generation thread. Cancellation is an atomic run ID plus the C
-lease and may arrive from the sink, another thread or the UI. A stale run ID is
-ignored. A token cancelled before native admission is held as a pending request
-for exactly that run; a delayed token from an earlier run cannot cancel the
-active run. `nativeClose` refuses with `QMAX_BUSY` while a run is active.
+runs on the generation thread. Cancellation is run-owned: each run has its own
+pending, active or completed state. A token cancelled before native admission
+keeps an independent pending request; a completed or retired token is rejected,
+and a delayed earlier token cannot cancel the active run. Pending requests are
+bounded to 64 and terminal history to 1,024 completed IDs. Only terminal records
+expire: unknown IDs at or below the retirement floor cannot be revived, while an
+accepted pending request remains live even if that floor passes it.
+`nativeClose` refuses with `QMAX_BUSY` while a run is active.
 
 Prompt conversion preserves supplementary Unicode and embedded NUL; paths use
 the strict converter and reject NUL. The bridge never treats JNI modified UTF-8
@@ -48,8 +51,12 @@ cancellation from the sink, cancellation after admission but before the first
 token, BUSY on a concurrent run, close-while-busy, reuse, idempotent close and a
 closed handle. The JNI boundary rejects hash lengths 0/1/63 before copying, and
 the Kotlin receipt snapshots its caller-owned file list so post-construction
-mutation cannot change a verified receipt. The fake runner is never compiled
-into the app.
+mutation cannot change a verified receipt. Additional lifecycle coverage includes
+independent pending requests, completed/retired token rejection, the 64 pending /
+1,024 completed bounds with old unknown-ID expiry, delayed and current-run
+successor isolation, and deterministic native admission/retirement regressions.
+Two negative controls fail as expected. The fake runner is never compiled into
+the app.
 
 The app's hosted Android job builds `libquenderin_max_jni.so` for arm64 through
 the existing CMake external build; that compile is the packaging check. It does
@@ -59,11 +66,27 @@ not establish a vendor backend or phone execution.
 
 - Kotlin facade compiled locally with kotlinc; the JNI C++ passes
   `clang++ -fsyntax-only -Wall -Wextra -Werror` against the JDK headers.
-- The host-only JNI/JVM fixture passed locally on Darwin arm64 (clang, JDK 25)
-  on 26 October 2026: receipt/tamper, capability, text, supplementary scalar
-  plus NUL, sink cancellation, pre-first-token cancellation, BUSY,
-  close-while-busy, reuse and idempotent close.
-- Hosted JNI/JVM and arm64 app compilation are wired into CI; check the exact
-  PR head for their results.
-- No MAX runner, weights, device or simulator was used. Phone speed and UI
-  remain unverified.
+- `110b67e`: the full host-only JNI/JVM synthetic fixture passed on Darwin arm64
+  (clang, local JDK), and all nine Kotlin facade unit tests passed. Deterministic
+  native admission and retirement regressions passed; two negative controls
+  failed as expected. The fixture covers independent pending requests,
+  completed/foreign/retired tokens, the 64 pending / 1,024 completed bounds,
+  old unknown-ID expiry, delayed/current-run successor isolation, UTF-8/NUL,
+  cancellation, BUSY, close and reuse. This local host evidence remains separate
+  from the hosted run below.
+- The narrow hosted route now passes on the exact docs/source revision:
+  [`native-remote-sdk.yml` run 40221763739](https://github.com/alikatgh/quenderin/actions/runs/40221763739)
+  on branch `codex/max-cancel-verification-20261026` at
+  `a56a382f7f4272b904becae3888d8f1af551f1d4`. The
+  [android job 121254652255](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652255)
+  passed Android core tests (including the nine facade tests) and the real
+  Android SDK/app build. The
+  [apple job 121254652114](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652114)
+  passed the QuenderinKit `swift test` step and Apple/iOS SDK/app compile checks.
+- This is a **narrow two-job run**, not the full CI matrix, and it does not
+  execute `test_android_binding.py`. The earlier full-CI green set at `065b740`
+  remains separate evidence. The correction originated in `110b67e`; `a56a382` adds its historical
+  verification record. Integration into current main requires the checks for
+  that integrated revision.
+- No vendor MAX backend, model contract, physical phone, rendered UI or store
+  verification is established. MAX remains disabled.

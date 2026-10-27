@@ -18,6 +18,8 @@ class MaxModelBindingTest {
         var cancelRun = 0L
         var closeCode = MaxModelCode.OK
         var generateCode = MaxModelCode.OK
+        var generateCalls = 0
+        var cancelCalls = 0
 
         override fun verify(receipt: MaxModelReceipt) = MaxVerification(MaxModelCode.OK, "")
         override fun capability(receipt: MaxModelReceipt, loadProbePassed: Boolean) =
@@ -28,6 +30,7 @@ class MaxModelBindingTest {
         override fun generate(handle: Long, runId: Long, prompt: String, maxTokens: Int, temperature: Float,
                               topP: Float, seed: Int, sink: MaxTokenSink): MaxGenerationResult {
             generatedRun = runId
+            generateCalls += 1
             generatedPrompt = prompt
             sink.onToken("ok")
             return MaxGenerationResult(generateCode,
@@ -36,6 +39,7 @@ class MaxModelBindingTest {
         }
         override fun cancel(handle: Long, runId: Long): Boolean {
             cancelRun = runId
+            cancelCalls += 1
             return true
         }
         override fun close(handle: Long): Int = closeCode
@@ -58,6 +62,37 @@ class MaxModelBindingTest {
         val token = handle.newRunToken()
         assertTrue(handle.generate("hi", token = token) { true }.succeeded)
         assertEquals(token.id, api.generatedRun)
+    }
+
+    @Test fun pendingCancellationSurvivesCompletedAndUnrelatedTokens() {
+        val api = FakeApi()
+        val handle = MaxModelHandle(10, receipt, api)
+        val completed = handle.newRunToken()
+        assertTrue(handle.generate("hi", token = completed) { true }.succeeded)
+        val pending = handle.newRunToken()
+        val otherPending = handle.newRunToken()
+        assertTrue(handle.cancel(pending))
+        assertFalse(handle.cancel(completed))
+        assertTrue(handle.cancel(otherPending))
+        assertEquals(MaxModelCode.CANCELLED, handle.generate("hi", token = otherPending) { true }.code)
+        assertEquals(MaxModelCode.CANCELLED, handle.generate("hi", token = pending) { true }.code)
+        assertEquals(1, api.generateCalls, "pending cancellations must not reach the native runner")
+        assertEquals(0, api.cancelCalls, "completed/pending tokens need no model-wide native cancel")
+        assertFalse(handle.cancel(pending))
+        assertFalse(handle.cancel(completed))
+        assertFailsWith<IllegalArgumentException> { handle.generate("hi", token = completed) { true } }
+        assertTrue(handle.generate("hi") { true }.succeeded)
+    }
+
+    @Test fun foreignTokenCannotCancelOrGenerate() {
+        val api = FakeApi()
+        val first = MaxModelHandle(10, receipt, api)
+        val second = MaxModelHandle(11, receipt, api)
+        val token = first.newRunToken()
+        assertFalse(second.cancel(token))
+        assertFailsWith<IllegalArgumentException> { second.generate("hi", token = token) { true } }
+        assertTrue(first.generate("hi", token = token) { true }.succeeded)
+        assertEquals(0, api.cancelCalls)
     }
 
     @Test fun closeRefusesBusyThenClosesOnce() {

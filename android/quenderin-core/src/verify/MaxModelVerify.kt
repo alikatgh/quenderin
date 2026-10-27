@@ -24,6 +24,9 @@ private fun fail(message: String): Nothing = error("MAX JNI fixture: $message")
 object MaxModelTestControl {
     @JvmStatic external fun waitTokenize(): Boolean
     @JvmStatic external fun releaseTokenize(): Boolean
+    @JvmStatic external fun resetTokenize(): Boolean
+    @JvmStatic external fun runStateCounts(handle: Long): LongArray
+    @JvmStatic external fun cancelAfterSelection(handle: Long, run: Long, selected: Runnable): Boolean
 }
 
 fun main(args: Array<String>) {
@@ -125,6 +128,22 @@ fun main(args: Array<String>) {
     }
     if (!handle.generate("hi") { true }.succeeded) fail("handle was not reusable after pre-admission cancel")
 
+    val completedToken = handle.newRunToken()
+    if (!handle.generate("hi", token = completedToken) { true }.succeeded) fail("completed-token setup failed")
+    val pendingToken = handle.newRunToken()
+    val otherPendingToken = handle.newRunToken()
+    if (!handle.cancel(pendingToken)) fail("pending B cancellation was not accepted")
+    if (handle.cancel(completedToken)) fail("completed A cancellation was accepted")
+    if (!handle.cancel(otherPendingToken)) fail("pending C cancellation was not accepted")
+    if (handle.generate("hi", token = otherPendingToken) { true }.code != MaxModelCode.CANCELLED ||
+        handle.generate("hi", token = pendingToken) { true }.code != MaxModelCode.CANCELLED) {
+        fail("completed/unrelated token erased a pending cancellation")
+    }
+    if (handle.cancel(pendingToken)) fail("consumed cancelled token accepted another cancellation")
+    if (runCatching { handle.generate("hi", token = completedToken) { true } }.isSuccess) {
+        fail("completed token generated again")
+    }
+
     // A delayed token from an earlier run must not cancel the active run.
     val stale = handle.newRunToken()
     val blocked = CountDownLatch(1)
@@ -172,7 +191,119 @@ fun main(args: Array<String>) {
 
     val second = (MaxModelBinding.open(receipt) as? MaxOpenResult.Opened)?.handle ?: fail("second open failed")
     if (second.cancel()) fail("idle cancel reported a run")
+    val foreign = handle.newRunToken()
+    if (second.cancel(foreign)) fail("foreign token cancellation was accepted")
+    if (runCatching { second.generate("hi", token = foreign) { true } }.isSuccess) fail("foreign token generated")
     if (second.close() != MaxCloseResult.CLOSED) fail("second close failed")
 
-    println("MAX JNI/JVM synthetic interop: receipt, capability, text, supplementary/NUL, cancellation, BUSY, close, reuse passed; no vendor runtime used")
+    // Exercise JNI directly so the facade's own terminal/pending state cannot
+    // mask a native regression in the published-before-admission window.
+    val rawCode = IntArray(1)
+    val rawError = arrayOf("")
+    val raw = MaxModelNative.nativeOpen(paths, sizes, receipt.files.map { it.sha256 }.toTypedArray(),
+        receipt.runnerName, receipt.backend, receipt.contextTokens, receipt.maxOutputTokens, rawCode, rawError)
+    if (raw == 0L || rawCode[0] != MaxModelCode.OK) fail("raw native open failed")
+    var rawCallbacks = 0
+    fun rawGenerate(run: Long, prompt: String = "hi", onToken: (String) -> Boolean = { true }): Int =
+        MaxModelNative.nativeGenerate(raw, run, prompt, 16, 0.7f, 0.9f, 0,
+            { rawCallbacks += 1; onToken(it) }, DoubleArray(8), arrayOf(""))
+    if (rawGenerate(1) != MaxModelCode.OK) fail("raw completed A setup failed")
+    if (!MaxModelNative.nativeCancel(raw, 2)) fail("raw pending B cancel was not accepted")
+    if (MaxModelNative.nativeCancel(raw, 1)) fail("raw completed A cancel was accepted")
+    if (!MaxModelNative.nativeCancel(raw, 3)) fail("raw pending C cancel was not accepted")
+    if (rawGenerate(4) != MaxModelCode.OK) fail("unrelated native run failed")
+    val callbacksBeforePending = rawCallbacks
+    if (rawGenerate(3) != MaxModelCode.CANCELLED || rawGenerate(2) != MaxModelCode.CANCELLED) {
+        fail("raw unrelated/stale token erased a pending cancellation")
+    }
+    if (rawCallbacks != callbacksBeforePending) fail("raw pre-cancelled run emitted tokens")
+    if (MaxModelNative.nativeCancel(raw, 2) || rawGenerate(1) != MaxModelCode.INVALID_ARGUMENT) {
+        fail("raw terminal token was revived")
+    }
+
+    // Select cancellation for admitted A at the JNI dispatch boundary, then
+    // finish A and admit B in native tokenize before resuming A's request.
+    // Both generation and cancellation bypass the Kotlin handle/token facade.
+    val rawAEntered = CountDownLatch(1)
+    val rawARelease = CountDownLatch(1)
+    val rawAFirst = java.util.concurrent.atomic.AtomicBoolean(true)
+    var rawAResult: Int? = null
+    val rawA = thread {
+        rawAResult = rawGenerate(20) {
+            if (rawAFirst.compareAndSet(true, false)) {
+                rawAEntered.countDown()
+                if (!rawARelease.await(5, TimeUnit.SECONDS)) fail("raw A release timed out")
+            }
+            true
+        }
+    }
+    if (!rawAEntered.await(5, TimeUnit.SECONDS)) fail("raw A did not hold the native lease")
+    val rawCancelSelected = CountDownLatch(1)
+    val rawCancelResume = CountDownLatch(1)
+    var rawDelayedCancel: Boolean? = null
+    val rawCancelFailure = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
+    val rawCanceller = thread {
+        try {
+            rawDelayedCancel = MaxModelTestControl.cancelAfterSelection(raw, 20, Runnable {
+                rawCancelSelected.countDown()
+                if (!rawCancelResume.await(5, TimeUnit.SECONDS)) fail("raw cancel resume timed out")
+            })
+        } catch (failure: Throwable) {
+            rawCancelFailure.set(failure)
+        }
+    }
+    if (!rawCancelSelected.await(5, TimeUnit.SECONDS)) fail("raw A cancellation was not selected")
+    rawARelease.countDown()
+    rawA.join(5000)
+    if (rawA.isAlive || rawAResult != MaxModelCode.OK) fail("raw A did not complete before delayed cancellation")
+    MaxModelTestControl.resetTokenize()
+    var rawBResult: Int? = null
+    val rawB = thread { rawBResult = rawGenerate(21, "__block__ hi") }
+    MaxModelTestControl.waitTokenize()
+    // B now owns the actual C lease. The delayed request must be rejected by
+    // nativeCancel's terminal/ownership checks, rather than by the facade.
+    rawCancelResume.countDown()
+    rawCanceller.join(5000)
+    MaxModelTestControl.releaseTokenize()
+    rawB.join(5000)
+    if (rawCanceller.isAlive || rawCancelFailure.get() != null || rawDelayedCancel != false) {
+        fail("native boundary accepted delayed cancellation for completed A")
+    }
+    if (rawB.isAlive || rawBResult != MaxModelCode.OK) fail("delayed A cancellation affected native B")
+
+    // Accept a LOW pending identity before advancing retirement past it. Only
+    // completed records may expire; this accepted request must remain live.
+    if (!MaxModelNative.nativeCancel(raw, 10)) fail("low pending native cancel was not accepted")
+    for (run in 1100L..2200L) if (rawGenerate(run) != MaxModelCode.OK) fail("native history setup failed")
+    if (MaxModelNative.nativeCancel(raw, 1) || rawGenerate(1) != MaxModelCode.INVALID_ARGUMENT) {
+        fail("expired native terminal token was revived")
+    }
+    // ID 11 was never used. Its rejection establishes that the retirement floor
+    // passed the still-pending ID 10, rather than merely dropping a tombstone.
+    if (rawGenerate(11) != MaxModelCode.INVALID_ARGUMENT) fail("native retirement did not pass the low pending ID")
+    val historyCounts = MaxModelTestControl.runStateCounts(raw)
+    if (historyCounts[0] != 1L || historyCounts[1] != 1024L || historyCounts[2] != 1025L) {
+        fail("native terminal pruning lost pending state or exceeded its bound")
+    }
+    val callbacksBeforeRetiredPending = rawCallbacks
+    if (rawGenerate(10) != MaxModelCode.CANCELLED || rawCallbacks != callbacksBeforeRetiredPending) {
+        fail("accepted low pending cancellation was lost below the retirement floor")
+    }
+
+    // Exhaustion rejects a new request without evicting an accepted pending one.
+    for (run in 5000L..5063L) if (!MaxModelNative.nativeCancel(raw, run)) fail("pending native capacity was lost")
+    if (MaxModelNative.nativeCancel(raw, 5064)) fail("native pending capacity was exceeded")
+    val fullCounts = MaxModelTestControl.runStateCounts(raw)
+    if (fullCounts[0] != 64L || fullCounts[2] != 1088L) fail("native pending/history bounds differ")
+    if (rawGenerate(6000) != MaxModelCode.OK) fail("native unrelated run at pending capacity failed")
+    val callbacksBeforeCapacityDrain = rawCallbacks
+    for (run in 5000L..5063L) {
+        if (rawGenerate(run) != MaxModelCode.CANCELLED) fail("accepted pending native cancellation was lost")
+    }
+    if (rawCallbacks != callbacksBeforeCapacityDrain || MaxModelTestControl.runStateCounts(raw)[0] != 0L) {
+        fail("native pending drain emitted tokens or retained pending state")
+    }
+    if (MaxModelNative.nativeClose(raw) != MaxModelCode.OK) fail("raw native close failed")
+
+    println("MAX JNI/JVM synthetic interop: receipt, capability, text, supplementary/NUL, cancellation, stale/completed tokens, pending isolation/capacity, bounded terminal history, BUSY, close, reuse passed; no vendor runtime used")
 }

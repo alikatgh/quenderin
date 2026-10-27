@@ -24,12 +24,12 @@ and before the cross-target SDK build. There is no second maintained copy.
 
 The Swift wrapper exposes receipt verification, capability, open, streaming
 generation, cancel and close. `close()` waits for an active generation to drain
-and returns `.busy` when called from the token callback itself. `cancel()` calls
-the native atomic lease directly, so a synchronous generation cannot block
-cancellation. Run tokens let a caller cancel a specific run, including a pending
-pre-admission request; a delayed token from an earlier run cannot cancel a later
-one. Errors and numeric reports are Swift value types; no transcript, path or
-prompt is put in an error.
+and returns `.busy` when called from the token callback itself. `cancel()` sets a
+run-owned stop flag consumed by the C boundary, so a synchronous generation
+cannot block cancellation; idle cancellation is a no-op. Tokens own pending and
+terminal cancellation state; a delayed, completed or foreign token cannot cancel
+a later run. Errors and numeric reports are Swift value types; no transcript,
+path or prompt is put in an error.
 
 ## Tests
 
@@ -43,7 +43,10 @@ shipped) and synthetic files:
   token;
 - BUSY while another run holds the lease;
 - `close()` waits for the run to drain and returns `.closed`;
-- a concurrent `cancel()` waits for a blocked close to release the model lease;
+- idle cancel during a blocked close does not touch the model;
+- token-owned cancellation is isolated from a successor run, including delayed
+  token and delayed current-run requests;
+- completed, foreign and already-consumed tokens are rejected;
 - reuse after cancellation, idempotent close, closed-handle rejection;
 - close from the callback is refused, not deadlocked.
 
@@ -59,12 +62,20 @@ that is compilation, not an iOS MAX runtime.
 
 ## Verification status
 
-- Staged C bytes verified by `--check`.
-- `swiftc -typecheck` of the wrapper passed for macOS and
-  `arm64-apple-ios16.4`; the C source passes the iPhoneOS SDK syntax check.
-- `swift package dump-package` resolves `CMaxModel` as a package target.
-- Hosted `swift test` and the iOS app compile are wired into CI; check the exact
-  PR head.
-- No MAX SDK, runner, weights, simulator or device was used. Phone speed and UI
-  remain unverified, and Apple MAX packaging remains a separate artifact/license
-  milestone.
+- The prior Swift-runtime gap is closed for this source by the existing narrow
+  hosted route: [`native-remote-sdk.yml` run 40221763739](https://github.com/alikatgh/quenderin/actions/runs/40221763739)
+  on branch `codex/max-cancel-verification-20261026` at
+  `a56a382f7f4272b904becae3888d8f1af551f1d4`. Both jobs completed SUCCESS:
+  the [apple job 121254652114](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652114)
+  includes the QuenderinKit `swift test` step and the Apple/iOS SDK/app compile
+  checks; the [android job 121254652255](https://github.com/alikatgh/quenderin/actions/runs/40221763739/job/121254652255)
+  covers Android core tests and the SDK/app build.
+- This is a **narrow two-job run**, not the full CI matrix. The earlier full-CI
+  green set at `065b740` remains separate evidence and is not replaced by this
+  run. The local host JNI/JVM synthetic fixture remains separate evidence
+  described in [max-android-binding.md](max-android-binding.md).
+- The correction originated in `110b67e`; `a56a382` records its historical
+  verification. Integration into current main requires the checks for that
+  integrated revision.
+- No vendor MAX backend, model contract, physical phone, rendered UI or store
+  verification is established. MAX remains disabled.

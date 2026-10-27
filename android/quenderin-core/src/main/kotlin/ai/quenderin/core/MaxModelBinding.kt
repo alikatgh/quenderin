@@ -1,7 +1,6 @@
 package ai.quenderin.core
 
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -321,7 +320,12 @@ object MaxModelBinding {
 }
 
 /** A caller-visible run identity; only [MaxModelHandle.newRunToken] can mint one. */
-data class MaxRunToken internal constructor(val id: Long)
+class MaxRunToken internal constructor(val id: Long, internal val owner: Any) {
+    // Lifecycle fields are protected by the owning handle's runLock. Pending
+    // state belongs to the caller's token, so the handle retains no token table.
+    internal var cancelRequested = false
+    internal var completed = false
+}
 
 /**
  * One verified installation. Generation is single-flight; [cancel] may be called
@@ -334,19 +338,30 @@ class MaxModelHandle internal constructor(
     private val api: MaxModelApi,
 ) {
     private val runIds = AtomicLong(0)
-    private val running = AtomicBoolean(false)
-    @Volatile private var activeRunId = 0L
+    private val runLock = Any()
+    private val tokenOwner = Any()
+    private var activeRun: MaxRunToken? = null
     @Volatile private var closed = false
 
     val isClosed: Boolean get() = closed
 
     /** Mint a token before starting an asynchronous run; a stale token cannot cancel a later run. */
-    fun newRunToken(): MaxRunToken = MaxRunToken(runIds.incrementAndGet())
+    fun newRunToken(): MaxRunToken {
+        val runId = runIds.incrementAndGet()
+        check(runId > 0) { "The MAX run token range is exhausted." }
+        return MaxRunToken(runId, tokenOwner)
+    }
 
     private fun busy() = MaxGenerationResult(
         MaxModelCode.BUSY,
         MaxGenerationPerformance(0, 0, 0.0, 0.0, 0.0, 0.0, MaxModelStatus.REJECTED, 0),
         "Generation is already in progress for this model.",
+    )
+
+    private fun cancelled() = MaxGenerationResult(
+        MaxModelCode.CANCELLED,
+        MaxGenerationPerformance(0, 0, 0.0, 0.0, 0.0, 0.0, MaxModelStatus.CANCELLED, 0),
+        "Generation cancelled before native admission.",
     )
 
     fun generate(
@@ -366,27 +381,45 @@ class MaxModelHandle internal constructor(
         require(temperature in 0f..2f && topP > 0f && topP <= 1f) {
             "Sampling parameters are outside the reviewed range."
         }
-        require(token.id > 0) { "A run token is required." }
-        if (!running.compareAndSet(false, true)) return busy()
+        synchronized(runLock) {
+            check(!closed) { "The MAX model handle is closed." }
+            require(token.owner === tokenOwner && !token.completed) {
+                "The run token is foreign or already completed."
+            }
+            if (activeRun != null) return busy()
+            if (token.cancelRequested) {
+                token.completed = true
+                return cancelled()
+            }
+            activeRun = token
+        }
         val runId = token.id
-        activeRunId = runId
         try {
             return api.generate(id, runId, prompt, maxTokens, temperature, topP, seed, sink)
         } finally {
-            if (activeRunId == runId) activeRunId = 0L
-            running.set(false)
+            synchronized(runLock) {
+                token.completed = true
+                activeRun = null
+            }
         }
     }
 
     /** Cancels only the currently active run; returns false when idle or stale. */
     fun cancel(): Boolean {
-        val runId = activeRunId
-        return runId != 0L && api.cancel(id, runId)
+        val token = synchronized(runLock) { activeRun } ?: return false
+        return cancel(token)
     }
 
     /** Cancels [token] (including a run that has not reached native admission yet). */
     fun cancel(token: MaxRunToken): Boolean {
-        require(token.id > 0) { "A run token is required." }
+        synchronized(runLock) {
+            if (closed || token.owner !== tokenOwner || token.completed ||
+                (activeRun != null && activeRun !== token)) return false
+            token.cancelRequested = true
+            if (activeRun == null) return true
+        }
+        // JNI validates this exact run while holding its ownership lock. A run
+        // that completed after the snapshot cannot cancel its successor.
         return api.cancel(id, token.id)
     }
 
