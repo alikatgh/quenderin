@@ -741,8 +741,8 @@ table td, table th { font-variant-numeric: tabular-nums; }
 .glossary dd { margin: 0; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; }
 
 /* Back-to-top */
-.to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 40; width: 42px; height: 42px; border-radius: var(--r-full); border: 1px solid var(--border); background: color-mix(in srgb, var(--n-000) 80%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(10,37,64,0.12); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
-.to-top.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 40; width: 42px; height: 42px; border-radius: var(--r-full); border: 1px solid var(--border); background: color-mix(in srgb, var(--n-000) 80%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(10,37,64,0.12); opacity: 0; visibility: hidden; transform: translateY(8px); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+.to-top.show { visibility: visible; opacity: 1; transform: translateY(0); pointer-events: auto; }
 .to-top:hover { border-color: var(--brand); color: var(--brand); }
 .to-top:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 

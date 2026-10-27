@@ -108,6 +108,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -1107,6 +1108,7 @@ private fun Composer(
     onStop: () -> Unit,
 ) {
     val enabled = !busy
+    val messageLabel = stringResource(R.string.chat_composer_placeholder)
     Row(
         Modifier
             .fillMaxWidth()
@@ -1140,9 +1142,10 @@ private fun Composer(
             Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 if (input.isEmpty()) {
                     Text(
-                        stringResource(R.string.chat_composer_placeholder),
+                        messageLabel,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clearAndSetSemantics {},
                     )
                 }
                 BasicTextField(
@@ -1151,7 +1154,7 @@ private fun Composer(
                     enabled = enabled,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = messageLabel },
                 )
             }
         }

@@ -104,6 +104,8 @@ struct QFilterMenuChip<T: Hashable>: View {
         .menuStyle(.borderlessButton)
         .qHideMenuIndicator()
         .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(title)
+        .accessibilityValue(currentLabel)
     }
 }
 
@@ -155,6 +157,8 @@ struct QFilterSortChip: View {
         .menuStyle(.borderlessButton)
         .qHideMenuIndicator()
         .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel("Sort models")
+        .accessibilityValue(label)
     }
 
     private func sortTitle(_ s: ModelSearchFilters.Sort) -> String {
