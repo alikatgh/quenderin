@@ -4,6 +4,22 @@ import Foundation
 // point tolerates LLM-generated garbage and returns a message rather than
 // throwing — the planner's input is never trusted.
 
+// MARK: - Numeric contract
+
+/// The digit contract both twins implement (twin-drift audit, agent-session P3): a digit is one
+/// Unicode **category-Nd** scalar and contributes its DECIMAL VALUE — so Arabic-Indic `٥` and
+/// fullwidth `５` both read as 5 on either platform (Android's `Integer.parseInt` accepted them
+/// while Swift's `Int`/`Double` are ASCII-only, which is the drift this closes). Characters that
+/// merely *have* a numeric value (`²` U+00B2, `½`, `Ⅷ`) are NOT digits: in the unit parser they
+/// stay part of the unit token, which is why `5² m to ft` is a cross-dimension error on both.
+///
+/// `Character.wholeNumberValue` alone is too wide — it answers 2 for `²` — so the Nd check must
+/// come first. Twin of Kotlin `decimalDigitValue`.
+private func decimalDigitValue(_ ch: Character) -> Int? {
+    guard ch.isDecimalDigit else { return nil }
+    return ch.wholeNumberValue
+}
+
 // MARK: - Unit conversion
 
 /// Converts between common units fully offline — length, temperature, mass,
@@ -94,8 +110,12 @@ enum UnitConverter {
         let left = parts[0].trimmingCharacters(in: .whitespaces)
         var numStr = ""
         var idx = left.startIndex
-        while idx < left.endIndex, left[idx].isDecimalDigit || left[idx] == "." || left[idx] == "-" {
-            numStr.append(left[idx]); idx = left.index(after: idx)
+        while idx < left.endIndex {
+            let ch = left[idx]
+            if let digit = decimalDigitValue(ch) { numStr += String(digit) }
+            else if ch == "." || ch == "-" { numStr.append(ch) }
+            else { break }
+            idx = left.index(after: idx)
         }
         guard let value = Double(numStr) else { return nil }
         let fromUnit = canonical(String(left[idx...]))
@@ -186,8 +206,11 @@ enum DateCalc {
 
     private static func firstInteger(in text: String) -> Int? {
         var digits = ""
-        for ch in text { if ch.isNumber { digits.append(ch) } else if !digits.isEmpty { break } }
-        return Int(digits)
+        for ch in text {
+            if let digit = decimalDigitValue(ch) { digits += String(digit) }
+            else if !digits.isEmpty { break }
+        }
+        return digits.isEmpty ? nil : Int(digits)
     }
 
     static func evaluate(_ text: String) -> String? {

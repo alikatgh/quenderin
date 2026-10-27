@@ -30,6 +30,10 @@
 namespace {
 
 constexpr jint kBridgeAbi = 1;
+constexpr size_t kMaxPendingRuns = 64;
+constexpr size_t kMaxCompletedRuns = 1024;
+
+enum class RunState { pending_cancel, active, completed };
 
 const QMaxModelRunner* compiled_runner() {
 #ifdef QUENDERIN_MAX_TEST_RUNNER
@@ -45,10 +49,38 @@ struct MaxHandle {
     std::atomic<jlong> current_run{0};
     std::atomic<jlong> cancel_requested{0};
     std::atomic<bool> running{false};
-    jlong pending_cancel = 0;
+    std::unordered_map<jlong, RunState> runs;
+    size_t pending_runs = 0;
+    size_t completed_runs = 0;
+    jlong retired_through = 0;
     std::mutex run_mutex;
     std::mutex model_mutex;
 };
+
+// Keep pending requests until their own admission. Only terminal records may
+// expire; an erased terminal ID (and older unknown IDs) can never be revived.
+// This bounds retained state to 64 pending + 1 active + 1,024 completed records.
+void complete_run(MaxHandle* handle, jlong run_id) {
+    std::lock_guard<std::mutex> lock(handle->run_mutex);
+    if (handle->current_run.load() == run_id) handle->current_run.store(0);
+    if (handle->cancel_requested.load() == run_id) handle->cancel_requested.store(0);
+    const auto found = handle->runs.find(run_id);
+    if (found == handle->runs.end() || found->second == RunState::completed) return;
+    found->second = RunState::completed;
+    ++handle->completed_runs;
+    if (handle->completed_runs > kMaxCompletedRuns) {
+        auto oldest = handle->runs.end();
+        for (auto it = handle->runs.begin(); it != handle->runs.end(); ++it) {
+            if (it->second == RunState::completed &&
+                (oldest == handle->runs.end() || it->first < oldest->first)) oldest = it;
+        }
+        if (oldest != handle->runs.end()) {
+            if (oldest->first > handle->retired_through) handle->retired_through = oldest->first;
+            handle->runs.erase(oldest);
+            --handle->completed_runs;
+        }
+    }
+}
 
 struct StopContext {
     MaxHandle* handle = nullptr;
@@ -448,27 +480,39 @@ Java_ai_quenderin_core_MaxModelNative_nativeGenerate(
         MaxHandle* handle;
         ~RunningGuard() { handle->running.store(false); }
     } running_guard{handle.get()};
-    struct RunGuard {
-        MaxHandle* handle;
-        jlong run_id;
-        ~RunGuard() {
-            std::lock_guard<std::mutex> lock(handle->run_mutex);
-            if (handle->current_run.load() == run_id) handle->current_run.store(0);
-            if (handle->cancel_requested.load() == run_id) handle->cancel_requested.store(0);
-        }
-    } run_guard{handle.get(), run_id};
     bool pre_cancelled = false;
     {
         std::lock_guard<std::mutex> lock(handle->run_mutex);
-        if (handle->pending_cancel == run_id) {
-            handle->pending_cancel = 0;
-            pre_cancelled = true;
-        } else {
-            handle->pending_cancel = 0;
-            handle->current_run.store(run_id);
-            handle->cancel_requested.store(0);
+        auto found = handle->runs.find(run_id);
+        if (run_id <= 0 || (found != handle->runs.end() && found->second == RunState::completed) ||
+            (found == handle->runs.end() && run_id <= handle->retired_through)) {
+            set_performance(env, performance_out, performance);
+            set_error(env, error_out, "MAX run token is expired or already completed.");
+            return QMAX_INVALID_ARGUMENT;
         }
+        if (found != handle->runs.end()) {
+            // A native generation is single-flight, so the only nonterminal
+            // record for this ID here is its own pending cancellation.
+            pre_cancelled = true;
+            --handle->pending_runs;
+            found->second = RunState::active;
+        } else {
+            try {
+                handle->runs.emplace(run_id, RunState::active);
+            } catch (const std::bad_alloc&) {
+                set_performance(env, performance_out, performance);
+                set_error(env, error_out, "Cannot allocate MAX run state.");
+                return QMAX_UNAVAILABLE;
+            }
+        }
+        handle->current_run.store(run_id);
+        handle->cancel_requested.store(0);
     }
+    struct RunGuard {
+        MaxHandle* handle;
+        jlong run_id;
+        ~RunGuard() { complete_run(handle, run_id); }
+    } run_guard{handle.get(), run_id};
     if (pre_cancelled) {
         performance.status = 1;
         set_performance(env, performance_out, performance);
@@ -543,6 +587,9 @@ Java_ai_quenderin_core_MaxModelNative_nativeCancel(JNIEnv*, jclass, jlong id, jl
     std::lock_guard<std::mutex> model_lock(handle->model_mutex);
     if (!handle->model) return JNI_FALSE;
     std::lock_guard<std::mutex> run_lock(handle->run_mutex);
+    const auto found = handle->runs.find(run_id);
+    if ((found != handle->runs.end() && found->second == RunState::completed) ||
+        (found == handle->runs.end() && run_id <= handle->retired_through)) return JNI_FALSE;
     if (handle->current_run.load() == run_id) {
         handle->cancel_requested.store(run_id);
         qmax_model_cancel(handle->model);
@@ -550,8 +597,16 @@ Java_ai_quenderin_core_MaxModelNative_nativeCancel(JNIEnv*, jclass, jlong id, jl
     }
     if (handle->current_run.load() == 0) {
         // The wrapper published this run before JNI registered it. Hold the
-        // request until nativeGenerate consumes it (or a different run starts).
-        handle->pending_cancel = run_id;
+        // request until exactly this run consumes it. A completed/stale token
+        // cannot replace another token's already accepted cancellation.
+        if (found != handle->runs.end()) return JNI_TRUE;
+        if (handle->pending_runs >= kMaxPendingRuns) return JNI_FALSE;
+        try {
+            handle->runs.emplace(run_id, RunState::pending_cancel);
+        } catch (const std::bad_alloc&) {
+            return JNI_FALSE;
+        }
+        ++handle->pending_runs;
         return JNI_TRUE;
     }
     return JNI_FALSE;  // a different run owns the lease; never cancel it
@@ -586,6 +641,43 @@ Java_ai_quenderin_core_MaxModelNative_nativeClose(JNIEnv*, jclass, jlong id) {
 }
 
 #ifdef QUENDERIN_MAX_TEST_RUNNER
+// A deterministic dispatch boundary for the hosted fixture. The production
+// cancellation function remains responsible for validating run ownership
+// after this selected request is resumed; no Kotlin token checks can mask it.
+JNIEXPORT jboolean JNICALL
+Java_MaxModelTestControl_cancelAfterSelection(JNIEnv* env, jclass, jlong id,
+                                             jlong run_id, jobject selected) {
+    const auto retained = handle_for(id);
+    if (!retained || !selected) return JNI_FALSE;
+    jclass selected_class = env->GetObjectClass(selected);
+    if (!selected_class) return JNI_FALSE;
+    const jmethodID run = env->GetMethodID(selected_class, "run", "()V");
+    env->DeleteLocalRef(selected_class);
+    if (!run) return JNI_FALSE;
+    env->CallVoidMethod(selected, run);
+    if (env->ExceptionCheck()) return JNI_FALSE;
+    return Java_ai_quenderin_core_MaxModelNative_nativeCancel(env, nullptr, id, run_id);
+}
+
+JNIEXPORT jlongArray JNICALL
+Java_MaxModelTestControl_runStateCounts(JNIEnv* env, jclass, jlong id) {
+    auto handle = handle_for(id);
+    if (!handle) return nullptr;
+    std::lock_guard<std::mutex> lock(handle->run_mutex);
+    const jlong values[] = {static_cast<jlong>(handle->pending_runs),
+                           static_cast<jlong>(handle->completed_runs),
+                           static_cast<jlong>(handle->runs.size())};
+    jlongArray result = env->NewLongArray(3);
+    if (result) env->SetLongArrayRegion(result, 0, 3, values);
+    return result;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_MaxModelTestControl_resetTokenize(JNIEnv*, jclass) {
+    fake_model_block(0);
+    return JNI_TRUE;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_MaxModelTestControl_waitTokenize(JNIEnv*, jclass) {
     fake_model_wait_entered();

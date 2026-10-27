@@ -43,6 +43,31 @@ final class UnitConverterToolTests: XCTestCase {
             XCTAssertTrue(out.contains("Couldn't read"), "expected rejection for \"\(bad)\", got \(out)")
         }
     }
+
+    /// The shared digit contract (twin-drift audit, agent-session P3). Kotlin's
+    /// `AgentToolsExtraTest` pins the same vectors, so a change on one side alone breaks a gate
+    /// instead of shipping as drift.
+    func testDigitClassContract() async throws {
+        // `²` is category-No, not Nd: it stays unit text, never part of the value. Both twins must
+        // agree on the cross-dimension error instead of one reading "5²" as a number.
+        let superscript = try await tool.run("5² m to ft")
+        XCTAssertEqual(superscript, "Can't convert ² m to ft — they measure different things.")
+
+        // Category-Nd digits parse by DECIMAL VALUE on both platforms (Swift's Int/Double would
+        // otherwise reject them while Android's parser accepts them — the drift this closes).
+        let arabic = try await tool.run("\u{0665} km to m")       // ARABIC-INDIC FIVE
+        XCTAssertEqual(arabic, "5 km = 5000 m")
+        let fullwidth = try await tool.run("\u{FF15} km to m")    // FULLWIDTH FIVE
+        XCTAssertEqual(fullwidth, "5 km = 5000 m")
+        // Supplementary-plane Nd: one scalar here, a UTF-16 surrogate pair on Android. Both must
+        // read it as 5 (Kotlin scans by code point — see its `decimalDigitValue`).
+        let astral = try await tool.run("\u{1D7DD} km to m")      // MATHEMATICAL DOUBLE-STRUCK FIVE
+        XCTAssertEqual(astral, "5 km = 5000 m")
+
+        // Ordinary ASCII input is unchanged, including the fractional rendering.
+        let ordinary = try await tool.run("5 m to ft")
+        XCTAssertEqual(ordinary, "5 m = 16.4042 ft")
+    }
 }
 
 final class DateCalcToolTests: XCTestCase {
@@ -79,6 +104,25 @@ final class DateCalcToolTests: XCTestCase {
             let out = try await tool.run(bad)
             XCTAssertTrue(out.contains("Couldn't read"), "expected rejection for \"\(bad)\", got \(out)")
         }
+    }
+
+    /// Same digit contract as the unit parser. `firstInteger` used `Character.isNumber`, which
+    /// includes `²`: it appended the superscript and then `Int("5²")` failed, so Swift rejected an
+    /// offset that Kotlin (category-Nd scan) read as 5 days. Regression for that exact split.
+    func testDigitClassContract() async throws {
+        let superscript = try await tool.run("2026-06-08 plus 5² days")
+        XCTAssertEqual(superscript, "2026-06-13")
+
+        // Nd digits read by value on both twins — Android's Integer.parseInt already did this.
+        let arabic = try await tool.run("2026-06-08 plus \u{0665} days")
+        XCTAssertEqual(arabic, "2026-06-13")
+        // Supplementary-plane Nd must read the same way through the code-point scan.
+        let astral = try await tool.run("2026-06-08 plus \u{1D7DD} days")
+        XCTAssertEqual(astral, "2026-06-13")
+
+        // Ordinary ASCII offsets are unchanged.
+        let ordinary = try await tool.run("2026-06-25 minus 17 days")
+        XCTAssertEqual(ordinary, "2026-06-08")
     }
 
     /// Calendar-invalid dates must be REJECTED, not silently rolled over. DateFormatter would turn
