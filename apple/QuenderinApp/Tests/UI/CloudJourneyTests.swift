@@ -74,7 +74,7 @@ final class CloudJourneyTests: XCTestCase {
         let consent = deepSeekConsentControl
         require(consent)
         XCTAssertEqual(consent.label, deepSeekConsent)
-        XCTAssertEqual(consent.value as? String, "0", "Provider validation consent must start off")
+        XCTAssertEqual(switchValue(consent), "0", "Provider validation consent must start off")
         XCTAssertFalse(connect.isEnabled)
         capture("04-deepseek-consent-default-off")
 
@@ -83,7 +83,7 @@ final class CloudJourneyTests: XCTestCase {
         key.typeText("invalid fixture key")
         XCTAssertFalse(connect.isEnabled, "Typing alone must not grant validation consent")
         tap(consent)
-        XCTAssertEqual(consent.value as? String, "1", "The explicit consent action must turn the switch on")
+        XCTAssertEqual(switchValue(consent), "1", "The explicit consent action must turn the switch on")
         XCTAssertTrue(connect.isEnabled)
         tap(connect)
         require(app.staticTexts["Enter a valid DeepSeek API key without spaces."])
@@ -91,7 +91,7 @@ final class CloudJourneyTests: XCTestCase {
         XCTAssertTrue(key.isEnabled, "Validation failure must leave an editable form")
         capture("05-deepseek-local-validation-recovery")
         tap(consent)
-        XCTAssertEqual(consent.value as? String, "0")
+        XCTAssertEqual(switchValue(consent), "0")
         tap(app.buttons["Done"])
         require(app.buttons["deepseek-before-download"])
     }
@@ -123,8 +123,11 @@ final class CloudJourneyTests: XCTestCase {
         require(error)
         XCTAssertEqual(error.label, "Enter the HTTPS origin of your self-hosted Remote Harness server.")
         XCTAssertFalse(authorize.isEnabled, "A rejected authorization must clear the password")
+        // A scrolled SwiftUI Form can omit earlier rows from its accessibility tree.
+        revealFormControl(server, towardStart: true)
         XCTAssertTrue(server.isEnabled)
         XCTAssertEqual(server.value as? String, "http://fixture.invalid")
+        revealFormControl(email, towardStart: false)
         XCTAssertEqual(email.value as? String, "cloud-fixture@example.invalid")
         capture("07-computer-local-validation-recovery")
         tap(app.buttons["Done"])
@@ -135,17 +138,23 @@ final class CloudJourneyTests: XCTestCase {
         app.switches["deepseek-validation-consent"]
     }
 
+    @MainActor private func switchValue(_ element: XCUIElement) -> String? {
+        // iOS exposes String values; macOS exposes numeric accessibility values.
+        let value = element.value
+        return (value as? String) ?? (value as? NSNumber)?.stringValue
+    }
+
     @MainActor private func checkDraftSurvivesDestinationNavigation() {
         #if os(macOS)
         tap(app.buttons["DeepSeek cloud chat"])
         require(app.secureTextFields["deepseek-api-key"])
-        XCTAssertEqual(deepSeekConsentControl.value as? String, "0")
+        XCTAssertEqual(switchValue(deepSeekConsentControl), "0")
         tap(app.buttons["Chats (⌘1)"])
         require(app.textFields["Message"])
         #else
         tap(app.tabBars.buttons["DeepSeek"])
         require(app.secureTextFields["deepseek-api-key"])
-        XCTAssertEqual(deepSeekConsentControl.value as? String, "0")
+        XCTAssertEqual(switchValue(deepSeekConsentControl), "0")
         tap(app.tabBars.buttons["Chat"])
         require(app.textFields["Message"])
         #endif
@@ -266,13 +275,29 @@ final class CloudJourneyTests: XCTestCase {
 
     @MainActor private func tap(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         require(element, file: file, line: line)
+        revealFormControl(element, towardStart: false, file: file, line: line)
+        #if os(macOS)
+        element.click()
+        #else
+        if element.elementType == .switch {
+            // SwiftUI exposes the labelled row as the switch. Its center can hit
+            // only the multiline label; the native switch is at the trailing end.
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        } else {
+            element.tap()
+        }
+        #endif
+    }
+
+    @MainActor private func revealFormControl(_ element: XCUIElement, towardStart: Bool,
+                                             file: StaticString = #filePath, line: UInt = #line) {
         // Forms can extend below the software keyboard or a short Mac window.
-        // A bounded scroll reaches existing controls; absence still fails above.
-        for _ in 0..<5 where !element.isHittable {
+        // Scroll before requiring existence because Form can virtualize offscreen rows.
+        for _ in 0..<5 where !element.exists || !element.isHittable {
             #if os(macOS)
             let surface = app.scrollViews.firstMatch
             require(surface, "The required control has no reachable scroll surface", file: file, line: line)
-            surface.scroll(byDeltaX: 0, deltaY: -250)
+            surface.scroll(byDeltaX: 0, deltaY: towardStart ? 250 : -250)
             #else
             let surface: XCUIElement
             if app.collectionViews.firstMatch.exists {
@@ -295,24 +320,14 @@ final class CloudJourneyTests: XCTestCase {
             // Default swipes can start beneath the keyboard and never reach the form.
             let origin = app.coordinate(withNormalizedOffset: .zero)
             let start = origin.withOffset(CGVector(dx: visible.midX - appFrame.minX,
-                                                  dy: visible.minY + visible.height * 0.8 - appFrame.minY))
+                                                  dy: visible.minY + visible.height * (towardStart ? 0.2 : 0.8) - appFrame.minY))
             let end = origin.withOffset(CGVector(dx: visible.midX - appFrame.minX,
-                                                dy: visible.minY + visible.height * 0.2 - appFrame.minY))
+                                                dy: visible.minY + visible.height * (towardStart ? 0.8 : 0.2) - appFrame.minY))
             start.press(forDuration: 0.05, thenDragTo: end)
             #endif
         }
+        if !element.exists { require(element, file: file, line: line) }
         XCTAssertTrue(element.isHittable, "Required control is not reachable", file: file, line: line)
-        #if os(macOS)
-        element.click()
-        #else
-        if element.elementType == .switch {
-            // SwiftUI exposes the labelled row as the switch. Its center can hit
-            // only the multiline label; the native switch is at the trailing end.
-            element.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        } else {
-            element.tap()
-        }
-        #endif
     }
 
     @MainActor private func capture(_ name: String) {
