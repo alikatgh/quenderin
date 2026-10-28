@@ -17,8 +17,9 @@ html[data-theme-mode="dark"] .simple-home { background: var(--canvas); }
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding-block: 2rem;
+  padding-block: 1rem;
 }
+.simple-topbar { border-bottom: 1px solid var(--header-border); }
 .simple-home .brand-name { font-weight: 600; }
 .simple-controls { display: flex; align-items: center; gap: 0.5rem; }
 .simple-github { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--text-secondary); flex: none; }

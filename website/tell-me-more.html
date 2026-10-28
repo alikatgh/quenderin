@@ -18,6 +18,7 @@
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css?v=release-marks-20261028" />
 <link rel="stylesheet" href="detail-page.css?v=20261028-development" />
+<link rel="stylesheet" href="story-sections.css?v=20261028-visual" />
 <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
 <style>
   /* RTL content alignment (language-picker styling now lives in styles.css) */
@@ -630,69 +631,97 @@
   <!-- ENGLISH ENGINEERING UPDATE — separate from installed store versions. -->
   <section class="section tint" id="october-2026-update" lang="en" dir="ltr">
     <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow">18 October 2026 &middot; engineering candidate</p>
-        <h2>More models, with separate workflows for different jobs.</h2>
-        <p>The source candidate has 28 curated text choices, including Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks the runtime, complete files and available memory before loading.</p>
-        <p>This describes current source engineering, separate from the versions already installed from the App Store, Google Play or desktop downloads. Hosted native builds and desktop package checks have passed. Full-weight inference for these additions has not been run, and this is not a store-release announcement.</p>
+      <header class="section-head reveal story-heading">
+        <p class="eyebrow">18 October 2026 &middot; source engineering candidate</p>
+        <h2>A workspace for each kind of work.</h2>
+        <p>28 curated text choices, plus separate paths for images, memory and your own GPU.</p>
       </header>
-      <div class="table-wrap reveal">
-        <table class="spec-table model-spec-table workflow-table">
-          <caption>New workflows in the desktop, Apple and Android source</caption>
-          <thead><tr><th scope="col">Workflow</th><th scope="col">What you can prepare and use in the candidate</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Complete Beam and Muse text chat</th><td>Install and verify every part before chatting: Beam needs all 4 files (133.89 GB) and a 160 GiB memory floor before context overhead; Muse needs all 22 files (304.08 GB). Both have desktop and native text adapters. Tools and multimodal requests are unavailable in these chat paths.</td></tr>
-            <tr><th scope="row">Ask about an image</th><td>Choose one JPEG or PNG and ask a text question on desktop or in the native apps. Each installation includes the complete model and projector. MiniCPM-V 4.7 1B, MiniCPM-V 4.7 35B-A3B and Nemotron 3.5 Super VL require at least 8, 32 and 96 GiB of available app memory respectively. Video, audio and tools are unavailable.</td></tr>
-            <tr><th scope="row">Hy-Memory proposals</th><td>Paste a selected conversation, review proposed facts, then explicitly choose which to save in private app storage. Nothing watches conversations or saves generated facts automatically. This separate memory-writing workflow requires at least 32 GiB of available app memory.</td></tr>
-            <tr><th scope="row">Granite Switch 4.1 8B chat</th><td>Import the converted official 8B GGUF together with its matching conversion record. The app verifies the complete pair and reuses an already verified import. Dedicated text chat requires at least 32 GiB of available app memory. Speech, guardian decisions and tools are unavailable; the older 3B preview is not a substitute.</td></tr>
-            <tr><th scope="row">Step 5 on your CUDA host</th><td>Connect to your own prepared Linux GPU host through its secured gateway. You explicitly approve sending the selected conversation there. This is remote text chat on your hardware; Quenderin does not provision a server or run this model on a phone.</td></tr>
-            <tr><th scope="row">Local image generation</th><td>Use the separate Images workspace for FLUX 3 Image Klein or MOSS Image Base/SFT. Complete component sets and at least 24 GiB of available memory are required. FLUX files need your own publisher access and license decision. Generation writes a new PNG and preserves existing files.</td></tr>
-          </tbody>
-        </table>
+      <div class="workflow-grid reveal">
+        <article class="workflow-card">
+          <div class="workflow-art" aria-hidden="true">
+            <svg viewBox="0 0 320 128" fill="none"><g class="story-paper" stroke-width="1.5"><rect x="31" y="34" width="42" height="56" rx="5"/><rect x="44" y="28" width="42" height="56" rx="5"/><rect x="57" y="22" width="42" height="56" rx="5"/></g><path class="story-muted-line" d="M67 39h22M67 47h22M67 55h15M109 54h36m-7-7 7 7-7 7"/><circle class="story-accent-fill" cx="170" cy="54" r="20"/><path class="story-accent-line" d="m161 54 6 6 13-14"/><path class="story-muted-line" d="M199 54h25m-7-7 7 7-7 7"/><path class="story-paper" d="M240 29h48a6 6 0 0 1 6 6v38a6 6 0 0 1-6 6h-25l-15 11V79h-8a6 6 0 0 1-6-6V35a6 6 0 0 1 6-6Z"/><path class="story-brand-line" d="M245 45h38M245 54h29M245 63h19"/><g class="story-svg-label"><text x="65" y="113" text-anchor="middle">All parts</text><text x="170" y="113" text-anchor="middle">Verify</text><text x="264" y="113" text-anchor="middle">Text chat</text></g></svg>
+          </div>
+          <p class="workflow-family">Beam &middot; Muse</p>
+          <h3>Big-model text chat</h3>
+          <p>Install every part, verify the complete set, then open a dedicated text conversation.</p>
+          <details class="story-details"><summary>Files &amp; limits</summary><div><p>Beam requires all 4 files (133.89 GB) and at least 160 GiB of available app memory before context overhead. Muse requires all 22 files (304.08 GB).</p><p>Both have desktop and native text adapters. Tools and multimodal requests are unavailable in these chat paths.</p></div></details>
+        </article>
+        <article class="workflow-card">
+          <div class="workflow-art" aria-hidden="true">
+            <svg viewBox="0 0 320 128" fill="none"><rect class="story-paper" x="34" y="21" width="86" height="67" rx="6"/><circle class="story-accent-fill" cx="96" cy="40" r="8"/><path class="story-brand-line" d="m43 78 22-24 17 15 11-10 18 19"/><path class="story-muted-line" d="M136 54h39m-7-7 7 7-7 7"/><path class="story-paper" d="M197 24h78a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6h-43l-17 12V80h-18a6 6 0 0 1-6-6V30a6 6 0 0 1 6-6Z"/><path class="story-brand-line" d="M205 42h62M205 52h49M205 62h35"/><g class="story-svg-label"><text x="77" y="113" text-anchor="middle">One image</text><text x="236" y="113" text-anchor="middle">Your question</text></g></svg>
+          </div>
+          <p class="workflow-family">MiniCPM-V &middot; Nemotron VL</p>
+          <h3>Ask about an image</h3>
+          <p>Choose one JPEG or PNG and ask a text question on desktop or in the native apps.</p>
+          <details class="story-details"><summary>Models &amp; memory</summary><div><p>Each installation needs the complete model and projector. Available app memory floors: MiniCPM-V 4.7 1B, 8 GiB; MiniCPM-V 4.7 35B-A3B, 32 GiB; Nemotron 3.5 Super VL, 96 GiB.</p><p>Video, audio and tools are unavailable in this workflow.</p></div></details>
+        </article>
+        <article class="workflow-card">
+          <div class="workflow-art" aria-hidden="true">
+            <svg viewBox="0 0 320 128" fill="none"><path class="story-paper" d="M37 25h59a5 5 0 0 1 5 5v43a5 5 0 0 1-5 5H66L49 90V78H37a5 5 0 0 1-5-5V30a5 5 0 0 1 5-5Z"/><path class="story-muted-line" d="M44 42h44M44 52h36M44 62h25M112 54h25m-7-7 7 7-7 7"/><rect class="story-paper" x="150" y="20" width="71" height="71" rx="6"/><path class="story-brand-line" d="m160 37 3 3 6-7M177 37h32m-49 18 3 3 6-7M177 55h24"/><rect class="story-muted-line" x="160" y="69" width="8" height="8" rx="1"/><path class="story-muted-line" d="M177 73h32M233 54h22m-7-7 7 7-7 7"/><path class="story-accent-fill story-brand-stroke" d="m280 28 17 7v18c0 14-17 25-17 25s-17-11-17-25V35l17-7Z"/><path class="story-accent-line" d="m273 51 5 5 9-11"/><g class="story-svg-label"><text x="66" y="113" text-anchor="middle">Selected chat</text><text x="186" y="113" text-anchor="middle">Review facts</text><text x="280" y="113" text-anchor="middle">Save</text></g></svg>
+          </div>
+          <p class="workflow-family">Hy-Memory</p>
+          <h3>Choose what to remember</h3>
+          <p>Paste a conversation, review proposed facts and choose which to save privately.</p>
+          <details class="story-details"><summary>Consent &amp; memory</summary><div><p>Nothing watches conversations or saves generated facts automatically. You explicitly select what goes into private app storage.</p><p>This separate memory-writing workflow requires at least 32 GiB of available app memory.</p></div></details>
+        </article>
+        <article class="workflow-card">
+          <div class="workflow-art" aria-hidden="true">
+            <svg viewBox="0 0 320 128" fill="none"><path class="story-paper" d="M40 22h35l12 12v52H40V22ZM75 22v13h12M109 22h35l12 12v52h-47V22Zm35 0v13h12"/><path class="story-brand-line" d="M50 51h26M50 60h26M50 69h17M119 49h26m-26 10 4 4 8-9m-12 19h26"/><path class="story-muted-line" d="M174 54h36m-7-7 7 7-7 7"/><circle class="story-accent-fill" cx="258" cy="54" r="28"/><path class="story-accent-line" d="m245 54 9 9 18-21"/><g class="story-svg-label"><text x="63" y="113" text-anchor="middle">8B GGUF</text><text x="133" y="113" text-anchor="middle">Record</text><text x="258" y="113" text-anchor="middle">Verified pair</text></g></svg>
+          </div>
+          <p class="workflow-family">Granite Switch 4.1 8B</p>
+          <h3>Bring a verified import</h3>
+          <p>Import the converted model with its matching record. The app verifies them together.</p>
+          <details class="story-details"><summary>Import requirements</summary><div><p>Use the converted official 8B GGUF and its matching conversion record. An already verified import can be reused. Dedicated text chat requires at least 32 GiB of available app memory.</p><p>Speech, guardian decisions and tools are unavailable. The older 3B preview is not a substitute.</p></div></details>
+        </article>
+        <article class="workflow-card">
+          <div class="workflow-art" aria-hidden="true">
+            <svg viewBox="0 0 320 128" fill="none"><rect class="story-paper" x="31" y="29" width="71" height="47" rx="5"/><path class="story-brand-line" d="M23 85h87l-7 7H30l-7-7ZM44 44h44M44 54h31"/><path class="story-muted-line" stroke-dasharray="4 5" d="M121 56h86"/><path class="story-muted-line" d="m200 49 7 7-7 7"/><path class="story-accent-fill story-brand-stroke" d="m161 34 15 6v15c0 13-15 23-15 23s-15-10-15-23V40l15-6Z"/><path class="story-accent-line" d="m155 55 4 4 8-10"/><rect class="story-paper" x="228" y="20" width="59" height="29" rx="5"/><rect class="story-paper" x="228" y="58" width="59" height="29" rx="5"/><path class="story-brand-line" d="M239 34h25M239 72h25"/><circle class="story-copper-fill" cx="276" cy="34" r="3"/><circle class="story-copper-fill" cx="276" cy="72" r="3"/><g class="story-svg-label"><text x="67" y="113" text-anchor="middle">Your device</text><text x="161" y="113" text-anchor="middle">Approve</text><text x="257" y="113" text-anchor="middle">Your GPU host</text></g></svg>
+          </div>
+          <p class="workflow-family">Step 5 &middot; remote text chat</p>
+          <h3>Use your own GPU</h3>
+          <p>Approve sending a selected conversation to your prepared Linux CUDA host.</p>
+          <details class="story-details"><summary>Connection requirements</summary><div><p>Connect through your own secured gateway. You explicitly approve the conversation sent to that host.</p><p>This is remote text chat on your hardware. Quenderin does not provision a server or run Step 5 on a phone.</p></div></details>
+        </article>
+        <article class="workflow-card">
+          <div class="workflow-art" aria-hidden="true">
+            <svg viewBox="0 0 320 128" fill="none"><path class="story-paper" d="m38 45 44-23 44 23-44 23-44-23Zm0 16 44 23 44-23M38 77l44 23 44-23"/><path class="story-muted-line" d="M144 61h39m-7-7 7 7-7 7"/><rect class="story-paper" x="205" y="21" width="84" height="73" rx="6"/><circle class="story-copper-fill" cx="268" cy="41" r="8"/><path class="story-brand-line" d="m214 84 21-30 17 18 11-11 17 23"/><path class="story-muted-line" d="M213 103h66"/><g class="story-svg-label"><text x="82" y="119" text-anchor="middle">Complete components</text><text x="247" y="119" text-anchor="middle">New PNG</text></g></svg>
+          </div>
+          <p class="workflow-family">FLUX 3 &middot; MOSS</p>
+          <h3>Create a local image</h3>
+          <p>Use the separate Images workspace. Each generation writes a new PNG and preserves existing files.</p>
+          <details class="story-details"><summary>Files, memory &amp; access</summary><div><p>FLUX 3 Image Klein and MOSS Image Base/SFT require complete component sets and at least 24 GiB of available memory.</p><p>FLUX files require your own publisher access and license decision.</p></div></details>
+        </article>
       </div>
-      <p class="models-foot">Specialist and image work temporarily release the ordinary text model, keeping its selection and conversation for restoration. Memory floors are conservative checks, not measured peak usage. Answer quality, speed and rendered native journeys still need full runtime validation.</p>
-      <p class="models-foot">Nemotron Bolt E4B remains unavailable: there is no verified public artifact in this candidate, so no placeholder download is offered.</p>
+      <aside class="story-verification" aria-label="Candidate verification status">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z"/><path d="M12 8v5m0 3v.1"/></svg>
+        <p><strong>Source candidate, not a new store release.</strong> Hosted native builds and desktop package checks passed. Full-weight inference, answer quality, speed and rendered native journeys remain unverified for these additions.</p>
+      </aside>
+      <details class="story-details workflow-general-notes"><summary>Catalog &amp; runtime notes</summary><div><p>The 28 curated text choices include Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks runtime support, complete files and available memory before loading.</p><p>Specialist and image work temporarily release the ordinary text model, keeping its selection and conversation for restoration. Memory floors are conservative checks, not measured peak usage.</p><p>Nemotron Bolt E4B remains unavailable because this candidate has no verified public artifact. No placeholder download is offered. Installed App Store, Google Play and desktop versions are separate from this source candidate.</p></div></details>
       <p class="learn-more"><a href="blog-open-models-october-2026" data-language-link>Read this week’s model update and verification limits &rarr;</a></p>
     </div>
   </section>
 
   <!-- THE COMPUTER-USE AGENT -->
   <section class="section" id="agent">
-    <div class="container split">
-      <div class="split-copy reveal">
+    <div class="container agent-story">
+      <div class="agent-story-copy reveal">
         <p class="eyebrow" data-i18n="agent.eyebrow">Advanced &middot; source CLI</p>
-        <p data-i18n="agent.channel">The App Store apps include local tools. The broader computer-control workflow below runs from the source CLI on macOS.</p>
-        <h2 data-i18n="agent.title">Computer tools through the macOS CLI</h2>
-        <p data-i18n-html="agent.body">The source CLI can use a local model to organize files, interact with Mac apps, and run Apple Shortcuts. These tools have permissions and controls for reviewing actions:</p>
-        <ul class="agent-points">
-          <li data-i18n-html="agent.p1"><strong>Action approval.</strong> The CLI asks before changes by default. App control requires approval even when auto-approve is enabled.</li>
-          <li data-i18n-html="agent.p2"><strong>Task history.</strong> Review the local log with <code>quenderin history</code>. Use <code>quenderin undo</code> to reverse supported file operations.</li>
-          <li data-i18n-html="agent.p3"><strong>Preview.</strong> Use <code>--dry-run</code> to inspect proposed actions before running them.</li>
-          <li data-i18n-html="agent.p4"><strong>Local processing.</strong> The model runs on your Mac. Apps and Shortcuts it interacts with may use their own network connections.</li>
-        </ul>
+        <h2 data-i18n="agent.title.local" lang="en" dir="ltr">Local tools, with you in control.</h2>
+        <p data-i18n="agent.intro.local" lang="en" dir="ltr">Organize files, interact with Mac apps and run Apple Shortcuts—with a chance to review the actions.</p>
+        <p class="agent-channel" data-i18n="agent.channel.local" lang="en" dir="ltr">This broader workflow runs from the macOS source CLI. App Store apps include local tools.</p>
         <a class="btn btn-ghost" href="why-local-agent" data-i18n="agent.cta" data-language-link>Read about the local agent →</a>
       </div>
-      <div class="split-visual reveal">
-        <figure class="app-window">
-          <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title">quenderin — zsh</span></div>
-          <div class="codeblock"><pre>$ quenderin do "organize my downloads" \
-      --workspace ~/Downloads
-
-  · listed 42 files
-  ● Move "invoice.pdf" into "Finance/"?
-    Allow? [y/N] y
-  ✓ Moved "invoice.pdf" into "Finance/".
-  ● Move "IMG_2291.HEIC" into "Photos/"?
-    Allow? [y/N] y
-  ✓ Moved "IMG_2291.HEIC" into "Photos/".
-  ● Rename "draft.pdf" → "report-2026.pdf"?
-    Allow? [y/N] y
-  ✓ Renamed → "report-2026.pdf".
-
-  Undo everything this task changed? [y/N] n
-  Later? Run `quenderin undo` to reverse it.</pre></div>
-        </figure>
-      </div>
+      <figure class="cli-story reveal" lang="en" dir="ltr">
+        <figcaption data-i18n="agent.illustration.local">An example of the CLI workflow</figcaption>
+        <div class="cli-story-request"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m4 6 6 6-6 6m9 0h7"/></svg><span data-i18n="agent.example.local">“Organize my downloads”</span></div>
+        <ol class="cli-story-stages">
+          <li><div class="cli-stage-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="M8 6h17l6 6v13H8V6Zm17 0v7h6M13 14h6m-6 6h9"/><circle cx="27" cy="27" r="7"/><path d="m32 32 5 5"/></svg></div><div><h3 data-i18n="agent.preview.title.local">Preview</h3><p data-i18n="agent.preview.body.local">Inspect proposed actions before running them.</p><code>--dry-run</code></div></li>
+          <li><div class="cli-stage-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="m20 4 13 6v10c0 10-13 17-13 17S7 30 7 20V10l13-6Z"/><path d="m13 20 5 5 10-12"/></svg></div><div><h3 data-i18n="agent.approve.title.local">Approve</h3><p data-i18n="agent.approve.body.local">Changes ask by default. App control always requires approval.</p></div></li>
+          <li><div class="cli-stage-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="M8 10a15 15 0 1 1-3 14M8 4v9H1M21 11v10l6 4"/></svg></div><div><h3 data-i18n="agent.history.title.local">Review</h3><p data-i18n="agent.history.body.local">Read the local log. Undo supported file operations.</p><code>quenderin history</code><code>quenderin undo</code></div></li>
+        </ol>
+        <p class="cli-story-network" data-i18n="agent.network.local">The model runs on your Mac. Apps and Shortcuts may use their own network connections.</p>
+      </figure>
+      <details class="story-details agent-technical"><summary data-i18n="agent.notes.local" lang="en" dir="ltr">Permissions, history &amp; undo details</summary><div><p data-i18n-html="agent.p1"><strong>Action approval.</strong> The CLI asks before changes by default. App control requires approval even when auto-approve is enabled.</p><p data-i18n-html="agent.p2"><strong>Task history.</strong> Review the local log with <code>quenderin history</code>. Use <code>quenderin undo</code> to reverse supported file operations.</p><p data-i18n-html="agent.p3"><strong>Preview.</strong> Use <code>--dry-run</code> to inspect proposed actions before running them.</p></div></details>
     </div>
   </section>
 
@@ -741,10 +770,10 @@
         <h2 data-i18n="gs.title">Getting started</h2>
         <p data-i18n="gs.intro">Install the app, download a model, and open a conversation.</p>
       </header>
-      <ol class="start-steps reveal">
-        <li><span>01</span><h3 data-i18n="start.install.title">Get the app</h3><p data-i18n="start.install.body">Install Quenderin on your Mac or iPhone. Open it and choose a model that fits your device.</p></li>
-        <li><span>02</span><h3 data-i18n="start.download.title">Download once</h3><p data-i18n="start.download.body">Use Wi-Fi for the model download. Start small; you can explore other models later.</p></li>
-        <li><span>03</span><h3 data-i18n="start.offline.title">Start a conversation</h3><p data-i18n="start.offline.body">Ask a question or work with a piece of text. You can also check that the model works in airplane mode.</p></li>
+      <ol class="setup-journey reveal">
+        <li><div class="setup-art" aria-hidden="true"><svg viewBox="0 0 260 150" fill="none"><rect class="story-paper" x="34" y="22" width="144" height="91" rx="8"/><path class="story-brand-line" d="M46 34h120v66H46z"/><path class="story-paper" d="M23 123h166l-12 10H35l-12-10Z"/><image href="assets/app/icon-ios.png" x="88" y="49" width="36" height="36"/><rect class="story-paper" x="176" y="53" width="49" height="83" rx="9"/><path class="story-muted-line" d="M191 62h19m-17 65h16"/><image href="assets/app/icon-ios.png" x="187.5" y="80" width="26" height="26"/></svg></div><div class="setup-step-heading"><span class="setup-step-number">01</span><h3 data-i18n="start.install.title">Get the app</h3></div><p data-i18n="start.install.body">Install Quenderin, then choose a model that fits your device.</p></li>
+        <li><div class="setup-art" aria-hidden="true"><svg viewBox="0 0 260 150" fill="none"><path class="story-paper" d="M87 65a25 25 0 0 1 4-50 34 34 0 0 1 62 4 23 23 0 0 1 17 45"/><path class="story-brand-line" d="M130 40v43m-14-14 14 14 14-14"/><rect class="story-paper" x="69" y="101" width="122" height="35" rx="7"/><path class="story-brand-line" d="M82 113h67m-67 9h47"/><circle class="story-copper-fill" cx="174" cy="119" r="5"/><path class="story-muted-line" stroke-dasharray="3 5" d="M130 87v8"/></svg></div><div class="setup-step-heading"><span class="setup-step-number">02</span><h3 data-i18n="start.download.title">Download once</h3></div><p data-i18n="start.download.body">Use Wi-Fi. Start small; model download sizes are shown before you begin.</p></li>
+        <li><div class="setup-art" aria-hidden="true"><svg viewBox="0 0 260 150" fill="none"><path class="story-paper" d="M57 22h121a9 9 0 0 1 9 9v62a9 9 0 0 1-9 9h-64l-28 20v-20H57a9 9 0 0 1-9-9V31a9 9 0 0 1 9-9Z"/><path class="story-brand-line" d="M68 44h92M68 59h75M68 74h53"/><circle class="story-accent-fill story-brand-stroke" cx="192" cy="106" r="27"/><path class="story-brand-line" d="m179 100 26 13m-26-14a22 22 0 0 1 27 1m-23 7a13 13 0 0 1 15-1"/><circle class="story-copper-fill" cx="192" cy="117" r="2.5"/></svg></div><div class="setup-step-heading"><span class="setup-step-number">03</span><h3 data-i18n="start.offline.title">Start a conversation</h3></div><p data-i18n="start.offline.body">Ask a question or work with text. Once installed, your local model works offline.</p></li>
       </ol>
       <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>Mac + iPhone</strong> on the App Store &middot; <strong>Windows + Linux</strong> previews &middot; <strong>Android</strong> closed beta</p>
       <p class="start-more"><a href="download" data-i18n="start.more" data-language-link>Downloads and setup details &rarr;</a></p>
