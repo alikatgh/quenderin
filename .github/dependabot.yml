@@ -1,6 +1,6 @@
-# r8 R5: bleeding-edge majors (Express 5, Electron 40) with no update automation — CI has the
-# `npm audit --audit-level=high` gate; this adds the other half. Weekly, minor+patch grouped so
-# the noise stays one PR per ecosystem; majors surface individually and get a human look.
+# Weekly version updates retain their existing grouping; major updates remain individual.
+# Security updates use separate groups, including fixes that require a major version.
+# Alerts and security-update PR generation are enabled separately in repository settings.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -10,6 +10,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: npm
     directory: "/ui"
@@ -18,11 +21,18 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: gradle
     directory: "/android"
@@ -31,3 +41,6 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]

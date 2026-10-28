@@ -1,0 +1,68 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    if: github.repository == 'alikatgh/quenderin' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      CODEQL_OVERLAY_DATABASE_MODE: none
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        # Initial coverage requires no native build or model downloads.
+        # C/C++, Kotlin, Rust and Swift are outside this workflow's coverage.
+        language: [actions, javascript-typescript, python]
+    steps:
+      # CodeQL can upload diagnostic artifacts when runner debug logging is
+      # enabled, even with debug: false. Stop before any CodeQL action starts.
+      - name: Reject debug logging that can upload diagnostic artifacts
+        if: runner.debug == '1'
+        timeout-minutes: 1
+        run: |
+          echo "::error::CodeQL debug logging can upload diagnostic artifacts. Re-run without debug logging."
+          exit 1
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 3
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        timeout-minutes: 10
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          dependency-caching: false
+          trap-caching: false
+          debug: false
+          threads: 2
+          ram: 6144
+      - name: Analyze and upload code-scanning results
+        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        timeout-minutes: 20
+        with:
+          category: /language:${{ matrix.language }}
+          upload: always
+          upload-database: false
+          wait-for-processing: true
