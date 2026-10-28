@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta name="google-site-verification" content="ih4Q2Kbs-aZBxfiZUk2r2jKhyw0uQanjjt-8H4R1qBk" />
 <meta charset="utf-8" />
@@ -16,8 +16,8 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=model-icons-20261019" />
-<link rel="stylesheet" href="detail-page.css?v=20261019-density" />
+<link rel="stylesheet" href="styles.css?v=release-marks-20261028" />
+<link rel="stylesheet" href="detail-page.css?v=20261028-development" />
 <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
 <style>
   /* RTL content alignment (language-picker styling now lives in styles.css) */
@@ -68,7 +68,7 @@
       "name": "Does it cost anything?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Quenderin is free to use, with no subscription or per-message charge. Models run on your own hardware. The app’s source code is MIT licensed."
+        "text": "Quenderin is free and MIT licensed. Local chat runs on your hardware with no subscription or per-message charge. Optional external connections in development use your own accounts; provider charges may apply."
       }
     },
     {
@@ -76,7 +76,7 @@
       "name": "Is my data sent anywhere?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Your chats and files stay on your device. Model downloads, optional catalog search, and release metadata use network requests; inference works offline. There are no analytics, accounts, or telemetry."
+        "text": "Local chats and files stay on your device, and local inference works offline. Model downloads, catalog search and release metadata use network requests. Optional external connections and AI reports in development send only the content you explicitly approve."
       }
     },
     {
@@ -226,7 +226,7 @@
           <ul class="spec-strip" aria-label="Measured facts">
             <li><span class="spec-num">15&nbsp;tok/s</span> <span data-i18n="hero.spec1">iPhone&nbsp;12, measured</span></li>
             <li><span class="spec-num">0.4&ndash;4.7&nbsp;GB</span> <span data-i18n="hero.spec2">one download</span></li>
-            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">cloud inference calls</span></li>
+            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3.local" lang="en" dir="ltr">cloud calls for local inference</span></li>
             <li><span class="spec-num">MIT</span> <span data-i18n="hero.spec4">open-source license</span></li>
           </ul>
         </div>
@@ -269,8 +269,25 @@
     <a href="#features" data-i18n="nav.features">Features</a>
     <a href="#models" data-i18n="nav.models">Models</a>
     <a href="#privacy" data-i18n="nav.privacy">Privacy</a>
-    <a href="#october-2026-update" lang="en" dir="ltr">18 Oct update ↗</a>
+    <a href="#latest-update" lang="en" dir="ltr">28 Oct update ↗</a>
   </nav>
+
+  <section class="section development-update" id="latest-update" lang="en" dir="ltr" aria-labelledby="development-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow"><time datetime="2026-10-28">28 October 2026</time> &middot; Development update</p>
+        <h2 id="development-title">The next version is taking shape.</h2>
+        <p>Chat recovery, model choices, and native navigation are getting attention as we prepare Quenderin 0.6. Follow the work in the open.</p>
+      </header>
+      <dl class="development-notes">
+        <div><dt>Merged &middot; 24–27 Oct</dt><dd><strong>More deliberate local chats.</strong> <a href="https://github.com/alikatgh/quenderin/pull/186" rel="noopener">Automatic model selection</a> uses installed models, while Stop, Continue, draft recovery and accessibility fixes improve the native source. Downloads remain an explicit choice.</dd></div>
+        <div><dt>In development &middot; 28 Oct</dt><dd><strong>A clearer native experience.</strong> <a href="https://github.com/alikatgh/quenderin/pull/198" rel="noopener">Android navigation, setup and AI reports</a> and the <a href="https://github.com/alikatgh/quenderin/pull/196" rel="noopener">Apple 0.6 foundation</a> are being tested. These changes are not in a new store release yet.</dd></div>
+        <div><dt>Maintenance &middot; 28 Oct</dt><dd><strong>More checks around each change.</strong> <a href="https://github.com/alikatgh/quenderin/pull/199" rel="noopener">Code scanning, dependency review and grouped security updates</a> are configured. <a href="https://github.com/alikatgh/quenderin/actions/runs/40642887035/job/122664890950" rel="noopener">Android dependency reporting</a> has also passed its first trusted run.</dd></div>
+      </dl>
+      <p class="catalog-caveat">Available today: Mac and iPhone 0.5.0 on the App Store; Android 0.2.0 in closed testing. Version 0.6 remains in development.</p>
+      <p class="learn-more"><a href="blog-development-october-2026" data-language-link>Read the dated development notes and release status &rarr;</a></p>
+    </div>
+  </section>
 
   <!-- ANDROID CLOSED BETA — recruitment callout: join group → opt in on Play → install.
        Placed right after the real-UI screens: value shown, now here's the way in. -->
@@ -418,9 +435,9 @@
         <article class="cell reveal acc">
           <div class="bignum">$0</div>
           <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8m4-10v12"/></svg><span data-i18n="feat.free.t">Free to use</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.free.b">The app has no subscription or per-message charge.</p>
+          <p data-i18n="feat.free.b.local" lang="en" dir="ltr">Local chat has no subscription or per-message charge.</p>
           <div class="acc-panel" id="feat-more-free" role="region" aria-label="More about cost"><div class="acc-inner">
-            <p data-i18n="feat.free.m">Replies are generated on your hardware, without a paid inference service. The app’s source code is available under the MIT license.</p>
+            <p data-i18n="feat.free.m.local" lang="en" dir="ltr">Local replies are generated on your hardware. The source code is MIT licensed. Optional external connections in development use your own accounts; provider charges may apply.</p>
           </div></div>
         </article>
         <article class="cell span-2 reveal acc">
@@ -435,9 +452,9 @@
         </article>
         <article class="cell reveal acc">
           <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><span data-i18n="feat.priv.t">Local conversations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.priv.b">Chat history stays on your device. No account is required.</p>
+          <p data-i18n="feat.priv.b.local" lang="en" dir="ltr">Local conversations stay on your device and need no account.</p>
           <div class="acc-panel" id="feat-more-priv" role="region" aria-label="More about local conversations"><div class="acc-inner">
-            <p data-i18n="feat.priv.m">Quenderin does not send conversations to an inference service or collect analytics and telemetry. Model downloads, optional search, and release information use network requests.</p>
+            <p data-i18n="feat.priv.m.local" lang="en" dir="ltr">Local chat does not send conversations to an inference service. Model downloads, search and release information use network requests. Optional external connections and AI reports in development require approval before sending content.</p>
           </div></div>
         </article>
         <article class="cell reveal acc">
@@ -508,25 +525,26 @@
     <div class="container split">
       <div class="split-copy reveal">
         <p class="eyebrow" data-i18n="priv.eyebrow">Privacy</p>
-        <h2 data-i18n="priv.title">Where your data stays</h2>
+        <h2 data-i18n="priv.title.local" lang="en" dir="ltr">Privacy for local chat</h2>
         <ul class="checklist">
-          <li data-i18n="priv.c1">No cloud inference calls</li>
-          <li data-i18n="priv.c2">No API keys, no sign-in, no account</li>
+          <li data-i18n="priv.c1.local" lang="en" dir="ltr">Local inference runs on your device</li>
+          <li data-i18n="priv.c2.local" lang="en" dir="ltr">Local chat needs no API key, sign-in or account</li>
           <li data-i18n="priv.c3">No analytics, no tracking, no telemetry</li>
-          <li data-i18n="priv.c4">Conversations stored only on your device</li>
+          <li data-i18n="priv.c4.local" lang="en" dir="ltr">Local conversations are stored on your device</li>
           <li data-i18n="priv.c5">Public source code under the MIT license</li>
         </ul>
+        <p class="catalog-caveat" lang="en" dir="ltr">Optional external connections in development send the conversation you approve to your chosen host or provider. AI reports send a reviewed excerpt only when you choose to submit it. See the <a href="#latest-update">0.6 development status</a>.</p>
         <p class="learn-more"><a href="privacy" data-i18n="priv.link" data-language-link>Read the full Privacy Policy &rarr;</a></p>
       </div>
       <div class="split-visual reveal">
         <div class="netpanel" aria-hidden="true">
-          <div class="netpanel-bar"><span class="dot dot-live"></span> <span data-i18n="priv.net.bar">Illustration &middot; model network requests</span></div>
+          <div class="netpanel-bar"><span class="dot dot-live"></span> <span data-i18n="priv.net.bar.local" lang="en" dir="ltr">Local chat &middot; model network requests</span></div>
           <div class="netrow"><span class="verb">GET</span><span class="ok">llama-3.2-3b.gguf &middot; 2.0 GB</span><span class="tag-ok" data-i18n="priv.net.once">once, Wi-Fi</span></div>
           <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/telemetry</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
           <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/analytics</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
-          <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x" data-i18n="priv.net.noacct">no account</span></div>
+          <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x" data-i18n="priv.net.noacct.local" lang="en" dir="ltr">no local chat account</span></div>
           <div class="netrow"><span class="verb">GET</span><span class="ok">/api/model-releases</span><span class="tag-ok" data-i18n="priv.net.refresh">when browsing models</span></div>
-          <div class="netpanel-foot"><span class="dot dot-live"></span> <span data-i18n="priv.net.foot">Chat and attached files stay on-device</span></div>
+          <div class="netpanel-foot"><span class="dot dot-live"></span> <span data-i18n="priv.net.foot.local" lang="en" dir="ltr">Local chats and files stay on-device</span></div>
         </div>
       </div>
     </div>
@@ -554,12 +572,12 @@
           <p class="release-status" data-release-status aria-live="polite">Saved snapshot · 2026-10-16 03:49 UTC</p>
         </div>
         <div class="release-models" data-release-list>
-<article class="release-model"><h3><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf" rel="noopener">Ternary-Bonsai-2-4B</a></h3><p class="release-spec">0.9 GB · PTQ1_0</p><p class="release-date">Model released 2026-10-15</p><p class="release-source">prism-ml · apache-2.0</p></article>
-<article class="release-model"><h3><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Ternary-Bonsai-2-2B</a></h3><p class="release-spec">0.4 GB · PTQ1_0</p><p class="release-date">Model released 2026-10-15</p><p class="release-source">prism-ml · apache-2.0</p></article>
-<article class="release-model"><h3><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf" rel="noopener">Ternary-Bonsai-2-9B</a></h3><p class="release-spec">2.0 GB · PTQ1_0</p><p class="release-date">Model released 2026-10-15</p><p class="release-source">prism-ml · apache-2.0</p></article>
-<article class="release-model"><h3><a href="https://huggingface.co/bartowski/UserRepGen-4B-GGUF" rel="noopener">UserRepGen-4B</a></h3><p class="release-spec">2.7 GB · Q4_K_M</p><p class="release-date">Model released 2026-10-14</p><p class="release-source">bartowski · mit</p></article>
-<article class="release-model"><h3><a href="https://huggingface.co/ggml-org/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5-24B-A2B</a></h3><p class="release-spec">14.5 GB · Q4_K_M</p><p class="release-date">Model released 2026-10-12</p><p class="release-source">ggml-org</p></article>
-<article class="release-model"><h3><a href="https://huggingface.co/bartowski/AesCode-32B-GGUF" rel="noopener">AesCode-32B</a></h3><p class="release-spec">20.5 GB · Q4_K_M</p><p class="release-date">Model released 2026-09-29</p><p class="release-source">bartowski · apache-2.0</p></article>
+<article class="release-model"><h3><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf" rel="noopener">Ternary-Bonsai-2-4B</a></h3><p class="release-spec">0.9 GB · PTQ1_0</p><p class="release-date">Model released 2026-10-15</p><p class="release-source">PrismML · GGUF: prism-ml · apache-2.0</p></article>
+<article class="release-model"><h3><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Ternary-Bonsai-2-2B</a></h3><p class="release-spec">0.4 GB · PTQ1_0</p><p class="release-date">Model released 2026-10-15</p><p class="release-source">PrismML · GGUF: prism-ml · apache-2.0</p></article>
+<article class="release-model"><h3><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf" rel="noopener">Ternary-Bonsai-2-9B</a></h3><p class="release-spec">2.0 GB · PTQ1_0</p><p class="release-date">Model released 2026-10-15</p><p class="release-source">PrismML · GGUF: prism-ml · apache-2.0</p></article>
+<article class="release-model"><h3><span class="model-fam fam-phi" aria-hidden="true"></span><a href="https://huggingface.co/bartowski/UserRepGen-4B-GGUF" rel="noopener">UserRepGen-4B</a></h3><p class="release-spec">2.7 GB · Q4_K_M</p><p class="release-date">Model released 2026-10-14</p><p class="release-source">Microsoft · GGUF: bartowski · mit</p></article>
+<article class="release-model"><h3><span class="model-fam fam-lfm" aria-hidden="true"></span><a href="https://huggingface.co/ggml-org/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5-24B-A2B</a></h3><p class="release-spec">14.5 GB · Q4_K_M</p><p class="release-date">Model released 2026-10-12</p><p class="release-source">Liquid AI · GGUF: ggml-org</p></article>
+<article class="release-model"><h3><span class="model-fam fam-phi" aria-hidden="true"></span><a href="https://huggingface.co/bartowski/AesCode-32B-GGUF" rel="noopener">AesCode-32B</a></h3><p class="release-spec">20.5 GB · Q4_K_M</p><p class="release-date">Model released 2026-09-29</p><p class="release-source">Microsoft · GGUF: bartowski · apache-2.0</p></article>
 </div>
         <noscript><p>Showing the saved release snapshot. Enable JavaScript for live updates.</p></noscript>
         <p class="catalog-caveat" data-i18n="catalog.discoverycaveat">These are newly discovered files, not tested app recommendations. A download size is not a RAM requirement; engine support, memory and speed vary by device. Multimodal model cards do not imply image or audio support in Quenderin.</p>
@@ -693,11 +711,11 @@
       <div class="faq reveal">
         <details>
           <summary data-i18n="faq.q1">Does it cost anything?</summary>
-          <p data-i18n="faq.a1">Quenderin is free to use, with no subscription or per-message charge. Models run on your own hardware. The app’s source code is MIT licensed.</p>
+          <p data-i18n="faq.a1.local" lang="en" dir="ltr">Quenderin is free and MIT licensed. Local chat runs on your hardware with no subscription or per-message charge. Optional external connections in development use your own accounts; provider charges may apply.</p>
         </details>
         <details>
           <summary data-i18n="faq.q2">Is my data sent anywhere?</summary>
-          <p data-i18n="faq.a2">Your chats and files stay on your device. Model downloads, optional catalog search, and release metadata use network requests; inference works offline. There are no analytics, accounts, or telemetry.</p>
+          <p data-i18n="faq.a2.local" lang="en" dir="ltr">Local chats and files stay on your device, and local inference works offline. Model downloads, catalog search and release metadata use network requests. Optional external connections and AI reports in development send only the content you explicitly approve.</p>
         </details>
         <details>
           <summary data-i18n="faq.q3">What devices does it run on?</summary>
@@ -748,7 +766,7 @@
               <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
             </a>
           </div>
-      <p class="form-consent" data-i18n-html="cta.consent">No account, no subscription, no telemetry. See our <a href="privacy" data-language-link>Privacy Policy</a>.</p>
+      <p class="form-consent" data-i18n-html="cta.consent.local" lang="en" dir="ltr">Local chat needs no account or subscription. See our <a href="privacy" data-language-link>Privacy Policy</a>.</p>
     </div>
   </section>
 
@@ -856,7 +874,7 @@
 })();
 </script>
 <script src="main.js?v=model-catalog-20260930" defer></script>
-<script type="module" src="model-catalog.js?v=20261018-1"></script>
+<script type="module" src="model-catalog.js?v=20261028-1"></script>
 <script src="i18n.js?v=simple-home-20261008" defer></script>
 </body>
 </html>
