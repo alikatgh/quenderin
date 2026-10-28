@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { candidate, chooseQuant, discoverReleases } from '../../workers/model-releases.mjs';
 import { releaseResponse } from '../../workers/site.mjs';
-import { startingModel, visibleReleases } from '../../website/model-catalog.js';
+import { startingModel, visibleReleases, releaseBrand } from '../../website/model-catalog.js';
 import { readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const model = { id: 'unsloth/Qwen-new-GGUF', createdAt: '2026-09-01T00:00:00Z',
   tags: ['gguf', 'conversational', 'base_model:quantized:Qwen/Qwen-new', 'license:apache-2.0'],
@@ -123,6 +125,66 @@ test('display rejects bad links and applies a download budget without claiming R
   assert.equal(visibleReleases(snapshot, 3000000000).length, 1);
   assert.equal(visibleReleases(snapshot, 1000000000).length, 0);
   assert.equal(visibleReleases({ models: [{ ...snapshot.models[0], sourceUrl: 'javascript:evil' }] }).length, 0);
+});
+
+test('release marks identify the original model author, not its GGUF publisher', () => {
+  for (const [baseModel, family, name] of [
+    ['microsoft/UserRepGen-4B', 'phi', 'Microsoft'],
+    ['microsoft/AesCode-32B', 'phi', 'Microsoft'],
+    ['LiquidAI/LFM2.5-24B-A2B', 'lfm', 'Liquid AI'],
+    ['openbmb/MiniCPM5-2B', 'minicpm', 'OpenBMB'],
+    ['nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16', 'nemotron', 'NVIDIA'],
+  ]) {
+    assert.deepEqual(releaseBrand({ id: 'bartowski/Quantized-GGUF', baseModel }), { family, name });
+  }
+  for (const baseModel of [undefined, null, 'unknown/Model', 'bartowski/Model',
+    '__proto__/Model', 'constructor/Model', 'microsoft/../../Model']) {
+    assert.equal(releaseBrand({ name: 'Microsoft Qwen', baseModel }), null);
+  }
+});
+
+test('static and refreshed release marks agree and every selected mark is local', async () => {
+  const data = JSON.parse(await readFile(new URL('../../website/data/model-releases.json', import.meta.url)));
+  const unmarked = { ...snapshot.models[0], id: 'unsloth/gpt-oss-20b-GGUF', name: 'gpt-oss-20b',
+    baseModel: 'openai/gpt-oss-20b', sourceUrl: 'https://huggingface.co/unsloth/gpt-oss-20b-GGUF',
+    quantization: 'Q4_K_M', license: 'apache-2.0' };
+  // OpenAI is an allowed discovery origin without an approved local mark.
+  assert.equal(candidate({ ...model, id: unmarked.id,
+    tags: ['gguf', 'conversational', 'base_model:quantized:' + unmarked.baseModel],
+    siblings: [{ rfilename: 'gpt-oss-20b-Q4_K_M.gguf' }] }, 'unsloth').base, unmarked.baseModel);
+  const cases = data.models.concat(unmarked, ['Qwen', 'deepseek-ai', 'meta-llama', 'google', 'mistralai', 'IFM',
+    '__proto__', 'bartowski', 'unknown'].map(author => ({ baseModel: author + '/Model' })));
+  const script = fileURLToPath(new URL('../generate_website_catalog.py', import.meta.url));
+  const rendered = JSON.parse(execFileSync('python3', ['-B', '-c',
+    'import json,runpy,sys; g=runpy.run_path(sys.argv[1]); data=json.load(sys.stdin); print(json.dumps({"brands":[g["release_brand"](m) for m in data["cases"]],"fixture":g["release_cards"]({"models":[data["fixture"]]})}))', script],
+  { input: JSON.stringify({ cases, fixture: unmarked }), encoding: 'utf8' }));
+  const staticBrands = rendered.brands;
+  assert.deepEqual(staticBrands, cases.map(model => {
+    const brand = releaseBrand(model);
+    return brand ? [brand.family, brand.name] : null;
+  }));
+  const css = await readFile(new URL('../../website/styles.css', import.meta.url), 'utf8');
+  for (const family of new Set(staticBrands.filter(Boolean).map(brand => brand[0]))) {
+    const rule = css.match(new RegExp('\\.fam-' + family + '\\s*\\{([^}]+)\\}'));
+    const asset = rule?.[1].match(/--fam-i:\s*url\((icons\/[\w.-]+\.svg)\)/);
+    assert.ok(asset, family + ' needs a local SVG rule');
+    assert.match(await readFile(new URL('../../website/' + asset[1], import.meta.url), 'utf8'), /<svg[\s>]/);
+  }
+  function assertHeading(cards, model) {
+    const brand = releaseBrand(model);
+    const link = '<a href="' + model.sourceUrl + '" rel="noopener">' + model.name + '</a>';
+    const heading = brand ? 'fam-' + brand.family + '" aria-hidden="true"></span>' + link : '<h3>' + link;
+    assert.ok(cards.includes(heading), model.name);
+  }
+  assertHeading(rendered.fixture, unmarked);
+  assert.ok(!rendered.fixture.includes('model-fam'), 'unrecognized origins keep text without a guessed mark');
+  for (const page of ['tell-me-more.html', 'models.html']) {
+    const html = await readFile(new URL('../../website/' + page, import.meta.url), 'utf8');
+    const cards = html.match(/<div class="release-models" data-release-list>([\s\S]*?)<\/div>/)[1];
+    for (const model of visibleReleases(data)) {
+      assertHeading(cards, model);
+    }
+  }
 });
 
 test('calculator applies app memory headroom, including a blocked RAM-band pick', async () => {
