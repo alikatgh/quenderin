@@ -1,38 +1,37 @@
 # Security Policy
 
-## Supported Versions
-
-We release patches for security vulnerabilities in the following versions:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.0.x   | :white_check_mark: |
-
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it by emailing the maintainers directly rather than opening a public issue.
+Report suspected vulnerabilities through
+[GitHub private vulnerability reporting](https://github.com/alikatgh/quenderin/security/advisories/new).
+Keep vulnerability details out of public issues and pull requests. Do not include
+real credentials or personal data; use sanitized examples.
 
 **Please include the following information:**
 
 - Description of the vulnerability
+- Affected platform and exact app version or source commit
 - Steps to reproduce the issue
 - Potential impact
 - Suggested fix (if any)
 
-We will respond to security reports within 48 hours and will keep you informed throughout the process.
+We assess reports privately and coordinate fixes and disclosure with the reporter.
+Response and release timing depend on the impact and the verification required.
 
 ## Security Model
 
-Quenderin runs **fully on-device**: models are local GGUF files executed via
-`node-llama-cpp`. There are **no cloud LLM providers, no API keys, and no `quenderin.json`
-config file** — so there is nothing to store a key in, and no key ever leaves the machine.
+Desktop local-model inference uses local GGUF files executed via `node-llama-cpp`;
+this inference path does not require a cloud LLM provider key. The local dashboard
+uses a separate, per-launch authentication token.
 Configuration is via environment variables and the in-app Settings UI.
 
 ### Local server binding
 
 The dashboard/agent server binds to **loopback (`127.0.0.1`) by default** on port **3000**
-(override with `--port`). It is **unauthenticated**, so it must not be exposed to the
-network. Set `QUENDERIN_HOST=0.0.0.0` only on a trusted network and at your own risk.
+(override with `--port`). Mutating API requests, protected user-data reads and
+WebSocket connections require the per-launch token. Public readiness and catalog
+routes remain accessible without it. Keep the server on loopback; the token does
+not make a network-exposed server safe.
 
 Defense-in-depth on the local server:
 - CORS and WebSocket connections are restricted to localhost origins (a literal `null`
@@ -42,8 +41,9 @@ Defense-in-depth on the local server:
 - `/api/docs` serves only an allowlist of public docs.
 - Device-sourced UI XML is parsed with entity expansion disabled.
 
-There is **no rate limiting** — the loopback-only binding is the intended control. If you
-expose the server, put your own authentication and rate limiting in front of it.
+There is **no rate limiting**. Loopback binding, token authentication and origin
+checks are separate controls; they do not replace supervision or protect against
+every process running under the same user account.
 
 ### Autonomous device control — experimental
 
@@ -60,17 +60,21 @@ accounts.
 
 ## Security Updates
 
-We take security seriously and will:
-- Patch critical vulnerabilities within 24-48 hours
-- Release security updates as soon as they're ready
-- Notify users through GitHub releases and security advisories
-- Maintain a changelog of security fixes
+Security fixes are documented in the changelog and applicable GitHub releases or
+security advisories. A merged source fix does not establish that updated native
+apps have been published to their stores.
 
 ## Dependencies
 
-- Run `npm audit` to check for known vulnerabilities. There is currently **no CI audit gate
-  and no Dependabot configuration** — the dependency-vulnerability backlog is tracked in
-  `docs/audits/2026-06-14-CONSOLIDATED-open-findings.md`.
+- CI runs `npm audit --audit-level=high` for the root npm dependency tree.
+- `.github/dependabot.yml` configures weekly version updates for the root and UI
+  npm packages, GitHub Actions and Android Gradle dependencies, with separate
+  security-update groups. Automatic security-update PR generation is controlled
+  separately by repository settings.
+- GitHub Dependabot alerts, secret scanning and push protection are enabled.
+  Their coverage depends on recognized dependencies and supported secret patterns;
+  they do not establish that the project is free of vulnerabilities or secrets.
+- The Secret scan workflow checks tracked files with the project's bounded scanner.
 - Review dependencies before updating.
 
 ## Responsible Disclosure
@@ -78,6 +82,6 @@ We take security seriously and will:
 We follow responsible disclosure practices:
 - Security researchers are credited in release notes (if desired)
 - We aim to fix vulnerabilities before public disclosure
-- Coordinated disclosure timeline of 90 days
+- Disclosure timing is coordinated with the reporter
 
 Thank you for helping keep Quenderin and its users safe!
