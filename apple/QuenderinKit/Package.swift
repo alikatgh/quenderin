@@ -156,7 +156,9 @@ if hasRemoteSDK {
     guard verifier.terminationStatus == 0 else { fatalError("Remote crypto SDK provenance verification failed") }
     guard let linkFlags = try? JSONSerialization.jsonObject(with: output.fileHandleForReading.readDataToEndOfFile()) as? [String],
           !linkFlags.isEmpty else { fatalError("Missing verified remote crypto link contract") }
-    qkLinkerSettings.append(.unsafeFlags(linkFlags))
+    // Distribution exports must not hide Swift APIs when Xcode turns the
+    // automatic package product into a dynamic framework for Debug tests.
+    qkLinkerSettings.append(.unsafeFlags(linkFlags, .when(configuration: .release)))
     optionalTargets.append(.binaryTarget(name: "QuenderinRemoteCryptoFFI", path: remoteSDK + "/QuenderinRemoteCryptoFFI.xcframework"))
     optionalTargets.append(.target(name: "QuenderinRemoteCrypto", dependencies: ["QuenderinRemoteCryptoFFI"],
                                    path: remoteSDK + "/Sources/QuenderinRemoteCrypto"))

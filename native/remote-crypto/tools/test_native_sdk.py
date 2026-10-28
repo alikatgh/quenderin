@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import struct
 import tempfile
 import unittest
@@ -153,6 +154,26 @@ class NativeSDKAppleLinkTests(unittest.TestCase):
         self.assertNotIn("-alias", flags)
         self.assertIn(contract["proofSymbol"], flags)
         self.verify.assert_called_with(self.sdk, "apple")
+
+    def test_debug_test_products_do_not_inherit_distribution_export_whitelist(self):
+        manifest = (sdk.REPO / "apple/QuenderinKit/Package.swift").read_text()
+        setting = re.search(r"\.unsafeFlags\(linkFlags(?:,\s*\.when\(configuration:\s*\.(\w+)\))?\)", manifest)
+        self.assertIsNotNone(setting, "Verified SDK link flags must remain wired into the package")
+        flags = sdk.apple_link_settings(self.sdk)
+        for configuration in ("debug", "release"):
+            with self.subTest(configuration=configuration):
+                active = flags if setting.group(1) in (None, configuration) else []
+                if configuration == "debug":
+                    # build-for-testing makes the automatic package product a
+                    # dylib. An export whitelist would hide its public Swift API.
+                    self.assertNotIn("-exported_symbol", active)
+                else:
+                    contract = sdk.apple_link_contract(self.sdk)
+                    for symbol in contract["symbols"] + [contract["proofSymbol"]]:
+                        self.assertIn(["-Xlinker", "-u", "-Xlinker", symbol],
+                                      [active[index:index + 4] for index in range(len(active))])
+                        self.assertIn(["-Xlinker", "-exported_symbol", "-Xlinker", symbol],
+                                      [active[index:index + 4] for index in range(len(active))])
 
     def test_missing_real_abi_or_stale_release_marker_fails(self):
         valid = self.headers.read_text()
