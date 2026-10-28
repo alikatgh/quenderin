@@ -1,0 +1,90 @@
+{
+  "project": "Quenderin",
+  "asset": "Homepage character background",
+  "revision": 1,
+  "conversation": "https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a",
+  "conversationTitle": "Generate Header Image Prompt",
+  "route": "Existing signed-in ChatGPT website conversation, as explicitly requested by the user",
+  "status": "Original downloaded, inspected and hashed; integrated homepage rendered and independently source-reviewed. Publication pending.",
+  "reference": "The established teal-and-copper braided elf and modern-clothed collaborators in the project's waterfall-city artwork. Preserve their identities and cinematic realism.",
+  "prompt": "Quenderin \u2014 homepage background \u2014 revision 1. Create a new wide cinematic illustration using the same recurring characters and visual world already established in this conversation: our teal-and-copper braided elf in ordinary modern clothes, with the familiar human collaborators, warm natural light, a beautiful waterfall city, and finely crafted teal-and-copper portable local-AI devices. This is a background for the real Quenderin homepage, not a rendered webpage. Compose the elf and two collaborators in the RIGHT HALF, with the elf's face around the right third, sharing a small handheld device at a sunlit workshop terrace overlooking the waterfall city. Keep their faces and hands clear and natural. Reserve the LEFT HALF as calm, softly lit pale stone, airy mist and distant scenery with very low detail: real headline and download controls will be placed there in HTML. Keep the upper edge calm for a navigation bar. Make the scene feel welcoming, lived-in and useful, with rich atmospheric depth and restrained teal/copper accents. Use a wide landscape composition, approximately 16:9. No words, letters, logos, watermark, app screenshots or fabricated interface. No medieval costumes, armor, weapons or magic combat. Maintain the established character identity rather than inventing a new mascot.",
+  "outputs": [
+    {
+      "path": "docs/art/quenderin-home-20261028-original.png",
+      "bytes": 2539048,
+      "sha256": "0d21bec8d0e359b3fa8a545c3ede3c5e3d9ec5f524fe13e5d46b0ca798b01b33",
+      "size": [
+        1672,
+        941
+      ],
+      "role": "unaltered original"
+    },
+    {
+      "path": "website/assets/art/quenderin-home-20261028.webp",
+      "bytes": 302042,
+      "sha256": "a5a822757fb45b396515590cb4431824ed6214c05b6125287fc8589d209230ba",
+      "size": [
+        1672,
+        941
+      ],
+      "role": "format/size derivative"
+    },
+    {
+      "path": "website/assets/art/quenderin-home-20261028-960.webp",
+      "bytes": 143652,
+      "sha256": "8dbf2e8746ff73c263c3308f40d7a781325ba8b94c71c10db121e280d943d411",
+      "size": [
+        960,
+        540
+      ],
+      "role": "format/size derivative"
+    }
+  ],
+  "verification": {
+    "downloaded": true,
+    "inspected": true,
+    "sha256": "0d21bec8d0e359b3fa8a545c3ede3c5e3d9ec5f524fe13e5d46b0ca798b01b33",
+    "homepageRendered": true,
+    "websitePreviewInspected": true,
+    "renderedChecks": {
+      "desktopLightDark": true,
+      "mobile390LightDark": true,
+      "arabicMobileDesktop": true,
+      "boundary1056Stacked1057Desktop": true,
+      "horizontalOverflow": false,
+      "layoutBreakpointPx": 1056
+    },
+    "review": "Fresh independent read-only source and retained-image review: no blocking findings. Parent checked final 1056/1057px Arabic boundary after the responsive fix.",
+    "proofs": [
+      "outputs/home-character-desktop-light-20261029.jpg",
+      "outputs/home-character-mobile-dark-20261029.jpg",
+      "outputs/home-character-rtl-1056-20261029.jpg",
+      "outputs/home-character-rtl-1057-20261029.jpg"
+    ]
+  },
+  "generation": {
+    "websiteStatus": "Response complete",
+    "websiteElapsed": "1m 46s",
+    "appearance": "Established teal/copper elf and two modern-clothed collaborators on the right, waterfall city on the left; no text or interface",
+    "downloaded": true
+  },
+  "publication": {
+    "visualSectionsPR": "https://github.com/alikatgh/quenderin/pull/210",
+    "visualSectionsHead": "3145bce8916574ae4d3c13b75408e691a3181588",
+    "merged": true,
+    "published": false,
+    "lastVerifiedActiveVersion": "23b86e0a-72bc-408d-b069-d7e4b1f4c3c1",
+    "visualSectionsMain": "bc80d814dddb8ed5095660e1faff8b5ec76b51bd"
+  },
+  "temporaryPublicationTools": {
+    "cleaned": true,
+    "apparentBytesRemoved": 207797609,
+    "allocatedBytesRemoved": 212594688,
+    "scope": "Session-created official Wrangler dependencies, duplicate active Worker/config and preflight metadata only. Source and deliverables preserved."
+  },
+  "download": {
+    "filename": "Golden Hour Workshop Overlooking Waterfall City.png",
+    "websiteStatus": "2.4 MB - Done",
+    "originalMetadata": "Downloaded PNG unchanged; no embedded metadata reported by Pillow."
+  }
+}

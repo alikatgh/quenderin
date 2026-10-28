@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-28T23:15:25.967Z",
+  "desktop": {
+    "body": "\"Helvetica Neue\", Helvetica, Arial, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, sans-serif",
+    "h1": {
+      "family": "\"Ysabeau Office\", \"Helvetica Neue\", Helvetica, Arial, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, sans-serif",
+      "size": "86.4px",
+      "weight": "700"
+    },
+    "height": 1000,
+    "overflow": false,
+    "url": "https://quenderin.org/?lang=en",
+    "width": 1440
+  },
+  "mobile": {
+    "body": "\"Helvetica Neue\", Helvetica, Arial, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, sans-serif",
+    "h1": {
+      "family": "\"Ysabeau Office\", \"Helvetica Neue\", Helvetica, Arial, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, sans-serif",
+      "size": "51.84px",
+      "weight": "700"
+    },
+    "height": 844,
+    "overflow": false,
+    "url": "https://quenderin.org/?lang=en",
+    "width": 390
+  },
+  "localChecks": {
+    "tests": 23,
+    "failed": 0,
+    "independentReview": "PASS",
+    "gitDiffCheck": "PASS",
+    "additionalRenderedPages": [
+      "Mobile RU homepage",
+      "Mobile article blog-development-october-2026",
+      "Mobile reality"
+    ]
+  }
+}

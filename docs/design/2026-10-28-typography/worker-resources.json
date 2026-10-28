@@ -1,0 +1,83 @@
+{
+  "versionId": "7b93016f-c63e-4f66-85dd-e53385fa37b7",
+  "baselineVersionId": "a9875091-c8bb-4e0b-aa31-4b338c27520d",
+  "resourcesEqual": true,
+  "moduleSha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5",
+  "resources": {
+    "script": {
+      "etag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+      "handlers": [
+        "fetch"
+      ],
+      "named_handlers": [
+        {
+          "name": "releaseResponse",
+          "handlers": [
+            "class"
+          ]
+        }
+      ]
+    },
+    "script_runtime": {
+      "assets": {
+        "html_handling": "auto-trailing-slash",
+        "not_found_handling": "404-page",
+        "headers": {
+          "version": 2,
+          "rules": {
+            "/*": {
+              "set": {
+                "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+                "permissions-policy": "interest-cohort=()",
+                "referrer-policy": "no-referrer",
+                "x-content-type-options": "nosniff",
+                "x-frame-options": "DENY"
+              },
+              "unset": []
+            },
+            "/sw.js": {
+              "set": {
+                "cache-control": "no-cache"
+              },
+              "unset": []
+            }
+          }
+        },
+        "raw_headers": "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  X-Frame-Options: DENY\n  Permissions-Policy: interest-cohort=()\n  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests\n\n# The service worker must always be revalidated, so a new deploy's SW is never pinned to a stale\n# (possibly buggy) cached version that then controls the whole origin (audit re-sweep).\n/sw.js\n  Cache-Control: no-cache\n",
+        "static_routing": {
+          "user_worker": [
+            "/api/*"
+          ]
+        },
+        "serve_directly": true,
+        "raw_run_worker_first": [
+          "/api/*"
+        ],
+        "base_path": "/"
+      },
+      "compatibility_date": "2026-07-04",
+      "usage_model": "standard"
+    },
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      }
+    ]
+  },
+  "workerSettings": {
+    "placement": {},
+    "compatibility_date": "2026-07-04",
+    "compatibility_flags": [],
+    "usage_model": "standard",
+    "tags": [],
+    "tail_consumers": [],
+    "logpush": false,
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      }
+    ]
+  }
+}

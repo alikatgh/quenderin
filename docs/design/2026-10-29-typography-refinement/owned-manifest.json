@@ -1,0 +1,18 @@
+{
+  "website/styles.css": {
+    "bytes": 77866,
+    "sha256": "c238253aa84529f5657d9b979706f773eaf2d4599cd4995f6a8104ccaf110b71"
+  },
+  "website/simple-home.css": {
+    "bytes": 6348,
+    "sha256": "032361e2a55067e76f75fa078f10bf6d312649b7fd804b1cc93ad760dbf788e4"
+  },
+  "website/detail-page.css": {
+    "bytes": 19049,
+    "sha256": "9c7387db5a03180cafb6d6ee600988d5cac7de9b0ed087c5647f616ab4d7612b"
+  },
+  "website/reality.html": {
+    "bytes": 12917,
+    "sha256": "74679c1844ddcd4eaea57b849f3d2bbe83f22fc1500d27582b6e856d23f86f6f"
+  }
+}

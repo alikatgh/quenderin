@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -41,6 +42,7 @@ quenderin chat -m qwen25-coder-7b        # the coder model, interactively</code>
   into a model that has no network to leak it to.</p>
 
   <h2>What it is</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#terminal"></use></svg>
   <ul>
     <li><strong><code>quenderin chat</code></strong> — interactive REPL with slash commands (<code>/model</code>, <code>/models</code>, <code>/clear</code>).</li>
     <li><strong><code>quenderin chat -p "…"</code></strong> — one answer on stdout, exit 0, honest in pipes. Piped stdin becomes context.</li>
@@ -48,6 +50,7 @@ quenderin chat -m qwen25-coder-7b        # the coder model, interactively</code>
   </ul>
 
   <h2>Measured, not promised</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#waveform"></use></svg>
   <p>On the 10-core Apple-silicon laptop we build on — deliberately tested while the machine
   was starved, with under 3&nbsp;GB of RAM free — the 0.4&nbsp;GB ultra-light model streamed
   at <strong>78–101 tokens/second with ~90–150&nbsp;ms to first token</strong>, after the
@@ -55,6 +58,7 @@ quenderin chat -m qwen25-coder-7b        # the coder model, interactively</code>
   the CLI makes the same honest RAM-fit calls as the apps.</p>
 
   <h2>The two bugs we hit (kept in public, as usual)</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#debug"></use></svg>
   <p>First: chat initially <em>failed before the first token</em> on that starved machine.
   The shared chat path prepended a ~465-token tool preamble to every session, and the
   auto-shrunk 512-token context couldn't fit it. The CLI now runs a plain-chat session —
@@ -65,6 +69,7 @@ quenderin chat -m qwen25-coder-7b        # the coder model, interactively</code>
   before exit. If your scripts wrap AI tools, check <em>your</em> exit codes.</p>
 
   <h2>Get it</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#terminal"></use></svg>
   <p>It ships with the source today — <code>npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link</code>
   from <a href="https://github.com/alikatgh/quenderin" rel="noopener">the repo</a> puts
   <code>quenderin</code> on your PATH. A standalone npm package is planned. Where this fits
