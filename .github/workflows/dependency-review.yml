@@ -1,0 +1,44 @@
+name: Dependency review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: github.repository == 'alikatgh/quenderin' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Reject newly introduced high or critical vulnerabilities
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        timeout-minutes: 3
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development, unknown
+          vulnerability-check: true
+          warn-only: false
+          # No project license allow/deny policy has been adopted.
+          license-check: false
+          comment-summary-in-pr: never
+          show-openssf-scorecard: false
+          show-patched-versions: false
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 60
+        # Coverage depends on GitHub's recognized dependency graph. Android
+        # Gradle dependency submission is not configured; this check does not
+        # establish coverage of its unresolved transitive dependencies.
