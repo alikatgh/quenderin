@@ -38,9 +38,9 @@ MODULEMAP = "QuenderinRemoteCryptoFFI.modulemap"
 KOTLIN = "ai/quenderin/remote/crypto/quenderin_remote_crypto.kt"
 RECEIPT = "quenderin-remote-sdk.json"
 APPLE_RELEASE_MARKER = "build/.quenderin-remote-crypto-release"
-# Real generated UniFFI entry points, not optional Swift adapter symbols. Keeping
-# these exports explicitly allows the distribution gate to use dyld's export
-# trie after Xcode removes the ordinary nlist/debug symbol tables.
+# Real generated UniFFI entry points, not optional Swift adapter symbols. Retain
+# their definitions for the distribution gate's dyld export-trie check after
+# Xcode removes the ordinary nlist/debug symbol tables.
 APPLE_LINK_SYMBOLS = ["uniffi_quenderin_remote_crypto_fn_func_derive_public_key"] + [
     "uniffi_quenderin_remote_crypto_fn_" + kind + "_noiseiksession_" + name
     for kind, name in [("constructor", "create"), ("method", "initiate"),
@@ -367,10 +367,11 @@ def apple_link_contract(sdk: Path) -> dict:
 
 def apple_link_settings(sdk: Path) -> list[str]:
     contract = apple_link_contract(sdk)
-    flags = []
+    # An exported-symbol whitelist hides the public Swift API when Xcode links
+    # the package as a dynamic test product. Preserve globals without a filter.
+    flags = ["-Xlinker", "-export_dynamic"]
     for symbol in contract["symbols"] + [contract["proofSymbol"]]:
-        flags += ["-Xlinker", "-u", "-Xlinker", symbol,
-                  "-Xlinker", "-exported_symbol", "-Xlinker", symbol]
+        flags += ["-Xlinker", "-u", "-Xlinker", symbol]
     return flags
 
 
@@ -542,6 +543,11 @@ def build(out: Path, platform: str, *, environment: dict[str, str] | None = None
     work.mkdir()
     env = dict(os.environ if environment is None else environment,
                CARGO_TARGET_DIR=str(work / "target"), CARGO_NET_RETRY="0", CARGO_HTTP_TIMEOUT="30", CARGO_BUILD_JOBS="2")
+    if platform == "apple":
+        # Rust 1.90's Mach-O strip can misalign proc-macro LINKEDIT data, which
+        # macOS 27 rejects (rust-lang/rust#157750). Keep only build-time host
+        # dependencies unstripped; target archives retain the release profile.
+        env["CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP"] = "none"
     run(["cargo", "+1.90.0", "build", "--locked", "--release", "--lib"], env)
     host_library = work / "target/release" / ("libquenderin_remote_crypto.dylib" if platform == "apple" else "libquenderin_remote_crypto.so")
     generated = work / "generated"

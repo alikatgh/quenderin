@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import plistlib
-import re
 import struct
 import tempfile
 import unittest
@@ -180,6 +179,52 @@ raise SystemExit(sdk.main())
         run.assert_not_called()
         self.assertFalse(self.out.exists())
 
+    def test_host_macro_strip_override_is_apple_only_and_preserves_target_profile(self):
+        for platform in ("apple", "android"):
+            with self.subTest(platform=platform), \
+                    patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "CI": "true", "CARGO_PROFILE_RELEASE_STRIP": "debuginfo"}), \
+                    patch("verify_build_gate.require_locked"), \
+                    patch.object(sdk, "run", side_effect=RuntimeError("stop before compiler")) as run:
+                with self.assertRaisesRegex(RuntimeError, "stop before compiler"):
+                    sdk.build(self.checkout / platform, platform)
+            arguments, environment = run.call_args.args
+            self.assertEqual(arguments, ["cargo", "+1.90.0", "build", "--locked", "--release", "--lib"])
+            if platform == "apple":
+                self.assertEqual(environment["CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP"], "none")
+            else:
+                self.assertNotIn("CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP", environment)
+            self.assertEqual(environment["CARGO_PROFILE_RELEASE_STRIP"], "debuginfo")
+            self.assertNotIn("CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP", os.environ)
+
+    def test_cloud_stage_keeps_host_macros_unstripped_for_every_target(self):
+        rustup = self.root / "bin/rustup"
+        rustup.parent.mkdir(); rustup.touch()
+        for name in ("cargo", "rustc"):
+            (rustup.parent / name).touch()
+        calls = []
+
+        def command(arguments, environment, timeout=600, **kwargs):
+            calls.append((arguments, dict(environment)))
+
+        with patch.object(sdk.shutil, "which", return_value=str(rustup)), \
+                patch.object(sdk.shutil, "disk_usage", return_value=shutil_usage(10)), \
+                patch.object(sdk, "run", side_effect=command), \
+                patch.object(sdk, "add_apple_archive_proof", side_effect=RuntimeError("stop before packaging")):
+            with self.assertRaisesRegex(RuntimeError, "stop before packaging"):
+                sdk.stage_apple_cloud(self.out)
+        cargo_calls = [(arguments, environment) for arguments, environment in calls if arguments[0] == "cargo"]
+        self.assertEqual(len(cargo_calls), 7)
+        targets = [arguments[-1] for arguments, _ in cargo_calls if "--target" in arguments]
+        self.assertEqual(targets, sdk.TARGETS["apple"])
+        for arguments, environment in cargo_calls:
+            self.assertEqual(environment["CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP"], "none")
+            self.assertNotIn("CARGO_PROFILE_RELEASE_STRIP", environment)
+            self.assertEqual(environment["CARGO_BUILD_JOBS"], "2")
+            self.assertEqual(environment["CARGO_NET_RETRY"], "0")
+            self.assertIn("--locked", arguments)
+            self.assertEqual(arguments[1], "+1.90.0")
+        self.assertFalse((self.checkout / "apple/QuenderinKit" / sdk.APPLE_RELEASE_MARKER).exists())
+
     def test_resource_and_compile_failure_never_persist_release_marker(self):
         marker = self.checkout / "apple/QuenderinKit" / sdk.APPLE_RELEASE_MARKER
         with patch.object(sdk.shutil, "disk_usage", return_value=shutil_usage(1)), patch.object(sdk, "run") as run:
@@ -248,25 +293,19 @@ class NativeSDKAppleLinkTests(unittest.TestCase):
         self.assertIn(contract["proofSymbol"], flags)
         self.verify.assert_called_with(self.sdk, "apple")
 
-    def test_debug_test_products_do_not_inherit_distribution_export_whitelist(self):
-        manifest = (sdk.REPO / "apple/QuenderinKit/Package.swift").read_text()
-        setting = re.search(r"\.unsafeFlags\(linkFlags(?:,\s*\.when\(configuration:\s*\.(\w+)\))?\)", manifest)
-        self.assertIsNotNone(setting, "Verified SDK link flags must remain wired into the package")
+    def test_imparted_link_flags_preserve_public_api_and_exact_crypto_roots(self):
         flags = sdk.apple_link_settings(self.sdk)
-        for configuration in ("debug", "release"):
-            with self.subTest(configuration=configuration):
-                active = flags if setting.group(1) in (None, configuration) else []
-                if configuration == "debug":
-                    # build-for-testing makes the automatic package product a
-                    # dylib. An export whitelist would hide its public Swift API.
-                    self.assertNotIn("-exported_symbol", active)
-                else:
-                    contract = sdk.apple_link_contract(self.sdk)
-                    for symbol in contract["symbols"] + [contract["proofSymbol"]]:
-                        self.assertIn(["-Xlinker", "-u", "-Xlinker", symbol],
-                                      [active[index:index + 4] for index in range(len(active))])
-                        self.assertIn(["-Xlinker", "-exported_symbol", "-Xlinker", symbol],
-                                      [active[index:index + 4] for index in range(len(active))])
+        # SwiftPM's Xcode bridge imparts OTHER_LDFLAGS without the configuration
+        # condition. The complete contract must be safe on both consumers.
+        for consumer in ("Debug dynamic test product", "Release executable"):
+            with self.subTest(consumer=consumer):
+                for restriction in ("-exported_symbol", "-exported_symbols_list", "-no_exported_symbols",
+                                    "-unexported_symbol", "-unexported_symbols_list"):
+                    self.assertNotIn(restriction, flags, "SDK retention must not hide the consumer's public API")
+                self.assertIn("-export_dynamic", flags)
+                contract = sdk.apple_link_contract(self.sdk)
+                forced = [flags[index + 2] for index, value in enumerate(flags) if value == "-u"]
+                self.assertEqual(forced, contract["symbols"] + [contract["proofSymbol"]])
 
     def test_missing_real_abi_or_stale_release_marker_fails(self):
         valid = self.headers.read_text()

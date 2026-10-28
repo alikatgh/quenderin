@@ -31,7 +31,19 @@ Live console refresh in the established profiles:
 - Google Play still has **2 (0.2.0)** active on **Closed testing - Alpha** and
   the existing draft is now named **6 (0.6.0)** with updated release notes but
   without a new bundle. Source targets **0.6.0 / 6**. No new signed bundle has
-  been uploaded.
+  been uploaded. The live dashboard shows **7 opted-in testers** and disabled
+  production access; Google requires at least **12 for 14 continuous days**.
+
+[Cloud build 24](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/97eb2cd4-b02f-4273-84f3-5fda6113fc52/summary)
+at `8b368d1b80e019963a7273e81c36027e5f1ef1df` passed Python bootstrap and
+source validation, then compiled the host library, bindings and first two Apple
+targets. Both actions stopped before archives when an Intel-target build could
+not load `curve25519_dalek_derive`. This strongly matches the documented
+[macOS 27 stripped-proc-macro defect](https://github.com/rust-lang/rust/issues/157750);
+the malformed dylib itself was unavailable, so its precise loader failure is
+unconfirmed. The Apple-only Cargo build-dependency strip override now preserves
+host proc-macro dylibs. It changes neither the shipped target's strip profile nor
+the Rust/dependency pins or cryptography. The next Cloud run must verify it.
 
 The release packaging changes require the pinned real remote-crypto SDK in the
 normal Prism/image packages, and verify final native payloads and provenance.
@@ -59,10 +71,13 @@ publication approval remains pending; the public policy and store privacy
 answers have not yet changed.
 
 Hosted Debug test compilation first exposed an export-whitelist linker failure
-when Xcode made QuenderinKit a dynamic package product. The reviewed fix confines
-the existing distribution link contract to Release while retaining the real SDK
-and provenance checks in Debug. Hosted test-bundle compilation and exact signed
-Release verification remain required; source fixtures alone do not establish them.
+when Xcode made QuenderinKit a dynamic package product. Scoping it to Release did
+not repair the actual hosted Debug build: SwiftPM's Xcode bridge imparts those
+flags across configurations. The revised contract retains all nine exact real
+SDK/proof roots with `-u` and uses nonrestrictive `-export_dynamic`, preserving
+Swift APIs without an export whitelist. More ordinary globals may remain exported;
+hosted test-bundle linking, actual artifact size and exact signed Release export
+verification remain required. Source fixtures alone do not establish them.
 
 Remaining release gates: current hosted and signed-artifact checks; changed
 native consent, credential persistence and rendered journeys; accurate live
