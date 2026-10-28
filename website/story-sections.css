@@ -1,0 +1,110 @@
+/* Illustrated explanations for the detailed overview. Diagrams describe the
+   source workflows; they are static, rather than simulated running software. */
+.detail-page .story-heading { max-width: 44rem; }
+.detail-page .story-heading h2 { max-width: 17ch; }
+.detail-page .workflow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.detail-page .workflow-card { min-width: 0; display: flex; flex-direction: column; padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.detail-page .workflow-art { margin: -0.25rem -0.35rem 1rem; }
+.detail-page .workflow-art svg { display: block; width: 100%; height: auto; }
+.detail-page .story-paper { fill: var(--surface-tint); stroke: var(--border); stroke-width: 1.5; stroke-linejoin: round; }
+.detail-page .story-brand-line, .detail-page .story-accent-line, .detail-page .story-muted-line { fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.detail-page .story-brand-line { stroke: var(--brand); }
+.detail-page .story-muted-line { stroke: var(--text-muted); }
+.detail-page .story-accent-fill { fill: var(--accent-soft); }
+.detail-page .story-accent-line { stroke: var(--brand); stroke-width: 2; }
+.detail-page .story-brand-stroke { stroke: var(--brand); stroke-width: 1.5; }
+.detail-page .story-copper-fill { fill: var(--copper); }
+.detail-page .story-svg-label { fill: var(--text-secondary); font: 11px var(--font-sans); }
+.detail-page .workflow-family { margin: 0 0 0.35rem; font-size: 0.75rem; font-weight: 600; line-height: 1.4; color: var(--brand); }
+.detail-page .workflow-card h3 { margin: 0; font-family: var(--font-display); font-size: 1.3rem; line-height: 1.15; letter-spacing: -0.025em; font-weight: 550; color: var(--text); }
+.detail-page .workflow-card > p:not(.workflow-family) { margin: 0.75rem 0 1rem; font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); }
+.detail-page .story-details { color: var(--text-secondary); font-size: 0.875rem; line-height: 1.65; }
+.detail-page .story-details summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; color: var(--text); list-style: none; font-size: 0.8125rem; font-weight: 600; }
+.detail-page .story-details summary::-webkit-details-marker { display: none; }
+.detail-page .story-details summary::after { content: "+"; font: 1.25rem var(--font-mono); font-weight: 400; color: var(--brand); flex: none; }
+.detail-page .story-details[open] > summary::after { content: "−"; }
+.detail-page .story-details summary:hover { color: var(--brand); }
+.detail-page .story-details summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; border-radius: 2px; }
+.detail-page .story-details > div { padding-bottom: 0.4rem; }
+.detail-page .story-details p { margin: 0.25rem 0 0.75rem; font-size: inherit; line-height: inherit; color: inherit; }
+.detail-page .story-details code { overflow-wrap: anywhere; color: var(--text); }
+.detail-page .workflow-card .story-details { margin-top: auto; border-top: 1px solid var(--border); }
+.detail-page .story-verification { display: flex; align-items: flex-start; gap: 0.8rem; margin-top: 1.5rem; max-width: 60rem; }
+.detail-page .story-verification > svg { width: 25px; height: 25px; stroke: var(--brand); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; margin-top: 0.2rem; }
+.detail-page .story-verification p { margin: 0; font-size: 0.9rem; line-height: 1.65; color: var(--text-secondary); }
+.detail-page .story-verification strong { color: var(--text); }
+.detail-page .workflow-general-notes { margin-top: 1rem; border-bottom: 1px solid var(--border); }
+.detail-page .workflow-general-notes > summary { justify-content: flex-start; }
+.detail-page .workflow-general-notes > div { max-width: 52rem; }
+
+.detail-page .agent-story { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: center; gap: 1.5rem 3rem; }
+.detail-page .agent-story-copy { min-width: 0; }
+.detail-page .agent-story-copy h2 { max-width: 19ch; text-wrap: balance; margin-bottom: 1.25rem; }
+.detail-page .agent-story-copy > p:not(.eyebrow) { font-size: 1rem; line-height: 1.7; color: var(--text-secondary); }
+.detail-page .agent-story-copy > .agent-channel { font-size: 0.875rem; margin-top: 1.5rem; }
+.detail-page .agent-story-copy .btn { margin-top: 0.5rem; white-space: normal; }
+.detail-page .cli-story { min-width: 0; width: 100%; margin: 0; padding: 1.5rem; background: var(--surface-tint); border: 1px solid var(--border); border-radius: 12px; }
+.detail-page .cli-story > figcaption { margin: 0 0 1.25rem; padding: 0; color: var(--text-muted); font-size: 0.75rem; line-height: 1.5; }
+.detail-page .cli-story-request { display: flex; align-items: center; gap: 0.65rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--font-display); font-size: 1.25rem; font-weight: 550; line-height: 1.35; }
+.detail-page .cli-story-request > svg { width: 22px; height: 22px; flex: none; stroke: var(--brand); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.detail-page .cli-story-stages { list-style: none; display: grid; gap: 0; padding: 0; margin: 0; }
+.detail-page .cli-story-stages > li { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 1rem; padding-top: 1.25rem; }
+.detail-page .cli-story-stages > li:not(:last-child)::after { content: ""; position: absolute; left: 19px; top: 65px; bottom: -4px; border-left: 1px dashed var(--accent-border); }
+.detail-page .cli-stage-icon { width: 40px; height: 40px; }
+.detail-page .cli-stage-icon svg { width: 100%; height: 100%; stroke: var(--brand); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.detail-page .cli-story-stages h3 { margin: 0 0 0.3rem; font-size: 1rem; line-height: 1.4; font-weight: 600; color: var(--text); }
+.detail-page .cli-story-stages p { margin: 0; max-width: 32ch; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.55; }
+.detail-page .cli-story-stages code { display: inline-block; margin-top: 0.55rem; margin-right: 0.75rem; font: 0.75rem/1.5 var(--font-mono); color: var(--brand); overflow-wrap: anywhere; }
+.detail-page .cli-story-network { margin: 1.25rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8125rem; line-height: 1.6; color: var(--text-secondary); }
+.detail-page .agent-technical { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+.detail-page .agent-technical > summary { justify-content: flex-start; }
+.detail-page .agent-technical > div { max-width: 52rem; }
+
+.detail-page .setup-journey { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; padding: 0; margin: 2rem 0; list-style: none; }
+.detail-page .setup-journey > li { min-width: 0; position: relative; }
+.detail-page .setup-journey > li:not(:last-child)::after { content: ""; position: absolute; top: 76px; inset-inline-end: -1.5rem; width: 1rem; height: 1rem; border-block-start: 1px solid var(--accent-border); border-inline-end: 1px solid var(--accent-border); transform: rotate(45deg); }
+.detail-page .setup-art { height: 150px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
+.detail-page .setup-art svg { width: 260px; max-width: 100%; height: 150px; }
+.detail-page .setup-step-heading { display: flex; align-items: baseline; gap: 0.65rem; }
+.detail-page .setup-step-number { color: var(--copper); font: 0.8125rem var(--font-mono); }
+.detail-page .setup-step-heading h3 { margin: 0; font-family: var(--font-display); font-weight: 550; font-size: 1.35rem; line-height: 1.3; letter-spacing: -0.02em; }
+.detail-page .setup-journey p { margin: 0.75rem 0 0; color: var(--text-secondary); font-size: 0.9375rem; line-height: 1.65; max-width: 30ch; }
+.detail-page #get-started .gs-platforms { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 2.5rem; }
+.detail-page #get-started .start-more { margin-top: 0.75rem; }
+html[data-theme-mode="dark"] .detail-page .story-copper-fill { fill: var(--copper-bright); }
+html[data-theme-mode="dark"] .detail-page .setup-step-number { color: var(--copper-bright); }
+html[dir="rtl"] .detail-page .setup-journey > li:not(:last-child)::after { transform: rotate(-135deg); }
+
+@media (max-width: 1000px) {
+  .detail-page .workflow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .detail-page .agent-story { gap: 1.5rem 2rem; }
+  .detail-page .setup-journey { gap: 1.5rem; }
+  .detail-page .setup-journey > li:not(:last-child)::after { inset-inline-end: -1.2rem; width: 0.8rem; height: 0.8rem; }
+}
+@media (max-width: 760px) {
+  .detail-page .agent-story { grid-template-columns: 1fr; }
+  .detail-page .agent-story-copy h2 { max-width: 22ch; }
+  .detail-page .agent-story-copy > .agent-channel { margin-top: 1rem; }
+  .detail-page .setup-journey { grid-template-columns: 1fr; gap: 1.5rem; }
+  .detail-page .setup-journey > li { display: grid; grid-template-columns: 130px minmax(0, 1fr); column-gap: 1rem; align-items: center; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .detail-page .setup-journey > li:not(:last-child)::after { display: none; }
+  .detail-page .setup-art { grid-column: 1; grid-row: 1 / span 2; height: auto; margin: 0; }
+  .detail-page .setup-art svg { height: auto; }
+  .detail-page .setup-step-heading { grid-column: 2; align-self: end; gap: 0.4rem; }
+  .detail-page .setup-step-heading h3 { font-size: 1.2rem; }
+  .detail-page .setup-journey p { grid-column: 2; margin-top: 0.5rem; align-self: start; font-size: 0.875rem; }
+  .detail-page #get-started .gs-platforms { border-top: 0; padding-top: 0; margin-top: 1.5rem; }
+}
+@media (max-width: 540px) {
+  .detail-page .workflow-grid { grid-template-columns: 1fr; }
+  .detail-page .workflow-card { padding: 1.25rem; }
+  .detail-page .workflow-art { max-width: 320px; width: 100%; align-self: center; }
+  .detail-page .workflow-card h3 { font-size: 1.4rem; }
+  .detail-page .workflow-card > p:not(.workflow-family) { margin-top: 0.65rem; }
+  .detail-page .cli-story { padding: 1.25rem; }
+  .detail-page .cli-story-request { font-size: 1.15rem; }
+  .detail-page .cli-story-stages > li { gap: 0.75rem; }
+  .detail-page .setup-journey > li { grid-template-columns: 100px minmax(0, 1fr); column-gap: 0.75rem; }
+  .detail-page .setup-step-heading { flex-wrap: wrap; gap: 0.15rem 0.5rem; }
+  .detail-page .setup-step-number { flex: 0 0 100%; }
+}

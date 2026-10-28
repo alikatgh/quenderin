@@ -45,6 +45,12 @@
   --accent-border: rgba(46, 118, 128, 0.40);
   --accent-soft: rgba(46, 118, 128, 0.08);
   --on-brand: #ffffff;
+  --header-surface: #164c58;
+  --header-text: #f4f9f8;
+  --header-secondary: #d2e4e7;
+  --header-border: #78979d;
+  --header-accent: #b5e3df;
+  --header-hover: #245e6b;
 
   /* Radius */
   --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 24px; --r-full: 9999px;
@@ -150,17 +156,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .brand-mark { width: 32px; height: 32px; border-radius: 22%; background: url("apple-touch-icon.png") center/cover no-repeat; flex: none; }
 
 /* ---------- Header ---------- */
+.site-header, .simple-topbar {
+  --text: var(--header-text);
+  --text-secondary: var(--header-secondary);
+  --border: var(--header-border);
+  --brand: var(--header-accent);
+  --brand-hover: #fff;
+  --accent-soft: var(--header-hover);
+  color: var(--header-text);
+  background: var(--header-surface);
+  color-scheme: dark;
+}
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: color-mix(in srgb, var(--n-000) 56%, transparent);
-  backdrop-filter: blur(22px) saturate(185%);
-  -webkit-backdrop-filter: blur(22px) saturate(185%);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.55), 0 1px 18px rgba(10,37,64,0.05);
+  border-bottom: 1px solid var(--header-border);
 }
 html[data-theme-mode="dark"] .site-header {
-  background: var(--canvas);
-  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.10), 0 2px 20px rgba(0,0,0,0.45);
+  background: var(--header-surface);
+}
+.site-header .theme-toggle, .simple-topbar .theme-toggle { background: transparent; }
+.site-header .theme-toggle:hover, .simple-topbar .theme-toggle:hover { background: var(--header-hover); }
+.site-header .lang-select option, .simple-topbar .lang-select option { color: var(--header-text); background: var(--header-surface); }
+.site-header a.btn {
+  color: var(--header-text); background: transparent;
+  border-color: var(--header-border); box-shadow: none;
+}
+.site-header a.btn:hover {
+  color: var(--header-text); background: var(--header-hover);
+  border-color: var(--header-accent); box-shadow: none; transform: none;
 }
 .header-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
 .nav { display: flex; align-items: center; gap: 0.7rem; }
@@ -207,8 +230,8 @@ html[dir="rtl"] .lang-picker .lang-globe { left: auto; right: 0.62rem; }
 html[dir="rtl"] .lang-picker .lang-chev { right: auto; left: 0.55rem; }
 
 /* Scroll-aware density: a touch more presence once you leave the hero */
-.site-header.scrolled { background: color-mix(in srgb, var(--n-000) 80%, transparent); box-shadow: 0 6px 24px rgba(10,37,64,0.07); }
-html[data-theme-mode="dark"] .site-header.scrolled { background: var(--canvas); box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+.site-header.scrolled { background: var(--header-surface); box-shadow: 0 2px 10px rgba(10,37,64,0.10); }
+html[data-theme-mode="dark"] .site-header.scrolled { background: var(--header-surface); box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 
 /* ---------- Hero: quiet teal-ink with two still glows (teal + copper) + diagonal slice.
    The old animated mesh-gradient canvas was the loudest "generated page" tell — removed. ---------- */
@@ -459,6 +482,9 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: var(--canvas); 
    =================================================================== */
 html[data-theme-mode="dark"] {
   color-scheme: dark;
+  --header-surface: #143a43;
+  --header-border: #63868e;
+  --header-hover: #24535f;
   --canvas: var(--canvas-dark);
   --n-000: #0e0e13;
   --n-050: #16161d;
@@ -534,6 +560,8 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .nav-toggle-bar::after { top: 6px; left: 0; }
   .nav-menu { position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; background: var(--n-000); border-bottom: 1px solid var(--border); padding: 0.5rem var(--pad) 1rem; display: none; }
   .nav-menu.open { display: flex; }
+  .site-header .nav-menu,
+  html[data-theme-mode="dark"] .site-header .nav-menu { background: var(--header-surface); }
   .nav-menu li { width: 100%; }
   .nav-menu a { display: block; padding-block: 0.7rem; }
   .nav-menu a.btn { margin-top: 0.5rem; }
