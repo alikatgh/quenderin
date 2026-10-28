@@ -25,7 +25,7 @@ def metadata(target):
             'CFBundleShortVersionString':'1.0.0', 'CFBundleVersion':'1',
             'CFBundleExecutable':'QuenderinDiffusion', 'CFBundleName':'QuenderinDiffusion',
             'CFBundleInfoDictionaryVersion':'6.0',
-            'CFBundleSupportedPlatforms':['MacOSX' if target == 'macos' else 'iPhoneOS'],
+            'CFBundleSupportedPlatforms':[{'macos':'MacOSX', 'ios':'iPhoneOS', 'ios-simulator':'iPhoneSimulator'}[target]],
             'LSMinimumSystemVersion' if target == 'macos' else 'MinimumOSVersion':'13.3' if target == 'macos' else '16.4'}
 
 
@@ -236,6 +236,49 @@ class ImageExportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'deployment minimum'):
                 image.description(framework)
 
+    def test_simulator_seal_requires_real_platform_metadata_and_complete_release_slices(self):
+        framework = self.root / 'with-simulator.xcframework'
+        entries = []
+        for identifier, target, platform in (('ios-sim', 'ios-simulator', 7), ('ios-device', 'ios', 2), ('macos', 'macos', 1)):
+            native = framework / identifier / 'QuenderinDiffusion.framework'
+            (native / 'Headers').mkdir(parents=True)
+            (native / 'Headers/quenderin_diffusion.h').write_text('fixture header')
+            (native / 'Modules').mkdir()
+            (native / 'Modules/module.modulemap').write_text('fixture module')
+            (native / 'Info.plist').write_bytes(plistlib.dumps(metadata(target)))
+            (native / 'QuenderinDiffusion').write_bytes(fixtures.thin('arm64', platform) if target == 'ios' else fixtures.fat(platform))
+            entries.append({'LibraryIdentifier':identifier, 'LibraryPath':'QuenderinDiffusion.framework',
+                            'SupportedPlatform':'macos' if target == 'macos' else 'ios',
+                            **({'SupportedPlatformVariant':'simulator'} if platform == 7 else {})})
+        info = framework / 'Info.plist'
+        info.write_bytes(plistlib.dumps({'AvailableLibraries':entries}))
+        simulator = framework / 'ios-sim/QuenderinDiffusion.framework'
+        with patch.object(image.subprocess, 'run'), patch.object(image.subprocess, 'check_output', return_value=''):
+            stamp = image.description(framework)
+            self.assertEqual(stamp['slices'][0]['variant'], 'simulator')
+            self.assertEqual(stamp['slices'][0]['bundleMetadata'], metadata('ios-simulator'))
+            for data, message in ((fixtures.fat(2), 'compiled target'),
+                                  (fixtures.thin('arm64', 7), 'architecture set')):
+                with self.subTest(binary=message):
+                    (simulator / 'QuenderinDiffusion').write_bytes(data)
+                    with self.assertRaisesRegex(ValueError, message):
+                        image.description(framework)
+            (simulator / 'QuenderinDiffusion').write_bytes(fixtures.fat(7))
+            (simulator / 'Info.plist').write_bytes(plistlib.dumps(metadata('ios')))
+            with self.assertRaisesRegex(ValueError, 'supported platforms'):
+                image.description(framework)
+            (simulator / 'Info.plist').write_bytes(plistlib.dumps(metadata('ios-simulator')))
+            for changed in (entries + [entries[0]], [entries[0], entries[2]]):
+                info.write_bytes(plistlib.dumps({'AvailableLibraries':changed}))
+                with self.assertRaisesRegex(ValueError, 'Exactly one'):
+                    image.description(framework)
+
+    def test_device_export_selects_device_seal_when_simulator_is_first(self):
+        app, _, _, stamp = self.app()
+        stamp['slices'].insert(0, {'platform':'ios', 'variant':'simulator', 'payload':{}, 'bundleMetadata':metadata('ios-simulator')})
+        with patch.object(image, 'verify', return_value=stamp), patch.object(image.prism, 'run', side_effect=self.tools):
+            image.verify_app(app, 'ios', self.root)
+
     def test_app_minimum_matches_its_binary_and_supports_the_framework(self):
         for target in ('ios','macos'):
             original_root = self.root
@@ -268,7 +311,8 @@ class ImageExportTests(unittest.TestCase):
 
     def test_cmake_template_generates_deployment_and_platform_metadata(self):
         producer = image.ROOT / 'native/diffusion'
-        for system, sdk, target, minimum in (('iOS','iphoneos','ios','16.4'),('Darwin','macosx','macos','13.3')):
+        for system, sdk, target, minimum in (('iOS','iphoneos','ios','16.4'),('Darwin','macosx','macos','13.3'),
+                                             ('iOS','iphonesimulator','ios-simulator','16.4')):
             script = self.root / (target + '.cmake')
             output = self.root / (target + '.plist')
             script.write_text(f'''set(CMAKE_SYSTEM_NAME "{system}")
@@ -285,7 +329,7 @@ configure_file("{producer / 'Info.plist.in'}" "{output}")
             generated = plistlib.loads(output.read_bytes())
             expected = metadata(target)
             self.assertEqual({key:generated[key] for key in expected},expected)
-        for system, sdk, minimum in (('tvOS','appletvos','16.4'),('iOS','iphonesimulator','16.4'),
+        for system, sdk, minimum in (('tvOS','appletvos','16.4'),
                                      ('iOS','iphoneos',''),('Darwin','macosx','13.3beta')):
             with self.subTest(system=system,sdk=sdk,minimum=minimum):
                 script = self.root / 'invalid.cmake'

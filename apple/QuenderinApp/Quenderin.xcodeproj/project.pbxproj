@@ -7,37 +7,102 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		040BF3BB67D9C8B8557D2512 /* CloudJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4CC554D709D84D709E92B7 /* CloudJourneyTests.swift */; };
+		0597627FC2B9D1ECED8A3A04 /* MacWindowRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A5B330463CCBCB5263F585 /* MacWindowRecoveryTests.swift */; };
+		1060831EC9A80E818BE9AD5D /* QuenderinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 56EECD80034958258FAB0FA8 /* QuenderinKit */; };
 		1E76FE449DF2FD724B5EB3A1 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */; };
 		2ED093ACEAED4F7CE4E68E6F /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */; };
+		365CD3C154B89076B4786F1A /* MacWindowRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A5B330463CCBCB5263F585 /* MacWindowRecoveryTests.swift */; };
 		3C871302967180AB28472B0E /* QuenderinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */; };
 		46216EEC7820E605F781DB50 /* QuenderinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */; };
 		571E041657DAC2B10E5CA170 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */; };
+		8D7305C53CC0E4B618F0BC6A /* QuenderinKit in Frameworks */ = {isa = PBXBuildFile; productRef = C4254D1B89A9758AA74CD3E3 /* QuenderinKit */; };
 		9092454E89A6E893F0FB8733 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */; };
 		A0B6DAC70BB34EF2EFF259BE /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */; };
 		A64FB63493D11F2FF78D9FBB /* QuenderinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6C32B87E528EBFB412D97093 /* QuenderinKit */; };
 		A9997FAF8890E7C7C71F0E48 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */; };
 		B086FC3FDC0071AB26DAB654 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */; };
 		C369320368902B82B0383179 /* QuenderinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B752046D965F4890531FAA42 /* QuenderinKit */; };
+		DBC757F142267D6F3C841BA6 /* CloudCredentialStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C0485B714D2A06F701D64 /* CloudCredentialStoreTests.swift */; };
 		E36297B48F03067B6AE0A9C4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */; };
+		E3C8222784E2DD81AD67CD6C /* CloudCredentialStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5C0485B714D2A06F701D64 /* CloudCredentialStoreTests.swift */; };
+		F5EDC594D3BC16A93D7998AC /* CloudJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4CC554D709D84D709E92B7 /* CloudJourneyTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4BBD304F1D4107A8AA8CCB61 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 309E42284A28D48655E68211 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A52871FB608DDDF164C01C3;
+			remoteInfo = Quenderin;
+		};
+		859AD35B98BE7423D0F79871 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 309E42284A28D48655E68211 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A52871FB608DDDF164C01C3;
+			remoteInfo = Quenderin;
+		};
+		A62811D6D073C29D75EB0081 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 309E42284A28D48655E68211 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A399545E742DE3FAB8AD8526;
+			remoteInfo = QuenderinMac;
+		};
+		AEA5FC83BAF46E6CD08E5806 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 309E42284A28D48655E68211 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A399545E742DE3FAB8AD8526;
+			remoteInfo = QuenderinMac;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		23F2880FBD01EDA75C1DFA64 /* Quenderin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Quenderin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		52E8F1D7DB463C902F45B07F /* QuenderinCloudUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = QuenderinCloudUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D5C0485B714D2A06F701D64 /* CloudCredentialStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudCredentialStoreTests.swift; sourceTree = "<group>"; };
 		6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuenderinApp.swift; sourceTree = "<group>"; };
+		6C4CC554D709D84D709E92B7 /* CloudJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudJourneyTests.swift; sourceTree = "<group>"; };
 		776F87933FBE5A6B4B594B6D /* QuenderinKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QuenderinKit; path = ../QuenderinKit; sourceTree = SOURCE_ROOT; };
+		7E092F6075116BEECEA09282 /* QuenderinHostedTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = QuenderinHostedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8D2F72F3D14F82F08305C643 /* QuenderinMacCloudUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuenderinMacCloudUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		92A5B330463CCBCB5263F585 /* MacWindowRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWindowRecoveryTests.swift; sourceTree = "<group>"; };
 		9509EC27BB6513AF7851224B /* Quenderin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Quenderin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A57EE0A00FB320B1A1F2BF25 /* QuenderinMacHostedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuenderinMacHostedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C40473B1B1DFEF83F7FA8BAF /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		DDBB4EF7FE40F82F90B14B23 /* Quenderin-macOS-Cloud.xctestplan */ = {isa = PBXFileReference; path = "Quenderin-macOS-Cloud.xctestplan"; sourceTree = "<group>"; };
+		F1E547BC896E262A398692C0 /* Quenderin-iOS-Cloud.xctestplan */ = {isa = PBXFileReference; path = "Quenderin-iOS-Cloud.xctestplan"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		50027A749383110C86F58604 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1060831EC9A80E818BE9AD5D /* QuenderinKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		87CF496C6BF678423B117D0F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				C369320368902B82B0383179 /* QuenderinKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD800AA71570E38AC83C7853 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D7305C53CC0E4B618F0BC6A /* QuenderinKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -52,6 +117,33 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		2D2701EC56DA857B81F0D8B1 /* Hosted */ = {
+			isa = PBXGroup;
+			children = (
+				5D5C0485B714D2A06F701D64 /* CloudCredentialStoreTests.swift */,
+				92A5B330463CCBCB5263F585 /* MacWindowRecoveryTests.swift */,
+			);
+			name = Hosted;
+			path = Tests/Hosted;
+			sourceTree = "<group>";
+		};
+		3093DDAC2AA43612A3086290 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				C40473B1B1DFEF83F7FA8BAF /* README.md */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		54AADB42B234BFBED2DB3E62 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				6C4CC554D709D84D709E92B7 /* CloudJourneyTests.swift */,
+			);
+			name = UI;
+			path = Tests/UI;
+			sourceTree = "<group>";
+		};
 		8BDEEAF0C3D8A89BAE4EB730 = {
 			isa = PBXGroup;
 			children = (
@@ -59,8 +151,12 @@
 				43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */,
 				A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */,
 				485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */,
+				2D2701EC56DA857B81F0D8B1 /* Hosted */,
 				CC43F3B1D0959AA5530AD963 /* Packages */,
 				C0A548173C3975A12610A484 /* Sources */,
+				C867C156839C1508744ABED1 /* TestPlans */,
+				3093DDAC2AA43612A3086290 /* Tests */,
+				54AADB42B234BFBED2DB3E62 /* UI */,
 				BB19E1C245F149A9F239BF67 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -70,6 +166,10 @@
 			children = (
 				9509EC27BB6513AF7851224B /* Quenderin.app */,
 				23F2880FBD01EDA75C1DFA64 /* Quenderin.app */,
+				52E8F1D7DB463C902F45B07F /* QuenderinCloudUITests.xctest */,
+				7E092F6075116BEECEA09282 /* QuenderinHostedTests.xctest */,
+				8D2F72F3D14F82F08305C643 /* QuenderinMacCloudUITests.xctest */,
+				A57EE0A00FB320B1A1F2BF25 /* QuenderinMacHostedTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -80,6 +180,15 @@
 				6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		C867C156839C1508744ABED1 /* TestPlans */ = {
+			isa = PBXGroup;
+			children = (
+				F1E547BC896E262A398692C0 /* Quenderin-iOS-Cloud.xctestplan */,
+				DDBB4EF7FE40F82F90B14B23 /* Quenderin-macOS-Cloud.xctestplan */,
+			);
+			path = TestPlans;
 			sourceTree = "<group>";
 		};
 		CC43F3B1D0959AA5530AD963 /* Packages */ = {
@@ -93,6 +202,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4BD659A46C675A4CD45E0E1B /* QuenderinMacHostedTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC19F152DBE337FBEFBE101A /* Build configuration list for PBXNativeTarget "QuenderinMacHostedTests" */;
+			buildPhases = (
+				E1571286E0475B29FA279EB6 /* Sources */,
+				50027A749383110C86F58604 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AC76ECEA05838176E1EB945D /* PBXTargetDependency */,
+			);
+			name = QuenderinMacHostedTests;
+			packageProductDependencies = (
+				56EECD80034958258FAB0FA8 /* QuenderinKit */,
+			);
+			productName = QuenderinMacHostedTests;
+			productReference = A57EE0A00FB320B1A1F2BF25 /* QuenderinMacHostedTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		5A52871FB608DDDF164C01C3 /* Quenderin */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 42CF4243EC908362F37BB877 /* Build configuration list for PBXNativeTarget "Quenderin" */;
@@ -135,6 +264,62 @@
 			productReference = 23F2880FBD01EDA75C1DFA64 /* Quenderin.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CF03C5357B7E9A3D08FB7DF2 /* QuenderinHostedTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 37F43919718CFC64938A06A6 /* Build configuration list for PBXNativeTarget "QuenderinHostedTests" */;
+			buildPhases = (
+				7710A71E977C93CDF4E73D72 /* Sources */,
+				AD800AA71570E38AC83C7853 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				38396C6C1CD0660247163409 /* PBXTargetDependency */,
+			);
+			name = QuenderinHostedTests;
+			packageProductDependencies = (
+				C4254D1B89A9758AA74CD3E3 /* QuenderinKit */,
+			);
+			productName = QuenderinHostedTests;
+			productReference = 7E092F6075116BEECEA09282 /* QuenderinHostedTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F44344732D4817D21CE4A523 /* QuenderinCloudUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B14B1AF570835C479A8B3892 /* Build configuration list for PBXNativeTarget "QuenderinCloudUITests" */;
+			buildPhases = (
+				F15F54239469DF51C4FF29C5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C7BA1B3B0ACA439BBA53BC47 /* PBXTargetDependency */,
+			);
+			name = QuenderinCloudUITests;
+			packageProductDependencies = (
+			);
+			productName = QuenderinCloudUITests;
+			productReference = 52E8F1D7DB463C902F45B07F /* QuenderinCloudUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F9BC5B2DA629315376670840 /* QuenderinMacCloudUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A3FE4D4C1CF1E419DB87C423 /* Build configuration list for PBXNativeTarget "QuenderinMacCloudUITests" */;
+			buildPhases = (
+				EEF1B9353DFB84651184A9AF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B96056CBCD74286EA2DFB3E9 /* PBXTargetDependency */,
+			);
+			name = QuenderinMacCloudUITests;
+			packageProductDependencies = (
+			);
+			productName = QuenderinMacCloudUITests;
+			productReference = 8D2F72F3D14F82F08305C643 /* QuenderinMacCloudUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -144,6 +329,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					4BD659A46C675A4CD45E0E1B = {
+						DevelopmentTeam = 9M2B2P4KSA;
+						ProvisioningStyle = Automatic;
+					};
 					5A52871FB608DDDF164C01C3 = {
 						DevelopmentTeam = 9M2B2P4KSA;
 						ProvisioningStyle = Automatic;
@@ -151,6 +340,20 @@
 					A399545E742DE3FAB8AD8526 = {
 						DevelopmentTeam = 9M2B2P4KSA;
 						ProvisioningStyle = Automatic;
+					};
+					CF03C5357B7E9A3D08FB7DF2 = {
+						DevelopmentTeam = 9M2B2P4KSA;
+						ProvisioningStyle = Automatic;
+					};
+					F44344732D4817D21CE4A523 = {
+						DevelopmentTeam = 9M2B2P4KSA;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 5A52871FB608DDDF164C01C3;
+					};
+					F9BC5B2DA629315376670840 = {
+						DevelopmentTeam = 9M2B2P4KSA;
+						ProvisioningStyle = Automatic;
+						TestTargetID = A399545E742DE3FAB8AD8526;
 					};
 				};
 			};
@@ -172,7 +375,11 @@
 			projectRoot = "";
 			targets = (
 				5A52871FB608DDDF164C01C3 /* Quenderin */,
+				F44344732D4817D21CE4A523 /* QuenderinCloudUITests */,
+				CF03C5357B7E9A3D08FB7DF2 /* QuenderinHostedTests */,
 				A399545E742DE3FAB8AD8526 /* QuenderinMac */,
+				F9BC5B2DA629315376670840 /* QuenderinMacCloudUITests */,
+				4BD659A46C675A4CD45E0E1B /* QuenderinMacHostedTests */,
 			);
 		};
 /* End PBXProject section */
@@ -252,6 +459,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7710A71E977C93CDF4E73D72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3C8222784E2DD81AD67CD6C /* CloudCredentialStoreTests.swift in Sources */,
+				365CD3C154B89076B4786F1A /* MacWindowRecoveryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		90DF36144C4185B78A800595 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -260,9 +476,95 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1571286E0475B29FA279EB6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DBC757F142267D6F3C841BA6 /* CloudCredentialStoreTests.swift in Sources */,
+				0597627FC2B9D1ECED8A3A04 /* MacWindowRecoveryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EEF1B9353DFB84651184A9AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5EDC594D3BC16A93D7998AC /* CloudJourneyTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F15F54239469DF51C4FF29C5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				040BF3BB67D9C8B8557D2512 /* CloudJourneyTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		38396C6C1CD0660247163409 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A52871FB608DDDF164C01C3 /* Quenderin */;
+			targetProxy = 859AD35B98BE7423D0F79871 /* PBXContainerItemProxy */;
+		};
+		AC76ECEA05838176E1EB945D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A399545E742DE3FAB8AD8526 /* QuenderinMac */;
+			targetProxy = AEA5FC83BAF46E6CD08E5806 /* PBXContainerItemProxy */;
+		};
+		B96056CBCD74286EA2DFB3E9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A399545E742DE3FAB8AD8526 /* QuenderinMac */;
+			targetProxy = A62811D6D073C29D75EB0081 /* PBXContainerItemProxy */;
+		};
+		C7BA1B3B0ACA439BBA53BC47 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A52871FB608DDDF164C01C3 /* Quenderin */;
+			targetProxy = 4BBD304F1D4107A8AA8CCB61 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		07997C7C8E3F1F1777A9CD40 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinMacCloudUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = QuenderinMac;
+			};
+			name = Debug;
+		};
+		0CBCC8136516EDC5857F5294 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinHostedTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Quenderin.app/Quenderin";
+			};
+			name = Release;
+		};
 		1A77854D250FDDFC703D8258 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -326,13 +628,32 @@
 			};
 			name = Debug;
 		};
+		24E42D64F72BF8772AFEB9E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinCloudUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Quenderin;
+			};
+			name = Debug;
+		};
 		2591E5F9A09B55E74FDC254C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = 9M2B2P4KSA;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -340,10 +661,48 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		326A7B3088476EB695607D6D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinMacHostedTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Quenderin.app/Contents/MacOS/Quenderin";
+			};
+			name = Release;
+		};
+		49CF08CAED39705E7F25A78E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinHostedTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Quenderin.app/Quenderin";
 			};
 			name = Debug;
 		};
@@ -353,7 +712,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = 9M2B2P4KSA;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -361,9 +720,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
 				SDKROOT = iphoneos;
+				STRIP_STYLE = "non-global";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -431,7 +791,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Quenderin-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = 9M2B2P4KSA;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -440,10 +800,67 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
 				PRODUCT_NAME = Quenderin;
 				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		BC037263D5BEF2CAE8550A75 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinMacCloudUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = QuenderinMac;
+			};
+			name = Release;
+		};
+		C4F7C3A9B23F071504691E0D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinCloudUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Quenderin;
+			};
+			name = Release;
+		};
+		E1C453F7A17231EB174679C7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.QuenderinMacHostedTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Quenderin.app/Contents/MacOS/Quenderin";
 			};
 			name = Debug;
 		};
@@ -454,7 +871,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Quenderin-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = 9M2B2P4KSA;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -463,16 +880,26 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
 				PRODUCT_NAME = Quenderin;
 				SDKROOT = macosx;
+				STRIP_STYLE = "non-global";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		37F43919718CFC64938A06A6 /* Build configuration list for PBXNativeTarget "QuenderinHostedTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				49CF08CAED39705E7F25A78E /* Debug */,
+				0CBCC8136516EDC5857F5294 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		3B2AFFEAFDF7EB84B3ECC48B /* Build configuration list for PBXNativeTarget "QuenderinMac" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -491,11 +918,38 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		A3FE4D4C1CF1E419DB87C423 /* Build configuration list for PBXNativeTarget "QuenderinMacCloudUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				07997C7C8E3F1F1777A9CD40 /* Debug */,
+				BC037263D5BEF2CAE8550A75 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B14B1AF570835C479A8B3892 /* Build configuration list for PBXNativeTarget "QuenderinCloudUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				24E42D64F72BF8772AFEB9E2 /* Debug */,
+				C4F7C3A9B23F071504691E0D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		E90AF58AE5BA581A57806314 /* Build configuration list for PBXProject "Quenderin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1A77854D250FDDFC703D8258 /* Debug */,
 				5FCB7103ED2700BEEE004CEB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FC19F152DBE337FBEFBE101A /* Build configuration list for PBXNativeTarget "QuenderinMacHostedTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1C453F7A17231EB174679C7 /* Debug */,
+				326A7B3088476EB695607D6D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -510,11 +964,19 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		56EECD80034958258FAB0FA8 /* QuenderinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuenderinKit;
+		};
 		6C32B87E528EBFB412D97093 /* QuenderinKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = QuenderinKit;
 		};
 		B752046D965F4890531FAA42 /* QuenderinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuenderinKit;
+		};
+		C4254D1B89A9758AA74CD3E3 /* QuenderinKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = QuenderinKit;
 		};

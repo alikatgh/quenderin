@@ -88,9 +88,9 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
 
 # 16 KB page-size compatibility (Android 15+): some devices run with 16 KB memory pages, and a native
 # .so whose LOAD segments aren't 16 KB-aligned is rejected by the loader / flagged by Play (the on-device
-# "ELF alignment check failed" warning). Set the linker flag BEFORE llama.cpp's targets are defined so it
-# applies to EVERY shared lib we ship — our JNI bridge AND the vendored libggml*/libllama.
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384,-z,common-page-size=16384")
+# "ELF alignment check failed" warning). Set options BEFORE llama.cpp's targets are defined so they
+# cover SHARED libraries and MODULE CPU backends; CMAKE_SHARED_LINKER_FLAGS excludes MODULE targets.
+add_link_options("-Wl,-z,max-page-size=16384" "-Wl,-z,common-page-size=16384")
 
 add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 

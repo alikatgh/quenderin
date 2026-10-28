@@ -2,10 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Apple Privacy Manifest (required for App Store submission since 2024-05-01).
-  Quenderin is fully on-device: no tracking, no data collection, no third-party SDKs.
-  The only required-reason APIs it touches are local disk-space + file-metadata checks used
-  to decide whether a model fits and is fully downloaded (DiskSpace.swift, OfflineReadiness.swift,
-  Preflight.swift) — declared below with Apple's approved reason codes.
+  Local inference remains on-device. Optional DeepSeek and configured-server/Host
+  destinations transmit user content and authentication/device information to the
+  selected recipient. These declarations conservatively allow identity linkage
+  through the recipient account; they do not assert that Quenderin runs a server.
+  Tracking is disabled. Required-reason APIs support local settings and model files.
 -->
 <plist version="1.0">
 <dict>
@@ -14,9 +15,47 @@
     <key>NSPrivacyTrackingDomains</key>
     <array/>
     <key>NSPrivacyCollectedDataTypes</key>
-    <array/>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+    </array>
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
+        <dict>
+            <!-- Read/write settings in this app's own defaults container. -->
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array><string>CA92.1</string></array>
+        </dict>
         <dict>
             <!-- volumeAvailableCapacityForImportantUsageKey / attributesOfFileSystem — shown to
                  the user to decide if a model fits. Reason E174.1: display disk space to the user. -->

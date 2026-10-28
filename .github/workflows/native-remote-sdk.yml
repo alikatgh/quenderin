@@ -9,6 +9,11 @@ on:
       - 'apple/QuenderinKit/**'
       - 'apple/QuenderinApp/Sources/**'
       - 'apple/QuenderinApp/project.yml'
+      - 'apple/QuenderinApp/Tests/**'
+      - 'apple/QuenderinApp/TestPlans/**'
+      - 'apple/QuenderinApp/Quenderin.xcodeproj/**'
+      - 'apple/QuenderinApp/ci_scripts/**'
+      - 'apple/QuenderinApp/PrivacyInfo.xcprivacy'
       - 'android/**'
       - '.github/workflows/native-remote-sdk.yml'
 
@@ -90,6 +95,11 @@ jobs:
           xcodebuild build -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/remote-apple-derived" CODE_SIGNING_ALLOWED=NO
           xcodebuild build -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/remote-apple-derived" CODE_SIGNING_ALLOWED=NO
           xcodebuild build -project Quenderin.xcodeproj -scheme QuenderinMac -configuration Debug -destination 'generic/platform=macOS' -derivedDataPath "$RUNNER_TEMP/remote-apple-derived" CODE_SIGNING_ALLOWED=NO
+      - name: Compile app-hosted credential and UI test bundles without running a simulator
+        working-directory: apple/QuenderinApp
+        run: |
+          xcodebuild build-for-testing -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/remote-apple-derived" CODE_SIGNING_ALLOWED=NO
+          xcodebuild build-for-testing -project Quenderin.xcodeproj -scheme QuenderinMac -configuration Debug -destination 'generic/platform=macOS' -derivedDataPath "$RUNNER_TEMP/remote-apple-derived" CODE_SIGNING_ALLOWED=NO
       - name: Recheck the final SDK source receipt
         run: python3 -B native/remote-crypto/tools/native_sdk.py verify --platform apple --sdk apple/QuenderinKit/build/RemoteCryptoSDK
 

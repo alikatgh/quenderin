@@ -236,6 +236,8 @@ public struct SettingsView: View {
     private var routingSection: some View {
         Section("Routing") {
             Toggle("Automatic model selection", isOn: $automatic.enabled)
+                .accessibilityLabel("Automatic model selection")
+                .accessibilityIdentifier("automatic-model-selection")
             Text("Choose among installed, verified text models before the first reply of each new chat, using comparable local observations when available. Keep the model for the rest of that chat. Manual model and speed choices turn Automatic off. No downloads or benchmarks are started. After relaunch, at most one installed alternative is integrity-verified for each new chat before its observations can be used.")
                 .font(.footnote).foregroundStyle(.secondary)
             Toggle("Suggest the best model for each task", isOn: $appSettings.suggestBestModel)

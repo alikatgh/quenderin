@@ -40,6 +40,9 @@ jobs:
     permissions:
       contents: write # Only this manual job may upload to the precreated draft.
     env:
+      CARGO_NET_RETRY: '0'
+      CARGO_HTTP_TIMEOUT: '30'
+      CARGO_BUILD_JOBS: '2'
       CANDIDATE_SOURCE_COMMIT: ${{ inputs.source_commit }}
       CANDIDATE_RELEASE_ID: ${{ inputs.draft_release_id }}
       CANDIDATE_VERSION_NAME: ${{ inputs.version_name }}
@@ -92,17 +95,28 @@ jobs:
         run: |
           timeout 120 python3 -m unittest scripts.tests.test_android_private_backup
           timeout 120 python3 -B android/tools/test_gen_strings.py
+      - name: Select exact Rust compiler and Android arm64 API28 toolchain
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup target add --toolchain 1.90.0 aarch64-linux-android
+          printf 'ANDROID_NDK_HOME=%s/ndk/26.3.11579264\n' "$ANDROID_HOME" >> "$GITHUB_ENV"
+      - name: Build actual generated Kotlin, arm64 API28 Noise and verified Android JNA AAR
+        run: timeout 900 python3 -B native/remote-crypto/tools/native_sdk.py build --platform android --sdk "$RUNNER_TEMP/remote-android-sdk"
       - name: Prepare verified Prism source (no model weights)
         run: timeout 600 python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
       - name: Build the isolated image runtime and JNI bridge
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" timeout 900 bash scripts/build_android_diffusion.sh "$RUNNER_TEMP/android-diffusion"
-      - name: Build the debug APK and unsigned release bundle with the actual Prism JNI runtime
+      - name: Build the debug APK and unsigned release bundle with Prism, image and Noise/JNA runtimes
         working-directory: source/android
-        run: timeout 1200 ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama" -Pquenderin.diffusionLibDir="$RUNNER_TEMP/android-diffusion/jniLibs"
+        run: timeout 1200 ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama" -Pquenderin.diffusionLibDir="$RUNNER_TEMP/android-diffusion/jniLibs" -Pquenderin.remoteCryptoDir="$RUNNER_TEMP/remote-android-sdk"
       - name: Verify both packaged image DSO pairs, dependency closure and 16 KiB alignment
         run: |
           timeout 300 python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/apk/debug/app-debug.apk
           timeout 300 python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/bundle/release/app-release.aab
+      - name: Verify actual final APK and AAB Noise/JNA bytes, ABI and 16 KiB alignment
+        run: |
+          timeout 300 python3 -B native/remote-crypto/tools/native_sdk.py verify-package --sdk "$RUNNER_TEMP/remote-android-sdk" --package android/app/build/outputs/apk/debug/app-debug.apk
+          timeout 300 python3 -B native/remote-crypto/tools/native_sdk.py verify-package --sdk "$RUNNER_TEMP/remote-android-sdk" --package android/app/build/outputs/bundle/release/app-release.aab
       - name: Run native runtime and memory guard unit tests
         working-directory: source/android
         run: timeout 300 ./gradlew :quenderin-core:test --no-daemon --console=plain
@@ -114,5 +128,6 @@ jobs:
             --source "$GITHUB_WORKSPACE/source" \
             --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" \
             --prism "$RUNNER_TEMP/prism-llama" \
+            --remote-sdk "$RUNNER_TEMP/remote-android-sdk" \
             --bundletool "$RUNNER_TEMP/bundletool-all-1.18.3.jar" \
             --output "$RUNNER_TEMP/android-beta-export"
