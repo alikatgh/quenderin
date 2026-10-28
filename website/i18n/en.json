@@ -324,5 +324,21 @@
   "simple.title": "AI on your device.",
   "simple.body": "Quenderin runs language models on your Mac or iPhone. Download a model, then chat offline.",
   "simple.note": "Free and open source. No account or subscription.",
-  "simple.more": "Tell me more"
+  "simple.more": "Tell me more",
+  "simple.note.local": "Free and open source. Local chat needs no account or subscription.",
+  "hero.spec3.local": "cloud calls for local inference",
+  "feat.free.b.local": "Local chat has no subscription or per-message charge.",
+  "feat.free.m.local": "Local replies are generated on your hardware. The source code is MIT licensed. Optional external connections in development use your own accounts; provider charges may apply.",
+  "feat.priv.b.local": "Local conversations stay on your device and need no account.",
+  "feat.priv.m.local": "Local chat does not send conversations to an inference service. Model downloads, search and release information use network requests. Optional external connections and AI reports in development require approval before sending content.",
+  "priv.title.local": "Privacy for local chat",
+  "priv.c1.local": "Local inference runs on your device",
+  "priv.c2.local": "Local chat needs no API key, sign-in or account",
+  "priv.c4.local": "Local conversations are stored on your device",
+  "priv.net.bar.local": "Local chat · model network requests",
+  "priv.net.noacct.local": "no local chat account",
+  "priv.net.foot.local": "Local chats and files stay on-device",
+  "faq.a1.local": "Quenderin is free and MIT licensed. Local chat runs on your hardware with no subscription or per-message charge. Optional external connections in development use your own accounts; provider charges may apply.",
+  "faq.a2.local": "Local chats and files stay on your device, and local inference works offline. Model downloads, catalog search and release metadata use network requests. Optional external connections and AI reports in development send only the content you explicitly approve.",
+  "cta.consent.local": "Local chat needs no account or subscription. See our <a href=\"privacy\" data-language-link>Privacy Policy</a>."
 }

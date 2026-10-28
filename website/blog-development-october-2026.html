@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chat improvements, native app work, and ongoing maintenance — Quenderin</title>
+<meta name="description" content="Quenderin’s 28 October development update: local chat improvements, native 0.6 preparation, model discovery logos and project maintenance, with source links and current release status." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<script src="theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/blog-development-october-2026" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="Chat improvements, native app work, and ongoing maintenance" />
+<meta property="og:description" content="A dated look at Quenderin’s recent work and the road to 0.6. Merged changes, native work in progress, and downloadable releases are recorded separately." />
+<meta property="og:url" content="https://quenderin.org/blog-development-october-2026" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-10-28" />
+<meta property="article:modified_time" content="2026-10-28" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="styles.css?v=release-marks-20261028" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Chat improvements, native app work, and ongoing maintenance","datePublished":"2026-10-28","dateModified":"2026-10-28","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-development-october-2026"}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog"><a href="blog">← Blog</a><a href="tell-me-more">Explore the app</a><a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a></nav>
+  </div>
+</header>
+<main class="container legal" id="main">
+  <p class="eyebrow">Development update</p>
+  <h1>Chat improvements, native app work, and ongoing maintenance</h1>
+  <p class="legal-updated"><time datetime="2026-10-28">28 October 2026</time> &middot; Quenderin</p>
+  <p>Quenderin’s next update is taking shape across chat, model setup and the native apps. Here is what has changed recently, what we are still testing, and what you can download today.</p>
+
+  <h2 id="chat">More predictable local conversations</h2>
+  <p><a href="https://github.com/alikatgh/quenderin/pull/186" rel="noopener">Automatic model selection</a>, merged on 24 October, chooses among installed models using the conversation and available memory. It does not start model downloads. <a href="https://github.com/alikatgh/quenderin/commit/d3e981e" rel="noopener">Stop and cancellation fixes</a> and <a href="https://github.com/alikatgh/quenderin/commit/266efc1" rel="noopener">Continue state improvements</a> followed on 26 October, alongside <a href="https://github.com/alikatgh/quenderin/pull/190" rel="noopener">remote conversation draft recovery</a>.</p>
+  <p>On 27 October, <a href="https://github.com/alikatgh/quenderin/pull/194" rel="noopener">accessibility and error recovery work</a> improved composer labels, contrast, model filters and retry actions. <a href="https://github.com/alikatgh/quenderin/pull/195" rel="noopener">Native cancellation and Unicode parsing fixes</a> also merged. These are source changes for upcoming builds; MAX remains an unavailable experimental backend.</p>
+
+  <h2 id="native">Native 0.6 work is in progress</h2>
+  <p>The <a href="https://github.com/alikatgh/quenderin/pull/198" rel="noopener">Android update</a> is reshaping navigation and setup, with adaptive layouts, light and dark themes, and a way to review an excerpt before sending an AI issue report. The reporting receiver and its privacy information are deployed; the Android reporting feature is still unreleased. The <a href="https://github.com/alikatgh/quenderin/pull/196" rel="noopener">Apple 0.6 foundation</a> is being prepared in parallel.</p>
+  <p>Both changes are still open for review and testing. Cloud verification includes signed Apple archives and Android compilation, core and unit checks. UI tests still have failures, including Android Back navigation, so native release verification remains unfinished.</p>
+  <p>The <a href="https://github.com/alikatgh/quenderin/pull/170" rel="noopener">optional DeepSeek and My Computer connection work</a> merged on 23 October. External connections remain separate choices with explicit consent before sending a conversation. The source integration does not establish live provider inference or new App Store availability.</p>
+
+  <h2 id="maintenance">Maintenance you can inspect</h2>
+  <p>On 28 October, we configured <a href="https://github.com/alikatgh/quenderin/pull/199" rel="noopener">CodeQL scanning, dependency review, grouped security updates and private vulnerability reporting</a>. Android dependency reporting also <a href="https://github.com/alikatgh/quenderin/actions/runs/40642887035/job/122664890950" rel="noopener">passed its first trusted run</a>. These checks support continued maintenance and do not establish that every dependency or security risk is resolved.</p>
+  <p>The <a href="models">model discovery cards</a> now place local family or author marks beside recognized models, with model names and the GGUF publisher still in text. Discovery remains a list of files to explore, not a claim that each model has passed inference tests or fits your device.</p>
+
+  <h2 id="available">What is available today</h2>
+  <p>As checked on 28 October, <strong>Mac and iPhone 0.5.0 (22)</strong> are available on the App Store. Android <strong>0.2.0</strong> remains in the Google Play closed test. Apple 0.6 has not been submitted, and the Android 0.6 draft has not been uploaded.</p>
+  <p><a href="download">Download the current apps</a>, <a href="tell-me-more#android-beta">join Android testing</a>, or follow the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">commit history</a> and <a href="https://github.com/alikatgh/quenderin/actions" rel="noopener">build checks</a>. New model inference and the native release journeys still need their own validation.</p>
+</main>
+</body>
+</html>
