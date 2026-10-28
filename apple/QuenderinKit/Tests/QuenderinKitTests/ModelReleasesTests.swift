@@ -5,13 +5,29 @@ import XCTest
 private actor ReleaseFixtureProvider: ModelReleasesProviding {
     var calls = 0
     var result: ModelReleaseFeed?
-    init(_ result: ModelReleaseFeed?) { self.result = result }
+    private let fetchStarted: XCTestExpectation?
+    private var fetchReleased = false
+    private var fetchWaiters: [CheckedContinuation<Void, Never>] = []
+    init(_ result: ModelReleaseFeed?, fetchStarted: XCTestExpectation? = nil) {
+        self.result = result
+        self.fetchStarted = fetchStarted
+    }
     func fetch() async throws -> ModelReleaseFeed {
         calls += 1
-        // Yield so the concurrent-refresh test exercises the actor's in-flight path.
-        await Task.yield()
+        if let fetchStarted {
+            fetchStarted.fulfill()
+            if !fetchReleased {
+                await withCheckedContinuation { fetchWaiters.append($0) }
+            }
+        }
         guard let result else { throw ModelReleaseFeed.FeedError.unavailable }
         return result
+    }
+    func releaseFetch() {
+        fetchReleased = true
+        let waiters = fetchWaiters
+        fetchWaiters.removeAll()
+        for waiter in waiters { waiter.resume() }
     }
 }
 
@@ -139,10 +155,16 @@ final class ModelReleasesTests: XCTestCase, @unchecked Sendable {
 
     func testConcurrentRefreshesShareOneRequestAndReturnFreshResults() async throws {
         let data = try seed()
-        let provider = ReleaseFixtureProvider(try ModelReleaseFeed.decode(data))
+        let fetchStarted = XCTestExpectation(description: "release fetch suspended")
+        let provider = ReleaseFixtureProvider(try ModelReleaseFeed.decode(data), fetchStarted: fetchStarted)
         let repository = try ModelReleaseRepository(cacheURL: cacheURL(), bundledData: data, provider: provider)
-        async let a = repository.refresh()
-        async let b = repository.refresh()
+        // Caller timestamps must not turn a later actor entry into a clock rollback.
+        let now = Date()
+        async let a = repository.refresh(now: now)
+        async let b = repository.refresh(now: now)
+        let started = await XCTWaiter.fulfillment(of: [fetchStarted], timeout: 5)
+        await provider.releaseFetch()
+        XCTAssertEqual(started, .completed)
         let results = await [a, b]
         let calls = await provider.calls
         XCTAssertEqual(calls, 1)

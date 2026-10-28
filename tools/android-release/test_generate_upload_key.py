@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -34,6 +35,12 @@ class GenerationTests(unittest.TestCase):
         mocked = patch.dict(os.environ, self.environment)
         mocked.start()
         self.addCleanup(mocked.stop)
+        if generator.sys.platform != "darwin":
+            # Synthetic generation exercises the other boundaries on hosted
+            # Linux; real macOS ACL metadata has its own platform-only tests.
+            acl = patch.object(generator, "require_no_acl")
+            acl.start()
+            self.addCleanup(acl.stop)
         self.certificate = b"synthetic public certificate DER, never real key material"
         self.calls = []
         self.fail_generation = False
@@ -434,6 +441,27 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue())["status"], "preserved_output_requires_recovery")
         self.assertTrue(json.loads(output.getvalue())["privateOutputMayExist"])
         self.assertFalse(self.output.exists())  # Conservative, not a claim that creation completed.
+
+
+class ACLBoundaryTests(unittest.TestCase):
+    def test_real_acl_guard_fails_closed_on_non_macos(self):
+        with patch.object(generator, "sys", SimpleNamespace(platform="linux")), \
+             patch.object(generator.ctypes, "CDLL") as native_acl:
+            with self.assertRaisesRegex(ValueError, "macOS ACL validation is required"):
+                generator.require_no_acl(-1)
+        native_acl.assert_not_called()
+
+    def test_non_macos_synthetic_generation_reaches_receipt_without_native_acl(self):
+        original_acl = generator.require_no_acl
+        with patch.object(generator, "sys", SimpleNamespace(platform="linux")), \
+             patch.object(generator.ctypes, "CDLL") as native_acl:
+            result = unittest.TestResult()
+            GenerationTests("test_new_private_outputs_have_public_receipt_and_old_signer_pin_stays").run(result)
+        self.assertEqual(result.testsRun, 1)
+        self.assertEqual(result.errors, [])
+        self.assertEqual(result.failures, [])
+        native_acl.assert_not_called()
+        self.assertIs(generator.require_no_acl, original_acl)
 
 
 class ProcessSupervisionTests(unittest.TestCase):
