@@ -30,7 +30,7 @@ test_status=${PIPESTATUS[0]}
 set -e
 
 # Export bounded failure-state evidence too. No databases, credentials or arbitrary files.
-python3 -B scripts/android_ui_screenshots.py export --serial "$serial"
+python3 -B scripts/android_ui_screenshots.py export --serial "$serial" --require-complete
 if [[ "$test_status" != 0 ]]; then
   exit "$test_status"
 fi

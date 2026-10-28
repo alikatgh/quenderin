@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zlib
 
 
@@ -25,6 +26,19 @@ def png(width=1, height=1):
 
 
 class ScreenshotProtocolTests(unittest.TestCase):
+    def adb_read(self, data, status=0):
+        real_popen = subprocess.Popen
+
+        def start(command, **options):
+            self.assertEqual(command, ["adb", "-s", "emulator-5554", "shell", "-T", "run-as",
+                                       "ai.quenderin.app", "cat", "cache/ui-journeys/01-welcome-light.png"])
+            return real_popen([sys.executable, "-c",
+                               "import sys; sys.stdout.buffer.write(bytes.fromhex(sys.argv[1])); sys.exit(int(sys.argv[2]))",
+                               data.hex(), str(status)], **options)
+
+        with mock.patch.object(API["subprocess"], "Popen", side_effect=start):
+            return API["read_adb_png"]("emulator-5554", "01-welcome-light.png")
+
     def encoded(self, images=None):
         output = io.StringIO()
         API["emit"](images or {"01-welcome-light.png": png()}, output)
@@ -38,6 +52,42 @@ class ScreenshotProtocolTests(unittest.TestCase):
         body = self.encoded(images)
         prefixed = "Build output\n" + "".join("job\tstep\t2026-10-28T00:00:00Z " + line for line in body.splitlines(keepends=True))
         self.assertEqual(self.decode(prefixed), images)
+
+    def test_adb_binary_read_uses_shell_exit_status_and_preserves_png_bytes(self):
+        self.assertEqual(self.adb_read(png()), png())
+        self.assertIsNone(self.adb_read(b"", status=1))
+
+    def test_successful_adb_read_still_rejects_corrupt_bytes(self):
+        for data in (b"cat: missing file\n", png()[:-1]):
+            with self.subTest(size=len(data)), self.assertRaises(ValueError):
+                self.adb_read(data)
+
+    def test_adb_read_rejects_unlisted_paths_before_starting_a_process(self):
+        with mock.patch.object(API["subprocess"], "Popen") as start:
+            with self.assertRaisesRegex(ValueError, "allowlisted"):
+                API["read_adb_png"]("emulator-5554", "../outside.png")
+            start.assert_not_called()
+
+    def test_incomplete_export_keeps_failure_evidence_but_cannot_pass_review_gate(self):
+        output = io.StringIO()
+        globals_ = API["main"].__globals__
+        read = lambda _serial, name: png() if name == "08-failure.png" else None
+        with mock.patch.dict(globals_, {"read_adb_png": read}), \
+                mock.patch.object(sys, "argv", [str(TOOL), "export", "--serial", "emulator-5554", "--require-complete"]), \
+                mock.patch.object(sys, "stdout", output):
+            with self.assertRaisesRegex(ValueError, "INCOMPLETE"):
+                API["main"]()
+        self.assertEqual(self.decode(output.getvalue()), {"08-failure.png": png()})
+
+    def test_complete_export_requires_all_seven_selected_journey_frames(self):
+        output = io.StringIO()
+        globals_ = API["main"].__globals__
+        read = lambda _serial, name: None if name == "08-failure.png" else png()
+        with mock.patch.dict(globals_, {"read_adb_png": read}), \
+                mock.patch.object(sys, "argv", [str(TOOL), "export", "--serial", "emulator-5554", "--require-complete"]), \
+                mock.patch.object(sys, "stdout", output):
+            API["main"]()
+        self.assertEqual(set(self.decode(output.getvalue())), set(API["NAMES"][:-1]))
 
     def test_path_traversal_unknown_name_and_duplicate_image_are_rejected(self):
         log = self.encoded()

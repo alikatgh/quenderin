@@ -173,7 +173,7 @@ class NativeJourneysTest {
     }
 
     private fun exists(tag: String): Boolean = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
-    private fun awaitTag(tag: String) = compose.waitUntil(15_000) { exists(tag) }
+    private fun awaitTag(tag: String) = compose.awaitJourneyTag(tag)
     private fun clickScrolled(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun back() { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); compose.waitForIdle() }
     private fun hideKeyboardIfVisible() { if (keyboardVisible()) back() }

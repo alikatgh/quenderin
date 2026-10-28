@@ -275,7 +275,7 @@ class ContentReportJourneyTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         fun exists(tag: String) = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
-        fun await(tag: String) = compose.waitUntil(15_000) { exists(tag) }
+        fun await(tag: String) = compose.awaitJourneyTag(tag)
         await("setup.startLocal")
         compose.onNodeWithTag("setup.startLocal").performScrollTo().performClick()
         await("setup.download")

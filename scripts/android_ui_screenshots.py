@@ -139,8 +139,13 @@ def decode(lines):
 
 def read_adb_png(serial, name):
     # Fixed package and cache directory; never accept a caller-supplied remote path.
+    if name not in NAMES:
+        raise ValueError("Screenshot filename is not allowlisted")
+    # shell v2 without a PTY preserves PNG bytes and the remote exit status.
+    # exec-out's raw protocol merges stderr and cannot report a missing file's
+    # exit status, so a legitimate absent frame otherwise looks like bad PNG data.
     process = subprocess.Popen(
-        ["adb", "-s", serial, "exec-out", "run-as", "ai.quenderin.app", "cat", f"cache/ui-journeys/{name}"],
+        ["adb", "-s", serial, "shell", "-T", "run-as", "ai.quenderin.app", "cat", f"cache/ui-journeys/{name}"],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
     deadline, data = time.monotonic() + 10, bytearray()
@@ -175,6 +180,7 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     export = sub.add_parser("export")
     export.add_argument("--serial", required=True, choices=["emulator-5554"])
+    export.add_argument("--require-complete", action="store_true")
     restore = sub.add_parser("decode")
     restore.add_argument("--input", type=Path, required=True)
     restore.add_argument("--output", type=Path, required=True)
@@ -187,6 +193,8 @@ def main():
                 images[name] = data
         emit(images, sys.stdout)
         print(f"UI_SCREENSHOT_COUNT {len(images)} (synthetic fixtures; visual inspection still required)")
+        if args.require_complete and any(name not in images for name in NAMES[:-1]):
+            raise ValueError("UI_SCREENSHOTS_INCOMPLETE: required journey frames are missing")
     else:
         if args.input.stat().st_size > MAX_LOG:
             raise ValueError("Job log exceeds decoding bounds")
