@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.KeyEvent
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotFocused
@@ -123,7 +125,10 @@ class NativeJourneysTest {
         logBackRouting("peer.bar.after")
         compose.waitUntil(10_000) { !keyboardVisible() }
         compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
-        clickScrolled("settings.responses")
+        logBackRouting("responses.scroll.before")
+        compose.onNodeWithTag("settings.responses").performScrollTo()
+        logBackRouting("responses.click.before")
+        compose.onNodeWithTag("settings.responses").performClick()
         awaitTag("settings.back")
         logBackRouting("responses.before")
         back()
@@ -179,6 +184,8 @@ class NativeJourneysTest {
         back()
         awaitSettingsRoot()
         compose.onNodeWithTag("nav.settings").assertIsSelected()
+        compose.onNodeWithTag("nav.chat").performClick().assertIsSelected()
+        compose.onNodeWithTag("chat.composer").assertTextEquals("A rail keyboard draft").assertIsEnabled()
     }
 
     private fun enterMockChat() {
@@ -206,12 +213,24 @@ class NativeJourneysTest {
     private fun clickScrolled(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun back() { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); compose.waitForIdle() }
     private fun logBackRouting(phase: String) {
+        // Compose queries synchronize with the UI thread; read only these two status fields
+        // here, before entering onActivity's main-thread callback.
+        val composerStatus = runCatching {
+            val config = compose.onAllNodesWithTag("chat.composer", useUnmergedTree = true)
+                .fetchSemanticsNodes().singleOrNull()?.config
+            config?.getOrNull(SemanticsProperties.Focused) to config?.contains(SemanticsProperties.Disabled)
+        }.getOrNull()
         val record = StringBuilder("phase=$phase")
+            .append(" composerFocused=${composerStatus?.first} composerDisabled=${composerStatus?.second}")
         scenario!!.onActivity { activity ->
             val decor = activity.window.decorView
             val imeVisible = ViewCompat.getRootWindowInsets(decor)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            val focusedView = activity.currentFocus
+            val focusedClass = focusedView?.javaClass?.name?.take(128)
+                ?.map { if (it.code in 32..126) it else '?' }?.joinToString("")
             record.append(" uptimeMs=${SystemClock.uptimeMillis()} lifecycle=${activity.lifecycle.currentState}")
                 .append(" windowFocus=${decor.hasWindowFocus()} imeVisible=$imeVisible")
+                .append(" androidFocusClass=$focusedClass androidFocusIsEditor=${focusedView?.onCheckIsTextEditor()}")
                 .append(" androidXEnabledCallbacks=${activity.onBackPressedDispatcher.hasEnabledCallbacks()}")
             val fields = listOf("Top Callback:", "Callbacks:", "Callback:", "mLastProgress=",
                 "mTriggerBack=", "mIsPreCommitAnimationInProgress=", "mStartRootScrollY=",

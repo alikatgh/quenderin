@@ -1095,7 +1095,7 @@ private fun Composer(
     onSend: () -> Unit,
     onStop: () -> Unit,
 ) {
-    val enabled = !busy
+    val enabled = !busy && LocalDestinationActive.current
     val messageLabel = stringResource(R.string.chat_composer_placeholder)
     Row(
         Modifier
