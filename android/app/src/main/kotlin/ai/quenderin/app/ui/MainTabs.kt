@@ -28,6 +28,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -76,6 +77,14 @@ fun MainTabs(
     prepareAutomaticTurn: (ai.quenderin.core.AutomaticChatRequest, Boolean, Boolean, String?, ai.quenderin.core.LocalTurnIntent, () -> Boolean) -> ai.quenderin.core.PreparedLocalTurn? = { _, _, _, _, _, _ -> ai.quenderin.core.PreparedLocalTurn(model) { true } },
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val focusManager = LocalFocusManager.current
+    fun selectTab(next: Int) {
+        if (tab != next) {
+            // Retained inputs must release their IME session before becoming invisible.
+            focusManager.clearFocus(force = true)
+            tab = next
+        }
+    }
     // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
     // the generation path reads it; a no-op for the mock/scripted engines.
     var deepThinking by remember { mutableStateOf(engine.thinkingEnabled()) }
@@ -96,7 +105,7 @@ fun MainTabs(
                     destinations.forEach { (kind, label, index) ->
                         NavigationBarItem(
                             selected = tab == index,
-                            onClick = { tab = index },
+                            onClick = { selectTab(index) },
                             icon = { NavIcon(kind, tab == index) },
                             label = { Text(label) },
                             modifier = Modifier.testTag("nav.${kind.name.lowercase()}"),
@@ -112,7 +121,7 @@ fun MainTabs(
                     destinations.forEach { (kind, label, index) ->
                         NavigationRailItem(
                             selected = tab == index,
-                            onClick = { tab = index },
+                            onClick = { selectTab(index) },
                             icon = { NavIcon(kind, tab == index) },
                             label = { Text(label) },
                             modifier = Modifier.testTag("nav.${kind.name.lowercase()}"),
@@ -129,7 +138,7 @@ fun MainTabs(
                             onSelectModel = onSelectModel,
                             deepThinking = deepThinking,
                             onDeepThinkingChange = { deepThinking = it },
-                            onOpenAgent = { tab = 1 },
+                            onOpenAgent = { selectTab(1) },
                             automaticEnabled = automaticEnabled,
                             automaticDescription = automaticDescription,
                             modelPreparationMessage = modelPreparationMessage,

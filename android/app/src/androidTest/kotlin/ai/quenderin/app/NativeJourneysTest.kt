@@ -8,6 +8,7 @@ import android.os.ParcelFileDescriptor
 import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -109,9 +110,11 @@ class NativeJourneysTest {
         hideKeyboardIfVisible()
         screenshot("03-chat-light.png")
 
-        compose.onNodeWithTag("chat.composer").performTextInput("Keep this local draft")
-        hideKeyboardIfVisible()
+        compose.onNodeWithTag("chat.composer").performClick().performTextInput("Keep this local draft")
+        compose.waitUntil(10_000) { keyboardVisible() }
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
+        compose.waitUntil(10_000) { !keyboardVisible() }
+        compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
         clickScrolled("settings.responses")
         awaitTag("settings.back")
         back()
@@ -133,6 +136,7 @@ class NativeJourneysTest {
         compose.waitUntil(10_000) { keyboardVisible() }
         screenshot("05-chat-dark-keyboard.png")
         back()
+        compose.waitUntil(10_000) { !keyboardVisible() }
         compose.onNodeWithTag("chat.composer").assertTextEquals("A dark-mode keyboard draft")
         compose.onNodeWithTag("nav.chat").assertIsSelected()
 
@@ -149,7 +153,11 @@ class NativeJourneysTest {
             context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         }
         enterMockChat()
+        compose.onNodeWithTag("chat.composer").performClick().performTextInput("A rail keyboard draft")
+        compose.waitUntil(10_000) { keyboardVisible() }
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
+        compose.waitUntil(10_000) { !keyboardVisible() }
+        compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
         awaitSettingsRoot()
         screenshot("07-settings-short-window.png")
         val chat = compose.onNodeWithTag("nav.chat").fetchSemanticsNode().boundsInRoot
@@ -185,7 +193,12 @@ class NativeJourneysTest {
     private fun awaitTag(tag: String) = compose.awaitJourneyTag(tag)
     private fun clickScrolled(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun back() { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); compose.waitForIdle() }
-    private fun hideKeyboardIfVisible() { if (keyboardVisible()) back() }
+    private fun hideKeyboardIfVisible() {
+        if (keyboardVisible()) {
+            back()
+            compose.waitUntil(10_000) { !keyboardVisible() }
+        }
+    }
     private fun keyboardVisible(): Boolean {
         var visible = false
         scenario?.onActivity {
