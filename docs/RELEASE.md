@@ -144,6 +144,41 @@ substitution, process cancellation and partial-output recovery. It generates no
 key during those checks. Real key creation requires the human's hidden Terminal
 password entry; no replacement certificate has been registered with Google.
 
+### Cloud 27–28 and encryption provenance refresh
+
+Cloud 28 at `1761d8430ff51212c4bdca3a8bd45eb071471dca` again passed both
+signed archive actions. All three iPhone credential tests and all five Mac
+app-hosted credential/window tests passed. Both UI journeys failed: the iPhone
+recording shows the consent tap hitting its multiline label while the switch
+remains off; the Mac recording shows the Cloud machine's lock screen at both
+launch and failure. Mac activation failed before any journey assertion. No
+application activation change is justified by that locked-host result. The
+reviewed iPhone test correction targets the switch's trailing region and asserts
+consent becomes on before the existing Connect-enabled assertion. A fresh bounded
+Cloud run must establish this correction and the remaining journeys; archives
+alone do not establish UI readiness or a store submission.
+
+The previous store release used different encryption code. Cloud 22's source
+`53994b799eb021bed10e2b58a727539283f02559` has system HTTPS and CryptoKit
+SHA-256 integrity checks, without the native remote-crypto crate or its Swift
+SDK target. Noise was introduced after that release (`7c3f7a45`), followed by
+native integration (`26df619d`) and mandatory release packaging (`73920fd9`).
+The 0.6 “My computer” production path now uses
+`Noise_IK_25519_ChaChaPoly_SHA256` through the pinned Rust Snow default resolver:
+X25519, ChaCha20-Poly1305 and SHA-256 implementations outside Apple's system
+encryption APIs. The operating system supplies randomness; this does not make
+the selected algorithms OS-provided. Local-model chat does not use this path.
+Signed-export gates establish SDK inclusion, not a successful live Host session.
+
+France remains enabled in the live app availability. No attached encryption
+document or owner-supplied filing reference has been verified. Apple's current
+[documentation table](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption)
+requires a French declaration for industry-standard encryption outside the Apple
+OS when distributing in France. The old release's OS-only answer cannot be
+reused as evidence for this new implementation. No government filing, legal
+exemption, territory removal or replacement cryptography is established here;
+complete the exact candidate's export determination before distribution.
+
 ## 23 October 2026 — native DeepSeek source preparation
 
 The reviewed `codex/native-connections-20261023` change adds a separate native DeepSeek

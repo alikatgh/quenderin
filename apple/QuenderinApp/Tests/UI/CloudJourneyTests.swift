@@ -83,6 +83,7 @@ final class CloudJourneyTests: XCTestCase {
         key.typeText("invalid fixture key")
         XCTAssertFalse(connect.isEnabled, "Typing alone must not grant validation consent")
         tap(consent)
+        XCTAssertEqual(consent.value as? String, "1", "The explicit consent action must turn the switch on")
         XCTAssertTrue(connect.isEnabled)
         tap(connect)
         require(app.staticTexts["Enter a valid DeepSeek API key without spaces."])
@@ -304,7 +305,13 @@ final class CloudJourneyTests: XCTestCase {
         #if os(macOS)
         element.click()
         #else
-        element.tap()
+        if element.elementType == .switch {
+            // SwiftUI exposes the labelled row as the switch. Its center can hit
+            // only the multiline label; the native switch is at the trailing end.
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        } else {
+            element.tap()
+        }
         #endif
     }
 
