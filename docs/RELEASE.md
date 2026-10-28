@@ -82,13 +82,17 @@ artifact's export-compliance determination before distribution.
 The privacy-only website candidate retains the exact active Worker module and
 all 112 historical asset inputs except `privacy.html`. Its inline theme setup
 avoids a dependency absent from those deployed assets. Independent content review,
-secret scans and a local rendered preview passed. It is **not published**:
-automatic approval review rejected the Cloudflare upload because the uploader
-may normalize unverified service/environment grouping tags. The user explicitly
-approved that specific publication and tag-normalization risk afterward.
-Publication can proceed with the reviewed asset-only candidate; no upload or
-activation has occurred yet, and the public policy and store privacy answers
-have not yet changed.
+secret scans and rendered preview passed. Automatic approval review initially
+rejected possible service/environment grouping-tag normalization; the user
+explicitly approved that specific publication and risk afterward. The policy is
+now **published** at [quenderin.org/privacy](https://quenderin.org/privacy):
+version `1c0320c7-15a4-42e0-9560-819dcc1edb42`, deployment
+`02bb09ef-37f5-4f50-8a35-c504c28363c1`, 100% traffic on October 28.
+The uploader changed only `/privacy.html` (110 public assets reused). Readback
+matched the prior Worker ETag, bindings, compatibility, standard usage model,
+asset routing and headers; the primary-domain page rendered the October 28
+policy. A separate raw preview HTTP hash probe returned 403; it is not recorded
+as a passing hash check. Store privacy declarations have not yet changed.
 
 Hosted Debug test compilation first exposed an export-whitelist linker failure
 when Xcode made QuenderinKit a dynamic package product. Scoping it to Release did
@@ -115,6 +119,15 @@ zero. Historical encrypted-store/vault contents remain unverified. Private key
 generation and Google registration have not occurred, and the registered upload
 certificate pin remains unchanged. These gaps are not passing checks, and no
 0.6.0 submission is established by this preparation.
+
+Cloud build 26 was started manually at `2924041e24d07d17432de12f72eb0f2cb2c9ad60`
+with one iPhone 17 / iOS 27 test destination, one Mac destination, and the two
+existing archive actions. Test plans are required, serial, and bounded to 300
+seconds per test. Included team capacity was 8h04 available of 25h before the
+run. No paid plan or automatic trigger was enabled. Hosted checks then caught
+the generated inference-performance cache identity left stale by the JNI CMake
+change. Both platform constants are now regenerated; fresh hosted checks remain
+required for that corrected revision.
 
 ## 23 October 2026 — native DeepSeek source preparation
 
