@@ -1,0 +1,37 @@
+{
+  "exitCode": 0,
+  "officialWrangler": "4.154.0",
+  "emittedWorkerExact": true,
+  "parts": [
+    {
+      "name": "metadata",
+      "bytes": 196,
+      "sha256": "9179d984683a42a3c95913a15e5f6e7353eaded2e4e6e03377ae3f6761010139"
+    },
+    {
+      "name": "site.js",
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    }
+  ],
+  "metadata": {
+    "main_module": "site.js",
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      }
+    ],
+    "compatibility_date": "2026-07-04",
+    "compatibility_flags": [],
+    "keep_bindings": [
+      "plain_text",
+      "json",
+      "secret_text",
+      "secret_key"
+    ]
+  },
+  "stdoutSummary": [],
+  "stderr": "",
+  "assetsAttached": false
+}

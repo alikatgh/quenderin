@@ -1,0 +1,235 @@
+{
+  "dateLocal": "2026-10-29",
+  "site": "https://quenderin.org",
+  "status": "published and live rendered; HTTP, runtime and full asset verification passed",
+  "provider": {
+    "name": "Cloudflare",
+    "accountId": "4c1e57b6972105286a7aeb46b2b89c78",
+    "service": "Worker quenderin",
+    "tool": "Official Wrangler 4.154.0",
+    "authentication": "Existing opaque OAuth loaded and consumed in-process by official Wrangler. No credentials recorded."
+  },
+  "deployment": {
+    "id": "eaf3ed8e-1521-4e3f-8bf7-d9c152f576e6",
+    "versionId": "5a99f7ff-2d6b-4886-a02d-cb94295e11bb",
+    "trafficPercent": 100,
+    "verifiedAtUtc": "2026-10-28T23:35:11.327Z",
+    "activation": "Primary executed the exact reviewed versions deploy command under trusted original user authorization. No triggers or settings deployment was run.",
+    "previewUrl": "https://5a99f7ff-quenderin.wallmarketshq.workers.dev",
+    "baselineDeploymentId": "252bed44-ed0f-4a73-81b6-531d5f4266e4",
+    "baselineVersionId": "23b86e0a-72bc-408d-b069-d7e4b1f4c3c1",
+    "changedAssetsUploaded": 9,
+    "unchangedAssetsReused": 126,
+    "nonVersionedSettingsSynced": false
+  },
+  "source": {
+    "baseCommit": "bc80d81",
+    "websiteFiles": 136,
+    "servedAssets": 135,
+    "websiteBytes": 8192218,
+    "websiteAggregateSha256": "fc060b272f783a78cacc25502b7b6d177819a279fd903f462c552590d92c70a7",
+    "aggregateMethod": "UTF-8 website/path byte order; website/path + NUL + content bytes + NUL.",
+    "ownedAssets": {
+      "website/styles.css": {
+        "bytes": 78810,
+        "sha256": "687535a16665a965e94383470fa98af973c9cf33fbf4abbf14f8a5a2833246d0"
+      },
+      "website/detail-page.css": {
+        "bytes": 19059,
+        "sha256": "333f7df8d15726ce5a266d2d77319b2aa31390060c40deed1d86ce338be97dc2"
+      },
+      "website/index.html": {
+        "bytes": 9959,
+        "sha256": "3d8fa109e943f95837cf09a8418e40ac80762a914dc2bc7ad9edaabe0da3a58b"
+      },
+      "website/simple-home.css": {
+        "bytes": 8181,
+        "sha256": "ea9da6590967e835d7fc4fd6dd1acac1d618b6da2550a659cd0e807d7ae6cd70"
+      },
+      "website/tell-me-more.html": {
+        "bytes": 80147,
+        "sha256": "974aeea0653fe3a3a146bc669d6c6327a1ff9bf2a0221dcfa6d7f077de8c7099"
+      },
+      "website/story-sections.css": {
+        "bytes": 10554,
+        "sha256": "d0909d92a37e7b0d97df8722a442f200a2136c915d4b3f9311625a8fc96e27f3"
+      },
+      "website/i18n/en.json": {
+        "bytes": 28032,
+        "sha256": "40aeb7bea3ecf49973782aa17fbcf81cb5ee3b0392195fe48d9246faf03bea25"
+      },
+      "website/assets/art/quenderin-home-20261028.webp": {
+        "bytes": 302042,
+        "sha256": "a5a822757fb45b396515590cb4431824ed6214c05b6125287fc8589d209230ba"
+      },
+      "website/assets/art/quenderin-home-20261028-960.webp": {
+        "bytes": 143652,
+        "sha256": "8dbf2e8746ff73c263c3308f40d7a781325ba8b94c71c10db121e280d943d411"
+      }
+    },
+    "unchangedBaselineFiles": 127,
+    "baselineAggregateSha256": "77b8e1baa7286d303217e0c806f61ea27871609cb328d098bfcd705acaebc7c0",
+    "scope": "Frozen current public baseline overlaid with exactly nine reviewed homepage, navigation, story and artwork files. Existing blog, font, privacy and all other files retained."
+  },
+  "preservation": {
+    "worker": {
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    },
+    "scriptETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+    "config": {
+      "bytes": 565,
+      "sha256": "bd0707a188a83119d83cb979fb41a9458b79fd6d8392b4d903040f760a37c5f3"
+    },
+    "privacySha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+    "privacyBytes": 17684,
+    "securityHeadersSha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+    "fullResourcesEqual": true,
+    "operationalWorkerSettingsEqual": true,
+    "postUploadToLiveFullSettingsEqual": true,
+    "rawBaselineSettingsEqual": false,
+    "expectedSettingsDifference": "Only version provenance annotations changed on upload: new reviewed message and prior version-specific tag absent. Grouping tags remain [].",
+    "compatibilityDate": "2026-07-04",
+    "bindings": [
+      "ASSETS"
+    ],
+    "workerFirst": [
+      "/api/*"
+    ],
+    "usageModel": "standard",
+    "schedules": []
+  },
+  "verification": {
+    "parentNodeTests": {
+      "passed": 23,
+      "failed": 0
+    },
+    "parentCatalogParityTests": {
+      "passed": 4,
+      "failed": 0
+    },
+    "independentReview": "Parent reported fresh read-only review with no blocking findings.",
+    "parentArtifactCheck": "Parent independently verified all 136 artifact files and nine owned source hashes.",
+    "secretPatternScan": "Passed on all 138 explicit publication files; no dotfiles; staged bytes equal frozen files.",
+    "officialWranglerDryRun": "Passed; emitted site.js and multipart module match exact live 7,992-byte Worker SHA256.",
+    "previewAssets": {
+      "passed": 135,
+      "checked": 135
+    },
+    "previewHeadersAndMime": "HTML/CSS/WebP/WOFF2 MIME and all five existing security headers passed.",
+    "parentPreviewRendering": "Passed at 1497 desktop and 390 mobile: artwork loaded, no overflow, readable controls.",
+    "liveAssets": {
+      "passed": 135,
+      "checked": 135,
+      "exactArtifactHashes": 134,
+      "robots": "Delivered robots.txt exactly matches its complete prepublication public bytes, including Cloudflare Managed Content prefix and the original 67-byte artifact suffix. Provider settings were not changed."
+    },
+    "liveHeadersAndMime": "HTML/CSS/WebP/WOFF2 MIME and all five existing security headers passed.",
+    "liveWorker": "Exact module SHA256, full resources, operational settings, subdomain settings and schedules match baseline.",
+    "liveApi": {
+      "GET": "200; valid JSON; 9,542 bytes",
+      "POST": "405"
+    },
+    "parentLiveRendering": "Passed on primary quenderin.org at1497px English light: original characters visible, download controls readable, image1672px loaded, no overflow; retained outputs/home-character-live-20261029.jpg."
+  },
+  "releaseSafety": {
+    "classification": "Static HTML/CSS/English JSON and two WebP assets only. Exact Worker retained; no new API, jobs, resources, routes, plan, quota or billing changes.",
+    "staticAssetCost": "Official Cloudflare documentation refreshed 2026-10-28 UTC: static asset requests are free and unlimited; no additional Asset storage cost. Existing /api/* Worker-first behavior is unchanged.",
+    "source": "https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/",
+    "bounds": {
+      "artifactByteCap": 9000000,
+      "inactiveUploadAttempts": 1,
+      "inactiveUploadTimeoutSeconds": 180,
+      "provisioning": false,
+      "autoCreate": false
+    },
+    "activationAuthorization": "Delegate auto-review blocked its attempted promotion before execution because the original user authorization was absent from the delegated trusted context. Primary used its original trusted user context and completed the authorized promotion."
+  },
+  "rollback": {
+    "versionId": "23b86e0a-72bc-408d-b069-d7e4b1f4c3c1",
+    "command": "wrangler versions deploy 23b86e0a-72bc-408d-b069-d7e4b1f4c3c1@100% --name quenderin --yes",
+    "requiresDataMigration": false,
+    "guard": "Restore only after confirming this release remains current and no other deployment intervened.",
+    "status": "Not needed; all live HTTP/runtime checks passed."
+  },
+  "retainedReceipts": {
+    "directory": "2026-10-29-home-publication/",
+    "files": {
+      "artifact-manifest.json": {
+        "bytes": 19570,
+        "sha256": "d7688390a6b275d31b91184fda546202f3388c3a31aa92b4e8f23d6ad5415d9f"
+      },
+      "live-verification.json": {
+        "bytes": 37250,
+        "sha256": "5380c0eeb26fd173326f600f486f9ae6ec4d0e32ff1dc89c7e81207901023755"
+      },
+      "live-control-readback.json": {
+        "bytes": 923,
+        "sha256": "348bd63dcc8df497aade8177af6a05222c2b5741cb3ced45d83bf5cbc91a6e9b"
+      },
+      "live-version.json": {
+        "bytes": 2433,
+        "sha256": "23b94c4e57cc9f980daf1d74c937a95cd0fe8451f3d1b1a80eb7c7a3f8d3f218"
+      },
+      "live-settings.json": {
+        "bytes": 442,
+        "sha256": "d5477607734a135eafb3cadb3a77d01f7efc059f8d40f77feb1a0d15b5c3566d"
+      },
+      "upload-readback.json": {
+        "bytes": 927,
+        "sha256": "adfaae61a31dcc6f8a9cffffc681c9dbe72e98454f61129c89b04f0a3c8ce922"
+      },
+      "secret-scan-result.json": {
+        "bytes": 229,
+        "sha256": "96e68aaadc53a11102a4d239236ad6439fae80644174505f5480969a8ff64288"
+      },
+      "dryrun-result.json": {
+        "bytes": 767,
+        "sha256": "44aaf06ddd194694945136ae0cc9ec66b472cb3ca402b0eecc80b7c9b9418672"
+      },
+      "preview-header-results.json": {
+        "bytes": 2394,
+        "sha256": "b5e00c7eac04c78c9d369a6a8340e929c637b12f360119eb34ea7a7d9d27902b"
+      },
+      "preview-asset-results.json": {
+        "bytes": 27081,
+        "sha256": "e3a57cc73a4daf0ae2d430f75dd419448b54025123c0ea39c7b9e35ae6d87cfb"
+      },
+      "upload-receipt.json": {
+        "bytes": 1759,
+        "sha256": "bb038b102d188eac36f15f7bdcbd950dba46b55b17c49f725664740997977535"
+      }
+    },
+    "apparentBytes": 93775,
+    "purpose": "Small publication provenance and complete asset/hash/runtime verification for review and rollback.",
+    "cleanupCondition": "Retain with source history; no temporary CLI or full publication stage is part of these receipts."
+  },
+  "cleanup": {
+    "status": "Complete: only this delegate\u2019s two verified session-owned disposable roots removed after successful live verification.",
+    "completedAtUtc": "2026-10-28T23:37:04.132017+00:00",
+    "removed": [
+      {
+        "path": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/53c287867d07400baf089d977a3fb3ed",
+        "fileCount": 1671,
+        "apparentBytes": 216889573,
+        "allocatedBytes": 221700096
+      },
+      {
+        "path": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/169a499216eb42bfb256957b99521dbe",
+        "fileCount": 167,
+        "apparentBytes": 8408265,
+        "allocatedBytes": 8781824
+      }
+    ],
+    "earlierIntermediateApparentBytesRemoved": 146133452,
+    "earlierIntermediateAllocatedBytesRemoved": 147505152,
+    "retainedReceiptFiles": 11,
+    "retainedReceiptApparentBytes": 93775,
+    "retainedReceiptAllocatedBytes": 122880,
+    "volumeFreeBytesBeforeFinalRemoval": 8631934976,
+    "volumeFreeBytesAfterFinalRemoval": 8864006144,
+    "swapAllocatedBytesLastObserved": 6442450944,
+    "sourceAndOtherScratchPreserved": true,
+    "attribution": "Only exact removed paths are measured as this task cleanup. Volume-wide free-space and swap changes include concurrent activity and APFS effects. Shared-session cleanup was not run against other agents\u2019 assets."
+  }
+}

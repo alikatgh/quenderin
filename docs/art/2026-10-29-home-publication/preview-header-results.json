@@ -1,0 +1,50 @@
+{
+  "checkedAtUtc": "2026-10-28T23:29:59.605339+00:00",
+  "passed": true,
+  "checks": {
+    "/": {
+      "mime": "text/html",
+      "mimePassed": true,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      }
+    },
+    "/assets/art/quenderin-home-20261028.webp": {
+      "mime": "image/webp",
+      "mimePassed": true,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      }
+    },
+    "/story-sections.css": {
+      "mime": "text/css",
+      "mimePassed": true,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      }
+    },
+    "/fonts/ysabeau-office-latin-normal.woff2": {
+      "mime": "font/woff2",
+      "mimePassed": true,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      }
+    }
+  }
+}

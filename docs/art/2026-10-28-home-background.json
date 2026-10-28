@@ -5,7 +5,7 @@
   "conversation": "https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a",
   "conversationTitle": "Generate Header Image Prompt",
   "route": "Existing signed-in ChatGPT website conversation, as explicitly requested by the user",
-  "status": "Original downloaded, inspected and hashed; integrated homepage rendered and independently source-reviewed. Publication pending.",
+  "status": "Downloaded and verified original integrated, independently reviewed, published and live rendered.",
   "reference": "The established teal-and-copper braided elf and modern-clothed collaborators in the project's waterfall-city artwork. Preserve their identities and cinematic realism.",
   "prompt": "Quenderin \u2014 homepage background \u2014 revision 1. Create a new wide cinematic illustration using the same recurring characters and visual world already established in this conversation: our teal-and-copper braided elf in ordinary modern clothes, with the familiar human collaborators, warm natural light, a beautiful waterfall city, and finely crafted teal-and-copper portable local-AI devices. This is a background for the real Quenderin homepage, not a rendered webpage. Compose the elf and two collaborators in the RIGHT HALF, with the elf's face around the right third, sharing a small handheld device at a sunlit workshop terrace overlooking the waterfall city. Keep their faces and hands clear and natural. Reserve the LEFT HALF as calm, softly lit pale stone, airy mist and distant scenery with very low detail: real headline and download controls will be placed there in HTML. Keep the upper edge calm for a navigation bar. Make the scene feel welcoming, lived-in and useful, with rich atmospheric depth and restrained teal/copper accents. Use a wide landscape composition, approximately 16:9. No words, letters, logos, watermark, app screenshots or fabricated interface. No medieval costumes, armor, weapons or magic combat. Maintain the established character identity rather than inventing a new mascot.",
   "outputs": [
@@ -72,9 +72,12 @@
     "visualSectionsPR": "https://github.com/alikatgh/quenderin/pull/210",
     "visualSectionsHead": "3145bce8916574ae4d3c13b75408e691a3181588",
     "merged": true,
-    "published": false,
+    "published": true,
     "lastVerifiedActiveVersion": "23b86e0a-72bc-408d-b069-d7e4b1f4c3c1",
-    "visualSectionsMain": "bc80d814dddb8ed5095660e1faff8b5ec76b51bd"
+    "visualSectionsMain": "bc80d814dddb8ed5095660e1faff8b5ec76b51bd",
+    "activeVersion": "5a99f7ff-2d6b-4886-a02d-cb94295e11bb",
+    "record": "docs/art/2026-10-29-home-publication.json",
+    "sourceCommit": "baaade7d02bd1a00751de84340a2027d74ed325a"
   },
   "temporaryPublicationTools": {
     "cleaned": true,

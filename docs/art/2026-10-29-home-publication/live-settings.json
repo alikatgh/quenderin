@@ -1,0 +1,19 @@
+{
+  "placement": {},
+  "compatibility_date": "2026-07-04",
+  "compatibility_flags": [],
+  "usage_model": "standard",
+  "tags": [],
+  "tail_consumers": [],
+  "logpush": false,
+  "annotations": {
+    "workers/message": "Reviewed homepage art and navigation; exact live Worker/privacy/fonts/blog assets retained",
+    "workers/triggered_by": "version_upload"
+  },
+  "bindings": [
+    {
+      "name": "ASSETS",
+      "type": "assets"
+    }
+  ]
+}
