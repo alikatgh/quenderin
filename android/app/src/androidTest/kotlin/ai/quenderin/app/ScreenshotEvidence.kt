@@ -16,6 +16,10 @@ internal object ScreenshotEvidence {
     fun capture(name: String) {
         require(name in names)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
+        // Compose semantics can update before platform window events settle.
+        // Wait for an idle accessibility event stream within a fixed deadline;
+        // the exported frames still require visual inspection against their names.
+        instrumentation.uiAutomation.waitForIdle(250L, 3_000L)
         val original = checkNotNull(instrumentation.uiAutomation.takeScreenshot()) { "Screenshot unavailable" }
         var image = original
         var limit = 1280
