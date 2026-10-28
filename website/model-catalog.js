@@ -26,6 +26,28 @@ export function visibleReleases(data, budget = Infinity, limit = 6) {
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, limit);
 }
 
+// A quantizer's account is not the model author. Only a recognized original
+// namespace selects a local mark; unknown authors keep a readable text heading.
+export function releaseBrand(model) {
+  var authors = {
+    'qwen': { family: 'qwen', name: 'Qwen' },
+    'deepseek-ai': { family: 'deepseek', name: 'DeepSeek' },
+    'meta-llama': { family: 'llama', name: 'Meta' },
+    'google': { family: 'gemma', name: 'Google' },
+    'microsoft': { family: 'phi', name: 'Microsoft' },
+    'mistralai': { family: 'mistral', name: 'Mistral AI' },
+    'nvidia': { family: 'nemotron', name: 'NVIDIA' },
+    'liquidai': { family: 'lfm', name: 'Liquid AI' },
+    'openbmb': { family: 'minicpm', name: 'OpenBMB' },
+    'prism-ml': { family: 'bonsai', name: 'PrismML' },
+    'ifm': { family: 'jais', name: 'Jais' }
+  };
+  var base = typeof model.baseModel === 'string' ? model.baseModel : '';
+  var match = /^([\w.-]+)\/[\w.-]+$/.exec(base);
+  var author = match ? match[1].toLowerCase() : '';
+  return Object.hasOwn(authors, author) ? authors[author] : null;
+}
+
 function start() {
   var root = document.querySelector('[data-model-releases]');
   var saved;
@@ -47,6 +69,13 @@ function start() {
       var article = document.createElement('article');
       article.className = 'release-model';
       var h = document.createElement('h3');
+      var brand = releaseBrand(m);
+      if (brand) {
+        var mark = document.createElement('span');
+        mark.className = 'model-fam fam-' + brand.family;
+        mark.setAttribute('aria-hidden', 'true');
+        h.appendChild(mark);
+      }
       var a = document.createElement('a');
       a.href = m.sourceUrl;
       a.rel = 'noopener';
@@ -60,7 +89,8 @@ function start() {
       date.textContent = t('catalog.published', 'Model released') + ' ' + new Date(m.createdAt).toLocaleDateString(document.documentElement.lang);
       var source = document.createElement('p');
       source.className = 'release-source';
-      source.textContent = m.id.split('/')[0] + (m.license !== 'other' && m.license !== 'see model card' ? ' · ' + m.license : '');
+      source.textContent = (brand ? brand.name + ' · ' : '') + 'GGUF: ' + m.sourceUrl.split('/')[3]
+        + (m.license !== 'other' && m.license !== 'see model card' ? ' · ' + m.license : '');
       article.append(h, details, date, source);
       list.appendChild(article);
     });

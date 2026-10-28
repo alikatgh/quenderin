@@ -17,6 +17,16 @@ BEGIN = '<!-- BEGIN GENERATED: website-models -->'
 END = '<!-- END GENERATED: website-models -->'
 FAMILIES = ('qwen', 'deepseek', 'gemma', 'phi', 'mistral', 'llama',
             'muse', 'beam', 'nemotron', 'jais', 'bonsai', 'lfm', 'minicpm')
+# Keep the static/offline cards aligned with releaseBrand() in model-catalog.js.
+# Original model namespaces choose marks, never the GGUF publisher's account.
+RELEASE_BRANDS = {
+    'qwen': ('qwen', 'Qwen'), 'deepseek-ai': ('deepseek', 'DeepSeek'),
+    'meta-llama': ('llama', 'Meta'), 'google': ('gemma', 'Google'),
+    'microsoft': ('phi', 'Microsoft'), 'mistralai': ('mistral', 'Mistral AI'),
+    'nvidia': ('nemotron', 'NVIDIA'), 'liquidai': ('lfm', 'Liquid AI'),
+    'openbmb': ('minicpm', 'OpenBMB'), 'prism-ml': ('bonsai', 'PrismML'),
+    'ifm': ('jais', 'Jais'),
+}
 
 
 def policy(text: str) -> dict:
@@ -81,15 +91,24 @@ def rows(models: list[dict]) -> str:
     return '\n'.join(result)
 
 
+def release_brand(model: dict) -> tuple[str, str] | None:
+    base = model.get('baseModel')
+    match = re.fullmatch(r'([\w.-]+)/[\w.-]+', base) if isinstance(base, str) else None
+    return RELEASE_BRANDS.get(match[1].lower()) if match else None
+
+
 def release_cards(data: dict) -> str:
     cards = []
     for m in data['models'][:6]:
         h = html.escape
         license_text = '' if m['license'] in ('other', 'see model card') else ' · ' + m['license']
-        cards.append(f'<article class="release-model"><h3><a href="{h(m["sourceUrl"])}" rel="noopener">{h(m["name"])}</a></h3>'
+        brand = release_brand(m)
+        icon = f'<span class="model-fam fam-{brand[0]}" aria-hidden="true"></span>' if brand else ''
+        source = (brand[1] + ' · ' if brand else '') + 'GGUF: ' + m['sourceUrl'].split('/')[3]
+        cards.append(f'<article class="release-model"><h3>{icon}<a href="{h(m["sourceUrl"])}" rel="noopener">{h(m["name"])}</a></h3>'
                      f'<p class="release-spec">{m["downloadBytes"] / 1e9:.1f} GB · {h(m["quantization"])}</p>'
                      f'<p class="release-date">Model released {h(m["createdAt"][:10])}</p>'
-                     f'<p class="release-source">{h(m["id"].split("/")[0] + license_text)}</p></article>')
+                     f'<p class="release-source">{h(source + license_text)}</p></article>')
     return '\n'.join(cards)
 
 
