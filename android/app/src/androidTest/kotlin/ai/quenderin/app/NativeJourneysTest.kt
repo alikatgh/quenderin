@@ -183,7 +183,11 @@ class NativeJourneysTest {
         val settings = compose.onNodeWithTag("nav.settings").fetchSemanticsNode().boundsInRoot
         assertTrue("Wide current window should use a navigation rail", kotlin.math.abs(chat.center.x - settings.center.x) < 2f)
         clickScrolled("settings.models")
+        awaitTag("settings.back")
+        compose.onNodeWithTag("settings.back").assertIsDisplayed().assertIsEnabled()
+        logBackRouting("models.before")
         back()
+        logBackRouting("models.after")
         awaitSettingsRoot()
         compose.onNodeWithTag("nav.settings").assertIsSelected()
         compose.onNodeWithTag("nav.chat").performClick().assertIsSelected()
