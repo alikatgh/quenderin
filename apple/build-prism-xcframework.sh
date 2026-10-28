@@ -27,9 +27,14 @@ for TOOL in python3 git cmake xcrun; do
 done
 python3 "$ROOT/scripts/prepare_prism_runtime.py" fetch --destination "$WORK/llama.cpp"
 cd "$WORK/llama.cpp"
-# Do not build unused tvOS/visionOS/simulator platforms in a release job.
+# Archive jobs keep their device/macOS set. Cloud's separate iOS test build
+# additionally needs the pinned builder's real simulator framework.
+PLATFORMS=(ios-device macos)
+if [ "${CI_PRODUCT_PLATFORM:-}" = iOS ] && [ "${CI_XCODEBUILD_ACTION:-}" = build-for-testing ]; then
+  PLATFORMS+=(ios-sim)
+fi
 export QUENDERIN_VISION_SOURCE_DIR="$ROOT/native/vision"
-./build-xcframework.sh ios-device macos
+./build-xcframework.sh "${PLATFORMS[@]}"
 python3 "$ROOT/scripts/prepare_prism_runtime.py" stamp --source "$PWD" --artifact "$PWD/build-apple/llama.xcframework"
 python3 "$ROOT/scripts/verify_prism_apple_runtime.py" seal --framework "$PWD/build-apple/llama.xcframework"
 mkdir -p "$(dirname "$DEST")"

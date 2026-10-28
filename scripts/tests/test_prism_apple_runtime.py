@@ -11,6 +11,7 @@ import shutil
 import stat
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -809,6 +810,127 @@ class ApplePrismTests(unittest.TestCase):
         self.assertNotEqual(missing_export.returncode, 0)
         self.assertIn("CI_APP_STORE_SIGNED_APP_PATH", missing_export.stderr)
         self.assertNotIn("REPOSITORY_VERIFIER", missing_export.stdout)
+
+
+# Native commands produce only a small platform manifest. This lets the actual
+# shell builders run end to end without source downloads, compilation or weights.
+CLOUD_TOOLS = r'''
+import json, os, pathlib, plistlib, sys
+tool = pathlib.Path(sys.argv[0]).name
+args = sys.argv[1:]
+def libraries(platforms):
+    return [dict(LibraryIdentifier=p, SupportedPlatform='macos' if p == 'macos' else 'ios',
+                 **({'SupportedPlatformVariant':'simulator'} if p == 'ios-sim' else {})) for p in platforms]
+def output(path, platforms):
+    path.mkdir(parents=True, exist_ok=True)
+    (path / 'Info.plist').write_bytes(plistlib.dumps({'AvailableLibraries':libraries(platforms)}))
+if tool == 'df':
+    print('Filesystem 1024-blocks Used Available Capacity Mounted on\nfixture 100000000 0 100000000 0% /')
+elif tool == 'python3':
+    if args[0] == '-':
+        sys.stdin.read()  # The real disk check is unrelated to the platform fixture.
+    elif args[1:2] == ['fetch']:
+        source = pathlib.Path(args[args.index('--destination') + 1])
+        source.mkdir(parents=True)
+        if pathlib.Path(args[0]).name == 'prepare_prism_runtime.py':
+            builder = source / 'build-xcframework.sh'
+            builder.write_text('#!/bin/bash\nexec "$FIXTURE_TOOLS/upstream" "$@"\n')
+            builder.chmod(0o755)
+elif tool == 'upstream':
+    assert set(args) <= {'ios-device','macos','ios-sim'}, args
+    output(pathlib.Path('build-apple/llama.xcframework'), args)
+elif tool == 'xcrun':
+    assert args[0] == '--sdk'
+    print(args[1])
+elif tool == 'cmake' and args[0] != '--build':
+    build = pathlib.Path(args[args.index('-B') + 1])
+    sdk = next(a.split('=',1)[1] for a in args if a.startswith('-DCMAKE_OSX_SYSROOT='))
+    platform = {'macosx':'macos','iphoneos':'ios-device','iphonesimulator':'ios-sim'}[sdk]
+    framework = build / 'bin/QuenderinDiffusion.framework'
+    framework.mkdir(parents=True)
+    (framework / 'fixture.json').write_text(json.dumps(platform))
+elif tool == 'xcodebuild':
+    frameworks = [pathlib.Path(args[i+1]) for i,a in enumerate(args) if a == '-framework']
+    platforms = [json.loads((f / 'fixture.json').read_text()) for f in frameworks]
+    output(pathlib.Path(args[args.index('-output') + 1]), platforms)
+'''
+
+
+class CloudPrerequisiteTests(unittest.TestCase):
+    def setUp(self):
+        scratch = os.environ.get('QUENDERIN_DIFFUSION_TEST_SCRATCH') or os.environ.get('RUNNER_TEMP')
+        if not scratch:
+            raise RuntimeError('Use registered session scratch or hosted RUNNER_TEMP')
+        temporary = tempfile.TemporaryDirectory(dir=scratch, prefix='cloud-prerequisites-')
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.tools = self.root / 'tools'
+        self.tools.mkdir()
+        for name in ('python3', 'df', 'git', 'cmake', 'xcrun', 'xcodebuild', 'upstream'):
+            command = self.tools / name
+            command.write_text('#!' + sys.executable + '\n' + CLOUD_TOOLS)
+            command.chmod(0o755)
+        self.env = os.environ | {'PATH': str(self.tools) + ':' + os.environ['PATH'],
+                                 'FIXTURE_TOOLS': str(self.tools), 'CI': 'TRUE', 'CI_XCODE_CLOUD': 'TRUE',
+                                 'QUENDERIN_RUNTIME': 'prism', 'QUENDERIN_LLAMA_DIR': ''}
+
+    def build(self, name, platform, action):
+        repo = self.root / (name + '-' + platform + '-' + action)
+        (repo / 'apple').mkdir(parents=True)
+        script = repo / 'apple' / ('build-' + name + '-xcframework.sh')
+        shutil.copyfile(prism.ROOT / 'apple' / script.name, script)
+        result = subprocess.run(['bash', str(script), str(repo / 'work')],
+                                env=self.env | {'CI_PRODUCT_PLATFORM': platform, 'CI_XCODEBUILD_ACTION': action},
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        framework = 'prism-llama.xcframework' if name == 'prism' else 'QuenderinDiffusion.xcframework'
+        manifest = plistlib.loads((repo / 'apple/QuenderinKit/Frameworks' / framework / 'Info.plist').read_bytes())
+        return {(item['SupportedPlatform'], item.get('SupportedPlatformVariant'))
+                for item in manifest['AvailableLibraries']}
+
+    def test_ios_test_build_provides_simulator_for_both_real_runtime_builders(self):
+        for name in ('prism', 'diffusion'):
+            with self.subTest(runtime=name):
+                self.assertEqual(self.build(name, 'iOS', 'build-for-testing'),
+                                 {('ios', None), ('macos', None), ('ios', 'simulator')})
+
+    def test_archive_and_mac_test_builds_keep_the_existing_platform_set(self):
+        for name in ('prism', 'diffusion'):
+            for platform, action in (('iOS', 'archive'), ('macOS', 'archive'), ('macOS', 'build-for-testing')):
+                with self.subTest(runtime=name, platform=platform, action=action):
+                    self.assertEqual(self.build(name, platform, action), {('ios', None), ('macos', None)})
+
+    def pre_hook(self, **overrides):
+        return subprocess.run(['bash', str(prism.ROOT / 'apple/QuenderinApp/ci_scripts/ci_pre_xcodebuild.sh')],
+                              env=self.env | {'CI_PRIMARY_REPOSITORY_PATH': '',
+                                              'CI_XCODEBUILD_ACTION': 'test-without-building',
+                                              'CI_PRODUCT_PLATFORM': 'macOS'} | overrides,
+                              capture_output=True, text=True)
+
+    def test_transported_test_products_do_not_require_a_source_checkout(self):
+        products = self.root / 'Quenderin.xctestproducts'
+        products.mkdir()
+        result = self.pre_hook(CI_TEST_PRODUCTS_PATH=str(products))
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_test_host_rejects_wrong_profile_noncloud_context_and_missing_products(self):
+        products = self.root / 'Quenderin.xctestproducts'
+        products.mkdir()
+        for override in ({'QUENDERIN_RUNTIME': 'standard'}, {'QUENDERIN_LLAMA_DIR': '/local/source'},
+                         {'CI': ''}, {'CI_XCODE_CLOUD': ''}, {'CI_TEST_PRODUCTS_PATH': ''},
+                         {'CI_TEST_PRODUCTS_PATH': '.'}, {'CI_TEST_PRODUCTS_PATH': str(products / 'missing')}):
+            with self.subTest(override=override):
+                result = self.pre_hook(**({'CI_TEST_PRODUCTS_PATH': str(products)} | override))
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_build_and_archive_still_require_the_source_checkout(self):
+        products = self.root / 'Quenderin.xctestproducts'
+        products.mkdir()
+        for action in ('archive', 'build-for-testing', 'build'):
+            with self.subTest(action=action):
+                result = self.pre_hook(CI_XCODEBUILD_ACTION=action, CI_TEST_PRODUCTS_PATH=str(products))
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn('CI_PRIMARY_REPOSITORY_PATH', result.stderr)
 
 
 if __name__ == "__main__":
