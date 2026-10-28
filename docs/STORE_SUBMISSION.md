@@ -50,6 +50,7 @@ computer; the native client is not local ADB or autonomous phone control.
 | Remote Harness sessions | Task text, session/command IDs, time-zone context, model choices and approval decisions through Noise to the verified computer. Computer returns workspace/session/history/tool/bot data and may use its own providers/tools. | User selects and trusts computer; tasks execute there. Separate saved drafts/history/recovery records. Foreground recovery may reconnect; Disconnect disables it but keeps records and authorization and does not stop a running task or erase remote copies. |
 | Step 5 | Current text and prior messages in its separate conversation to configured host. Backend check sends no conversation. | Consent plus Send; endpoint and conversation stay in memory. Clear does not erase host copies. HTTPS or literal-loopback HTTP is allowed; an external tunnel/proxy's security must be verified separately. |
 | Model/network metadata | Selected public file and optional search term to Hugging Face; release-catalog request to `quenderin.org`; ordinary request metadata visible to recipients. | No conversation attached. Release metadata is cached locally. Recipient logging/retention is not established by client source. |
+| Android in-app content report, in versions with the Report control | User-selected editable excerpt, reason, optional note, source feature, random report ID, platform and app version to the developer's Google Apps Script inbox. The inbox adds receipt ID and received time; Google also processes ordinary connection information. | Explicit Send report. No automatic whole-conversation, attachment, memory, API-key or diagnostics upload, and no account/device ID in the report. Developer manually reviews stored reports; no automatic expiry. Access/correction/deletion requests use the existing support contact. Receiver is deployed and synthetic-verified; Android integration and hosted runtime verification remain pending. |
 | Support/report email | Content the user sends and normal email sender/delivery information to the existing support mailbox. | `mailto:` prepares a message in another app; opening it does not establish a submitted report. |
 
 Trace references: Apple `DeepSeekView.swift`, `DeepSeekController.swift`,
@@ -117,11 +118,19 @@ de-identification also depend on the operator and configuration.
       affirmative consent wherever its prominent-disclosure rule applies.
 - [ ] Verify reporting and restricted-content handling across **all** AI surfaces.
       Google's [AI-Generated Content policy](https://support.google.com/googleplay/android-developer/answer/13985936?hl=en)
-      requires reporting/flagging without leaving the app. The existing local
-      chat/agent `mailto:` action and `SafetyBlocklist` do not establish that
-      requirement or comprehensive content filtering. The inspected DeepSeek,
-      remote and Step 5 views do not show a report action. This is an unresolved
-      submission check, not “implemented” compliance.
+      requires reporting/flagging without leaving the app. On 28 October 2026,
+      the Google Apps Script receiver was deployed and verified with one synthetic
+      report plus an identical retry returning the same receipt; see the nonsecret
+      [deployment record](../services/content-report-receiver/deployment.json).
+      Android client integration and hosted runtime checks remain pending: verify
+      a Report control on local chat, agent, DeepSeek, remote and Step 5 output,
+      editable excerpt/reason/optional note and destination disclosure before
+      explicit Send report, truthful received/unavailable/ambiguous-send states,
+      and unchanged-ID reconciliation for identical manual retries. Verify the
+      matching public privacy disclosure after publication. The receiver alone,
+      existing email actions and `SafetyBlocklist` do not establish completed
+      in-app reporting, comprehensive filtering, Google approval, or a released
+      Android app. Keep email support separate from in-app report delivery.
 - [ ] Determine whether any account-creation/deletion requirement applies to the
       final app. Current remote setup signs into an existing server account;
       Disconnect and device revocation are not account deletion.

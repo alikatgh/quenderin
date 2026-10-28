@@ -22,7 +22,7 @@ import ai.quenderin.core.CapabilityRunner
 import ai.quenderin.core.FileAuditLedger
 import ai.quenderin.core.FileReadCapability
 import ai.quenderin.core.InferenceEngine
-import ai.quenderin.core.SupportContact
+import ai.quenderin.app.contentreport.ReportSource
 import ai.quenderin.core.userMessageFor
 import android.content.Intent
 import android.net.Uri
@@ -263,30 +263,18 @@ fun AgentScreen(
                 }
                 answer?.let { a ->
                     item {
-                        // Long-press the answer to report it (Generative-AI flag mechanism).
-                        // Hoisted so TalkBack can reach it via a semantics custom action too.
-                        val reportAnswer = {
-                            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(a, "agent")))
-                            runCatching { context.startActivity(intent) }
-                            Unit
-                        }
-                        val reportLabel = stringResource(R.string.agent_report_answer)
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .combinedClickable(onClick = {}, onLongClick = reportAnswer)
-                                .semantics {
-                                    customActions = listOf(
-                                        CustomAccessibilityAction(reportLabel) { reportAnswer(); true },
-                                    )
-                                },
-                        ) {
-                            MarkdownText(
-                                text = a,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(12.dp),
-                            )
+                        Column {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(12.dp),
+                            ) {
+                                AssistantResponseText(
+                                    text = a,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(12.dp),
+                                )
+                            }
+                            ResponseActions(a, ReportSource.AGENT)
                         }
                     }
                 }

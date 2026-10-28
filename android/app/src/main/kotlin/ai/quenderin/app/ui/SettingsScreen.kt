@@ -1,5 +1,7 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import ai.quenderin.app.R
 import ai.quenderin.app.probeDeviceProfile
@@ -18,7 +20,6 @@ import ai.quenderin.core.ModelManager
 import ai.quenderin.core.SpeedPreset
 import ai.quenderin.core.SpeedPresets
 import ai.quenderin.core.SupportContact
-import androidx.compose.foundation.clickable
 import android.content.Intent
 import android.net.Uri
 import android.text.format.Formatter
@@ -34,11 +35,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -88,10 +95,18 @@ fun SettingsScreen(
     val granite = remember { GraniteController(context, suspendForSpecialist) }
     androidx.compose.runtime.DisposableEffect(granite) { onDispose { granite.close() } }
     androidx.compose.runtime.DisposableEffect(vision) { onDispose { vision.close() } }
-    LaunchedEffect(active) { if (!active) { hyMemory.cancel(); step5.cancel(); vision.cancel(); granite.cancel() } }
     // Read on entry (the tab recomposes fresh each visit); the index file is tiny.
-    val conversationCount = remember { persistence.loadIndex().size }
+    val conversationCount = remember(active) { persistence.loadIndex().size }
     var showPicker by remember { mutableStateOf(false) }
+    var page by rememberSaveable { mutableStateOf(SettingsPage.ROOT) }
+    val pageState = rememberSaveableStateHolder()
+    BackHandler(enabled = active && page != SettingsPage.ROOT && !showPicker) { page = SettingsPage.ROOT }
+    LaunchedEffect(active, page) {
+        if (!active || page != SettingsPage.MEMORY) hyMemory.cancel()
+        if (!active || page != SettingsPage.STEP5) step5.cancel()
+        if (!active || page != SettingsPage.VISION) vision.cancel()
+        if (!active || page != SettingsPage.GRANITE) granite.cancel()
+    }
 
     // Downloaded-model storage management (twin of iOS SettingsView). The files on disk are the
     // source of truth, so a fresh ModelManager each access reflects the current state.
@@ -103,33 +118,66 @@ fun SettingsScreen(
         installedModels = mgr.installed()
         totalModelBytes = mgr.totalBytesUsed
     }
-    LaunchedEffect(model.id) { reloadModels() }
+    LaunchedEffect(model.id, active, page) { if (active) reloadModels() }
 
-    // No nested Scaffold/TopAppBar here: this screen already sits inside MainTabs' Scaffold content
-    // (which applies the status-bar inset once). A second Scaffold+TopAppBar re-applied that inset,
-    // producing the big empty band above the title. A plain titled column avoids the double inset.
+    // MainTabs owns system-bar insets; each subordinate page owns only its scrolling content.
+    pageState.SaveableStateProvider(page.name) {
     Column(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(horizontal = 20.dp)
+            .testTag(if (page == SettingsPage.ROOT) "settings.root" else "settings.detail"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (page != SettingsPage.ROOT) {
+            TextButton(onClick = { page = SettingsPage.ROOT }, modifier = Modifier.testTag("settings.back")) {
+                Text(stringResource(R.string.action_back))
+            }
+        }
         Text(
-            stringResource(R.string.settings_title),
+            settingsPageTitle(page),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
         )
-        SettingsGroup("Cloud connections") {
-            Text("DeepSeek text chat uses your API account and separate cloud conversations.", style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = onOpenDeepSeek) { Text("Open DeepSeek") }
-            OutlinedButton(onClick = onOpenComputer) { Text("My computer · DeepSeek Harness") }
+        if (page == SettingsPage.ROOT) {
+            Text(model.label, style = MaterialTheme.typography.bodyLarge)
+            Caption(stringResource(R.string.entry_local_ready, model.sizeLabel.removeSuffix(" download")))
+            NativeSectionLabel(stringResource(R.string.entry_local_title))
+            NativeSettingsRow(stringResource(R.string.settings_model), model.label,
+                { page = SettingsPage.MODELS }, Modifier.testTag("settings.models"))
+            NativeSettingsRow(stringResource(R.string.settings_responses), stringResource(R.string.settings_responses_detail),
+                { page = SettingsPage.RESPONSES }, Modifier.testTag("settings.responses"))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            NativeSectionLabel(stringResource(R.string.settings_connections))
+            NativeSettingsRow(stringResource(R.string.entry_deepseek_title), stringResource(R.string.entry_deepseek_detail),
+                onOpenDeepSeek, Modifier.testTag("settings.deepseek"))
+            NativeSettingsRow(stringResource(R.string.entry_computer_title), stringResource(R.string.entry_computer_detail),
+                onOpenComputer, Modifier.testTag("settings.computer"))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            NativeSectionLabel(stringResource(R.string.settings_tools))
+            NativeSettingsRow(stringResource(R.string.settings_agent), stringResource(R.string.settings_agent_detail),
+                { page = SettingsPage.AGENT }, Modifier.testTag("settings.agent"))
+            NativeSettingsRow(stringResource(R.string.settings_memory), stringResource(R.string.settings_memory_detail),
+                { page = SettingsPage.MEMORY }, Modifier.testTag("settings.memory"))
+            NativeSettingsRow(stringResource(R.string.settings_vision), stringResource(R.string.settings_vision_detail),
+                { page = SettingsPage.VISION }, Modifier.testTag("settings.vision"))
+            NativeSettingsRow(stringResource(R.string.settings_step5), stringResource(R.string.settings_step5_detail),
+                { page = SettingsPage.STEP5 }, Modifier.testTag("settings.step5"))
+            NativeSettingsRow("Granite Switch 4.1 8B", stringResource(R.string.settings_granite_detail),
+                { page = SettingsPage.GRANITE }, Modifier.testTag("settings.granite"))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            NativeSectionLabel(stringResource(R.string.settings_app))
+            NativeSettingsRow(stringResource(R.string.settings_storage), stringResource(R.string.settings_storage_detail),
+                { page = SettingsPage.STORAGE }, Modifier.testTag("settings.storage"))
+            NativeSettingsRow(stringResource(R.string.settings_privacy_support), stringResource(R.string.settings_privacy_detail),
+                { page = SettingsPage.PRIVACY }, Modifier.testTag("settings.privacy"))
         }
-        SettingsGroup(stringResource(R.string.settings_speed)) {
-            PresetChip("Automatic", automaticEnabled, Modifier.fillMaxWidth()) { onAutomaticChange(!automaticEnabled) }
-            Caption("Chooses verified installed models before the first text turn of a new chat, within the current quality tier. No downloads. Later turns keep that model. Vulkan stays manual until its driver identity is verified.")
+        if (page == SettingsPage.RESPONSES) SettingsGroup(stringResource(R.string.settings_speed)) {
+            PresetChip(stringResource(R.string.settings_automatic), automaticEnabled, Modifier.fillMaxWidth()) { onAutomaticChange(!automaticEnabled) }
+            Caption(stringResource(R.string.settings_automatic_detail))
             if (automaticEnabled) Caption(automaticDescription())
             // The model-speed dial: decode speed scales with model SIZE, so this is the one control
             // that changes how fast replies FEEL. Selecting a preset runs the normal switch flow
@@ -144,14 +192,14 @@ fun SettingsScreen(
             val fastLabel = stringResource(R.string.settings_speed_fast)
             val balLabel = stringResource(R.string.settings_speed_balanced)
             val qualLabel = stringResource(R.string.settings_speed_quality)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PresetChip(fastLabel, !automaticEnabled && current == SpeedPreset.FAST, Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                PresetChip(fastLabel, !automaticEnabled && current == SpeedPreset.FAST, Modifier.fillMaxWidth()) {
                     onSelectModel(choice.fast)
                 }
-                PresetChip(balLabel, !automaticEnabled && current == SpeedPreset.BALANCED, Modifier.weight(1f)) {
+                PresetChip(balLabel, !automaticEnabled && current == SpeedPreset.BALANCED, Modifier.fillMaxWidth()) {
                     onSelectModel(choice.balanced)
                 }
-                PresetChip(qualLabel, !automaticEnabled && current == SpeedPreset.QUALITY, Modifier.weight(1f)) {
+                PresetChip(qualLabel, !automaticEnabled && current == SpeedPreset.QUALITY, Modifier.fillMaxWidth()) {
                     onSelectModel(choice.quality)
                 }
             }
@@ -169,7 +217,7 @@ fun SettingsScreen(
             )
         }
 
-        SettingsGroup(stringResource(R.string.settings_model)) {
+        if (page == SettingsPage.MODELS) SettingsGroup(stringResource(R.string.settings_model), showHeading = false) {
             LabeledRow(stringResource(R.string.settings_active_model), model.label)
             LabeledRow(stringResource(R.string.settings_size), model.sizeLabel)
             val engineStatus = if (ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {
@@ -187,8 +235,10 @@ fun SettingsScreen(
             Caption(stringResource(R.string.settings_on_device_llama))
         }
 
-        SettingsGroup(stringResource(R.string.settings_reasoning)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (page == SettingsPage.RESPONSES) SettingsGroup(stringResource(R.string.settings_reasoning)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = deepThinking, role = Role.Switch, onValueChange = onDeepThinkingChange),
+                verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
                     Caption(
@@ -196,19 +246,25 @@ fun SettingsScreen(
                         else stringResource(R.string.settings_deep_thinking_off),
                     )
                 }
-                Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
+                Switch(checked = deepThinking, onCheckedChange = null)
             }
         }
 
         // Twin of iOS Settings → Routing (AppSettings.suggestBestModel). ChatScreen reads the same key.
-        SettingsGroup(stringResource(R.string.settings_routing)) {
+        if (page == SettingsPage.RESPONSES) SettingsGroup(stringResource(R.string.settings_routing)) {
             val routePrefs = remember {
                 context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
             }
             var suggestBest by remember {
                 mutableStateOf(routePrefs.getBoolean("suggestBestModel", true))
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            fun updateSuggestion(on: Boolean) {
+                suggestBest = on
+                routePrefs.edit().putBoolean("suggestBestModel", on).apply()
+            }
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = suggestBest, role = Role.Switch, onValueChange = ::updateSuggestion),
+                verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.settings_suggest_best_model),
@@ -218,10 +274,7 @@ fun SettingsScreen(
                 }
                 Switch(
                     checked = suggestBest,
-                    onCheckedChange = { on ->
-                        suggestBest = on
-                        routePrefs.edit().putBoolean("suggestBestModel", on).apply()
-                    },
+                    onCheckedChange = null,
                 )
             }
         }
@@ -230,11 +283,11 @@ fun SettingsScreen(
         // dashboard's "What it can do here": every T1+ capability in plain words with its consent
         // toggle (the SAME PrefsConsentStore the Agent screen's runner reads, so this pane IS the
         // grant), plus the last ledger rows — refusals included, the local flight recorder.
-        SettingsGroup("Approved memories") { HyMemoryScreen(hyMemory) }
-        SettingsGroup("Step 5 CUDA host") { Step5Screen(step5) }
-        SettingsGroup("Still-image questions") { VisionScreen(vision) }
-        SettingsGroup("Granite Switch 4.1 8B") { GraniteScreen(granite) }
-        SettingsGroup(stringResource(R.string.settings_agent)) {
+        if (page == SettingsPage.MEMORY) HyMemoryScreen(hyMemory)
+        if (page == SettingsPage.STEP5) Step5Screen(step5)
+        if (page == SettingsPage.VISION) VisionScreen(vision)
+        if (page == SettingsPage.GRANITE) GraniteScreen(granite)
+        if (page == SettingsPage.AGENT) SettingsGroup(stringResource(R.string.settings_agent), showHeading = false) {
             val consent = remember { ai.quenderin.app.PrefsConsentStore(context) }
             // Metadata-only instances (empty seams) — listing runs nothing; the pane can't drift
             // from the agent because both read the same capability classes and consent store.
@@ -251,33 +304,39 @@ fun SettingsScreen(
             run {
                 val agentPrefs = remember { context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
                 var deliberation by remember { mutableStateOf(agentPrefs.getBoolean("agent.deliberation", false)) }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                fun updateDeliberation(on: Boolean) {
+                    deliberation = on
+                    agentPrefs.edit().putBoolean("agent.deliberation", on).apply()
+                }
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = deliberation, role = Role.Switch, onValueChange = ::updateDeliberation),
+                    verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.settings_deeper_reasoning), color = MaterialTheme.colorScheme.onSurface)
                         Caption(stringResource(R.string.settings_agent_deliberation_hint))
                     }
                     Switch(
                         checked = deliberation,
-                        onCheckedChange = { on ->
-                            deliberation = on
-                            agentPrefs.edit().putBoolean("agent.deliberation", on).apply()
-                        },
+                        onCheckedChange = null,
                     )
                 }
             }
             gated.forEach { cap ->
                 var granted by remember { mutableStateOf(consent.isGranted(cap.name)) }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                fun updateGrant(value: Boolean) {
+                    granted = value
+                    consent.setGranted(cap.name, value)
+                }
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = granted, role = Role.Switch, onValueChange = ::updateGrant),
+                    verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(capabilityTitle(cap.name), color = MaterialTheme.colorScheme.onSurface)
                         Caption(capabilityPurpose(cap.name, cap.purpose))
                     }
                     Switch(
                         checked = granted,
-                        onCheckedChange = { g ->
-                            granted = g
-                            consent.setGranted(cap.name, g)
-                        },
+                        onCheckedChange = null,
                     )
                 }
             }
@@ -313,12 +372,12 @@ fun SettingsScreen(
             }
         }
 
-            SettingsGroup(stringResource(R.string.settings_storage)) {
+            if (page == SettingsPage.STORAGE) SettingsGroup(stringResource(R.string.settings_storage), showHeading = false) {
                 LabeledRow(stringResource(R.string.settings_saved_conversations), conversationCount.toString())
                 Caption(stringResource(R.string.settings_history_hint))
             }
 
-            SettingsGroup(stringResource(R.string.settings_downloaded_models)) {
+            if (page == SettingsPage.STORAGE) SettingsGroup(stringResource(R.string.settings_downloaded_models)) {
                 if (installedModels.isEmpty()) {
                     Caption(stringResource(R.string.settings_no_models_yet))
                 } else {
@@ -372,7 +431,7 @@ fun SettingsScreen(
                 Caption(stringResource(R.string.settings_delete_model_hint))
             }
 
-            SettingsGroup(stringResource(R.string.settings_privacy_support)) {
+            if (page == SettingsPage.PRIVACY) SettingsGroup(stringResource(R.string.settings_privacy_support), showHeading = false) {
                 Caption(stringResource(R.string.ai_disclaimer))
                 Button(
                     onClick = {
@@ -401,9 +460,11 @@ fun SettingsScreen(
                 ) { Text(stringResource(R.string.settings_open_source_github)) }
             }
 
-        Caption(stringResource(R.string.settings_about_on_device))
+        if (page == SettingsPage.PRIVACY) Caption(stringResource(R.string.entry_private_detail))
         Spacer(Modifier.height(24.dp))   // breathing room at the very bottom, above the nav bar
     }
+
+    } // SaveableStateProvider
 
     if (showPicker) {
         ModalBottomSheet(onDismissRequest = { showPicker = false }) {
@@ -419,69 +480,55 @@ fun SettingsScreen(
 }
 
 /**
- * One segment of the speed dial: a pill that reads selected through COLOR only (brand-tinted fill +
- * hairline) — geometry identical in both states, per the design rules.
+ * Material selection feedback and semantics, with space for large text.
  */
 @Composable
 private fun PresetChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Quenderin.colors.raisedSurface,
-        shape = QuenderinShapes.pill,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-        ),
-        modifier = modifier,
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier
-                .clickable(onClick = onClick)
-                .padding(vertical = 10.dp)
-                .fillMaxWidth(),
-        )
-    }
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label, modifier = Modifier.padding(vertical = 6.dp)) },
+        modifier = modifier.heightIn(min = 48.dp),
+    )
 }
 
-/** A titled settings section: a small primary-tinted label above a rounded surface card holding the rows. */
+/** A reading section within one settings page. */
 @Composable
-private fun SettingsGroup(title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-        )
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = QuenderinShapes.card,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                content = content,
-            )
-        }
+private fun SettingsGroup(title: String, showHeading: Boolean = true, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (showHeading) NativeSectionLabel(title)
+        content()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
 @Composable
 private fun LabeledRow(title: String, value: String) {
-    Row(
-        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(title)
-        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 private fun Caption(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+
+private enum class SettingsPage { ROOT, MODELS, RESPONSES, AGENT, MEMORY, STEP5, VISION, GRANITE, STORAGE, PRIVACY }
+
+@Composable
+private fun settingsPageTitle(page: SettingsPage): String = when (page) {
+    SettingsPage.ROOT -> stringResource(R.string.settings_title)
+    SettingsPage.MODELS -> stringResource(R.string.settings_model)
+    SettingsPage.RESPONSES -> stringResource(R.string.settings_responses)
+    SettingsPage.AGENT -> stringResource(R.string.settings_agent)
+    SettingsPage.MEMORY -> stringResource(R.string.settings_memory)
+    SettingsPage.STEP5 -> stringResource(R.string.settings_step5)
+    SettingsPage.VISION -> stringResource(R.string.settings_vision)
+    SettingsPage.GRANITE -> "Granite Switch 4.1 8B"
+    SettingsPage.STORAGE -> stringResource(R.string.settings_storage)
+    SettingsPage.PRIVACY -> stringResource(R.string.settings_privacy_support)
 }

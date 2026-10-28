@@ -1,5 +1,6 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.contentreport.ReportSource
 import ai.quenderin.app.Step5Controller
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,7 +36,16 @@ fun Step5Screen(controller: Step5Controller) {
         OutlinedTextField(value = state.endpoint, onValueChange = controller::endpoint, label = { Text("Step 5 gateway origin") }, enabled = !state.busy, singleLine = true, modifier = Modifier.fillMaxWidth(), supportingText = { Text("HTTPS origin or http://127.0.0.1:18000. No credentials, paths, query or fragment.") })
         OutlinedButton(onClick = controller::check, enabled = !state.busy && controller.validEndpoint()) { Text("Check pinned backend") }
         Row { Checkbox(checked = state.consent, onCheckedChange = controller::consent, enabled = !state.busy); Text("I allow this conversation to be sent to the selected CUDA host", modifier = Modifier.weight(1f)) }
-        state.messages.forEach { message -> Column { Text(if (message.role == "user") "You" else "Step 5", style = MaterialTheme.typography.labelMedium); Text(message.content) } }
+        state.messages.forEach { message ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(if (message.role == "user") "You" else "Step 5", style = MaterialTheme.typography.labelMedium)
+                if (message.role == "user") Text(message.content)
+                else {
+                    AssistantResponseText(message.content, MaterialTheme.colorScheme.onSurface)
+                    ResponseActions(message.content, ReportSource.STEP5)
+                }
+            }
+        }
         OutlinedTextField(value = state.prompt, onValueChange = controller::prompt, label = { Text("Step 5 prompt") }, enabled = !state.busy, minLines = 3, modifier = Modifier.fillMaxWidth(), supportingText = { Text("${state.prompt.toByteArray(Charsets.UTF_8).size} / 8,192 UTF-8 bytes · ${state.messages.size} stored messages · 32 KiB request limit. History is never silently pruned.") })
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = controller::send, enabled = !state.busy && controller.validEndpoint() && state.consent && state.prompt.isNotBlank() && state.prompt.toByteArray(Charsets.UTF_8).size <= 8192) { Text("Send to CUDA host") }

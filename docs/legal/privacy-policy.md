@@ -155,6 +155,25 @@ Responses are produced by a model running locally, by DeepSeek, or by your chose
 or Step 5 host. Output may be inaccurate, offensive, or
 otherwise objectionable. Do not rely on it for professional, legal, medical, or financial advice.
 
+In **Android app versions with a Report control**, you can select a response, edit the
+excerpt, choose a reason, and add an optional note. Only when you choose **Send report** does
+the app send that excerpt, reason, note, source feature, a random report identifier, platform,
+and app version to the Quenderin developer's **Google Apps Script inbox** for manual review.
+The inbox adds a receipt identifier and received time. Reporting requires no Quenderin or
+Google account. The app adds no account or device identifier to the report.
+
+The app does not automatically attach your whole conversation, attachments, memory, API keys,
+or diagnostics to a report. Review the text before sending, because it may contain personal
+information you choose to include. Google hosts the report storage and processes ordinary
+connection information, such as your IP address and request time, under
+[Google's privacy policy](https://policies.google.com/privacy). Processing may occur outside
+your country; this feature does not guarantee a particular storage location.
+
+The developer keeps submitted reports for review, without automatic expiry. Clearing a chat
+or removing local app data does not delete a report already sent. For access, correction, or
+deletion requests, contact [quenderin@aulenor.com](mailto:quenderin@aulenor.com); include the
+report receipt if available so we can identify the report.
+
 If you choose to email support or report a response through an email action, your email
 application prepares the message for you to review and send. The support address receives
 the content you send and the email's ordinary sender and delivery information. Opening that

@@ -6,32 +6,30 @@ import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.DateCalcTool
-import ai.quenderin.core.EchoTool
 import ai.quenderin.core.InferenceEngine
-import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.UnitConverterTool
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,15 +38,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -61,9 +56,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * The post-onboarding shell: Chat + Agent tabs sharing the loaded model/engine. The Compose
- * twin of iOS `RootView`'s TabView. Emoji icons keep this free of the material-icons-extended
- * dependency. App/cliff layer — build in Android Studio.
+ * Four peer destinations share the loaded local engine. Material navigation adapts to the current
+ * window while retained destination layers preserve the original coroutine and draft ownership.
  */
 @Composable
 fun MainTabs(
@@ -80,90 +74,104 @@ fun MainTabs(
     captureLocalTurnIntent: () -> ai.quenderin.core.LocalTurnIntent = { ai.quenderin.core.LocalTurnIntent(0, null, true) },
     prepareAutomaticTurn: (ai.quenderin.core.AutomaticChatRequest, Boolean, Boolean, String?, ai.quenderin.core.LocalTurnIntent, () -> Boolean) -> ai.quenderin.core.PreparedLocalTurn? = { _, _, _, _, _, _ -> ai.quenderin.core.PreparedLocalTurn(model) { true } },
 ) {
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
     // the generation path reads it; a no-op for the mock/scripted engines.
     var deepThinking by remember { mutableStateOf(engine.thinkingEnabled()) }
     LaunchedEffect(deepThinking) { engine.setThinkingEnabled(deepThinking) }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            // A custom bar instead of Material's NavigationBar: its content band is a hard-coded 80dp
-            // (too tall vs WhatsApp's ~56dp), and it merges the system-nav inset INTO that height, so
-            // shrinking the total via a height() modifier just crushes the icons. Here the content is a
-            // fixed 56dp band and navigationBarsPadding() adds the system-nav inset BELOW it — tight
-            // like a messaging app, and correct on gesture- and 3-button-nav devices alike.
-            // Keep dark navigation on the shared canvas; light mode retains its tonal container.
-            Surface(color = Quenderin.colors.navigationBar) {
-                Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().height(60.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BottomTab(NavKind.Chat, stringResource(R.string.tab_chat), tab == 0, { tab = 0 }, Modifier.weight(1f))
-                    BottomTab(NavKind.Agent, stringResource(R.string.tab_agent), tab == 1, { tab = 1 }, Modifier.weight(1f))
-                    BottomTab(NavKind.Images, "Images", tab == 3, { tab = 3 }, Modifier.weight(1f))
-                    BottomTab(NavKind.Settings, stringResource(R.string.tab_settings), tab == 2, { tab = 2 }, Modifier.weight(1f))
+    // The current window, including split screen, selects the native navigation pattern.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= 600.dp
+        val destinations = listOf(
+            Triple(NavKind.Chat, stringResource(R.string.tab_chat), 0),
+            Triple(NavKind.Agent, stringResource(R.string.tab_agent), 1),
+            Triple(NavKind.Images, stringResource(R.string.tab_images), 3),
+            Triple(NavKind.Settings, stringResource(R.string.tab_settings), 2),
+        )
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                if (!wide) NavigationBar(containerColor = Quenderin.colors.navigationBar) {
+                    destinations.forEach { (kind, label, index) ->
+                        NavigationBarItem(
+                            selected = tab == index,
+                            onClick = { tab = index },
+                            icon = { NavIcon(kind, tab == index) },
+                            label = { Text(label) },
+                            modifier = Modifier.testTag("nav.${kind.name.lowercase()}"),
+                        )
+                    }
+                }
+            },
+        ) { pad ->
+            // Consuming Scaffold padding lets a descendant imePadding dock the composer to the
+            // keyboard instead of adding the navigation height a second time.
+            Row(Modifier.fillMaxSize().padding(pad).consumeWindowInsets(pad)) {
+                if (wide) NavigationRail(containerColor = Quenderin.colors.navigationBar) {
+                    destinations.forEach { (kind, label, index) ->
+                        NavigationRailItem(
+                            selected = tab == index,
+                            onClick = { tab = index },
+                            icon = { NavIcon(kind, tab == index) },
+                            label = { Text(label) },
+                            modifier = Modifier.testTag("nav.${kind.name.lowercase()}"),
+                        )
+                    }
+                }
+                Box(Modifier.weight(1f).fillMaxSize()) {
+                    // Keep every peer destination composed so tab changes retain drafts and jobs.
+                    RetainedDestination(visible = tab == 0) {
+                        ChatTab(
+                            engine = engine,
+                            model = model,
+                            persistence = conversations,
+                            onSelectModel = onSelectModel,
+                            deepThinking = deepThinking,
+                            onDeepThinkingChange = { deepThinking = it },
+                            onOpenAgent = { tab = 1 },
+                            automaticEnabled = automaticEnabled,
+                            automaticDescription = automaticDescription,
+                            modelPreparationMessage = modelPreparationMessage,
+                            captureLocalTurnIntent = captureLocalTurnIntent,
+                            prepareAutomaticTurn = prepareAutomaticTurn,
+                        )
+                    }
+                    RetainedDestination(visible = tab == 1) {
+                        AgentScreen(
+                            engine = engine,
+                            tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool()),
+                            handoffTick = tab,
+                        )
+                    }
+                    RetainedDestination(visible = tab == 2) {
+                        SettingsScreen(
+                            onOpenDeepSeek = onOpenDeepSeek,
+                            onOpenComputer = onOpenComputer,
+                            active = tab == 2,
+                            suspendForSpecialist = engine::suspendForSpecialist,
+                            model = model,
+                            persistence = conversations,
+                            onSelectModel = onSelectModel,
+                            deepThinking = deepThinking,
+                            onDeepThinkingChange = { deepThinking = it },
+                            automaticEnabled = automaticEnabled,
+                            onAutomaticChange = onAutomaticChange,
+                            automaticDescription = automaticDescription,
+                        )
+                    }
+                    RetainedDestination(visible = tab == 3) {
+                        ImageGenerationScreen(suspendForSpecialist = engine::suspendForSpecialist, active = tab == 3)
+                    }
                 }
             }
-        },
-    ) { pad ->
-        // consumeWindowInsets(pad): the Scaffold reserves the bottom-nav height in `pad`, and a child
-        // that also applies imePadding() would otherwise STACK the two — leaving the composer floating
-        // one nav-bar-height above the keyboard (the "input in the middle" bug). Consuming `pad` here
-        // means a descendant imePadding() computes `ime − navBar`, so the composer docks right onto the
-        // keyboard when it's open and sits above the nav bar when it's closed.
-        Box(Modifier.fillMaxSize().padding(pad).consumeWindowInsets(pad)) {
-            // Keep all three tabs composed (alpha-hidden, not torn down) instead of a single-slot
-            // `when`, so a rememberCoroutineScope()-launched send/run in Chat or Agent survives a
-            // tab switch — matching iOS's TabView, which keeps every tab's Task-launched work alive.
-            // The hidden tabs are also removed from touch/a11y focus so they can't intercept input
-            // while invisible underneath the active one.
-            Box(Modifier.fillMaxSize().tabVisibility(tab == 0)) {
-                ChatTab(
-                    engine = engine,
-                    model = model,
-                    persistence = conversations,
-                    onSelectModel = onSelectModel,
-                    deepThinking = deepThinking,
-                    onDeepThinkingChange = { deepThinking = it },
-                    onOpenAgent = { tab = 1 },
-                    automaticEnabled = automaticEnabled,
-                    automaticDescription = automaticDescription,
-                    modelPreparationMessage = modelPreparationMessage,
-                    captureLocalTurnIntent = captureLocalTurnIntent,
-                    prepareAutomaticTurn = prepareAutomaticTurn,
-                )
-            }
-            Box(Modifier.fillMaxSize().tabVisibility(tab == 1)) {
-                // EchoTool deliberately not shipped (dev/demo tool — weak models grab it as a scratchpad
-                // and burn mission steps on it; live-caught on the Mac twin).
-                AgentScreen(
-                    engine = engine,
-                    tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool()),
-                    // Re-check when this tab becomes active so a chat handoff lands immediately.
-                    handoffTick = tab,
-                )
-            }
-            Box(Modifier.fillMaxSize().tabVisibility(tab == 2)) {
-                SettingsScreen(
-                    onOpenDeepSeek = onOpenDeepSeek,
-                    onOpenComputer = onOpenComputer,
-                    active = tab == 2,
-                    suspendForSpecialist = engine::suspendForSpecialist,
-                    model = model,
-                    persistence = conversations,
-                    onSelectModel = onSelectModel,
-                    deepThinking = deepThinking,
-                    onDeepThinkingChange = { deepThinking = it },
-                    automaticEnabled = automaticEnabled,
-                    onAutomaticChange = onAutomaticChange,
-                    automaticDescription = automaticDescription,
-                )
-            }
-            Box(Modifier.fillMaxSize().tabVisibility(tab == 3)) {
-                ImageGenerationScreen(suspendForSpecialist = engine::suspendForSpecialist, active = tab == 3)
-            }
         }
+    }
+}
+
+@Composable
+private fun RetainedDestination(visible: Boolean, content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().tabVisibility(visible)) {
+        CompositionLocalProvider(LocalDestinationActive provides visible, content = content)
     }
 }
 
@@ -173,11 +181,9 @@ fun MainTabs(
  * coordinator here — above the list/conversation swap — means both views share one source of truth and
  * survive the swap.
  *
- * Conversation switch during a streaming reply: every lifecycle op below funnels through the
- * coordinator, which [ChatModel.stopGenerating]s the in-flight send (bump the generation id + cancel the
- * native decode) BEFORE it reads/mutates the transcript — so tokens from the outgoing chat can't bleed
- * into (or be persisted onto) the one being opened, and a captured index can't go out of bounds
- * (Q-004/Q-168). The partial already streamed is persisted as-is on the way out.
+ * Conversation lifecycle operations continue through the coordinator, which owns cancellation and
+ * transcript persistence. Tab changes keep this owner composed; leaving the conversation follows
+ * the existing coordinator policy for an unfinished reply.
  */
 @Composable
 private fun ChatTab(
@@ -212,6 +218,10 @@ private fun ChatTab(
         }
     }
 
+    BackHandler(enabled = LocalDestinationActive.current && inConversation) {
+        coordinator.persist()
+        inConversation = false
+    }
     if (inConversation) {
         ChatScreen(
             coordinator = coordinator,
@@ -256,56 +266,6 @@ private fun Modifier.tabVisibility(visible: Boolean): Modifier = this
     ) {}
 
 private enum class NavKind { Chat, Agent, Images, Settings }
-
-/**
- * One bottom-bar destination in the native Material 3 NavigationBar idiom: the icon sits in a
- * PILL indicator (secondaryContainer when selected, transparent otherwise — colour-only change,
- * geometry never moves), label below. No-ripple click keeps the band calm like the platform bar.
- * [modifier] carries the RowScope weight so the three tabs split the width evenly.
- */
-@Composable
-private fun BottomTab(
-    kind: NavKind,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val labelColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-    val pill by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0f),
-        label = "tabPill",
-    )
-    Column(
-        modifier
-            .fillMaxSize()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            Modifier
-                .width(56.dp)
-                .height(30.dp)
-                .background(pill, RoundedCornerShape(15.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            NavIcon(kind, selected)
-        }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = labelColor,
-            maxLines = 1,                       // never wrap past the fixed 60dp band at large font scale
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 3.dp),
-        )
-    }
-}
 
 /**
  * Crisp, theme-tinted line icons drawn in Compose — replacing the full-colour emoji that clashed with
