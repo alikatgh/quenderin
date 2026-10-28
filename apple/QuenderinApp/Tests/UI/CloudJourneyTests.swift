@@ -273,13 +273,31 @@ final class CloudJourneyTests: XCTestCase {
             require(surface, "The required control has no reachable scroll surface", file: file, line: line)
             surface.scroll(byDeltaX: 0, deltaY: -250)
             #else
+            let surface: XCUIElement
             if app.collectionViews.firstMatch.exists {
-                app.collectionViews.firstMatch.swipeUp()
+                surface = app.collectionViews.firstMatch
             } else if app.tables.firstMatch.exists {
-                app.tables.firstMatch.swipeUp()
+                surface = app.tables.firstMatch
             } else {
-                app.swipeUp()
+                surface = app
             }
+            let appFrame = app.frame
+            var visible = surface.frame.intersection(appFrame)
+            let keyboard = app.keyboards.firstMatch
+            if keyboard.exists, visible.intersects(keyboard.frame) {
+                visible.size.height = max(0, keyboard.frame.minY - visible.minY)
+            }
+            guard !visible.isNull, !visible.isEmpty else {
+                XCTFail("The required control has no visible scroll surface", file: file, line: line)
+                return
+            }
+            // Default swipes can start beneath the keyboard and never reach the form.
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: visible.midX - appFrame.minX,
+                                                  dy: visible.minY + visible.height * 0.8 - appFrame.minY))
+            let end = origin.withOffset(CGVector(dx: visible.midX - appFrame.minX,
+                                                dy: visible.minY + visible.height * 0.2 - appFrame.minY))
+            start.press(forDuration: 0.05, thenDragTo: end)
             #endif
         }
         XCTAssertTrue(element.isHittable, "Required control is not reachable", file: file, line: line)
