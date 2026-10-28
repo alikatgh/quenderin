@@ -61,8 +61,9 @@ class NativeSDKAppleCloudTests(unittest.TestCase):
         def command(arguments, env, timeout=600):
             calls.append((arguments, env, timeout))
 
-        def build(out, platform, *, environment):
+        def build(out, platform, *, environment, lock_python):
             self.assertEqual((out, platform), (self.out, "apple"))
+            self.assertEqual(lock_python, sdk.sys.executable)
             self.assertNotIn("GITHUB_ACTIONS", environment)
             self.assertEqual(environment["CI"], "TRUE")
             self.out.mkdir(parents=True)
@@ -86,6 +87,98 @@ class NativeSDKAppleCloudTests(unittest.TestCase):
             self.assertEqual(env["CARGO_NET_RETRY"], "0")
             self.assertEqual(env["RUSTUP_MAX_RETRIES"], "0")
         self.assertIsNotNone(sdk.CLOUD_DEADLINE)
+
+    def test_old_python_selects_supported_existing_interpreter_without_installing(self):
+        candidate = "/synthetic/bin/python3.13"
+        with patch.object(sdk.sys, "version_info", (3, 9, 6)), \
+                patch.object(sdk.shutil, "which", return_value=candidate), patch.object(sdk, "run") as run:
+            self.assertEqual(sdk.apple_cloud_python(self.out, self.env), candidate)
+        run.assert_called_once_with([candidate, "-I", "-c", "import sys,tomllib; raise SystemExit(sys.version_info < (3,11))"],
+                                    self.env, 15, quiet=True)
+
+    def test_old_python_bootstraps_bottled_interpreter_under_existing_watchdog(self):
+        prefix = self.root / "homebrew/opt/python@3.13"
+        candidate = prefix / "bin/python3.13"
+        candidate.parent.mkdir(parents=True); candidate.touch()
+        sdk.CLOUD_DEADLINE = 100
+        sdk.CLOUD_DISK = (self.checkout, 10 * 1024 ** 3)
+        with patch.object(sdk.sys, "version_info", (3, 9, 6)), \
+                patch.object(sdk.shutil, "which", side_effect=lambda name, **_: "/synthetic/brew" if name == "brew" else None), \
+                patch.object(sdk, "run") as run, patch.object(sdk.time, "monotonic", return_value=90), \
+                patch.object(sdk.subprocess, "check_output", return_value=str(prefix) + "\n") as output:
+            self.assertEqual(sdk.apple_cloud_python(self.out, self.env), str(candidate))
+        self.assertEqual(run.call_args_list[0].args, (["/synthetic/brew", "install", "--force-bottle", "python@3.13"], self.env, 300))
+        self.assertEqual(run.call_args_list[1].kwargs, {"quiet": True})
+        self.assertEqual(output.call_args.kwargs["timeout"], 10)
+        self.assertEqual(sdk.CLOUD_DEADLINE, 100)
+        self.assertEqual(sdk.CLOUD_DISK, (self.checkout, 10 * 1024 ** 3))
+
+    def test_python_prerequisite_failure_stops_before_rust_and_release_marker(self):
+        with patch.object(sdk.sys, "version_info", (3, 9, 6)), \
+                patch.object(sdk.shutil, "which", return_value=None), \
+                patch.object(sdk.shutil, "disk_usage", return_value=shutil_usage(10)), patch.object(sdk, "run") as run:
+            with self.assertRaisesRegex(ValueError, "Python bootstrap"):
+                sdk.stage_apple_cloud(self.out)
+        run.assert_not_called()
+        self.assertFalse(self.out.exists())
+        self.assertFalse((self.checkout / "apple/QuenderinKit" / sdk.APPLE_RELEASE_MARKER).exists())
+
+    def test_existing_interpreter_without_tomllib_cannot_authorize_rust_setup(self):
+        candidate = "/synthetic/bin/python3.13"
+        with patch.object(sdk.sys, "version_info", (3, 9, 6)), \
+                patch.object(sdk.shutil, "which", side_effect=lambda name, **_: candidate if name == "python3.13" else None), \
+                patch.object(sdk.shutil, "disk_usage", return_value=shutil_usage(10)), \
+                patch.object(sdk, "run", side_effect=sdk.subprocess.CalledProcessError(1, [candidate])) as run:
+            with self.assertRaisesRegex(ValueError, "Python bootstrap"):
+                sdk.stage_apple_cloud(self.out)
+        self.assertEqual(run.call_count, 1)
+        self.assertTrue(run.call_args.kwargs["quiet"])
+        self.assertFalse(self.out.exists())
+
+    def test_cloud_build_checks_pins_with_resolved_python_before_compiler_or_output(self):
+        candidate = "/synthetic/bin/python3.13"
+        failure = sdk.subprocess.CalledProcessError(1, ["synthetic-validator"])
+        with patch.object(sdk.shutil, "disk_usage", return_value=shutil_usage(10)), \
+                patch.object(sdk, "run", side_effect=failure) as run:
+            with self.assertRaisesRegex(ValueError, "source validation failed"):
+                sdk.build(self.out, "apple", environment=self.env, lock_python=candidate)
+        run.assert_called_once_with([candidate, "-I", "-B", str(sdk.ROOT / "tools/verify_build_gate.py")], self.env, 15, quiet=True)
+        self.assertFalse(self.out.exists())
+
+    def test_cloud_source_validator_subprocess_cannot_echo_malformed_toml(self):
+        marker = "synthetic-private-table-must-not-appear"
+        crypto = self.checkout / "native/remote-crypto"
+        (crypto / "tools").mkdir(parents=True)
+        (crypto / "tools/verify_build_gate.py").write_text((sdk.ROOT / "tools/verify_build_gate.py").read_text())
+        (crypto / "Cargo.toml").write_text("[" + marker + "]\n[" + marker + "]\n")
+        program = """
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import native_sdk as sdk
+sdk.REPO, sdk.ROOT = Path(sys.argv[2]), Path(sys.argv[3])
+sdk.host_platform.system = lambda: 'Darwin'
+sdk.shutil.disk_usage = lambda _: sdk.shutil._ntuple_diskusage(20 * 1024 ** 3, 10 * 1024 ** 3, 10 * 1024 ** 3)
+sys.argv = ['native_sdk.py', 'build', '--platform', 'apple', '--sdk', str(sdk.REPO / 'apple/QuenderinKit/build/RemoteCryptoSDK')]
+raise SystemExit(sdk.main())
+"""
+        result = sdk.subprocess.run([sdk.sys.executable, "-I", "-B", "-c", program, str(sdk.ROOT / "tools"),
+                                     str(self.checkout), str(crypto)], env=self.env, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn(marker, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "Native SDK check failed: SDK_SOURCE_VALIDATION: Locked source validation failed.\n")
+        self.assertFalse(self.out.exists())
+        self.assertFalse((self.checkout / "apple/QuenderinKit" / sdk.APPLE_RELEASE_MARKER).exists())
+
+    def test_github_build_keeps_in_process_source_pin_validation(self):
+        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "CI": "true"}), \
+                patch("verify_build_gate.require_locked", side_effect=ValueError("synthetic pin failure")) as gate, \
+                patch.object(sdk, "run") as run:
+            with self.assertRaisesRegex(ValueError, "synthetic pin failure"):
+                sdk.build(self.out, "apple")
+        gate.assert_called_once_with()
+        run.assert_not_called()
+        self.assertFalse(self.out.exists())
 
     def test_resource_and_compile_failure_never_persist_release_marker(self):
         marker = self.checkout / "apple/QuenderinKit" / sdk.APPLE_RELEASE_MARKER
@@ -503,9 +596,15 @@ class NativeSDKDiagnosticTests(unittest.TestCase):
             with self.subTest(library=library):
                 self.assertIn(code, self.cli_failure(ValueError(f"Android package is missing the real {library} library")))
 
+    def test_missing_tomllib_has_a_fixed_python_requirement_diagnostic(self):
+        error = ModuleNotFoundError("synthetic-private-value-must-not-appear", name="tomllib")
+        self.assertEqual(self.cli_failure(error),
+                         "Native SDK check failed: SDK_PYTHON: Source validation requires Python 3.11 or later with tomllib.\n")
+
     def test_unknown_exception_data_is_never_printed(self):
         private = "synthetic-private-value-must-not-appear"
-        for error in [ValueError(private), RuntimeError(private), KeyError(private), OSError(private), zipfile.BadZipFile(private)]:
+        for error in [ValueError(private), RuntimeError(private), KeyError(private), OSError(private), zipfile.BadZipFile(private),
+                      ModuleNotFoundError(private, name=private)]:
             with self.subTest(kind=type(error).__name__):
                 output = self.cli_failure(error)
                 self.assertNotIn(private, output)

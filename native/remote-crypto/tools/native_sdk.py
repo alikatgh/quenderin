@@ -90,6 +90,8 @@ SAFE_VALIDATION_DIAGNOSTICS = {
     "Xcode Cloud context differs from the real Apple checkout": "SDK_CLOUD_CONTEXT: Xcode Cloud context differs from the real Apple checkout.",
     "Xcode Cloud SDK build exceeded its resource bound": "SDK_CLOUD_RESOURCE: Xcode Cloud SDK build exceeded its resource bound.",
     "Xcode Cloud Rust bootstrap is unavailable": "SDK_CLOUD_RUST: Xcode Cloud Rust bootstrap is unavailable.",
+    "Xcode Cloud Python bootstrap is unavailable": "SDK_CLOUD_PYTHON: Python bootstrap requires Python 3.11 or later with tomllib.",
+    "Native SDK source validation failed": "SDK_SOURCE_VALIDATION: Locked source validation failed.",
     "Apple generated crypto entry points differ": "SDK_APPLE_EXPORTS: Apple generated crypto entry points differ.",
     "Apple static archive link proof differs": "SDK_APPLE_LINK_PROOF: Apple static archive link proof differs.",
 }
@@ -102,6 +104,8 @@ def failure_diagnostic(error: Exception) -> str:
         return "SDK_JSON: SDK metadata is not valid JSON."
     if isinstance(error, zipfile.BadZipFile):
         return "SDK_ARCHIVE: SDK or Android package archive is invalid."
+    if isinstance(error, ModuleNotFoundError) and error.name == "tomllib":
+        return "SDK_PYTHON: Source validation requires Python 3.11 or later with tomllib."
     if isinstance(error, OSError):
         return "SDK_IO: A required SDK or package file could not be read."
     if isinstance(error, KeyError):
@@ -291,15 +295,16 @@ def verify_package(sdk: Path, package: Path) -> None:
         raise ValueError("Android package is missing the real JNA library")
 
 
-def run(arguments: list[str], env: dict[str, str], timeout: int = 600) -> None:
+def run(arguments: list[str], env: dict[str, str], timeout: int = 600, *, quiet: bool = False) -> None:
+    output = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL} if quiet else {}
     if CLOUD_DEADLINE is None:
-        subprocess.run(arguments, cwd=ROOT, env=env, check=True, timeout=timeout)
+        subprocess.run(arguments, cwd=ROOT, env=env, check=True, timeout=timeout, **output)
         return
     # A single 30-minute deadline includes bootstrap, five serial target builds,
     # binding generation and packaging. Kill the process group, including rustc,
     # when time/free-space/allocation bounds are hit; never retry a failed build.
     deadline = min(CLOUD_DEADLINE, time.monotonic() + timeout)
-    process = subprocess.Popen(arguments, cwd=ROOT, env=env, start_new_session=True)
+    process = subprocess.Popen(arguments, cwd=ROOT, env=env, start_new_session=True, **output)
     try:
         while process.poll() is None:
             if time.monotonic() >= deadline:
@@ -393,6 +398,39 @@ def add_apple_archive_proof(work: Path, env: dict[str, str]) -> dict:
     return {"schemaVersion": 1, "inputArchives": inputs, "identity": identity, "symbol": symbol}
 
 
+def apple_cloud_python(out: Path, env: dict[str, str]) -> str:
+    """Keep the SDK supervisor on Apple's Python; run TOML checks on 3.11+."""
+    require_apple_cloud(out)
+    if sys.version_info >= (3, 11):
+        return sys.executable
+    probe = "import sys,tomllib; raise SystemExit(sys.version_info < (3,11))"
+
+    def supported(candidate: str) -> bool:
+        try:
+            run([candidate, "-I", "-c", probe], env, 15, quiet=True)
+        except subprocess.CalledProcessError:
+            return False
+        return True
+
+    for name in ("python3.13", "python3.12", "python3.11", "python3.14", "python3"):
+        candidate = shutil.which(name, path=env["PATH"])
+        if candidate is not None and supported(candidate):
+            return candidate
+    brew = shutil.which("brew", path=env["PATH"])
+    if brew is None:
+        raise ValueError("Xcode Cloud Python bootstrap is unavailable")
+    # Official bottled interpreter, within the same aggregate SDK watchdog.
+    run([brew, "install", "--force-bottle", "python@3.13"], env, 300)
+    remaining = min(15, CLOUD_DEADLINE - time.monotonic()) if CLOUD_DEADLINE is not None else 15
+    if remaining <= 0:
+        raise ValueError("Xcode Cloud SDK build exceeded its resource bound")
+    prefix = subprocess.check_output([brew, "--prefix", "python@3.13"], env=env, text=True, timeout=remaining).strip()
+    candidate = str(Path(prefix) / "bin/python3.13")
+    if not Path(candidate).is_file() or not supported(candidate):
+        raise ValueError("Xcode Cloud Python bootstrap is unavailable")
+    return candidate
+
+
 def stage_apple_cloud(out: Path) -> None:
     global CLOUD_DEADLINE, CLOUD_DISK
     require_apple_cloud(out)
@@ -409,6 +447,9 @@ def stage_apple_cloud(out: Path) -> None:
                CARGO_NET_RETRY="0", CARGO_HTTP_TIMEOUT="30", CARGO_BUILD_JOBS="2", RUSTUP_MAX_RETRIES="0",
                HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_NO_INSTALL_UPGRADE="1", HOMEBREW_NO_INSTALL_CLEANUP="1",
                HOMEBREW_CURL_RETRIES="0")
+    print("NATIVE_REMOTE_SDK_STAGE python-bootstrap (requires Python 3.11+)", flush=True)
+    lock_python = apple_cloud_python(out, env)
+    print("NATIVE_REMOTE_SDK_STAGE rust-bootstrap", flush=True)
     rustup = shutil.which("rustup")
     if rustup is None:
         brew = shutil.which("brew")
@@ -431,7 +472,8 @@ def stage_apple_cloud(out: Path) -> None:
          "--target", ",".join(TARGETS["apple"])], env, 600)
     # Keep one supervising process: nested process groups could otherwise leave
     # rustc running after an outer bootstrap/build deadline kills its supervisor.
-    build(out, "apple", environment=env)
+    print("NATIVE_REMOTE_SDK_STAGE source-validation-and-build", flush=True)
+    build(out, "apple", environment=env, lock_python=lock_python)
     verify(out, "apple")
     apple_link_contract(out)
     if time.monotonic() >= CLOUD_DEADLINE:
@@ -470,9 +512,10 @@ def android_toolchain_env(ndk: Path) -> dict[str, str]:
     }
 
 
-def build(out: Path, platform: str, *, environment: dict[str, str] | None = None) -> None:
+def build(out: Path, platform: str, *, environment: dict[str, str] | None = None, lock_python: str | None = None) -> None:
     global CLOUD_DEADLINE, CLOUD_DISK
-    if os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("CI") != "true":
+    cloud_build = os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("CI") != "true"
+    if cloud_build:
         if platform != "apple":
             raise ValueError("Native SDK compilation is restricted to the bounded hosted workflow")
         require_apple_cloud(out)
@@ -483,8 +526,17 @@ def build(out: Path, platform: str, *, environment: dict[str, str] | None = None
         CLOUD_DISK = CLOUD_DISK or (REPO, free)
     if out.exists() or out.is_symlink():
         raise ValueError("Preserve existing SDK output; choose a new path")
-    from verify_build_gate import require_locked
-    require_locked()
+    if cloud_build:
+        lock_python = lock_python or apple_cloud_python(out, dict(os.environ if environment is None else environment))
+    if lock_python is None:
+        from verify_build_gate import require_locked
+        require_locked()
+    else:
+        try:
+            run([lock_python, "-I", "-B", str(ROOT / "tools/verify_build_gate.py")],
+                dict(os.environ if environment is None else environment), 15, quiet=True)
+        except subprocess.CalledProcessError:
+            raise ValueError("Native SDK source validation failed") from None
     out.mkdir(parents=True)
     work = out / "work"
     work.mkdir()

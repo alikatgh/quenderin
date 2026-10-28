@@ -8,8 +8,9 @@ or already-authorized signing configuration. A debug build is not a signed store
 
 The user authorized updated iOS, macOS and Android store submissions. Current
 foundation is main `b8ef18558dab1693c0baa666378dafd7c66a5f9a`; release changes
-are prepared on `codex/native-060-20261028`. Store drafts and source preparation
-are separate from signed archives, uploads and review submissions.
+are prepared on `codex/native-060-20261028` in
+[PR #196](https://github.com/alikatgh/quenderin/pull/196). Store drafts and source
+preparation are separate from signed archives, uploads and review submissions.
 
 Live console refresh in the established profiles:
 
@@ -17,11 +18,20 @@ Live console refresh in the established profiles:
   drafts now show **Prepare for Submission**, with automatic release after
   approval selected. The latest existing Cloud build is 22; source floor is 23.
 - Xcode Cloud's included 25-hour team allowance showed **16h22 used / 8h38
-  available**, resetting October 28 at 15:02 local. No plan was changed and no
-  release run has started. Recheck available capacity immediately before a run.
+  available** immediately before build 23, resetting October 28 at 15:02 local.
+  No plan was changed. The existing workflow now starts manually from the 0.6.0
+  branch; its obsolete automatic branch trigger was removed. Both archive actions
+  in [build 23](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/d7febd65-02c0-4f8a-b395-b2a7bd5f07dd/summary)
+  at `fafcbe0340d4d4c11ad00504deb7187db4e42b46` stopped during post-clone SDK
+  staging, before archives or uploads. The generic error matches a reproduced
+  Python 3.9.6 missing-`tomllib` failure; the Cloud log did not expose its Python
+  version. The fix selects Python 3.11+ for source validation within the existing
+  SDK watchdog. A new Cloud run must establish the repair. Recheck capacity
+  before that run.
 - Google Play still has **2 (0.2.0)** active on **Closed testing - Alpha** and
-  a **5 (0.5.0)** draft without a new bundle. Source now targets **0.6.0 / 6**.
-  No new signed bundle has been uploaded.
+  the existing draft is now named **6 (0.6.0)** with updated release notes but
+  without a new bundle. Source targets **0.6.0 / 6**. No new signed bundle has
+  been uploaded.
 
 The release packaging changes require the pinned real remote-crypto SDK in the
 normal Prism/image packages, and verify final native payloads and provenance.
@@ -38,6 +48,21 @@ from optional direct DeepSeek and configured server/Host destinations. Store
 copy is in [the 0.6.0 drafts](releases/2026-10-28-native-060/store-copy.md).
 The old OS-only encryption exemption assertion is removed; complete the exact
 artifact's export-compliance determination before distribution.
+
+The privacy-only website candidate retains the exact active Worker module and
+all 112 historical asset inputs except `privacy.html`. Its inline theme setup
+avoids a dependency absent from those deployed assets. Independent content review,
+secret scans and a local rendered preview passed. It is **not published**:
+automatic approval review rejected the Cloudflare upload because the uploader
+may normalize unverified service/environment grouping tags. The specific
+publication approval remains pending; the public policy and store privacy
+answers have not yet changed.
+
+Hosted Debug test compilation first exposed an export-whitelist linker failure
+when Xcode made QuenderinKit a dynamic package product. The reviewed fix confines
+the existing distribution link contract to Release while retaining the real SDK
+and provenance checks in Debug. Hosted test-bundle compilation and exact signed
+Release verification remain required; source fixtures alone do not establish them.
 
 Remaining release gates: current hosted and signed-artifact checks; changed
 native consent, credential persistence and rendered journeys; accurate live
