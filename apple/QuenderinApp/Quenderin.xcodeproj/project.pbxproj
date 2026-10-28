@@ -723,6 +723,7 @@
 				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
 				SDKROOT = iphoneos;
+				STRIP_STYLE = "non-global";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -883,6 +884,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
 				PRODUCT_NAME = Quenderin;
 				SDKROOT = macosx;
+				STRIP_STYLE = "non-global";
 			};
 			name = Release;
 		};

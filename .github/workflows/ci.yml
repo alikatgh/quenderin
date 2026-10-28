@@ -679,6 +679,7 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p test_experimental_model_support.py
           python3 -m unittest discover -s scripts/tests -p test_step5_backend.py
           python3 -m unittest discover -s scripts/tests -p test_vision_build.py
+          python3 -B -m unittest scripts.tests.test_android_jni_alignment
           python3 scripts/generate_beam_artifacts.py --check
           python3 scripts/generate_vision_models.py --check
           python3 native/diffusion/tests/test_windows_exports.py

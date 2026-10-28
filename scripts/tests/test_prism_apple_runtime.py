@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import stat
 import struct
@@ -106,6 +107,27 @@ class AppleRemotePackageTests(unittest.TestCase):
         for legacy in (False, True):
             with self.subTest(legacy=legacy):
                 self.assertEqual(set(prism.remote_exports(self.binary(legacy=legacy), self.contract)), {"arm64"})
+
+    def test_generated_release_apps_preserve_external_symbols_without_changing_test_targets(self):
+        project = (prism.ROOT / "apple/QuenderinApp/Quenderin.xcodeproj/project.pbxproj").read_text()
+        objects = dict(re.findall(r"^\t\t([A-F0-9]{24}) /\* [^\n]+ \*/ = \{\n(.*?)^\t\t\};", project, re.M | re.S))
+        applications = set()
+        for target in objects.values():
+            if "isa = PBXNativeTarget;" not in target:
+                continue
+            name = re.search(r"^\t\t\tname = ([^;]+);", target, re.M).group(1)
+            application = 'productType = "com.apple.product-type.application";' in target
+            if application:
+                applications.add(name)
+            configuration_list = re.search(r"buildConfigurationList = ([A-F0-9]{24})", target).group(1)
+            configurations = re.findall(r"([A-F0-9]{24}) /\* (Debug|Release) \*/", objects[configuration_list])
+            self.assertEqual({configuration for _, configuration in configurations}, {"Debug", "Release"})
+            for identifier, configuration in configurations:
+                with self.subTest(target=name, configuration=configuration):
+                    strip = re.search(r'^\s+STRIP_STYLE = "?([^";]+)"?;', objects[identifier], re.M)
+                    self.assertEqual(strip.group(1) if strip else None,
+                                     "non-global" if application and configuration == "Release" else None)
+        self.assertEqual(applications, {"Quenderin", "QuenderinMac"})
 
     def test_omitted_payload_stale_archive_and_noncode_proof_rejected(self):
         for names in ([], self.names[:-1], self.names[1:],

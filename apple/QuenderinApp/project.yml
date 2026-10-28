@@ -51,6 +51,10 @@ targets:
         # portrait-only iPad without UIRequiresFullScreen fails validation.
         # (The Mac app is the big-screen story; revisit for 0.3.)
         TARGETED_DEVICE_FAMILY: "1"
+      configs:
+        Release:
+          # Preserve the exported crypto ABI/proof while stripping local symbols.
+          STRIP_STYLE: non-global
     info:
       path: Info.plist
       properties:
@@ -115,6 +119,9 @@ targets:
         CURRENT_PROJECT_VERSION: 23
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
+      configs:
+        Release:
+          STRIP_STYLE: non-global
     info:
       path: Info-macOS.plist
       properties:

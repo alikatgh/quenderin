@@ -16,7 +16,7 @@ Live console refresh in the established profiles:
 
 - Apple iOS and macOS **0.5.0 (22) Ready for Distribution**. Both **0.6.0**
   drafts now show **Prepare for Submission**, with automatic release after
-  approval selected. The latest existing Cloud build is 22; source floor is 23.
+  approval selected. The existing App Store build is 22; source floor is 23.
 - Xcode Cloud's included 25-hour team allowance showed **16h22 used / 8h38
   available** immediately before build 23, resetting October 28 at 15:02 local.
   No plan was changed. The existing workflow now starts manually from the 0.6.0
@@ -43,7 +43,25 @@ not load `curve25519_dalek_derive`. This strongly matches the documented
 the malformed dylib itself was unavailable, so its precise loader failure is
 unconfirmed. The Apple-only Cargo build-dependency strip override now preserves
 host proc-macro dylibs. It changes neither the shipped target's strip profile nor
-the Rust/dependency pins or cryptography. The next Cloud run must verify it.
+the Rust/dependency pins or cryptography.
+
+[Cloud build 25](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/80860668-005c-47c0-924b-ddf1072f10b6/summary)
+at `9c9bffbd3655fc9ec16d272c065c57cf1828b12f` passed SDK/runtime preparation,
+archives and signed exports. The final unchanged remote-crypto gate then rejected
+the exports. Inspection of the exact Mac App Store package and archive log found
+all nine roots supplied to the linker, followed by default executable stripping;
+both final architectures lost the required exports. Release application targets
+now use `STRIP_STYLE=non-global`; the next signed exports must pass the same gate.
+Local signature trust verification of the downloaded package was unavailable
+(`CSSMERR_TP_NOT_TRUSTED`); metadata matched the expected team. This is not proof
+of a signature-integrity failure or a passing local signature check.
+
+The same source passed hosted iOS/macOS test-bundle compilation. Android's complete
+APK/AAB build passed compilation, but its final dependency-alignment check failed.
+The JNI CMake applied 16 KiB flags only to `SHARED` targets, while pinned ggml CPU
+plugins use `MODULE`. A configure-only regression demonstrates that omission;
+directory link options now cover both. Final packaged APK/AAB verification remains
+required; the exact first rejected packaged DSO was not retained by that CI job.
 
 The release packaging changes require the pinned real remote-crypto SDK in the
 normal Prism/image packages, and verify final native payloads and provenance.
@@ -66,9 +84,11 @@ all 112 historical asset inputs except `privacy.html`. Its inline theme setup
 avoids a dependency absent from those deployed assets. Independent content review,
 secret scans and a local rendered preview passed. It is **not published**:
 automatic approval review rejected the Cloudflare upload because the uploader
-may normalize unverified service/environment grouping tags. The specific
-publication approval remains pending; the public policy and store privacy
-answers have not yet changed.
+may normalize unverified service/environment grouping tags. The user explicitly
+approved that specific publication and tag-normalization risk afterward.
+Publication can proceed with the reviewed asset-only candidate; no upload or
+activation has occurred yet, and the public policy and store privacy answers
+have not yet changed.
 
 Hosted Debug test compilation first exposed an export-whitelist linker failure
 when Xcode made QuenderinKit a dynamic package product. Scoping it to Release did
@@ -79,12 +99,22 @@ Swift APIs without an export whitelist. More ordinary globals may remain exporte
 hosted test-bundle linking, actual artifact size and exact signed Release export
 verification remain required. Source fixtures alone do not establish them.
 
+The user has approved bounded Xcode Cloud native tests and the free standard
+public-repository GitHub-hosted Android test route, using synthetic fixtures.
+No local simulator/emulator, physical-device run or local model-weight download
+is authorized by those exceptions. Keep cloud execution, rendered results,
+real inference and physical-device evidence distinct.
+
 Remaining release gates: current hosted and signed-artifact checks; changed
 native consent, credential persistence and rendered journeys; accurate live
 privacy declarations and public policy; Google in-app reporting compliance;
-and the existing Android signing key. The simulator/device prohibition remains
-in force pending the requested bounded Cloud-test exception. These gaps are
-not passing checks, and no 0.6.0 submission is established by this preparation.
+and Android signing. The user authorized locating the existing upload key and
+preparing a replacement if unavailable. A bounded metadata search found no usable
+path or signing job; repository and `github-pages` environment secret counts are
+zero. Historical encrypted-store/vault contents remain unverified. Private key
+generation and Google registration have not occurred, and the registered upload
+certificate pin remains unchanged. These gaps are not passing checks, and no
+0.6.0 submission is established by this preparation.
 
 ## 23 October 2026 — native DeepSeek source preparation
 
