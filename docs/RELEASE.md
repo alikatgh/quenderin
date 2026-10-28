@@ -129,6 +129,21 @@ the generated inference-performance cache identity left stale by the JNI CMake
 change. Both platform constants are now regenerated; fresh hosted checks remain
 required for that corrected revision.
 
+Build 26's **iOS and macOS archive actions passed**, including the unchanged
+signed-export crypto checks. Its test actions failed before the journeys: iOS
+lacked simulator slices in the Prism/image frameworks; the separate Mac
+`test-without-building` host had no cloned-source path. Test preparation now adds
+genuine, verified simulator variants only for iOS `build-for-testing`; the
+transported test phase validates genuine Cloud context and its test-products
+directory. Build/archive source and signed gates stay intact. Independent review
+and 54 focused runtime fixtures passed; fresh Cloud execution remains required.
+
+The human-only replacement-upload-key helper now has independent review and 37
+passing synthetic signer/generator tests, including private permissions, path
+substitution, process cancellation and partial-output recovery. It generates no
+key during those checks. Real key creation requires the human's hidden Terminal
+password entry; no replacement certificate has been registered with Google.
+
 ## 23 October 2026 — native DeepSeek source preparation
 
 The reviewed `codex/native-connections-20261023` change adds a separate native DeepSeek

@@ -17,12 +17,17 @@ if shutil.disk_usage(p).free < 6*1024**3: raise SystemExit('Diffusion build need
 PY
 mkdir -p "$WORK"
 python3 "$ROOT/scripts/prepare_diffusion_runtime.py" fetch --destination "$WORK/source"
-for PLATFORM in macos ios; do
-  if [ "$PLATFORM" = macos ]; then
-    SDK=macosx; ARCHS='arm64;x86_64'; MINIMUM=13.3; SYSTEM=Darwin
-  else
-    SDK=iphoneos; ARCHS=arm64; MINIMUM=16.4; SYSTEM=iOS
-  fi
+PLATFORMS=(macos ios)
+if [ "${CI_PRODUCT_PLATFORM:-}" = iOS ] && [ "${CI_XCODEBUILD_ACTION:-}" = build-for-testing ]; then
+  PLATFORMS+=(ios-sim)
+fi
+FRAMEWORK_ARGS=()
+for PLATFORM in "${PLATFORMS[@]}"; do
+  case "$PLATFORM" in
+    macos) SDK=macosx; ARCHS='arm64;x86_64'; MINIMUM=13.3; SYSTEM=Darwin ;;
+    ios) SDK=iphoneos; ARCHS=arm64; MINIMUM=16.4; SYSTEM=iOS ;;
+    ios-sim) SDK=iphonesimulator; ARCHS='arm64;x86_64'; MINIMUM=16.4; SYSTEM=iOS ;;
+  esac
   cmake -S "$ROOT/native/diffusion" -B "$WORK/$PLATFORM" \
     -DDIFFUSION_SOURCE_DIR="$WORK/source" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_SYSTEM_NAME="$SYSTEM" -DCMAKE_OSX_SYSROOT="$(xcrun --sdk "$SDK" --show-sdk-path)" \
@@ -31,9 +36,8 @@ for PLATFORM in macos ios; do
   cmake --build "$WORK/$PLATFORM" --target quenderin_diffusion --parallel 3
   python3 "$ROOT/scripts/prepare_diffusion_runtime.py" verify-library \
     --library "$WORK/$PLATFORM/bin/QuenderinDiffusion.framework/QuenderinDiffusion" --platform apple
+  FRAMEWORK_ARGS+=(-framework "$WORK/$PLATFORM/bin/QuenderinDiffusion.framework")
 done
 mkdir -p "$(dirname "$OUTPUT")"
-xcodebuild -create-xcframework \
-  -framework "$WORK/macos/bin/QuenderinDiffusion.framework" \
-  -framework "$WORK/ios/bin/QuenderinDiffusion.framework" -output "$OUTPUT"
+xcodebuild -create-xcframework "${FRAMEWORK_ARGS[@]}" -output "$OUTPUT"
 python3 "$ROOT/scripts/verify_diffusion_apple_runtime.py" seal --framework "$OUTPUT"
