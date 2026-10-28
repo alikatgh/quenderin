@@ -327,7 +327,7 @@
     <string name="report_intro">请检查要与 Quenderin 开发者分享的摘录。你编辑后的摘录、原因、可选备注、应用版本、Android 平台及回答来源将随随机举报 ID 一起发送。此举报服务由 Google 托管。请删除不想分享的个人信息。</string>
     <string name="report_excerpt">要分享的摘录</string>
     <string name="report_excerpt_help">发送前请检查并编辑摘录。仅分享此预览内容。</string>
-    <string name="report_excerpt_truncated">此回答超过举报长度限制。预览包含前 6,000 个 UTF-8 字节；请编辑以包含你希望审核的部分。</string>
+    <string name="report_excerpt_truncated">此预览仅显示回答的开头。请编辑以包含你希望审核的部分。</string>
     <string name="report_reason">原因</string>
     <string name="report_note">备注（可选）</string>
     <string name="report_send">发送举报</string>
@@ -351,4 +351,6 @@
     <string name="response_previous">上一部分</string>
     <string name="response_next">下一部分</string>
     <string name="response_section">第 %1$d 部分，共 %2$d 部分</string>
+    <string name="report_excerpt_too_long">摘录过长，请选择较短的内容。</string>
+    <string name="report_note_too_long">备注过长，请在发送前缩短。</string>
 </resources>

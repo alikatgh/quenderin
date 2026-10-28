@@ -336,7 +336,7 @@
     <string name="report_intro">Review the excerpt to share with Quenderin’s developer. Your edited excerpt, reason, optional note, app version, Android platform and response source are sent with a random report ID. Google hosts this reporting service. Remove personal information you do not want to share.</string>
     <string name="report_excerpt">Excerpt to share</string>
     <string name="report_excerpt_help">Review and edit the excerpt before sending. Only this preview is shared.</string>
-    <string name="report_excerpt_truncated">This response is longer than the report limit. The preview contains its first 6,000 UTF-8 bytes; edit it to include the part you want reviewed.</string>
+    <string name="report_excerpt_truncated">This preview shows only the beginning of the response. Edit it to include the part you want reviewed.</string>
     <string name="report_reason">Reason</string>
     <string name="report_note">Optional note</string>
     <string name="report_send">Send report</string>
@@ -360,4 +360,6 @@
     <string name="response_previous">Previous section</string>
     <string name="response_next">Next section</string>
     <string name="response_section">Section %1$d of %2$d</string>
+    <string name="report_excerpt_too_long">This excerpt is too long. Use a shorter selection.</string>
+    <string name="report_note_too_long">This note is too long. Shorten it before sending.</string>
 </resources>

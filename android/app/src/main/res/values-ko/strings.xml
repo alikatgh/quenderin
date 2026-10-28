@@ -327,7 +327,7 @@
     <string name="report_intro">Quenderin 개발자에게 보낼 발췌문을 검토하세요. 수정한 발췌문, 신고 사유, 선택적 메모, 앱 버전, Android 플랫폼 및 응답 출처가 무작위 신고 ID와 함께 전송됩니다. 이 신고 서비스는 Google에서 호스팅합니다. 공유하고 싶지 않은 개인정보는 삭제하세요.</string>
     <string name="report_excerpt">공유할 발췌문</string>
     <string name="report_excerpt_help">전송 전에 발췌문을 검토하고 수정하세요. 이 미리보기만 공유됩니다.</string>
-    <string name="report_excerpt_truncated">이 응답은 신고 한도를 초과합니다. 미리보기에는 처음 6,000 UTF-8 바이트가 포함됩니다. 검토받고 싶은 부분이 포함되도록 수정하세요.</string>
+    <string name="report_excerpt_truncated">이 미리보기에는 응답의 앞부분만 표시됩니다. 검토받고 싶은 부분이 포함되도록 수정하세요.</string>
     <string name="report_reason">사유</string>
     <string name="report_note">메모 (선택)</string>
     <string name="report_send">신고 보내기</string>
@@ -351,4 +351,6 @@
     <string name="response_previous">이전 부분</string>
     <string name="response_next">다음 부분</string>
     <string name="response_section">%2$d개 중 %1$d번째 부분</string>
+    <string name="report_excerpt_too_long">발췌문이 너무 깁니다. 더 짧은 부분을 선택하세요.</string>
+    <string name="report_note_too_long">메모가 너무 깁니다. 전송 전에 줄이세요.</string>
 </resources>

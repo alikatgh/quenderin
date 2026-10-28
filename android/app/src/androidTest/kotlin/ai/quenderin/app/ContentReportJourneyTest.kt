@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -131,8 +133,27 @@ class ContentReportJourneyTest {
         installFixture()
         compose.onNodeWithTag("response.report").performClick()
         compose.onNodeWithTag("contentReport.excerpt").assertTextContains(original)
-            .performScrollTo().performTextReplacement(excerpt)
         compose.onNodeWithTag("contentReport.reason.violence").performScrollTo().performClick().assertIsSelected()
+        compose.onNodeWithTag("contentReport.send").assertIsEnabled()
+        // Raw fields fit, but escaping a quote-heavy excerpt exceeds the wire envelope.
+        compose.onNodeWithTag("contentReport.excerpt").performScrollTo().performTextReplacement("\"".repeat(4_500))
+        compose.onNodeWithTag("contentReport.status").assertIsDisplayed()
+            .assertTextContains(instrumentation.targetContext.getString(R.string.report_invalid))
+        compose.onNodeWithTag("contentReport.send").assertIsNotEnabled()
+        compose.runOnIdle { assertEquals("An oversized serialized report is never sent", 0, attempts.size) }
+        compose.onNodeWithTag("contentReport.excerpt").performScrollTo().performTextReplacement("界".repeat(2_001))
+        compose.onNodeWithText(instrumentation.targetContext.getString(R.string.report_excerpt_too_long))
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("contentReport.send").assertIsNotEnabled()
+        compose.runOnIdle { assertEquals("An oversized excerpt is never sent", 0, attempts.size) }
+        compose.onNodeWithTag("contentReport.excerpt")
+            .performScrollTo().performTextReplacement(excerpt)
+        compose.onNodeWithTag("contentReport.send").assertIsEnabled()
+        compose.onNodeWithTag("contentReport.note").performScrollTo().performTextReplacement("界".repeat(334))
+        compose.onNodeWithText(instrumentation.targetContext.getString(R.string.report_note_too_long))
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("contentReport.send").assertIsNotEnabled()
+        compose.runOnIdle { assertEquals("An oversized note is never sent", 0, attempts.size) }
         compose.onNodeWithTag("contentReport.note").performScrollTo().performTextReplacement(note)
         compose.runOnIdle { assertEquals("Opening and editing never dispatches a report", 0, attempts.size) }
         scenario!!.recreate()
@@ -158,10 +179,11 @@ class ContentReportJourneyTest {
         }
         compose.onNodeWithTag("contentReport.excerpt").assertTextContains(excerpt)
         compose.onNodeWithTag("contentReport.note").assertTextContains(note)
-        compose.onNodeWithTag("contentReport.status").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("contentReport.status").assertIsDisplayed()
         compose.onNodeWithTag("contentReport.excerpt").performScrollTo()
+        compose.onNodeWithTag("contentReport.status").assertIsDisplayed()
         compose.waitForIdle()
-        ScreenshotEvidence.capture("04-report-light.png")
+        ScreenshotEvidence.capture("04-report-light.png", renderedNode = compose.onNodeWithTag("contentReport.dialog"))
         compose.runOnIdle {
             assertTrue(attempts.single().json.contains("\"content\":\"$excerpt\""))
             assertTrue(attempts.single().json.contains("\"reason\":\"violence\""))

@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import android.os.ParcelFileDescriptor
 import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -113,7 +115,7 @@ class NativeJourneysTest {
         clickScrolled("settings.responses")
         awaitTag("settings.back")
         back()
-        awaitTag("settings.root")
+        awaitSettingsRoot()
         // A hidden Chat Back handler must not consume Settings' subordinate-page return.
         compose.onNodeWithTag("nav.settings").assertIsSelected()
         compose.onNodeWithTag("nav.chat").performClick().assertIsSelected()
@@ -148,14 +150,14 @@ class NativeJourneysTest {
         }
         enterMockChat()
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
-        awaitTag("settings.root")
+        awaitSettingsRoot()
         screenshot("07-settings-short-window.png")
         val chat = compose.onNodeWithTag("nav.chat").fetchSemanticsNode().boundsInRoot
         val settings = compose.onNodeWithTag("nav.settings").fetchSemanticsNode().boundsInRoot
         assertTrue("Wide current window should use a navigation rail", kotlin.math.abs(chat.center.x - settings.center.x) < 2f)
         clickScrolled("settings.models")
         back()
-        awaitTag("settings.root")
+        awaitSettingsRoot()
         compose.onNodeWithTag("nav.settings").assertIsSelected()
     }
 
@@ -173,6 +175,13 @@ class NativeJourneysTest {
     }
 
     private fun exists(tag: String): Boolean = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    private fun awaitSettingsRoot() {
+        // Verify the actual root destination and that its retained layer does not disable it.
+        awaitTag("settings.responses")
+        compose.onNodeWithTag("settings.root").assertIsEnabled()
+        compose.onNodeWithTag("settings.back").assertDoesNotExist()
+        compose.onNodeWithTag("nav.settings").assertIsSelected()
+    }
     private fun awaitTag(tag: String) = compose.awaitJourneyTag(tag)
     private fun clickScrolled(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun back() { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); compose.waitForIdle() }
@@ -204,6 +213,6 @@ class NativeJourneysTest {
     }
     private fun screenshot(name: String, settle: Boolean = true) {
         if (settle) compose.waitForIdle()
-        ScreenshotEvidence.capture(name)
+        ScreenshotEvidence.capture(name, renderedNode = if (settle) compose.onRoot(useUnmergedTree = true) else null)
     }
 }

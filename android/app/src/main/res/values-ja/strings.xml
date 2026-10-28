@@ -327,7 +327,7 @@
     <string name="report_intro">Quenderinの開発者と共有する抜粋を確認してください。編集した抜粋、理由、任意のメモ、アプリのバージョン、Androidプラットフォーム、応答元がランダムな報告IDとともに送信されます。この報告サービスはGoogleでホストされています。共有したくない個人情報は削除してください。</string>
     <string name="report_excerpt">共有する抜粋</string>
     <string name="report_excerpt_help">送信前に抜粋を確認・編集してください。このプレビューだけが共有されます。</string>
-    <string name="report_excerpt_truncated">この応答は報告の上限を超えています。プレビューには最初の6,000 UTF-8バイトが含まれます。確認してほしい部分が入るように編集してください。</string>
+    <string name="report_excerpt_truncated">このプレビューには応答の冒頭だけが表示されています。確認してほしい部分が入るように編集してください。</string>
     <string name="report_reason">理由</string>
     <string name="report_note">メモ（任意）</string>
     <string name="report_send">報告を送信</string>
@@ -351,4 +351,6 @@
     <string name="response_previous">前のセクション</string>
     <string name="response_next">次のセクション</string>
     <string name="response_section">%2$dセクション中%1$d</string>
+    <string name="report_excerpt_too_long">抜粋が長すぎます。より短い範囲を選んでください。</string>
+    <string name="report_note_too_long">メモが長すぎます。送信前に短くしてください。</string>
 </resources>

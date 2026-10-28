@@ -224,7 +224,7 @@ RES = {
     'report_intro': 'Review the excerpt to share with Quenderin’s developer. Your edited excerpt, reason, optional note, app version, Android platform and response source are sent with a random report ID. Google hosts this reporting service. Remove personal information you do not want to share.',
     'report_excerpt': 'Excerpt to share',
     'report_excerpt_help': 'Review and edit the excerpt before sending. Only this preview is shared.',
-    'report_excerpt_truncated': 'This response is longer than the report limit. The preview contains its first 6,000 UTF-8 bytes; edit it to include the part you want reviewed.',
+    'report_excerpt_truncated': 'This preview shows only the beginning of the response. Edit it to include the part you want reviewed.',
     'report_reason': 'Reason',
     'report_note': 'Optional note',
     'report_send': 'Send report',
@@ -249,6 +249,8 @@ RES = {
     'response_previous': 'Previous section',
     'response_next': 'Next section',
     'response_section': 'Section %1$d of %2$d',
+    'report_excerpt_too_long': 'This excerpt is too long. Use a shorter selection.',
+    'report_note_too_long': 'This note is too long. Shorten it before sending.',
 }
 
 # Android-only strings (or wording that differs from any iOS key) — full 4-lang set.
@@ -523,7 +525,7 @@ EXTRAS = {
     'Review the excerpt to share with Quenderin’s developer. Your edited excerpt, reason, optional note, app version, Android platform and response source are sent with a random report ID. Google hosts this reporting service. Remove personal information you do not want to share.': ('Проверьте отрывок для отправки разработчику Quenderin. Отредактированный отрывок, причина, необязательное примечание, версия приложения, платформа Android и источник ответа отправляются со случайным идентификатором жалобы. Сервис размещён у Google. Удалите личные сведения, которыми не хотите делиться.', 'Quenderin 개발자에게 보낼 발췌문을 검토하세요. 수정한 발췌문, 신고 사유, 선택적 메모, 앱 버전, Android 플랫폼 및 응답 출처가 무작위 신고 ID와 함께 전송됩니다. 이 신고 서비스는 Google에서 호스팅합니다. 공유하고 싶지 않은 개인정보는 삭제하세요.', 'Quenderinの開発者と共有する抜粋を確認してください。編集した抜粋、理由、任意のメモ、アプリのバージョン、Androidプラットフォーム、応答元がランダムな報告IDとともに送信されます。この報告サービスはGoogleでホストされています。共有したくない個人情報は削除してください。', '请检查要与 Quenderin 开发者分享的摘录。你编辑后的摘录、原因、可选备注、应用版本、Android 平台及回答来源将随随机举报 ID 一起发送。此举报服务由 Google 托管。请删除不想分享的个人信息。'),
     'Excerpt to share': ('Отрывок для отправки', '공유할 발췌문', '共有する抜粋', '要分享的摘录'),
     'Review and edit the excerpt before sending. Only this preview is shared.': ('Перед отправкой проверьте и отредактируйте отрывок. Отправляется только этот текст.', '전송 전에 발췌문을 검토하고 수정하세요. 이 미리보기만 공유됩니다.', '送信前に抜粋を確認・編集してください。このプレビューだけが共有されます。', '发送前请检查并编辑摘录。仅分享此预览内容。'),
-    'This response is longer than the report limit. The preview contains its first 6,000 UTF-8 bytes; edit it to include the part you want reviewed.': ('Ответ превышает лимит жалобы. В предпросмотре — первые 6 000 байт UTF-8; отредактируйте текст, включив нужную для проверки часть.', '이 응답은 신고 한도를 초과합니다. 미리보기에는 처음 6,000 UTF-8 바이트가 포함됩니다. 검토받고 싶은 부분이 포함되도록 수정하세요.', 'この応答は報告の上限を超えています。プレビューには最初の6,000 UTF-8バイトが含まれます。確認してほしい部分が入るように編集してください。', '此回答超过举报长度限制。预览包含前 6,000 个 UTF-8 字节；请编辑以包含你希望审核的部分。'),
+    'This preview shows only the beginning of the response. Edit it to include the part you want reviewed.': ('В предпросмотре показано только начало ответа. Отредактируйте текст, включив нужную для проверки часть.', '이 미리보기에는 응답의 앞부분만 표시됩니다. 검토받고 싶은 부분이 포함되도록 수정하세요.', 'このプレビューには応答の冒頭だけが表示されています。確認してほしい部分が入るように編集してください。', '此预览仅显示回答的开头。请编辑以包含你希望审核的部分。'),
     'Reason': ('Причина', '사유', '理由', '原因'),
     'Optional note': ('Примечание (необязательно)', '메모 (선택)', 'メモ（任意）', '备注（可选）'),
     'Send report': ('Отправить жалобу', '신고 보내기', '報告を送信', '发送举报'),
@@ -548,6 +550,8 @@ EXTRAS = {
     'Previous section': ('Предыдущая часть', '이전 부분', '前のセクション', '上一部分'),
     'Next section': ('Следующая часть', '다음 부분', '次のセクション', '下一部分'),
     'Section %1$d of %2$d': ('Часть %1$d из %2$d', '%2$d개 중 %1$d번째 부분', '%2$dセクション中%1$d', '第 %1$d 部分，共 %2$d 部分'),
+    'This excerpt is too long. Use a shorter selection.': ('Этот отрывок слишком длинный. Выберите фрагмент покороче.', '발췌문이 너무 깁니다. 더 짧은 부분을 선택하세요.', '抜粋が長すぎます。より短い範囲を選んでください。', '摘录过长，请选择较短的内容。'),
+    'This note is too long. Shorten it before sending.': ('Примечание слишком длинное. Сократите его перед отправкой.', '메모가 너무 깁니다. 전송 전에 줄이세요.', 'メモが長すぎます。送信前に短くしてください。', '备注过长，请在发送前缩短。'),
 }
 
 # load TSV (english -> [ru,ko,ja,zh])

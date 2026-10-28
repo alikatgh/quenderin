@@ -1,6 +1,10 @@
 package ai.quenderin.app
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -13,13 +17,17 @@ internal object ScreenshotEvidence {
         "07-settings-short-window.png", "08-failure.png",
     )
 
-    fun capture(name: String) {
+    @OptIn(ExperimentalTestApi::class)
+    fun capture(name: String, renderedNode: SemanticsNodeInteraction? = null) {
         require(name in names)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        // Compose semantics can update before platform window events settle.
-        // Wait for an idle accessibility event stream within a fixed deadline;
-        // the exported frames still require visual inspection against their names.
-        instrumentation.uiAutomation.waitForIdle(250L, 3_000L)
+        // Semantics/accessibility idle does not establish a new rendered window buffer.
+        // BOM 2024.09.03 pins ui-test 1.7.3: captureToImage -> forceRedraw (frame commit)
+        // -> PixelCopy completion. Exact release source:
+        // https://github.com/androidx/androidx/blob/00e91ed140ce2c4677f56fc06692b182b8a07fcf/compose/ui/ui-test/src/androidMain/kotlin/androidx/compose/ui/test/android/WindowCapture.android.kt
+        // Discard that cropped image, then capture the full display so IME, dialogs and
+        // system bars remain genuine parts of the evidence. Failure frames are best effort.
+        renderedNode?.captureToImage()?.asAndroidBitmap()?.recycle()
         val original = checkNotNull(instrumentation.uiAutomation.takeScreenshot()) { "Screenshot unavailable" }
         var image = original
         var limit = 1280

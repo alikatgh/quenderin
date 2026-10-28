@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -169,7 +170,7 @@ fun MainTabs(
 }
 
 @Composable
-private fun RetainedDestination(visible: Boolean, content: @Composable () -> Unit) {
+internal fun RetainedDestination(visible: Boolean, content: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().tabVisibility(visible)) {
         CompositionLocalProvider(LocalDestinationActive provides visible, content = content)
     }
@@ -259,11 +260,18 @@ private fun Modifier.tabVisibility(visible: Boolean): Modifier = this
     .alpha(if (visible) 1f else 0f)
     .zIndex(if (visible) 1f else 0f)
     .then(if (visible) Modifier else Modifier.clearAndSetSemantics {})
-    .clickable(
-        enabled = !visible,
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-    ) {}
+    .then(
+        if (visible) Modifier.pointerInput(Unit) {
+            // A full-size hit region keeps blank-space taps in the visible destination.
+            // Do not consume events: its children retain their normal Material gestures.
+            awaitPointerEventScope {
+                while (true) awaitPointerEvent()
+            }
+        } else Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+        ) {},
+    )
 
 private enum class NavKind { Chat, Agent, Images, Settings }
 

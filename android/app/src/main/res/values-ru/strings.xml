@@ -327,7 +327,7 @@
     <string name="report_intro">Проверьте отрывок для отправки разработчику Quenderin. Отредактированный отрывок, причина, необязательное примечание, версия приложения, платформа Android и источник ответа отправляются со случайным идентификатором жалобы. Сервис размещён у Google. Удалите личные сведения, которыми не хотите делиться.</string>
     <string name="report_excerpt">Отрывок для отправки</string>
     <string name="report_excerpt_help">Перед отправкой проверьте и отредактируйте отрывок. Отправляется только этот текст.</string>
-    <string name="report_excerpt_truncated">Ответ превышает лимит жалобы. В предпросмотре — первые 6 000 байт UTF-8; отредактируйте текст, включив нужную для проверки часть.</string>
+    <string name="report_excerpt_truncated">В предпросмотре показано только начало ответа. Отредактируйте текст, включив нужную для проверки часть.</string>
     <string name="report_reason">Причина</string>
     <string name="report_note">Примечание (необязательно)</string>
     <string name="report_send">Отправить жалобу</string>
@@ -351,4 +351,6 @@
     <string name="response_previous">Предыдущая часть</string>
     <string name="response_next">Следующая часть</string>
     <string name="response_section">Часть %1$d из %2$d</string>
+    <string name="report_excerpt_too_long">Этот отрывок слишком длинный. Выберите фрагмент покороче.</string>
+    <string name="report_note_too_long">Примечание слишком длинное. Сократите его перед отправкой.</string>
 </resources>

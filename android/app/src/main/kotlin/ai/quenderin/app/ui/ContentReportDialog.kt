@@ -85,64 +85,82 @@ fun ContentReportDialog(
     val sender = sendReport ?: LocalContentReportSender.current
     val ready = ContentReportProtocol.prepare(draft)
     val received = result as? ReportResult.Received
+    var excerptEditRejected by remember(selectionId) { mutableStateOf(false) }
+    var noteEditRejected by remember(selectionId) { mutableStateOf(false) }
+    val excerptTooLong = excerptEditRejected || draft.content.toByteArray(Charsets.UTF_8).size > ContentReportProtocol.CONTENT_BYTES
+    val noteTooLong = noteEditRejected || draft.note.toByteArray(Charsets.UTF_8).size > ContentReportProtocol.NOTE_BYTES
+    val inputTooLong = excerptTooLong || noteTooLong
+    val status = when (val current = result) {
+        ReportResult.Unavailable -> R.string.report_unavailable
+        ReportResult.Unconfirmed -> R.string.report_unconfirmed
+        is ReportResult.Rejected -> when (current.code) {
+            "too_large" -> R.string.report_too_large
+            "invalid_request" -> R.string.report_invalid
+            "conflict" -> R.string.report_conflict
+            else -> R.string.report_unconfirmed
+        }
+        else -> if (ready == null && !inputTooLong && draft.content.isNotBlank()) {
+            R.string.report_invalid
+        } else null
+    }
     AlertDialog(
         properties = DialogProperties(securePolicy = securePolicy),
         modifier = Modifier.testTag("contentReport.dialog"),
         onDismissRequest = { if (!busy) onClose() },
         title = { Text(stringResource(if (received != null) R.string.report_received else R.string.report_title)) },
         text = {
-            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+            Column(Modifier.heightIn(max = 520.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (received != null) {
-                    Text(stringResource(R.string.report_receipt, received.receiptId),
-                        modifier = Modifier.testTag("contentReport.status").semantics { liveRegion = LiveRegionMode.Polite })
-                } else {
-                    Text(stringResource(R.string.report_intro), style = MaterialTheme.typography.bodyMedium)
-                    if (state.truncated) Text(stringResource(R.string.report_excerpt_truncated), style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(value = draft.content, onValueChange = {
-                        // A UI code-unit cap bounds editing before byte validation, without trimming user text.
-                        if (it.length <= ContentReportProtocol.CONTENT_BYTES) {
-                            model.edit(content = it)
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (received != null) {
+                        Text(stringResource(R.string.report_receipt, received.receiptId),
+                            modifier = Modifier.testTag("contentReport.status").semantics { liveRegion = LiveRegionMode.Polite })
+                    } else {
+                        Text(stringResource(R.string.report_intro), style = MaterialTheme.typography.bodyMedium)
+                        if (state.truncated) Text(stringResource(R.string.report_excerpt_truncated), style = MaterialTheme.typography.bodySmall)
+                        OutlinedTextField(value = draft.content, onValueChange = {
+                            // A UI code-unit cap bounds editing before byte validation, without trimming user text.
+                            excerptEditRejected = it.length > ContentReportProtocol.CONTENT_BYTES
+                            if (it.length <= ContentReportProtocol.CONTENT_BYTES) {
+                                model.edit(content = it)
+                            }
+                        }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("contentReport.excerpt"),
+                            label = { Text(stringResource(R.string.report_excerpt)) }, minLines = 3, maxLines = 7,
+                            isError = excerptTooLong,
+                            supportingText = if (excerptTooLong) {
+                                { Text(stringResource(R.string.report_excerpt_too_long)) }
+                            } else null)
+                        Text(stringResource(R.string.report_excerpt_help), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.report_reason), style = MaterialTheme.typography.labelLarge)
+                        ReportReason.entries.forEach { reason ->
+                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .selectable(selected = draft.reason == reason, enabled = !busy, role = Role.RadioButton,
+                                    onClick = { model.edit(reason = reason) })
+                                .testTag("contentReport.reason.${reason.wire}"), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = draft.reason == reason, onClick = null, enabled = !busy)
+                                Text(stringResource(reason.label()))
+                            }
                         }
-                    }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("contentReport.excerpt"),
-                        label = { Text(stringResource(R.string.report_excerpt)) }, minLines = 3, maxLines = 7,
-                        supportingText = { Text("${draft.content.toByteArray(Charsets.UTF_8).size} / 6,000 UTF-8 bytes") })
-                    Text(stringResource(R.string.report_excerpt_help), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.report_reason), style = MaterialTheme.typography.labelLarge)
-                    ReportReason.entries.forEach { reason ->
-                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .selectable(selected = draft.reason == reason, enabled = !busy, role = Role.RadioButton,
-                                onClick = { model.edit(reason = reason) })
-                            .testTag("contentReport.reason.${reason.wire}"), verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = draft.reason == reason, onClick = null, enabled = !busy)
-                            Text(stringResource(reason.label()))
-                        }
+                        OutlinedTextField(value = draft.note, onValueChange = {
+                            noteEditRejected = it.length > ContentReportProtocol.NOTE_BYTES
+                            if (it.length <= ContentReportProtocol.NOTE_BYTES) model.edit(note = it)
+                        }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("contentReport.note"),
+                            label = { Text(stringResource(R.string.report_note)) }, minLines = 2, maxLines = 4,
+                            isError = noteTooLong,
+                            supportingText = if (noteTooLong) {
+                                { Text(stringResource(R.string.report_note_too_long)) }
+                            } else null)
                     }
-                    OutlinedTextField(value = draft.note, onValueChange = {
-                        if (it.length <= ContentReportProtocol.NOTE_BYTES) model.edit(note = it)
-                    }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("contentReport.note"),
-                        label = { Text(stringResource(R.string.report_note)) }, minLines = 2, maxLines = 4,
-                        supportingText = { Text("${draft.note.toByteArray(Charsets.UTF_8).size} / 1,000 UTF-8 bytes") })
-                    val status = when (val current = result) {
-                        ReportResult.Unavailable -> R.string.report_unavailable
-                        ReportResult.Unconfirmed -> R.string.report_unconfirmed
-                        is ReportResult.Rejected -> when (current.code) {
-                            "too_large" -> R.string.report_too_large
-                            "invalid_request" -> R.string.report_invalid
-                            "conflict" -> R.string.report_conflict
-                            else -> R.string.report_unconfirmed // unavailable may be an ambiguous write.
-                        }
-                        else -> if (ready == null) R.string.report_invalid else null
-                    }
-                    status?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.testTag("contentReport.status").semantics { liveRegion = LiveRegionMode.Polite }) }
                 }
+                status?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("contentReport.status").semantics { liveRegion = LiveRegionMode.Polite }) }
             }
         },
         confirmButton = {
             if (received == null) TextButton(onClick = {
                 model.send(sender)
-            }, enabled = !busy && ready != null && (result as? ReportResult.Rejected)?.code != "conflict",
+            }, enabled = !busy && ready != null && !inputTooLong && (result as? ReportResult.Rejected)?.code != "conflict",
                 modifier = Modifier.heightIn(min = 48.dp).testTag(if (draft.attempted) "contentReport.retry" else "contentReport.send")) {
                 Text(stringResource(when { busy -> R.string.report_sending; draft.attempted -> R.string.report_retry; else -> R.string.report_send }))
             }
