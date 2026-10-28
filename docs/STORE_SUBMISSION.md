@@ -77,7 +77,8 @@ collected or shared” answers.
 | Server account email | Contact Info → Email Address | Personal info → Email address | App Functionality for authentication. Account management only if the actual account relationship meets that purpose's definition. |
 | Generated enrolled device identifier | Identifiers → Device ID | Device or other IDs | App Functionality and securing trusted device access. Confirm server retention and identity linkage. |
 | API/account identifiers, tokens, public identity, device name and other operational records | Evaluate User ID or Other Data Types where the retained field meets the definition | Evaluate User IDs, Device or other IDs, or the applicable type | App Functionality. A credential is not proof of a particular label category; establish what recipients retain without recording credential values. |
-| Model search terms | Search History if collected under Apple's definition | App activity → In-app search history | App Functionality. Confirm Hugging Face handling; client source cannot establish ephemeral processing. |
+| Apple model search terms | Search History if collected under Apple's definition | No Android search transmission identified: its picker filters the bundled catalog locally | App Functionality. Confirm Hugging Face handling for Apple; do not copy this category into Android solely from shared documentation. |
+| Android explicitly submitted report excerpt, reason and note | Not part of this Apple candidate | App activity → Other user-generated content; Messages → Other in-app messages for submitted chat text | Optional, non-ephemeral collection for App Functionality and offensive-content review. Random per-report IDs are not account/device identifiers. |
 | IP addresses, traffic/connection records, support messages | Category follows actual use; Customer Support for retained support requests | Applicable ID, diagnostics, or content category follows actual use | Confirm recipients' logs and purposes. IP visibility alone does not establish location use or diagnostic collection. |
 
 Apple's [app privacy details](https://developer.apple.com/app-store/app-privacy-details/)
@@ -103,6 +104,36 @@ location, or deletion guarantee has been established here. Confirm the applicabl
 account agreement and provider practices before resolving those store answers.
 Self-hosted server/host retention, logs, backups, downstream providers and
 de-identification also depend on the operator and configuration.
+
+### Source-verified Android form preparation, 28 October
+
+At `281430c8582f532a7d82869b2f796d2a3e48a5af`, the reporting inbox establishes
+**Yes, data is collected**. Reports are optional and retained until the developer
+handles them; no ephemeral-processing claim applies. Direct provider messages,
+server-readable account email and enrolled device IDs also require their
+applicable collection declarations. Evaluate sharing exclusions per disclosed,
+user-initiated flow; collection and sharing are separate questions.
+
+**Encryption in transit: Yes** is supported for app-controlled off-device routes.
+Harness origins require HTTPS, including self-hosted origins, and its redirects
+are disabled. DeepSeek, reporting, release metadata and model downloads use HTTPS.
+Step 5 permits HTTP only to literal device loopback addresses (`127.0.0.1`/`::1`);
+other cleartext networking is blocked. This does not certify a user's server's
+downstream forwarding or retention.
+
+**Account creation: No** is supported by the actual Android experience. Harness
+asks for an account already configured by the server administrator, logs in and
+enrolls this device. It offers no account creation or external creation link.
+Device revocation and Disconnect are not account deletion. Google's
+[account-deletion trigger](https://support.google.com/googleplay/android-developer/answer/13327111?hl=en)
+therefore does not arise from this flow; no special self-hosted-server exemption
+is asserted. A deletion-request answer for collected reports can use the
+published support contact and receipt route when it is operational; local key
+removal does not delete provider records.
+
+These answers were prepared from source and official policy, not saved or
+published in Play Console. Apple recipient/retention determinations remain
+separate; Android has no identified Hugging Face search request to declare.
 
 ## 4. Disclosure, consent and AI safety verification
 

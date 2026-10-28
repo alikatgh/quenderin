@@ -790,6 +790,37 @@ build needs to *find* them is an absolute path in the gitignored properties file
 
 ---
 
+## 28 October 2026 — GitHub security evidence
+
+Main `3a2c96b303c735a43eca23e7312ebca0f5a15a5d` includes CodeQL, dependency
+review, grouped Dependabot security updates and the bounded trusted-main Android
+dependency submission job. Private vulnerability reporting, secret scanning,
+push protection and the main PR/check ruleset are enabled. The Android graph's
+actual generation/submission still requires its first successful main run;
+source configuration is not proof of transitive dependency coverage.
+
+The newly enabled Dependabot alerts expose 16 existing findings in
+`native/remote-host/runtime-fixture/package-lock.json` and two build-time UI
+parser findings. The fixture dependencies are outside native store artifacts.
+Its current hosted test runs use bounded synthetic input, a sanitized environment
+and disabled external networking. The critical Vitest advisory requires API/UI
+exposure absent from this test route; Tinypool additionally requires a separate
+prototype-pollution primitive not demonstrated here. High Vite exposure concerns
+a Windows editor path, while this fixture runs on Ubuntu. Zod validation executes
+with synthetic fixtures; no untrusted production request path was established.
+These limits do not clear the alerts or prove the packages universally safe.
+
+Dependabot PRs [205](https://github.com/alikatgh/quenderin/pull/205),
+[206](https://github.com/alikatgh/quenderin/pull/206) and
+[207](https://github.com/alikatgh/quenderin/pull/207) contain overlapping identical
+Vitest lock updates. [204](https://github.com/alikatgh/quenderin/pull/204) leaves
+18 nested vulnerable Zod copies. Each fixture update also needs both provenance
+inventories and the reviewed workflow lock digest refreshed. A separate coherent
+fixture repair must verify the full closure, schema compatibility, attribution,
+provenance and the existing hosted Host/runtime gate before merging. The two
+UI parser copies need their own UI build verification. No alert was dismissed
+and none of these unverified dependency updates was merged during this audit.
+
 ## Cross-references
 - `docs/SHIP_READINESS.md` — the full "needs you" ledger (questionnaires, accounts, the closed items).
 - `docs/DEVICE_VERIFICATION.md` — capture the real tok/s (incl. the CPU-vs-GPU A/B) before listing.

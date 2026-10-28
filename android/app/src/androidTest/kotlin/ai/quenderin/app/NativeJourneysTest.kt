@@ -4,7 +4,9 @@ import android.app.UiModeManager
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.os.Bundle
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -34,6 +36,8 @@ import org.junit.rules.RuleChain
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 import org.junit.runner.RunWith
+import java.io.PrintWriter
+import java.io.Writer
 
 /** Real Compose journeys with the existing DEBUG-only mock engine AND downloader.
  * The runner denies all guest IP egress before this class starts. No keys or provider actions.
@@ -117,7 +121,9 @@ class NativeJourneysTest {
         compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
         clickScrolled("settings.responses")
         awaitTag("settings.back")
+        logBackRouting("responses.before")
         back()
+        logBackRouting("responses.after")
         awaitSettingsRoot()
         // A hidden Chat Back handler must not consume Settings' subordinate-page return.
         compose.onNodeWithTag("nav.settings").assertIsSelected()
@@ -193,6 +199,46 @@ class NativeJourneysTest {
     private fun awaitTag(tag: String) = compose.awaitJourneyTag(tag)
     private fun clickScrolled(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun back() { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); compose.waitForIdle() }
+    private fun logBackRouting(phase: String) {
+        val record = StringBuilder("phase=$phase")
+        scenario!!.onActivity { activity ->
+            val decor = activity.window.decorView
+            val imeVisible = ViewCompat.getRootWindowInsets(decor)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            record.append(" uptimeMs=${SystemClock.uptimeMillis()} lifecycle=${activity.lifecycle.currentState}")
+                .append(" windowFocus=${decor.hasWindowFocus()} imeVisible=$imeVisible")
+                .append(" androidXEnabledCallbacks=${activity.onBackPressedDispatcher.hasEnabledCallbacks()}")
+            val fields = listOf("Top Callback:", "Callbacks:", "Callback:", "mLastProgress=",
+                "mTriggerBack=", "mIsPreCommitAnimationInProgress=", "mStartRootScrollY=",
+                "isBackAnimationAllowed=", "isAdjustPan=", "isHideAnimationInProgress=")
+            // Activity.dump is public. Android 15 delegates to ViewRootImpl.dump, whose
+            // Back/IME sections use println(String). Discard every other write immediately;
+            // neither the complete dump nor the view hierarchy is buffered or persisted.
+            val discard = object : Writer() {
+                override fun write(buffer: CharArray, offset: Int, count: Int) = Unit
+                override fun flush() = Unit
+                override fun close() = Unit
+            }
+            var routingSection = false
+            var truncated = false
+            object : PrintWriter(discard) {
+                override fun println(value: String?) {
+                    val line = value?.trim() ?: return
+                    if (line == "WindowOnBackDispatcher:" || line == "ImeBackAnimationController:") {
+                        routingSection = true
+                    } else if (!routingSection || (line != "<None>" && fields.none { line.startsWith(it) })) {
+                        routingSection = false
+                        return
+                    }
+                    val safe = line.take(512).map { if (it.code in 32..126) it else '?' }.joinToString("")
+                    if (record.length + safe.length + 3 <= 4_000) record.append(" | ").append(safe)
+                    else truncated = true
+                }
+            }.use { activity.dump("", null, it, emptyArray()) }
+            if (truncated) record.append(" | truncated=true")
+        }
+        check(record.toString().toByteArray(Charsets.UTF_8).size <= 4_096)
+        instrumentation.sendStatus(0, Bundle().apply { putString("quenderin.back.diagnostic", record.toString()) })
+    }
     private fun hideKeyboardIfVisible() {
         if (keyboardVisible()) {
             back()
