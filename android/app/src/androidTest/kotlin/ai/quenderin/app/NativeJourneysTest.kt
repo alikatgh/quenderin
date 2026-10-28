@@ -10,9 +10,11 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -124,7 +126,7 @@ class NativeJourneysTest {
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
         logBackRouting("peer.bar.after")
         compose.waitUntil(10_000) { !keyboardVisible() }
-        compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
+        assertHiddenComposerInactive()
         logBackRouting("responses.scroll.before")
         compose.onNodeWithTag("settings.responses").performScrollTo()
         logBackRouting("responses.click.before")
@@ -174,7 +176,7 @@ class NativeJourneysTest {
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
         logBackRouting("peer.rail.after")
         compose.waitUntil(10_000) { !keyboardVisible() }
-        compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
+        assertHiddenComposerInactive()
         awaitSettingsRoot()
         screenshot("07-settings-short-window.png")
         val chat = compose.onNodeWithTag("nav.chat").fetchSemanticsNode().boundsInRoot
@@ -201,6 +203,13 @@ class NativeJourneysTest {
         awaitTag("chat.composer")
     }
 
+    private fun assertHiddenComposerInactive() {
+        // Disabled editors may omit Focused because they are no longer focusable.
+        compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotEnabled()
+            .assert(SemanticsMatcher("Focused is absent or false") {
+                it.config.getOrNull(SemanticsProperties.Focused) != true
+            })
+    }
     private fun exists(tag: String): Boolean = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     private fun awaitSettingsRoot() {
         // Verify the actual root destination and that its retained layer does not disable it.
