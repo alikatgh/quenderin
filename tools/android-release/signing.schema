@@ -1,0 +1,9 @@
+# Public nonsecret, one-process signing schema. Never store actual values here.
+# @required @sensitive
+QUENDERIN_UPLOAD_KEYSTORE=
+# @required @sensitive
+QUENDERIN_UPLOAD_ALIAS=
+# @required @sensitive
+QUENDERIN_UPLOAD_STORE_PASSWORD=
+# @required @sensitive
+QUENDERIN_UPLOAD_KEY_PASSWORD=

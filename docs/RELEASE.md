@@ -4,6 +4,48 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 28 October 2026 — native 0.6.0 preparation
+
+The user authorized updated iOS, macOS and Android store submissions. Current
+foundation is main `b8ef18558dab1693c0baa666378dafd7c66a5f9a`; release changes
+are prepared on `codex/native-060-20261028`. Store drafts and source preparation
+are separate from signed archives, uploads and review submissions.
+
+Live console refresh in the established profiles:
+
+- Apple iOS and macOS **0.5.0 (22) Ready for Distribution**. Both **0.6.0**
+  drafts now show **Prepare for Submission**, with automatic release after
+  approval selected. The latest existing Cloud build is 22; source floor is 23.
+- Xcode Cloud's included 25-hour team allowance showed **16h22 used / 8h38
+  available**, resetting October 28 at 15:02 local. No plan was changed and no
+  release run has started. Recheck available capacity immediately before a run.
+- Google Play still has **2 (0.2.0)** active on **Closed testing - Alpha** and
+  a **5 (0.5.0)** draft without a new bundle. Source now targets **0.6.0 / 6**.
+  No new signed bundle has been uploaded.
+
+The release packaging changes require the pinned real remote-crypto SDK in the
+normal Prism/image packages, and verify final native payloads and provenance.
+Apple Cloud staging and signed-export checks fail closed when the SDK or its
+archive proof is missing or stale. Android export retains the main-source,
+version, digest, unsigned/draft and no-overwrite gates. The private upload key
+is still missing; the nonsecret Varlock-backed human signing command is in
+[tools/android-release](../tools/android-release/README.md). Do not repeat the
+previous broad key/password search or generate/reset an upload key implicitly.
+
+The [privacy policy source](legal/privacy-policy.md), matching HTML, Apple
+manifest and [store guidance](STORE_SUBMISSION.md) now distinguish local use
+from optional direct DeepSeek and configured server/Host destinations. Store
+copy is in [the 0.6.0 drafts](releases/2026-10-28-native-060/store-copy.md).
+The old OS-only encryption exemption assertion is removed; complete the exact
+artifact's export-compliance determination before distribution.
+
+Remaining release gates: current hosted and signed-artifact checks; changed
+native consent, credential persistence and rendered journeys; accurate live
+privacy declarations and public policy; Google in-app reporting compliance;
+and the existing Android signing key. The simulator/device prohibition remains
+in force pending the requested bounded Cloud-test exception. These gaps are
+not passing checks, and no 0.6.0 submission is established by this preparation.
+
 ## 23 October 2026 — native DeepSeek source preparation
 
 The reviewed `codex/native-connections-20261023` change adds a separate native DeepSeek
@@ -635,7 +677,9 @@ is optional. For each submission select **Automatically release this version**.
 - **Age rating:** **17+** (mature local-LLM output).
 - **App Review notes (Guideline 4.2):** explain the ordinary device-sized models and optional large models, "be on Wi-Fi," and
   that onboarding *is* the first-use experience by design (it's not an empty app).
-- **App privacy:** "Data Not Collected."
+- **App privacy:** reconcile the exact shipped destinations and third-party
+  processing with the current [store guidance](STORE_SUBMISSION.md); do not
+  reuse the historical blanket "Data Not Collected" answer for remote routes.
 
 ---
 

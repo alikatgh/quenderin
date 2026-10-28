@@ -13,9 +13,9 @@ for FILE in shared/prism-runtime.json shared/model-catalog.json scripts/verify_p
     echo "CI_PRIMARY_REPOSITORY_PATH is missing required Quenderin source: $FILE" >&2; exit 1
   fi
 done
-if [ "${CI:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
+if [ "${CI:-}" != "TRUE" ] || [ "${CI_XCODE_CLOUD:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
   echo "Cloud requires the explicit verified Prism release profile." >&2
   exit 1
 fi
 test "$(cat "$ROOT/apple/QuenderinKit/.quenderin-prism-release")" = prism
-python3 "$ROOT/scripts/verify_prism_apple_runtime.py" verify-framework
+python3 -B "$ROOT/scripts/verify_prism_apple_runtime.py" verify-release

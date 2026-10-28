@@ -13,6 +13,9 @@ options:
 packages:
   QuenderinKit:
     path: ../QuenderinKit
+fileGroups:
+  - TestPlans
+  - Tests/README.md
 targets:
   Quenderin:
     type: application
@@ -39,9 +42,9 @@ targets:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: NO
-        MARKETING_VERSION: "0.5.0"
+        MARKETING_VERSION: "0.6.0"
         # Candidate counter: verify the highest App Store Connect upload before archiving.
-        CURRENT_PROJECT_VERSION: 20
+        CURRENT_PROJECT_VERSION: 23
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
         # iPhone-only for the first release: the iPad layout is untested, and
@@ -57,7 +60,8 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        ITSAppUsesNonExemptEncryption: false
+        # The optional Host SDK includes published Noise/ChaChaPoly cryptography.
+        # Complete export compliance for the built artifact in App Store Connect.
         NSAppTransportSecurity:
           NSExceptionDomains:
             "127.0.0.1":
@@ -106,9 +110,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ai.quenderin.Quenderin
         PRODUCT_NAME: Quenderin
         ENABLE_HARDENED_RUNTIME: YES
-        MARKETING_VERSION: "0.5.0"
+        MARKETING_VERSION: "0.6.0"
         # Candidate counter: verify the highest App Store Connect upload before archiving.
-        CURRENT_PROJECT_VERSION: 20
+        CURRENT_PROJECT_VERSION: 23
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
     info:
@@ -118,8 +122,8 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.productivity
-        # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
-        ITSAppUsesNonExemptEncryption: false
+        # The optional Host SDK includes published Noise/ChaChaPoly cryptography.
+        # Complete export compliance for the built artifact in App Store Connect.
         NSAppTransportSecurity:
           NSExceptionDomains:
             "127.0.0.1":
@@ -151,6 +155,62 @@ targets:
         # at runtime: the in-app per-tool consent AND macOS's Automation prompt.
         com.apple.security.automation.apple-events: true
 
+  # Run credential integration inside the actual app process/sandbox. These are
+  # deliberately app-hosted unit tests, not Keychain checks in a UI runner.
+  QuenderinHostedTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: Tests/Hosted
+    dependencies:
+      - target: Quenderin
+      - package: QuenderinKit
+        product: QuenderinKit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEVELOPMENT_TEAM: 9M2B2P4KSA
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+
+  QuenderinMacHostedTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: Tests/Hosted
+    dependencies:
+      - target: QuenderinMac
+      - package: QuenderinKit
+        product: QuenderinKit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEVELOPMENT_TEAM: 9M2B2P4KSA
+        CODE_SIGN_STYLE: Automatic
+
+  QuenderinCloudUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: Tests/UI
+    dependencies:
+      - target: Quenderin
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEVELOPMENT_TEAM: 9M2B2P4KSA
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+
+  QuenderinMacCloudUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: Tests/UI
+    dependencies:
+      - target: QuenderinMac
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEVELOPMENT_TEAM: 9M2B2P4KSA
+        CODE_SIGN_STYLE: Automatic
+
 # Committed shared schemes make fresh-checkout Xcode Cloud discovery independent
 # of local Xcode user state. Release archive actions enforce the Prism profile.
 schemes:
@@ -158,15 +218,41 @@ schemes:
     build:
       targets:
         Quenderin: all
+        QuenderinHostedTests: [test]
+        QuenderinCloudUITests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      testPlans:
+        - path: TestPlans/Quenderin-iOS-Cloud.xctestplan
+          defaultPlan: true
+      targets:
+        - name: QuenderinHostedTests
+          parallelizable: false
+        - name: QuenderinCloudUITests
+          parallelizable: false
     archive:
       config: Release
   QuenderinMac:
     build:
       targets:
         QuenderinMac: all
+        QuenderinMacHostedTests: [test]
+        QuenderinMacCloudUITests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      testPlans:
+        - path: TestPlans/Quenderin-macOS-Cloud.xctestplan
+          defaultPlan: true
+      targets:
+        - name: QuenderinMacHostedTests
+          parallelizable: false
+        - name: QuenderinMacCloudUITests
+          parallelizable: false
     archive:
       config: Release

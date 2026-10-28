@@ -9,16 +9,21 @@ if [ ! -d "$CI_PRIMARY_REPOSITORY_PATH" ]; then
   echo "CI_PRIMARY_REPOSITORY_PATH checkout is unavailable." >&2; exit 1
 fi
 ROOT="$(cd "$CI_PRIMARY_REPOSITORY_PATH" && pwd -P)"
-for FILE in shared/prism-runtime.json shared/model-catalog.json scripts/verify_prism_apple_runtime.py apple/QuenderinKit/Package.swift apple/QuenderinApp/project.yml; do
+for FILE in shared/prism-runtime.json shared/model-catalog.json scripts/verify_prism_apple_runtime.py native/remote-crypto/tools/native_sdk.py apple/QuenderinKit/Package.swift apple/QuenderinApp/project.yml; do
   if [ ! -f "$ROOT/$FILE" ]; then
     echo "CI_PRIMARY_REPOSITORY_PATH is missing required Quenderin source: $FILE" >&2; exit 1
   fi
 done
-if [ "${CI:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
-  echo "Cloud archives require CI=TRUE and explicit QUENDERIN_RUNTIME=prism, without a local source override." >&2
+if [ "${CI:-}" != "TRUE" ] || [ "${CI_XCODE_CLOUD:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
+  echo "Cloud archives require CI=TRUE, CI_XCODE_CLOUD=TRUE and explicit QUENDERIN_RUNTIME=prism, without a local source override." >&2
   exit 1
 fi
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_UPGRADE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
+# Real locked SDK, five serial Apple targets; the builder validates Apple's
+# build/workspace context, enforces a 30-minute deadline and a 6 GiB allocation
+# ceiling with a 2 GiB free-space floor, and persists the receipt-bound requirement
+# before Xcode resolves Package.swift. GitHub environment values are never spoofed.
+python3 -B "$ROOT/native/remote-crypto/tools/native_sdk.py" stage-apple-cloud --sdk "$ROOT/apple/QuenderinKit/build/RemoteCryptoSDK"
 TOOLS="$ROOT/.quenderin-cloud-tools"
 if [ -e "$TOOLS" ] || [ -L "$TOOLS" ]; then
   echo "Preserve existing Cloud tool path; use a fresh checkout." >&2; exit 1

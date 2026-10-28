@@ -300,6 +300,139 @@ def release_profile(root: Path = ROOT) -> None:
     require(not os.environ.get("QUENDERIN_LLAMA_DIR"), "Release must use the verified cross-platform framework")
     require((root / "apple/QuenderinKit" / RELEASE_MARKER).read_text() == "prism\n",
             "Post-clone Prism release profile is missing")
+    verify_remote_sdk(root)
+
+
+def remote_runtime():
+    spec = importlib.util.spec_from_file_location("quenderin_remote_sdk", ROOT / "native/remote-crypto/tools/native_sdk.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def verify_remote_sdk(root: Path = ROOT) -> tuple[Path, dict]:
+    module = remote_runtime()
+    sdk = root / "apple/QuenderinKit/build/RemoteCryptoSDK"
+    contract = module.apple_link_contract(sdk)
+    marker = root / "apple/QuenderinKit" / module.APPLE_RELEASE_MARKER
+    require(not marker.is_symlink() and marker.read_text() == contract["receiptSha256"] + "\n",
+            "Post-clone remote crypto release profile is missing or stale")
+    return sdk, contract
+
+
+def remote_exports(binary: Path, contract: dict) -> dict:
+    """Inspect dyld exports, which are separate from the stripped symbol table.
+
+    Format and flags: Apple's xnu EXTERNAL_HEADERS/mach-o/loader.h. Required
+    symbols must be strong regular definitions in executable sections of this
+    image, never imports/reexports/absolute placeholders. The unique proof
+    definition must come from the receipt-bound static archive itself.
+    """
+    architectures = macho_payload(binary)
+    data = binary.read_bytes()
+    magic = struct.unpack_from(">I", data)[0]
+    offsets = [(0, len(data))]
+    if magic in (0xCAFEBABE, 0xCAFEBABF):
+        width = 32 if magic == 0xCAFEBABF else 20
+        fmt = ">IIQQII" if width == 32 else ">IIIII"
+        offsets = [(record[2], record[3]) for index in range(struct.unpack_from(">I", data, 4)[0])
+                   for record in [struct.unpack_from(fmt, data, 8 + index * width)]]
+    result = {}
+    required = set(contract["symbols"]) | {contract["proofSymbol"]}
+    for base, length in offsets:
+        header = struct.unpack_from("<IIIIIIII", data, base)
+        arch = {0x0100000C: "arm64", 0x01000007: "x86_64"}[header[1]]
+        cursor, end = base + 32, base + 32 + header[5]
+        ranges, text_address, executable = set(), None, []
+        for _ in range(header[4]):
+            command, size = struct.unpack_from("<II", data, cursor)
+            if command == 0x19:
+                require(size >= 72, "Invalid remote crypto Mach-O segment")
+                name, vmaddr, _, fileoff, _, _, protection = struct.unpack_from("<16sQQQQii", data, cursor + 8)
+                if name.rstrip(b"\0") == b"__TEXT" and fileoff == 0:
+                    text_address = vmaddr
+                count = struct.unpack_from("<I", data, cursor + 64)[0]
+                for index in range(count):
+                    section = cursor + 72 + index * 80
+                    address, size_bytes = struct.unpack_from("<QQ", data, section + 32)
+                    flags = struct.unpack_from("<I", data, section + 64)[0]
+                    if protection & 4 and flags & 0x80000400:
+                        executable.append((address, address + size_bytes))
+            elif command == 0x80000033:
+                require(size == 16, "Invalid remote crypto export command")
+                ranges.add(struct.unpack_from("<II", data, cursor + 8))
+            elif command in (0x22, 0x80000022):
+                require(size == 48, "Invalid remote crypto dyld command")
+                offset, amount = struct.unpack_from("<II", data, cursor + 40)
+                if amount:
+                    ranges.add((offset, amount))
+            cursor += size
+        require(cursor == end and len(ranges) == 1 and text_address is not None,
+                "Remote crypto linked exports are missing")
+        offset, amount = next(iter(ranges))
+        require(0 < amount <= 16 * 1024 ** 2 and offset + amount <= length,
+                "Remote crypto export trie exceeds bounds")
+        trie = data[base + offset:base + offset + amount]
+
+        def uleb(position):
+            value = 0
+            for shift in range(0, 64, 7):
+                require(position < len(trie), "Truncated remote crypto export trie")
+                byte = trie[position]
+                position += 1
+                require(shift < 63 or byte <= 1, "Oversized remote crypto export integer")
+                value |= (byte & 127) << shift
+                if byte < 128:
+                    return value, position
+            raise ValueError("Oversized remote crypto export integer")
+
+        found, pending, visits = {}, [("", 0, frozenset())], 0
+        while pending:
+            prefix, node, ancestors = pending.pop()
+            visits += 1
+            require(visits <= 100_000 and len(prefix) <= 2048 and len(ancestors) <= 256
+                    and node not in ancestors, "Cyclic or oversized remote crypto export trie")
+            terminal, position = uleb(node)
+            children = position + terminal
+            require(children < len(trie), "Truncated remote crypto export terminal")
+            if terminal and prefix in required:
+                flags, address_at = uleb(position)
+                address, after = uleb(address_at)
+                require(flags == 0 and after == children and prefix not in found
+                        and any(start <= text_address + address < finish for start, finish in executable),
+                        "Remote crypto export is not a linked executable definition")
+                found[prefix] = address
+            count, position = trie[children], children + 1
+            for _ in range(count):
+                terminator = trie.find(b"\0", position)
+                require(terminator > position and terminator - position <= 2048,
+                        "Invalid remote crypto export edge")
+                edge = trie[position:terminator].decode("utf-8")
+                child, position = uleb(terminator + 1)
+                pending.append((prefix + edge, child, ancestors | {node}))
+        require(set(found) == required, "App executable omits the verified remote crypto payload")
+        result[arch] = found
+    require(set(result) == set(architectures), "Remote crypto exports are missing an architecture")
+    return result
+
+
+def embed_remote_evidence(app: Path, target: str, root: Path = ROOT) -> None:
+    sdk, _ = verify_remote_sdk(root)
+    resources = app / "Contents/Resources" if target == "macos" else app
+    (resources / "quenderin-remote-sdk.json").write_bytes((sdk / "quenderin-remote-sdk.json").read_bytes())
+
+
+def verify_remote_app(app: Path, target: str, root: Path = ROOT) -> None:
+    sdk, contract = verify_remote_sdk(root)
+    contents = app / "Contents" if target == "macos" else app
+    resources = contents / "Resources" if target == "macos" else contents
+    require((resources / "quenderin-remote-sdk.json").read_bytes() == (sdk / "quenderin-remote-sdk.json").read_bytes(),
+            "Signed app remote crypto receipt differs from the verified SDK")
+    info = plistlib.loads((contents / "Info.plist").read_bytes())
+    executable = contents / ("MacOS/" + info["CFBundleExecutable"] if target == "macos" else info["CFBundleExecutable"])
+    exports = remote_exports(executable, contract)
+    require(set(exports) == ({"arm64", "x86_64"} if target == "macos" else {"arm64"}),
+            "Signed app remote crypto payload is missing release architectures")
 
 
 def embed_evidence(app: Path, target: str, stamp: dict, root: Path = ROOT) -> None:
@@ -309,6 +442,7 @@ def embed_evidence(app: Path, target: str, stamp: dict, root: Path = ROOT) -> No
     (resources / "quenderin-prism-release.json").write_text(json.dumps(stamp, indent=2, sort_keys=True) + "\n")
     (resources / "quenderin-model-catalog.json").write_bytes((root / "shared/model-catalog.json").read_bytes())
     embed_image_evidence(app, target, root)
+    embed_remote_evidence(app, target, root)
 
 
 def image_runtime():
@@ -378,6 +512,8 @@ def verify_app(app: Path, target: str, stamp: dict, root: Path = ROOT, signed: b
     else:
         embed_evidence(app, target, stamp, root)
     verify_image_app(app, target, root, signed)
+    if signed:
+        verify_remote_app(app, target, root)
     return {"platform": target, "version": info["CFBundleShortVersionString"], "build": str(info["CFBundleVersion"]),
             "architectures": sorted(payload), "runtimeRevision": stamp["revision"]}
 
@@ -629,7 +765,7 @@ def verify_distribution(export: Path, target: str, stamp: dict, root: Path = ROO
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("seal", "verify-framework", "activate", "verify-build", "verify-archive", "verify-distribution"))
+    parser.add_argument("command", choices=("seal", "verify-framework", "verify-release", "activate", "verify-build", "verify-archive", "verify-distribution"))
     parser.add_argument("--framework", type=Path, default=FRAMEWORK)
     parser.add_argument("--app", type=Path)
     parser.add_argument("--archive", type=Path)
@@ -643,10 +779,13 @@ def main() -> None:
         else:
             stamp = verify_framework(args.framework)
             result = {"verified": str(args.framework), "revision": stamp["revision"]}
-            if args.command == "activate":
+            if args.command == "verify-release":
+                release_profile()
+            elif args.command == "activate":
                 require(os.environ.get("QUENDERIN_RUNTIME") == "prism", "Cloud requires explicit QUENDERIN_RUNTIME=prism")
                 marker = ROOT / "apple/QuenderinKit" / RELEASE_MARKER
                 require(not marker.exists() and not marker.is_symlink(), "Preserve existing release profile marker")
+                verify_remote_sdk()
                 marker.write_text("prism\n")
             elif args.command in ("verify-build", "verify-archive", "verify-distribution"):
                 release_profile()

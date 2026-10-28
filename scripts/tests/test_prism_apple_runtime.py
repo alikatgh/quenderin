@@ -42,6 +42,137 @@ def fat(target, **kwargs):
     return struct.pack(">II", 0xCAFEBABE, 2) + struct.pack(">IIIII", 0x0100000C, 0, offset, len(arm), 0) + struct.pack(">IIIII", 0x01000007, 0, offset + len(arm), len(intel), 0) + arm + intel
 
 
+def uleb(value):
+    result = bytearray()
+    while True:
+        byte, value = value & 127, value >> 7
+        result.append(byte | (128 if value else 0))
+        if not value: return bytes(result)
+
+
+def remote_thin(arch, target, names, *, flags=0, outside_code=False, legacy=False):
+    """No LC_SYMTAB: the fixture is already stripped of every nlist symbol."""
+    cpu = {"arm64": 0x0100000C, "x86_64": 0x01000007}[arch]
+    commands_size = 152 + 24 + 24 + (48 if legacy else 16)
+    offset, code, vmaddr = 32 + commands_size, b"actual-static-crypto-code" * 16, 0x100000000
+    terminals = []
+    for index, name in enumerate(names):
+        address = offset + (len(code) if outside_code and name.startswith("_quenderin_remote_sdk_") else 0)
+        body = uleb(flags) + uleb(address)
+        terminals.append(uleb(len(body)) + body + b"\0")
+    root = b""
+    for _ in range(10):
+        cursor = len(root)
+        edges = []
+        for name, terminal in zip(names, terminals):
+            edges.append(name.encode() + b"\0" + uleb(cursor))
+            cursor += len(terminal)
+        candidate = b"\0" + bytes([len(names)]) + b"".join(edges)
+        if len(candidate) == len(root):
+            root = candidate
+            break
+        root = candidate
+    trie = root + b"".join(terminals)
+    segment = struct.pack("<II16sQQQQiiII", 0x19, 152, b"__TEXT", vmaddr, offset + len(code), 0, offset + len(code), 7, 5, 1, 0)
+    section = struct.pack("<16s16sQQIIIIIIII", b"__text", b"__TEXT", vmaddr + offset, len(code), offset, 0, 0, 0, 0x80000400, 0, 0, 0)
+    uuid = struct.pack("<II16s", 0x1B, 24, bytes([target]) * 16)
+    minimum = (13 << 16 | 3 << 8) if target == 1 else (16 << 16 | 4 << 8)
+    build = struct.pack("<IIIIII", 0x32, 24, target, minimum, minimum, 0)
+    exports = (struct.pack("<12I", 0x80000022, 48, 0, 0, 0, 0, 0, 0, 0, 0, offset + len(code), len(trie)) if legacy
+               else struct.pack("<IIII", 0x80000033, 16, offset + len(code), len(trie)))
+    header = struct.pack("<IIIIIIII", 0xFEEDFACF, cpu, 0, 2, 4, commands_size, 0, 0)
+    return header + segment + section + uuid + build + exports + code + trie
+
+
+class AppleRemotePackageTests(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        self.root = Path(self.scratch.name)
+        self.sdk = self.root / "sdk"
+        self.sdk.mkdir()
+        (self.sdk / "quenderin-remote-sdk.json").write_text('{"verified":"fixture receipt"}\n')
+        self.contract = {"symbols": ["_uniffi_real_derive_public_key", "_uniffi_real_encrypt"],
+                         "receiptSha256": prism.sha(self.sdk / "quenderin-remote-sdk.json")}
+        self.contract["proofSymbol"] = "_quenderin_remote_sdk_" + self.contract["receiptSha256"]
+        self.names = self.contract["symbols"] + [self.contract["proofSymbol"]]
+
+    def binary(self, names=None, **kwargs):
+        binary = self.root / "binary"
+        binary.write_bytes(remote_thin("arm64", 2, self.names if names is None else names, **kwargs))
+        return binary
+
+    def test_stripped_executable_proves_actual_exports_and_archive_identity(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                self.assertEqual(set(prism.remote_exports(self.binary(legacy=legacy), self.contract)), {"arm64"})
+
+    def test_omitted_payload_stale_archive_and_noncode_proof_rejected(self):
+        for names in ([], self.names[:-1], self.names[1:],
+                      self.contract["symbols"] + ["_quenderin_remote_sdk_" + "0" * 64]):
+            with self.subTest(names=names):
+                with self.assertRaisesRegex(ValueError, "omits the verified remote crypto payload"):
+                    prism.remote_exports(self.binary(names), self.contract)
+        with self.assertRaisesRegex(ValueError, "not a linked executable definition"):
+            prism.remote_exports(self.binary(outside_code=True), self.contract)
+
+    def test_import_reexport_absolute_and_weak_placeholders_cannot_prove_linkage(self):
+        for flags in (1, 2, 4, 8, 16):
+            with self.subTest(flags=flags):
+                with self.assertRaisesRegex(ValueError, "not a linked executable definition"):
+                    prism.remote_exports(self.binary(flags=flags), self.contract)
+
+    def test_missing_or_out_of_bounds_or_cyclic_export_metadata_is_rejected(self):
+        binary = self.binary()
+        valid = binary.read_bytes()
+        for mutation in ("missing", "bounds", "cycle"):
+            data = bytearray(valid)
+            command = 32 + 152 + 24 + 24
+            if mutation == "missing":
+                struct.pack_into("<I", data, command, 0x1D)
+            elif mutation == "bounds":
+                struct.pack_into("<I", data, command + 8, len(data) + 1)
+            else:
+                trie = struct.unpack_from("<I", data, command + 8)[0]
+                # Root is not terminal, edge "x" points back at root.
+                data[trie:trie + 5] = b"\0\1x\0\0"
+            binary.write_bytes(data)
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, "missing|bounds|Cyclic"):
+                prism.remote_exports(binary, self.contract)
+
+    def test_signed_app_requires_matching_embedded_receipt_and_all_release_architectures(self):
+        app = self.root / "Quenderin.app"
+        app.mkdir()
+        (app / "Info.plist").write_bytes(plistlib.dumps({"CFBundleExecutable": "Quenderin"}))
+        executable = app / "Quenderin"
+        executable.write_bytes(self.binary().read_bytes())
+        with patch.object(prism, "verify_remote_sdk", return_value=(self.sdk, self.contract)) as verified:
+            prism.embed_remote_evidence(app, "ios", self.root)
+            prism.verify_remote_app(app, "ios", self.root)
+            verified.assert_called_with(self.root)
+            evidence = app / "quenderin-remote-sdk.json"
+            evidence.write_text("{}")
+            with self.assertRaisesRegex(ValueError, "receipt differs"):
+                prism.verify_remote_app(app, "ios", self.root)
+            evidence.unlink()
+            with self.assertRaises(FileNotFoundError): prism.verify_remote_app(app, "ios", self.root)
+            prism.embed_remote_evidence(app, "ios", self.root)
+            executable.write_bytes(self.binary(self.names[:-1]).read_bytes())
+            with self.assertRaisesRegex(ValueError, "omits"):
+                prism.verify_remote_app(app, "ios", self.root)
+
+    def test_mac_requires_crypto_in_both_architectures(self):
+        arm = remote_thin("arm64", 1, self.names)
+        intel = remote_thin("x86_64", 1, self.names[:-1])
+        offset = 8 + 2 * 20
+        binary = self.root / "universal"
+        binary.write_bytes(struct.pack(">II", 0xCAFEBABE, 2)
+                           + struct.pack(">IIIII", 0x0100000C, 0, offset, len(arm), 0)
+                           + struct.pack(">IIIII", 0x01000007, 0, offset + len(arm), len(intel), 0) + arm + intel)
+        with self.assertRaisesRegex(ValueError, "omits"):
+            prism.remote_exports(binary, self.contract)
+
+
 def cpio_fixture(entries):
     data = bytearray()
     for inode, (name, mode, content) in enumerate(entries + [("TRAILER!!!", 0, b"")]):
@@ -77,7 +208,7 @@ class ApplePrismTests(unittest.TestCase):
     def setUp(self):
         # Image artifact guards have their own real Mach-O fixture suite. Keep
         # text/source-recovery fixtures independent of that second framework.
-        for name in ('embed_image_evidence', 'verify_image_app'):
+        for name in ('embed_image_evidence', 'verify_image_app', 'embed_remote_evidence', 'verify_remote_app', 'verify_remote_sdk'):
             mock = patch.object(prism, name, return_value={})
             mock.start(); self.addCleanup(mock.stop)
         self.scratch = tempfile.TemporaryDirectory(prefix="apple-prism-test-")
@@ -287,6 +418,8 @@ class ApplePrismTests(unittest.TestCase):
             result = prism.verify_app(app, "ios", stamp, self.root, signed=True)
             self.assertEqual(result["architectures"], ["arm64"])
             prism.verify_image_app.assert_called_with(app, 'ios', self.root, True)
+            prism.verify_remote_app.assert_called_with(app, 'ios', self.root)
+            prism.embed_remote_evidence.assert_called_with(app, 'ios', self.root)
             (contents / "quenderin-model-catalog.json").write_text("{}")
             with self.assertRaisesRegex(ValueError, "Archive catalog"):
                 prism.verify_app(app, "ios", stamp, self.root, signed=True)
@@ -629,8 +762,11 @@ class ApplePrismTests(unittest.TestCase):
         (self.root / "apple/QuenderinKit/Package.swift").write_text("// fixture package")
         (self.root / "apple/QuenderinApp/project.yml").write_text("name: Fixture")
         (self.root / "scripts/verify_prism_apple_runtime.py").write_text("import sys; print('REPOSITORY_VERIFIER', ' '.join(sys.argv[1:]))")
+        native_tools = self.root / "native/remote-crypto/tools"
+        native_tools.mkdir(parents=True)
+        (native_tools / "native_sdk.py").write_text("# fixture native verifier")
         (self.root / "apple/QuenderinKit/.quenderin-prism-release").write_text("prism\n")
-        env = os.environ | {"CI": "TRUE", "QUENDERIN_RUNTIME": "prism", "QUENDERIN_LLAMA_DIR": "",
+        env = os.environ | {"CI": "TRUE", "CI_XCODE_CLOUD": "TRUE", "QUENDERIN_RUNTIME": "prism", "QUENDERIN_LLAMA_DIR": "",
                             "CI_PRIMARY_REPOSITORY_PATH": str(self.root), "CI_XCODEBUILD_ACTION": "archive",
                             "CI_XCODEBUILD_EXIT_CODE": "0", "CI_PRODUCT_PLATFORM": "iOS", "CI_ARCHIVE_PATH": str(self.root / "adhoc.xcarchive"),
                             "CI_APP_STORE_SIGNED_APP_PATH": str(self.root / "signed export")}
@@ -638,7 +774,7 @@ class ApplePrismTests(unittest.TestCase):
                                env=env | {"QUENDERIN_RUNTIME": "standard"}, capture_output=True, text=True)
         self.assertNotEqual(clone.returncode, 0)
         self.assertIn("explicit QUENDERIN_RUNTIME=prism", clone.stderr)
-        for name, command in (("ci_pre_xcodebuild.sh", "verify-framework"), ("ci_post_xcodebuild.sh", "verify-distribution")):
+        for name, command in (("ci_pre_xcodebuild.sh", "verify-release"), ("ci_post_xcodebuild.sh", "verify-distribution")):
             with self.subTest(hook=name):
                 result = subprocess.run(["bash", str(isolated / name)], cwd=isolated, env=env, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)

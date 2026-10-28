@@ -71,8 +71,8 @@ android {
         applicationId = "ai.quenderin.app"
         minSdk = 28
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.5.0"
+        versionCode = 6
+        versionName = "0.6.0"
 
         if (nativeRemoteCrypto) ndk { abiFilters += listOf("arm64-v8a") }
         
@@ -164,6 +164,9 @@ gradle.taskGraph.whenReady {
     }
     if (releaseTasks.isNotEmpty() && runtimeName == "prism" && diffusionLibDir == null) {
         throw GradleException("This release requires the verified isolated image runtime; prepare it with scripts/build_android_diffusion.sh and pass -Pquenderin.diffusionLibDir.")
+    }
+    if (releaseTasks.isNotEmpty() && runtimeName == "prism" && !nativeRemoteCrypto) {
+        throw GradleException("This release requires the verified Noise/JNA SDK; prepare it with native/remote-crypto/tools/native_sdk.py and pass -Pquenderin.remoteCryptoDir.")
     }
     if (releaseTasks.isNotEmpty() && !nativeLlama) {
         val allow = project.findProperty("quenderin.allowMockRelease")?.toString() == "true"
