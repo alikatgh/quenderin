@@ -58,7 +58,7 @@ final class CloudCredentialStoreTests: XCTestCase {
         XCTAssertNoThrow(try store.remove(reference: reference))
     }
 
-    func testDeepSeekLoadsAndUpdatesOlderAccessibilityVariant() throws {
+    func testDeepSeekLoadsAndUpdatesPreexistingItem() throws {
         let reference = "qcred:" + UUID().uuidString
         let item = identity(service: "org.quenderin.deepseek", account: reference)
         try requireAbsent(item)
@@ -83,8 +83,14 @@ final class CloudCredentialStoreTests: XCTestCase {
         var result: CFTypeRef?
         XCTAssertEqual(SecItemCopyMatching(query as CFDictionary, &result), errSecSuccess)
         let attributes = try XCTUnwrap(result as? [String: Any])
+        XCTAssertEqual(attributes[kSecAttrAccount as String] as? String, reference)
+        #if !os(macOS)
+        // The legacy macOS Keychain does not support kSecAttrAccessible without
+        // data-protection or synchronization enabled. Keep its existing identity
+        // and verify CRUD above; iOS additionally verifies accessibility migration.
         XCTAssertEqual(attributes[kSecAttrAccessible as String] as? String,
                        kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        #endif
         try store.remove(reference: reference)
         try requireAbsent(item)
     }

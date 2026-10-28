@@ -73,6 +73,7 @@ final class CloudJourneyTests: XCTestCase {
         require(connect)
         let consent = deepSeekConsentControl
         require(consent)
+        XCTAssertEqual(consent.label, deepSeekConsent)
         XCTAssertEqual(consent.value as? String, "0", "Provider validation consent must start off")
         XCTAssertFalse(connect.isEnabled)
         capture("04-deepseek-consent-default-off")
@@ -130,11 +131,7 @@ final class CloudJourneyTests: XCTestCase {
     }
 
     @MainActor private var deepSeekConsentControl: XCUIElement {
-        #if os(macOS)
-        return app.checkBoxes[deepSeekConsent]
-        #else
-        return app.switches[deepSeekConsent]
-        #endif
+        app.switches["deepseek-validation-consent"]
     }
 
     @MainActor private func checkDraftSurvivesDestinationNavigation() {
@@ -158,8 +155,9 @@ final class CloudJourneyTests: XCTestCase {
         let main = app.windows.containing(.textField, identifier: "Message").firstMatch
         require(main)
         app.typeKey(",", modifierFlags: .command)
-        let settings = app.windows.containing(.checkBox, identifier: "Automatic model selection").firstMatch
+        let settings = app.windows.containing(.switch, identifier: "automatic-model-selection").firstMatch
         require(settings, "The standard Settings command must open a usable settings window")
+        XCTAssertEqual(settings.switches["automatic-model-selection"].label, "Automatic model selection")
         capture("11-mac-main-and-settings")
         tap(main.buttons[XCUIIdentifierCloseWindow])
         requireGone(main)
@@ -223,11 +221,12 @@ final class CloudJourneyTests: XCTestCase {
         // The native TabView exposes destinations beyond its first four through More.
         tap(app.tabBars.buttons["More"])
         tap(app.staticTexts["Settings"])
-        let automatic = app.switches["Automatic model selection"]
+        let automatic = app.switches["automatic-model-selection"]
         for _ in 0..<5 where !automatic.exists || !automatic.isHittable {
             app.swipeUp()
         }
         require(automatic)
+        XCTAssertEqual(automatic.label, "Automatic model selection")
         capture("11-iphone-settings")
         tap(app.tabBars.buttons["Chat"])
         require(app.textFields["Message"])
