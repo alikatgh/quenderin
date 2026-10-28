@@ -51,6 +51,8 @@ class NativeJourneysTest {
     private var scenario: ActivityScenario<MainActivity>? = null
     private val watcher = object : TestWatcher() {
         override fun failed(error: Throwable, description: Description) {
+            runCatching { logBackRouting("journey.failure") }
+                .onFailure { println("UI_FAILURE_DIAGNOSTIC_UNAVAILABLE ${it.javaClass.simpleName}") }
             runCatching { screenshot("08-failure.png", settle = false) }
                 .onFailure { println("UI_FAILURE_SCREENSHOT_UNAVAILABLE ${it.javaClass.simpleName}") }
         }
@@ -116,7 +118,9 @@ class NativeJourneysTest {
 
         compose.onNodeWithTag("chat.composer").performClick().performTextInput("Keep this local draft")
         compose.waitUntil(10_000) { keyboardVisible() }
+        logBackRouting("peer.bar.before")
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
+        logBackRouting("peer.bar.after")
         compose.waitUntil(10_000) { !keyboardVisible() }
         compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
         clickScrolled("settings.responses")
@@ -161,7 +165,9 @@ class NativeJourneysTest {
         enterMockChat()
         compose.onNodeWithTag("chat.composer").performClick().performTextInput("A rail keyboard draft")
         compose.waitUntil(10_000) { keyboardVisible() }
+        logBackRouting("peer.rail.before")
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()
+        logBackRouting("peer.rail.after")
         compose.waitUntil(10_000) { !keyboardVisible() }
         compose.onNodeWithTag("chat.composer", useUnmergedTree = true).assertIsNotFocused()
         awaitSettingsRoot()

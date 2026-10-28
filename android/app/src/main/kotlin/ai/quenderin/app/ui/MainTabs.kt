@@ -29,6 +29,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,9 +79,12 @@ fun MainTabs(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     fun selectTab(next: Int) {
         if (tab != next) {
-            // Retained inputs must release their IME session before becoming invisible.
+            // Dismiss the IME while the departing input is still active, then release focus
+            // before its retained destination becomes invisible.
+            keyboardController?.hide()
             focusManager.clearFocus(force = true)
             tab = next
         }
