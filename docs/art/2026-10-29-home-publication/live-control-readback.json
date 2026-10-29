@@ -1,0 +1,34 @@
+{
+  "checkedAtUtc": "2026-10-28T23:35:11.327Z",
+  "officialWrangler": "4.154.0",
+  "auth": "Existing opaque OAuth loaded and used in-process by official Wrangler; no credential access/output by task code",
+  "activeDeploymentId": "eaf3ed8e-1521-4e3f-8bf7-d9c152f576e6",
+  "activeVersionId": "5a99f7ff-2d6b-4886-a02d-cb94295e11bb",
+  "trafficPercent": 100,
+  "readRequests": 6,
+  "modules": [
+    {
+      "name": "site.js",
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    }
+  ],
+  "moduleExact": true,
+  "fullResourcesEqual": true,
+  "scriptETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+  "bindings": [
+    {
+      "name": "ASSETS",
+      "type": "assets"
+    }
+  ],
+  "usageModel": "standard",
+  "settingsSaved": true,
+  "subdomain": {
+    "enabled": true,
+    "previews_enabled": true
+  },
+  "schedules": {
+    "schedules": []
+  }
+}

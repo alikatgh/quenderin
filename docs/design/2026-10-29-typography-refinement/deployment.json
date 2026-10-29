@@ -1,0 +1,98 @@
+{
+  "dateLocal": "2026-10-29",
+  "timezone": "Asia/Ulaanbaatar",
+  "site": "https://quenderin.org",
+  "provider": {
+    "name": "Cloudflare",
+    "account": "wallmarketshq",
+    "accountId": "4c1e57b6972105286a7aeb46b2b89c78",
+    "service": "Worker quenderin",
+    "authStatus": "Existing OAuth verified read-only; no new permissions or credential values recorded.",
+    "planEvidence": "Fresh subscription API read returned 403; standard usage model and unchanged runtime were verified. Earlier Workers Free/$0 browser evidence is dated 2026-10-28.",
+    "costScope": "Only existing static CSS/HTML assets changed. Static requests/storage remain the existing asset-first path; no new Worker/API behavior, job, resource, plan, quota or billing change.",
+    "staticAssetPricingSource": "https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/"
+  },
+  "deployment": {
+    "id": "252bed44-ed0f-4a73-81b6-531d5f4266e4",
+    "versionId": "23b86e0a-72bc-408d-b069-d7e4b1f4c3c1",
+    "trafficPercent": 100,
+    "verifiedAtUtc": "2026-10-28T23:15:43.499Z",
+    "baselineDeploymentId": "eca749c9-3e8b-4163-b7e4-1dee217fbc67",
+    "baselineVersionId": "7b93016f-c63e-4f66-85dd-e53385fa37b7",
+    "tool": "Official Wrangler 4.154.0",
+    "changedAssetsUploaded": 4,
+    "unchangedAssetsReused": 128,
+    "nonVersionedSettingsSynced": false
+  },
+  "source": {
+    "baseCommit": "3145bce8916574ae4d3c13b75408e691a3181588",
+    "branch": "codex/website-visual-polish-20261028",
+    "committed": false,
+    "pushed": false,
+    "artifactFiles": 133,
+    "artifactBytes": 7722616,
+    "artifactAggregateSha256": "77b8e1baa7286d303217e0c806f61ea27871609cb328d098bfcd705acaebc7c0",
+    "aggregateMethod": "UTF-8 path byte order; website/path + NUL + content bytes + NUL.",
+    "configSha256": "6bb1cb78916b7cb94386627b4bce8414ba182cde7d7d4dabaf640867e01e4b18",
+    "scope": "Frozen public snapshot with three CSS refinements and one reality.html inline headline clamp correction. No copy/link changes, no added fonts/files. All 127 unchanged baseline assets, current privacy, existing blog illustrations and font assets preserved. Unrelated local header/artwork changes were excluded."
+  },
+  "typography": {
+    "headingFamily": "Ysabeau Office retained",
+    "headlineSizeChange": "8% increase on requested headline rules and reality inline h1",
+    "headlineWeight": 700,
+    "bodyStack": [
+      "Helvetica Neue",
+      "Helvetica",
+      "Arial",
+      "sans-serif"
+    ],
+    "newFontDownloads": 0
+  },
+  "verification": {
+    "independentReview": "PASS after fixing the reality.html inline h1 override; final four-file artifact and all 127 unchanged baseline assets verified.",
+    "targetedNodeTests": {
+      "passed": 23,
+      "failed": 0
+    },
+    "gitDiffCheck": "PASS, primary reported.",
+    "secretScan": "PASS on the exact final frozen artifact.",
+    "officialWranglerDryRun": "PASS; emitted 7992-byte site.js exactly matched live SHA256.",
+    "candidateGuards": "Reviewed aggregate, exact module/config, current deployment, full resource and Worker-settings parity passed before promotion.",
+    "liveChecks": {
+      "assetsPassed": 132,
+      "assetsChecked": 132,
+      "workerModuleExact": true,
+      "fullResourcesEqual": true,
+      "workerSettingsEqual": true,
+      "apiGet200Valid": true,
+      "apiPost405": true
+    },
+    "independentLiveAssetCheck": "Primary independently fetched all four owned assets: HTTP 200 and exact hashes.",
+    "renderedPreview": "Primary passed desktop/mobile English, mobile Russian, article and reality: expected hierarchy/body stack, no overflow.",
+    "renderedProduction": "Primary accepted desktop 1440x1000 (h1 86.4px / 700), mobile 390x844 (h1 51.84px / 700), Helvetica/Arial body stack and no overflow. See parent-owned rendered-checks.json and selected JPEGs."
+  },
+  "rollback": {
+    "versionId": "7b93016f-c63e-4f66-85dd-e53385fa37b7",
+    "route": "Cloudflare dashboard > Workers & Pages > quenderin > Deployments: restore baseline version at 100%, after confirming this refinement remains current.",
+    "officialCliCommand": "wrangler versions deploy 7b93016f-c63e-4f66-85dd-e53385fa37b7@100 --name quenderin --yes",
+    "dataMigrationRequired": false,
+    "status": "Not needed; live checks and independent visual verification passed."
+  },
+  "cleanup": {
+    "deployerToolkitRemoved": true,
+    "toolkitApparentBytesRemoved": 219466999,
+    "toolkitAllocatedBytesRemoved": 224497664,
+    "installCacheApparentBytesRemoved": 194333299,
+    "installCacheAllocatedBytesRemoved": 195215360,
+    "totalDeployerApparentBytesRemoved": 413800298,
+    "totalDeployerAllocatedBytesRemoved": 419713024,
+    "allocationGuard": "600 MB scratch cap, three-minute install deadline, 1 GB free-space stop; no stop triggered.",
+    "toolkitPathRemoved": "/private/tmp/codex-session-storage/1be5fa6f5f247789fa2772d7/b0da92de7fe24dafb81c57102cae1342",
+    "parentArtifactOwnership": "Primary owns 5b570512ba03447faf4f69390f15fcc8; deployer no longer needs it and did not delete it.",
+    "sourceCssHtmlFontsPreserved": true,
+    "providerRollbackVersionRetained": "7b93016f-c63e-4f66-85dd-e53385fa37b7",
+    "volumeFreeBytesAfter": 8953675776,
+    "swapAllocatedBytesAfter": 6442450944,
+    "volumeAttribution": "Volume-wide free-space changes include concurrent activity and APFS effects; only exact removed paths are measured as task cleanup."
+  }
+}

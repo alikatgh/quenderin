@@ -1,0 +1,23 @@
+{
+  "checkedAtUtc": "2026-10-28T23:29:23.134153+00:00",
+  "versionId": "5a99f7ff-2d6b-4886-a02d-cb94295e11bb",
+  "previewUrl": "https://5a99f7ff-quenderin.wallmarketshq.workers.dev",
+  "websiteAggregateSha256": "fc060b272f783a78cacc25502b7b6d177819a279fd903f462c552590d92c70a7",
+  "checks": {
+    "fullResourcesEqual": true,
+    "operationalWorkerSettingsEqual": true,
+    "rawWorkerSettingsEqual": false,
+    "expectedVersionProvenanceAnnotationsOnly": true,
+    "scriptETagEqual": true,
+    "subdomainEqual": true,
+    "schedulesEqual": true,
+    "activeDeploymentUnchanged": true,
+    "activeVersionUnchanged": true
+  },
+  "settingsDifference": {
+    "annotations": "Expected version-specific message changed and previous version-specific workers/tag annotation absent; grouping tags remain[] byte-for-byte."
+  },
+  "activeVersionId": "23b86e0a-72bc-408d-b069-d7e4b1f4c3c1",
+  "trafficPercent": 100,
+  "activation": false
+}
