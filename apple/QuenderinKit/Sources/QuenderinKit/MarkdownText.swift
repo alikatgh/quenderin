@@ -57,6 +57,13 @@ private func cachedBlocks(_ text: String) -> [MdBlock] {
     return parsed
 }
 
+/// The same text rendered by the blocks, without Markdown delimiters or link destinations.
+/// Code stays literal; this reads presented content, never an engine transcript.
+@MainActor
+func markdownPresentedText(_ text: String) -> String {
+    cachedBlocks(text).map(\.presentedText).filter { !$0.isEmpty }.joined(separator: "\n\n")
+}
+
 // ── Blocks (inline runs pre-parsed to AttributedString at PARSE time, not render time) ──────────
 
 private enum MdBlock {
@@ -66,6 +73,21 @@ private enum MdBlock {
     case list(items: [AttributedString], ordered: Bool, start: Int)
     case quote(AttributedString)
     case rule
+
+    var presentedText: String {
+        switch self {
+        case let .heading(_, text), let .paragraph(text), let .quote(text):
+            return String(text.characters)
+        case let .code(raw, _, _):
+            return raw
+        case let .list(items, ordered, start):
+            return items.enumerated().map { index, text in
+                "\(ordered ? "\(start + index)." : "•") \(String(text.characters))"
+            }.joined(separator: "\n")
+        case .rule:
+            return ""
+        }
+    }
 
     @ViewBuilder func view(color: Color, wrapsCode: Bool, codeTextStyle: Font.TextStyle, showsCodeCopyButton: Bool) -> some View {
         switch self {
