@@ -10,6 +10,8 @@ import android.text.format.DateUtils
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +26,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,14 +77,10 @@ fun ConversationListScreen(
             )
             // New chat — a filled circular "+" (WhatsApp's compose button).
             val newChat = stringResource(R.string.chat_new)
-            Box(
-                Modifier
-                    .size(44.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .semantics { contentDescription = newChat }
-                    .combinedClickable(onClick = onNew, onLongClick = {}),
-                contentAlignment = Alignment.Center,
-            ) { PlusIcon(MaterialTheme.colorScheme.onPrimary) }
+            FilledIconButton(onClick = onNew,
+                modifier = Modifier.size(48.dp).testTag("chats.new").semantics { contentDescription = newChat }) {
+                PlusIcon(MaterialTheme.colorScheme.onPrimary)
+            }
         }
 
         if (summaries.isEmpty()) {
@@ -88,6 +89,7 @@ fun ConversationListScreen(
             LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
                 items(summaries, key = { it.id }) { summary ->
                     ConversationRow(summary, onOpen = { onOpen(summary.id) }, onDelete = { onDelete(summary.id) })
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         }
@@ -97,6 +99,7 @@ fun ConversationListScreen(
 @Composable
 private fun ConversationRow(summary: ConversationSummary, onOpen: () -> Unit, onDelete: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
+    val moreOptions = stringResource(R.string.chat_more_options)
     Box {
         Row(
             Modifier
@@ -105,15 +108,13 @@ private fun ConversationRow(summary: ConversationSummary, onOpen: () -> Unit, on
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ModelAvatar(size = 48.dp)
-            Spacer(Modifier.width(12.dp))
-            // WhatsApp row anatomy: title over the last-message snippet, time in the top corner.
+            // Session title and content carry recognition; the timestamp stays subordinate.
             Column(Modifier.weight(1f)) {
                 Text(
                     summary.title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (summary.preview.isNotEmpty()) {
@@ -121,17 +122,17 @@ private fun ConversationRow(summary: ConversationSummary, onOpen: () -> Unit, on
                         summary.preview,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                Text(relativeTime(summary.updatedAt), style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
             }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                relativeTime(summary.updatedAt),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(48.dp)
+                .semantics { contentDescription = "${summary.title}: $moreOptions" }) {
+                Text("⋮", style = MaterialTheme.typography.titleLarge)
+            }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
@@ -145,7 +146,7 @@ private fun ConversationRow(summary: ConversationSummary, onOpen: () -> Unit, on
 @Composable
 private fun EmptyConversationList(model: ModelEntry, modifier: Modifier, onNew: () -> Unit) {
     Column(
-        modifier.fillMaxWidth().padding(32.dp),
+        modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -165,16 +166,10 @@ private fun EmptyConversationList(model: ModelEntry, modifier: Modifier, onNew: 
             modifier = Modifier.widthIn(max = 280.dp),
         )
         Spacer(Modifier.height(20.dp))
-        Row(
-            Modifier
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                .combinedClickable(onClick = onNew, onLongClick = {})
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) {
             PlusIcon(MaterialTheme.colorScheme.onPrimary)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.chat_new), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.chat_new))
         }
     }
 }

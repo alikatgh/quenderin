@@ -50,6 +50,7 @@ computer; the native client is not local ADB or autonomous phone control.
 | Remote Harness sessions | Task text, session/command IDs, time-zone context, model choices and approval decisions through Noise to the verified computer. Computer returns workspace/session/history/tool/bot data and may use its own providers/tools. | User selects and trusts computer; tasks execute there. Separate saved drafts/history/recovery records. Foreground recovery may reconnect; Disconnect disables it but keeps records and authorization and does not stop a running task or erase remote copies. |
 | Step 5 | Current text and prior messages in its separate conversation to configured host. Backend check sends no conversation. | Consent plus Send; endpoint and conversation stay in memory. Clear does not erase host copies. HTTPS or literal-loopback HTTP is allowed; an external tunnel/proxy's security must be verified separately. |
 | Model/network metadata | Selected public file and optional search term to Hugging Face; release-catalog request to `quenderin.org`; ordinary request metadata visible to recipients. | No conversation attached. Release metadata is cached locally. Recipient logging/retention is not established by client source. |
+| Android in-app content report, in versions with the Report control | User-selected editable excerpt, reason, optional note, source feature, random report ID, platform and app version to the developer's Google Apps Script inbox. The inbox adds receipt ID and received time; Google also processes ordinary connection information. | Explicit Send report. No automatic whole-conversation, attachment, memory, API-key or diagnostics upload, and no account/device ID in the report. Developer manually reviews stored reports; no automatic expiry. Access/correction/deletion requests use the existing support contact. Receiver is deployed and synthetic-verified; Android integration and hosted runtime verification remain pending. |
 | Support/report email | Content the user sends and normal email sender/delivery information to the existing support mailbox. | `mailto:` prepares a message in another app; opening it does not establish a submitted report. |
 
 Trace references: Apple `DeepSeekView.swift`, `DeepSeekController.swift`,
@@ -76,7 +77,8 @@ collected or shared” answers.
 | Server account email | Contact Info → Email Address | Personal info → Email address | App Functionality for authentication. Account management only if the actual account relationship meets that purpose's definition. |
 | Generated enrolled device identifier | Identifiers → Device ID | Device or other IDs | App Functionality and securing trusted device access. Confirm server retention and identity linkage. |
 | API/account identifiers, tokens, public identity, device name and other operational records | Evaluate User ID or Other Data Types where the retained field meets the definition | Evaluate User IDs, Device or other IDs, or the applicable type | App Functionality. A credential is not proof of a particular label category; establish what recipients retain without recording credential values. |
-| Model search terms | Search History if collected under Apple's definition | App activity → In-app search history | App Functionality. Confirm Hugging Face handling; client source cannot establish ephemeral processing. |
+| Apple model search terms | Search History if collected under Apple's definition | No Android search transmission identified: its picker filters the bundled catalog locally | App Functionality. Confirm Hugging Face handling for Apple; do not copy this category into Android solely from shared documentation. |
+| Android explicitly submitted report excerpt, reason and note | Not part of this Apple candidate | App activity → Other user-generated content; Messages → Other in-app messages for submitted chat text | Optional, non-ephemeral collection for App Functionality and offensive-content review. Random per-report IDs are not account/device identifiers. |
 | IP addresses, traffic/connection records, support messages | Category follows actual use; Customer Support for retained support requests | Applicable ID, diagnostics, or content category follows actual use | Confirm recipients' logs and purposes. IP visibility alone does not establish location use or diagnostic collection. |
 
 Apple's [app privacy details](https://developer.apple.com/app-store/app-privacy-details/)
@@ -103,6 +105,36 @@ account agreement and provider practices before resolving those store answers.
 Self-hosted server/host retention, logs, backups, downstream providers and
 de-identification also depend on the operator and configuration.
 
+### Source-verified Android form preparation, 28 October
+
+At `281430c8582f532a7d82869b2f796d2a3e48a5af`, the reporting inbox establishes
+**Yes, data is collected**. Reports are optional and retained until the developer
+handles them; no ephemeral-processing claim applies. Direct provider messages,
+server-readable account email and enrolled device IDs also require their
+applicable collection declarations. Evaluate sharing exclusions per disclosed,
+user-initiated flow; collection and sharing are separate questions.
+
+**Encryption in transit: Yes** is supported for app-controlled off-device routes.
+Harness origins require HTTPS, including self-hosted origins, and its redirects
+are disabled. DeepSeek, reporting, release metadata and model downloads use HTTPS.
+Step 5 permits HTTP only to literal device loopback addresses (`127.0.0.1`/`::1`);
+other cleartext networking is blocked. This does not certify a user's server's
+downstream forwarding or retention.
+
+**Account creation: No** is supported by the actual Android experience. Harness
+asks for an account already configured by the server administrator, logs in and
+enrolls this device. It offers no account creation or external creation link.
+Device revocation and Disconnect are not account deletion. Google's
+[account-deletion trigger](https://support.google.com/googleplay/android-developer/answer/13327111?hl=en)
+therefore does not arise from this flow; no special self-hosted-server exemption
+is asserted. A deletion-request answer for collected reports can use the
+published support contact and receipt route when it is operational; local key
+removal does not delete provider records.
+
+These answers were prepared from source and official policy, not saved or
+published in Play Console. Apple recipient/retention determinations remain
+separate; Android has no identified Hugging Face search request to declare.
+
 ## 4. Disclosure, consent and AI safety verification
 
 - [ ] Verify destination/data disclosure before each relevant first transmission:
@@ -117,11 +149,19 @@ de-identification also depend on the operator and configuration.
       affirmative consent wherever its prominent-disclosure rule applies.
 - [ ] Verify reporting and restricted-content handling across **all** AI surfaces.
       Google's [AI-Generated Content policy](https://support.google.com/googleplay/android-developer/answer/13985936?hl=en)
-      requires reporting/flagging without leaving the app. The existing local
-      chat/agent `mailto:` action and `SafetyBlocklist` do not establish that
-      requirement or comprehensive content filtering. The inspected DeepSeek,
-      remote and Step 5 views do not show a report action. This is an unresolved
-      submission check, not “implemented” compliance.
+      requires reporting/flagging without leaving the app. On 28 October 2026,
+      the Google Apps Script receiver was deployed and verified with one synthetic
+      report plus an identical retry returning the same receipt; see the nonsecret
+      [deployment record](../services/content-report-receiver/deployment.json).
+      Android client integration and hosted runtime checks remain pending: verify
+      a Report control on local chat, agent, DeepSeek, remote and Step 5 output,
+      editable excerpt/reason/optional note and destination disclosure before
+      explicit Send report, truthful received/unavailable/ambiguous-send states,
+      and unchanged-ID reconciliation for identical manual retries. Verify the
+      matching public privacy disclosure after publication. The receiver alone,
+      existing email actions and `SafetyBlocklist` do not establish completed
+      in-app reporting, comprehensive filtering, Google approval, or a released
+      Android app. Keep email support separate from in-app report delivery.
 - [ ] Determine whether any account-creation/deletion requirement applies to the
       final app. Current remote setup signs into an existing server account;
       Disconnect and device revocation are not account deletion.

@@ -1,5 +1,6 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.contentreport.ReportSource
 import ai.quenderin.app.RemoteHarnessController
 import ai.quenderin.core.*
 import android.content.ContextWrapper
@@ -50,7 +51,7 @@ fun RemoteHarnessScreen(controller: RemoteHarnessController, onBack: () -> Unit)
     var more by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     var presentation by remember { mutableStateOf(false) }
-    BackHandler(onBack = onBack)
+    BackHandler(enabled = LocalDestinationActive.current, onBack = onBack)
     if (details) AlertDialog(onDismissRequest = { details = false }, title = { Text("Connection details") },
         text = { SelectionContainer { Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(state.origin)
@@ -309,16 +310,15 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                     }
                     if (item.text.isNotEmpty()) {
                         if (item.kind == "assistant") {
-                            val clipboard = LocalClipboardManager.current
                             if (remoteMarkdownFormattingAllowed(item.text)) {
                                 MarkdownText(item.text, MaterialTheme.colorScheme.onSurface,
                                     baseStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = if (controller.largeText) 18.sp else 16.sp),
                                     wrapCode = controller.wrapCode, codeFontSize = if (controller.largeText) 15.sp else 13.sp, showsCodeCopyButton = true)
-                                TextButton(onClick = { clipboard.setText(AnnotatedString(item.text)) }) { Text("Copy response") }
                             } else {
                                 Text("Formatting is limited for this long or complex response. Exact text remains available below.", style = MaterialTheme.typography.bodySmall)
-                                RemoteRawText(item.text, controller, "response", monospace = false)
+                                RemoteRawText(item.text, controller, "response", monospace = false, showsCopy = false)
                             }
+                            ResponseActions(item.text, ReportSource.REMOTE)
                         } else RemoteRawText(item.text, controller, if (item.kind == "tool") "tool output" else "message", monospace = item.kind == "tool")
                     }
                 }
@@ -381,7 +381,7 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
 
 /** Full source stays available for copying. Rendering is limited to one 16 KiB section. */
 @Composable private fun RemoteRawText(text: String, controller: RemoteHarnessController, label: String,
-    modifier: Modifier = Modifier, monospace: Boolean = true) {
+    modifier: Modifier = Modifier, monospace: Boolean = true, showsCopy: Boolean = true) {
     val clipboard = LocalClipboardManager.current
     var expanded by remember(text) { mutableStateOf(false) }
     var section by remember(text) { mutableIntStateOf(0) }
@@ -394,8 +394,8 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
                 modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())
                     .then(if (!monospace || controller.wrapCode) Modifier else Modifier.horizontalScroll(rememberScrollState())))
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { clipboard.setText(AnnotatedString(text)) }) { Text("Copy exact $label") }
+        if (showsCopy || text.length > 2_048) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (showsCopy) TextButton(onClick = { clipboard.setText(AnnotatedString(text)) }) { Text("Copy exact $label") }
             if (text.length > 2_048) TextButton(onClick = { expanded = !expanded; section = 0 }) { Text(if (expanded) "Collapse" else "Expand") }
         }
         if (expanded && sections.size > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

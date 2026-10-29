@@ -74,6 +74,8 @@ android {
         versionCode = 6
         versionName = "0.6.0"
 
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         if (nativeRemoteCrypto) ndk { abiFilters += listOf("arm64-v8a") }
         
         buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
@@ -192,6 +194,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0") // Explicit no-auth/no-cookie Step 5 gateway transport.
     // Background, resumable model downloads (ModelDownloadWorker + WorkManagerModelDownloader).
@@ -199,4 +203,13 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1") // NotificationCompat for the download notification
     implementation("androidx.documentfile:documentfile:1.0.1") // SAF workspace fs.* (DocWorkspace.kt)
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // Same Compose BOM as production; hosted synthetic journeys never load model weights.
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

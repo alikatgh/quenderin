@@ -7,6 +7,7 @@ package ai.quenderin.app.ui
 import androidx.compose.ui.res.stringResource
 import ai.quenderin.app.R
 
+import ai.quenderin.app.contentreport.ReportSource
 import ai.quenderin.app.AgentHandoff
 import ai.quenderin.core.ActionIntent
 import ai.quenderin.core.AttachedDocument
@@ -106,6 +107,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -420,10 +422,7 @@ fun ChatScreen(
                         placementSpec = spring(stiffness = Spring.StiffnessMediumLow,
                                                dampingRatio = Spring.DampingRatioLowBouncy))) {
                         Column {
-                            MessageBubble(msg) {
-                                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(msg.text, "chat")))
-                                runCatching { context.startActivity(intent) }
-                            }
+                            MessageBubble(msg)
                             // In-transcript handoff under the guided assistant bubble (iOS twin).
                             val prev = messages.getOrNull(index - 1)
                             if (msg.role == Role.ASSISTANT &&
@@ -809,13 +808,11 @@ private fun RouteSuggestionChip(
 // ── Message bubble with a speaker-side tail + flagged-output safeguard ──
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
+private fun MessageBubble(msg: ChatMessage) {
     val mine = msg.role == Role.USER
     val colors = Quenderin.colors
     val context = androidx.compose.ui.platform.LocalContext.current
     val canCopy = msg.text.isNotBlank()
-    val reportable = !mine && msg.text.isNotBlank()
-    val reportLabel = stringResource(R.string.chat_report_response)
     val copyLabel = stringResource(R.string.chat_copy)
     val copiedToast = stringResource(R.string.chat_copied)
     var menuOpen by remember { mutableStateOf(false) }
@@ -841,7 +838,7 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                     modifier = Modifier
                         .widthIn(max = 300.dp)
                         .then(
-                            if (canCopy || reportable)
+                            if (canCopy)
                                 Modifier
                                     .combinedClickable(
                                         onClick = {},
@@ -851,9 +848,6 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                                         val actions = buildList {
                                             if (canCopy) {
                                                 add(CustomAccessibilityAction(copyLabel) { copyText(); true })
-                                            }
-                                            if (reportable) {
-                                                add(CustomAccessibilityAction(reportLabel) { onReport(); true })
                                             }
                                         }
                                         customActions = actions
@@ -898,14 +892,14 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                                 msg.text,
                                 java.util.Locale.getDefault().language,
                             )
-                            MarkdownText(
+                            AssistantResponseText(
                                 text = shown,
                                 color = colors.onAssistantBubble,
                             )
                         }
                     }
                 }
-                // Long-press menu: Copy (all bubbles) + Report (assistant only) — twin of iOS contextMenu.
+                // Preserve long-press copying; assistant actions are also visible below the response.
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     if (canCopy) {
                         DropdownMenuItem(
@@ -916,18 +910,12 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                             },
                         )
                     }
-                    if (reportable) {
-                        DropdownMenuItem(
-                            text = { Text(reportLabel) },
-                            onClick = {
-                                menuOpen = false
-                                onReport()
-                            },
-                        )
-                    }
                 }
             }
         }
+        if (!mine && msg.text.isNotBlank()) ResponseActions(
+            ActionIntent.displayAssistantText(msg.text, java.util.Locale.getDefault().language), ReportSource.LOCAL_CHAT,
+        )
         if (msg.isFlagged) {
             Text(
                 SupportContact.FLAGGED_OUTPUT_NOTICE,
@@ -1107,7 +1095,7 @@ private fun Composer(
     onSend: () -> Unit,
     onStop: () -> Unit,
 ) {
-    val enabled = !busy
+    val enabled = !busy && LocalDestinationActive.current
     val messageLabel = stringResource(R.string.chat_composer_placeholder)
     Row(
         Modifier
@@ -1154,7 +1142,7 @@ private fun Composer(
                     enabled = enabled,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = messageLabel },
+                    modifier = Modifier.fillMaxWidth().testTag("chat.composer").semantics { contentDescription = messageLabel },
                 )
             }
         }
@@ -1171,6 +1159,7 @@ private fun Composer(
         Box(
             Modifier
                 .size(48.dp)
+                .testTag("chat.send")
                 .background(
                     if (active) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),

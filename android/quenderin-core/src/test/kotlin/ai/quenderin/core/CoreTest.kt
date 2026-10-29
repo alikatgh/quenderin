@@ -83,6 +83,43 @@ class CoreTest {
         assertTrue(phases.any { it is OnboardingPhase.Downloading })
     }
 
+    @Test fun cannedOnboardingNeedsNeitherNetworkNorDownloadSpace() {
+        val model = ModelCatalog.smallest
+        val engine = MockInferenceEngine()
+        val downloader = MockModelDownloader()
+        val onboarding = OnboardingModel(engine, downloader,
+            networkStatus = { NetworkStatus.CELLULAR },
+            downloadPolicy = { DownloadPolicy.WIFI_ONLY },
+            availableDiskBytes = { 0L })
+
+        assertFalse(downloader.needsFetch(model))
+        onboarding.acceptAndPrepare(model)
+        assertEquals(OnboardingPhase.Ready(model), onboarding.phase)
+        assertEquals(model.id, engine.loadedModelId)
+    }
+
+    @Test fun actualFetchStillStopsOnCellularBeforeDownloadOrLoad() {
+        val model = ModelCatalog.smallest
+        val engine = MockInferenceEngine()
+        var downloadStarted = false
+        val downloader = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+                downloadStarted = true
+                return "/synthetic/network.gguf"
+            }
+        }
+        val onboarding = OnboardingModel(engine, downloader,
+            networkStatus = { NetworkStatus.CELLULAR },
+            downloadPolicy = { DownloadPolicy.WIFI_ONLY },
+            availableDiskBytes = { Long.MAX_VALUE })
+
+        assertTrue(downloader.needsFetch(model))
+        onboarding.acceptAndPrepare(model)
+        assertEquals(OnboardingPhase.Failed(DownloadPolicy.WIFI_ONLY.reason(NetworkStatus.CELLULAR)!!), onboarding.phase)
+        assertFalse(downloadStarted)
+        assertNull(engine.loadedModelId)
+    }
+
     @Test fun onboardingFailsWhenItCannotFit() {
         val onboarding = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
         onboarding.start { DeviceProfile(totalRamGB = 2.0, freeRamGB = 0.2) }

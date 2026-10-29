@@ -8,20 +8,14 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,18 +32,13 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ConsentScreen(onAgree: () -> Unit) {
     val context = LocalContext.current
-    Column(
-        Modifier.fillMaxSize().padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
+    FirstContactFrame {
         Text(
             stringResource(R.string.consent_use_judgement),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Spacer(Modifier.height(28.dp))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             // Same wording as SupportContact.CONSENT_* (shared with iOS) via the string catalog,
             // so ru/ko/ja/zh users read the disclaimer in their language.
@@ -57,16 +46,14 @@ fun ConsentScreen(onAgree: () -> Unit) {
             ConsentRow(stringResource(R.string.consent_advice_title), stringResource(R.string.consent_advice_body))
             ConsentRow(stringResource(R.string.consent_charge_title), stringResource(R.string.consent_charge_body))
         }
-        Spacer(Modifier.height(24.dp))
         // The binding sentence, in full, right above the button that accepts it.
         Text(
             stringResource(R.string.consent_legal),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Start,
         )
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onAgree, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onAgree, modifier = Modifier.fillMaxWidth().testTag("consent.agree")) {
             Text(stringResource(R.string.consent_agree), style = MaterialTheme.typography.titleMedium)
         }
         TextButton(onClick = {
@@ -79,25 +66,17 @@ fun ConsentScreen(onAgree: () -> Unit) {
 
 @Composable
 private fun ConsentRow(title: String, detail: String) {
-    Row(verticalAlignment = Alignment.Top) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            "●",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelLarge,
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
         )
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

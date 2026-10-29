@@ -1,5 +1,6 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.contentreport.ReportSource
 import ai.quenderin.app.DeepSeekController
 import ai.quenderin.core.DeepSeekCatalog
 import ai.quenderin.core.ProviderRole
@@ -51,7 +52,7 @@ fun DeepSeekScreen(controller: DeepSeekController, onBack: () -> Unit) {
         }
     }
     val leave = { key = ""; controller.stop(); onBack() }
-    BackHandler(onBack = leave)
+    BackHandler(enabled = LocalDestinationActive.current, onBack = leave)
     LaunchedEffect(state.currentID) { draft = "" }
 
     Scaffold(
@@ -130,14 +131,22 @@ fun DeepSeekScreen(controller: DeepSeekController, onBack: () -> Unit) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(if (row.role == ProviderRole.USER) "You" else "DeepSeek", style = MaterialTheme.typography.labelLarge)
                             row.reasoning?.takeIf { it.isNotEmpty() }?.let { ReasoningText(it) }
-                            Text(row.text, style = MaterialTheme.typography.bodyLarge)
+                            if (row.role == ProviderRole.USER) Text(row.text, style = MaterialTheme.typography.bodyLarge)
+                            else {
+                                AssistantResponseText(row.text, MaterialTheme.colorScheme.onSurface)
+                                ResponseActions(row.text, ReportSource.DEEPSEEK)
+                            }
                         }
                     }
                     if (state.partial.isNotEmpty() || state.partialReasoning.isNotEmpty() || state.streaming) item {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(if (state.streaming) "DeepSeek · replying" else "Incomplete reply", style = MaterialTheme.typography.labelLarge)
                             if (state.partialReasoning.isNotEmpty()) ReasoningText(state.partialReasoning)
-                            Text(state.partial.ifEmpty { "Thinking…" })
+                            if (state.partial.isEmpty()) Text("Thinking…")
+                            else {
+                                AssistantResponseText(state.partial, MaterialTheme.colorScheme.onSurface)
+                                ResponseActions(state.partial, ReportSource.DEEPSEEK)
+                            }
                         }
                     }
                     state.usage?.let { usage -> item {

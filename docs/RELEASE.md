@@ -4,10 +4,44 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 29 October 2026 — native integration evidence
+
+The final integration preserves the Apple source at
+`a366f137c6293d9cccf70b384df8fcec6165eb6b` and Android source at
+`25e50b497867383fa8755995f7b0093823fc8eb1`. The two native trees are checked
+against those exact revisions; shared runtime, remote-SDK and release dependency
+inputs are unchanged between them. Android retains its hosted-UI test dependency
+additions. This integration is separate from store publication.
+
+Cloud build 30 was started manually at the Apple revision above with the two
+synthetic Test actions (iOS and macOS) and two signed Archive actions. The included
+25-hour team allowance showed zero used immediately before the run. At the latest
+observation, macOS Test reports one failure whose assertion and artifacts are
+under review; iOS Test is saving artifacts, and both Archive actions are still
+running. This is not a passing Cloud result or evidence of Apple runtime readiness.
+
+Android's bounded, manual
+[hosted UI run 40788876323](https://github.com/alikatgh/quenderin/actions/runs/40788876323)
+at the Android revision above passed all four synthetic UI tests. Seven selected
+PNGs were inspected, including the intentional offline reporting error, keyboard,
+200% font and navigation-rail states. These results do not establish live
+provider inference, successful report delivery, physical-device behavior or a
+signed Play artifact. The reporting helpers and receiver fixtures are source
+and synthetic-test evidence only.
+
+The current published privacy HTML has SHA-256
+`0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c`;
+this integration retains that exact HTML and its matching policy source.
+The Android upload key remains unavailable; its private human-entry step and
+Google registration are outstanding. France remains enabled, while the owner's
+ANSSI/export-compliance determination and filing evidence are unresolved as
+described below. No 0.6.0 App Store or Play submission is established, and the
+native update is not ready for publication while these gates remain open.
+
 ## 28 October 2026 — native 0.6.0 preparation
 
-The user authorized updated iOS, macOS and Android store submissions. Current
-foundation is main `b8ef18558dab1693c0baa666378dafd7c66a5f9a`; release changes
+The user authorized updated iOS, macOS and Android store submissions. Preparation
+started from main `b8ef18558dab1693c0baa666378dafd7c66a5f9a`; release changes
 are prepared on `codex/native-060-20261028` in
 [PR #196](https://github.com/alikatgh/quenderin/pull/196). Store drafts and source
 preparation are separate from signed archives, uploads and review submissions.
@@ -824,6 +858,37 @@ your identity — they belong in your password manager / Apple's keychain, never
 build needs to *find* them is an absolute path in the gitignored properties file.
 
 ---
+
+## 28 October 2026 — GitHub security evidence
+
+Main `3a2c96b303c735a43eca23e7312ebca0f5a15a5d` includes CodeQL, dependency
+review, grouped Dependabot security updates and the bounded trusted-main Android
+dependency submission job. Private vulnerability reporting, secret scanning,
+push protection and the main PR/check ruleset are enabled. The Android graph's
+actual generation/submission still requires its first successful main run;
+source configuration is not proof of transitive dependency coverage.
+
+The newly enabled Dependabot alerts expose 16 existing findings in
+`native/remote-host/runtime-fixture/package-lock.json` and two build-time UI
+parser findings. The fixture dependencies are outside native store artifacts.
+Its current hosted test runs use bounded synthetic input, a sanitized environment
+and disabled external networking. The critical Vitest advisory requires API/UI
+exposure absent from this test route; Tinypool additionally requires a separate
+prototype-pollution primitive not demonstrated here. High Vite exposure concerns
+a Windows editor path, while this fixture runs on Ubuntu. Zod validation executes
+with synthetic fixtures; no untrusted production request path was established.
+These limits do not clear the alerts or prove the packages universally safe.
+
+Dependabot PRs [205](https://github.com/alikatgh/quenderin/pull/205),
+[206](https://github.com/alikatgh/quenderin/pull/206) and
+[207](https://github.com/alikatgh/quenderin/pull/207) contain overlapping identical
+Vitest lock updates. [204](https://github.com/alikatgh/quenderin/pull/204) leaves
+18 nested vulnerable Zod copies. Each fixture update also needs both provenance
+inventories and the reviewed workflow lock digest refreshed. A separate coherent
+fixture repair must verify the full closure, schema compatibility, attribution,
+provenance and the existing hosted Host/runtime gate before merging. The two
+UI parser copies need their own UI build verification. No alert was dismissed
+and none of these unverified dependency updates was merged during this audit.
 
 ## Cross-references
 - `docs/SHIP_READINESS.md` — the full "needs you" ledger (questionnaires, accounts, the closed items).

@@ -9,6 +9,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +27,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -97,13 +99,15 @@ internal fun ModelProfileSheet(
             if (ai.quenderin.core.ModelRuntimeSupport.isMuse(model)) {
                 Caption(stringResource(R.string.profile_muse_reasoning))
             } else {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = deepThinking, role = Role.Switch, onValueChange = onDeepThinkingChange),
+                    verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
                         Caption(stringResource(if (deepThinking) R.string.profile_reasoning_on else R.string.profile_reasoning_off))
                     }
                     Spacer(Modifier.width(12.dp))
-                    Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
+                    Switch(checked = deepThinking, onCheckedChange = null)
                 }
             }
         }
@@ -140,31 +144,19 @@ private fun StatusChip() {
 /** A titled card (small primary label above a rounded surface holding the rows). */
 @Composable
 private fun ProfileCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-        )
-        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = QuenderinShapes.card, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
-        }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        NativeSectionLabel(title)
+        content()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
 /** Label on the left, value on the right (the value wraps/ellipsizes rather than pushing the label off). */
 @Composable
 private fun SpecRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(16.dp))
-        Text(
-            value,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f, fill = false),
-        )
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -172,11 +164,11 @@ private fun SpecRow(label: String, value: String) {
 @Composable
 private fun LinkRow(label: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 24.dp).clickable(onClickLabel = stringResource(R.string.profile_open_source_page)) { onClick() },
-        horizontalArrangement = Arrangement.SpaceBetween,
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClickLabel = stringResource(R.string.profile_open_source_page)) { onClick() },
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = MaterialTheme.colorScheme.onSurface)
+        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
         Text(stringResource(R.string.link_hugging_face), color = MaterialTheme.colorScheme.primary)
     }
 }
