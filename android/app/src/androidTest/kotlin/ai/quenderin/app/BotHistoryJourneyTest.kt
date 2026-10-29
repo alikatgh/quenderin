@@ -69,8 +69,12 @@ class BotHistoryJourneyTest {
         await("remote.botsReady")
         compose.onNodeWithTag("remote.session.ordinary-session").performScrollTo().performClick()
         await("remote.composer")
+        // A session first renders its disabled composer while history and Bot classification load.
+        compose.waitUntil(10_000) {
+            val state = controller!!.state
+            state.historyReady && state.models.isNotEmpty() && !state.botSessionClassificationPending && !state.busy
+        }
         compose.onNodeWithTag("remote.composer").assertIsEnabled()
-        compose.waitUntil(10_000) { controller!!.state.historyReady && controller!!.state.models.isNotEmpty() && !controller!!.state.botSessionClassificationPending }
         compose.onNodeWithTag("remote.models").assertIsEnabled()
         compose.onNodeWithText("Synthetic saved ordinary answer").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Synthetic saved Bot answer").assertDoesNotExist()
