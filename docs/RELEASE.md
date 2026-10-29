@@ -6,19 +6,24 @@ or already-authorized signing configuration. A debug build is not a signed store
 
 ## 29 October 2026 — native integration evidence
 
-The final integration preserves the Apple source at
-`a366f137c6293d9cccf70b384df8fcec6165eb6b` and Android source at
-`25e50b497867383fa8755995f7b0093823fc8eb1`. The two native trees are checked
-against those exact revisions; shared runtime, remote-SDK and release dependency
+The final integration preserves the Apple application and dependencies from
+`a366f137c6293d9cccf70b384df8fcec6165eb6b`, with the independently reviewed,
+test-only accessibility correction in `d2efd3b`, and Android source at
+`25e50b497867383fa8755995f7b0093823fc8eb1`. The Apple tree matches `d2efd3b`
+and the Android tree matches that exact Android revision; shared runtime, remote-SDK and release dependency
 inputs are unchanged between them. Android retains its hosted-UI test dependency
 additions. This integration is separate from store publication.
 
 Cloud build 30 was started manually at the Apple revision above with the two
 synthetic Test actions (iOS and macOS) and two signed Archive actions. The included
 25-hour team allowance showed zero used immediately before the run. At the latest
-observation, macOS Test reports one failure whose assertion and artifacts are
-under review; iOS Test is saving artifacts, and both Archive actions are still
-running. This is not a passing Cloud result or evidence of Apple runtime readiness.
+observation, both signed Archive actions succeeded and iOS Test is still running.
+The macOS journey failed because its exact error assertion read an empty
+accessibility label. The retained recording shows the expected HTTPS error,
+preserved server and email, cleared password, and disabled authorization. The
+reviewed correction reads macOS static text through its value; its Cloud runtime
+verification is still pending. This is not a passing Cloud result or evidence
+of complete Apple runtime readiness.
 
 Android's bounded, manual
 [hosted UI run 40788876323](https://github.com/alikatgh/quenderin/actions/runs/40788876323)
