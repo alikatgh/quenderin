@@ -24,10 +24,10 @@ import zlib
 NAMES = (
     "01-welcome-light.png", "02-setup-light.png", "03-chat-light.png",
     "04-report-light.png", "05-chat-dark-keyboard.png", "06-setup-large-text.png",
-    "07-settings-short-window.png", "08-failure.png",
+    "07-settings-short-window.png", "09-bot-roster.png", "10-bot-history.png", "08-failure.png",
 )
 MAX_IMAGE = 1024 * 1024
-MAX_TOTAL = 8 * MAX_IMAGE
+MAX_TOTAL = 10 * MAX_IMAGE
 MAX_LOG = 64 * 1024 * 1024
 PREFIX = "QUENDERIN_UI_PNG_V1_"
 BEGIN = re.compile(r"BEGIN name=([a-z0-9-]+\.png) bytes=([0-9]{1,7}) sha256=([0-9a-f]{64})$")

@@ -9,12 +9,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-/** Seven selected synthetic frames plus one last-failure frame; no general file capture API. */
+/** Nine selected synthetic frames plus one last-failure frame; no general file capture API. */
 internal object ScreenshotEvidence {
     private val names = setOf(
         "01-welcome-light.png", "02-setup-light.png", "03-chat-light.png",
         "04-report-light.png", "05-chat-dark-keyboard.png", "06-setup-large-text.png",
-        "07-settings-short-window.png", "08-failure.png",
+        "07-settings-short-window.png", "09-bot-roster.png", "10-bot-history.png", "08-failure.png",
     )
 
     @OptIn(ExperimentalTestApi::class)
