@@ -120,7 +120,12 @@ class NativeJourneysTest {
         hideKeyboardIfVisible()
         screenshot("03-chat-light.png")
 
-        compose.onNodeWithTag("chat.composer").performClick().performTextInput("Keep this local draft")
+        logBackRouting("peer.bar.composer.beforeTap")
+        compose.onNodeWithTag("chat.composer").performClick()
+        logBackRouting("peer.bar.composer.afterTap")
+        // Semantic text insertion can request focus itself; establish the tap's IME result first.
+        compose.waitUntil(10_000) { keyboardVisible() }
+        compose.onNodeWithTag("chat.composer").performTextInput("Keep this local draft")
         compose.waitUntil(10_000) { keyboardVisible() }
         logBackRouting("peer.bar.before")
         compose.onNodeWithTag("nav.settings").performClick().assertIsSelected()

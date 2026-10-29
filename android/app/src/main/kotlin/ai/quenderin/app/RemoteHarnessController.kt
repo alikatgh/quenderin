@@ -15,7 +15,12 @@ import java.util.concurrent.TimeUnit
 
 /** Activity composition owns this facade; its dedicated executor owns BOTH Noise and business RPC.
  * UI state returns to Main. HTTP, crypto, persistence and every generation callback stay off Main. */
-class RemoteHarnessController(context: Context) : AutoCloseable {
+class RemoteHarnessController internal constructor(
+    context: Context,
+    // Invoked on the existing owner executor. Instrumentation supplies its in-memory client;
+    // production callers always use the unchanged native dependency factory below.
+    createClient: (Context, (() -> Unit) -> Unit) -> Pair<RemoteHarnessClient, Boolean> = ::nativeRemoteClient,
+) : AutoCloseable {
     var state by mutableStateOf(RemoteHarnessClientSnapshot()); private set
     var securityAvailable by mutableStateOf(false); private set
     private val main = Handler(Looper.getMainLooper())
@@ -37,18 +42,11 @@ class RemoteHarnessController(context: Context) : AutoCloseable {
     init {
         val application = context.applicationContext
         owner.execute {
-            val backend = RemoteHarnessCryptoBackends.native()
-            main.post { if (!closed) securityAvailable = backend.isAvailable }
-            val clock = object : RemoteHarnessClock {
-                override fun epochMilliseconds() = System.currentTimeMillis()
-                override fun monotonicMilliseconds() = SystemClock.elapsedRealtime()
+            val (created, available) = createClient(application) { action ->
+                if (!closed) owner.execute(action)
             }
-            client = RemoteHarnessClient(RemoteHarnessOkHttpAPI(), AndroidRemoteHarnessCredentials(application),
-                AndroidRemoteHarnessState(application), RemoteHarnessOkHttpSockets({ action ->
-                    if (!closed) owner.execute(action)
-                }, clock::monotonicMilliseconds), backend, clock,
-                { ByteArray(32).also(SecureRandom()::nextBytes) }, { UUID.randomUUID().toString() },
-                AndroidRemoteHarnessRecoveryIntent(application)).also { model ->
+            main.post { if (!closed) securityAvailable = available }
+            client = created.also { model ->
                 model.onChange = { next -> main.post { if (!closed) state = next } }
                 val next = model.snapshot; main.post { if (!closed) state = next }
             }
@@ -105,4 +103,18 @@ class RemoteHarnessController(context: Context) : AutoCloseable {
         owner.execute { client?.close(); client = null }
         owner.shutdown()
     }
+}
+
+/** Default release construction. No fixture, intent switch or alternate service is packaged. */
+private fun nativeRemoteClient(application: Context, schedule: (() -> Unit) -> Unit): Pair<RemoteHarnessClient, Boolean> {
+    val backend = RemoteHarnessCryptoBackends.native()
+    val clock = object : RemoteHarnessClock {
+        override fun epochMilliseconds() = System.currentTimeMillis()
+        override fun monotonicMilliseconds() = SystemClock.elapsedRealtime()
+    }
+    val client = RemoteHarnessClient(RemoteHarnessOkHttpAPI(), AndroidRemoteHarnessCredentials(application),
+        AndroidRemoteHarnessState(application), RemoteHarnessOkHttpSockets(schedule, clock::monotonicMilliseconds),
+        backend, clock, { ByteArray(32).also(SecureRandom()::nextBytes) }, { UUID.randomUUID().toString() },
+        AndroidRemoteHarnessRecoveryIntent(application))
+    return client to backend.isAvailable
 }
