@@ -347,6 +347,13 @@ public struct ChatView: View {
         .quenderinDarkCanvas()
         .quenderinDarkChrome()
         .toolbar {
+            #if os(iOS)
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { composerFocused = false }
+                    .accessibilityIdentifier("chat-dismiss-keyboard")
+            }
+            #endif
             if !model.messages.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
                     ShareLink(item: ConversationExporter.markdown(model.messages),
