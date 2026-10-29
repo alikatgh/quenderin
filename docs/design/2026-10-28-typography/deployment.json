@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-28",
+  "site": "https://quenderin.org",
+  "provider": {
+    "name": "Cloudflare",
+    "account": "wallmarketshq",
+    "accountId": "4c1e57b6972105286a7aeb46b2b89c78",
+    "service": "Worker quenderin",
+    "authentication": "Existing Wrangler OAuth; official loader used in-process, no credential values recorded.",
+    "planEvidence": "Workers Free/$0 confirmed in browser earlier on 2026-10-28; fresh subscription API read returned 403. Current standard usage model and unchanged runtime verified through Workers APIs.",
+    "changedCostScope": "Static asset requests and storage are free under current provider documentation. The exact Worker and /api/* routing were preserved. No new billable path, infrastructure, jobs, quota, plan or billing change.",
+    "pricingSource": "https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/"
+  },
+  "deployment": {
+    "id": "eca749c9-3e8b-4163-b7e4-1dee217fbc67",
+    "versionId": "7b93016f-c63e-4f66-85dd-e53385fa37b7",
+    "trafficPercent": 100,
+    "verifiedAt": "2026-10-28T13:08:23.081Z",
+    "baselineDeploymentId": "6399fd68-f58f-48b4-8b82-08636a020e96",
+    "baselineVersionId": "a9875091-c8bb-4e0b-aa31-4b338c27520d",
+    "tool": "Official Wrangler 4.154.0",
+    "changedAssetsUploaded": 25,
+    "unchangedAssetsReused": 107,
+    "nonVersionedSettingsSynced": false
+  },
+  "source": {
+    "baseCommit": "3145bce8916574ae4d3c13b75408e691a3181588",
+    "branch": "codex/website-visual-polish-20261028",
+    "committed": false,
+    "pushed": false,
+    "artifactFiles": 133,
+    "artifactBytes": 7722512,
+    "artifactAggregateSha256": "081cba93e383c48289d2ef7196a2bac026f47f09f75be24fee63a6b829858043",
+    "aggregateMethod": "Sort website/<relative path>; SHA256 of path + NUL + bytes + NUL for every file.",
+    "scope": "Frozen current public assets overlaid with font-only CSS changes, seven preload URL changes, sixteen WOFF2 files and OFL. All 106 unchanged baseline assets retained byte-for-byte; latest privacy and preceding blog illustrations retained. Local repository CSS/index contain unrelated unpublished changes, so the complete local website directory was not published."
+  },
+  "font": {
+    "family": "Ysabeau Office",
+    "source": "Official Google Fonts binaries",
+    "files": 16,
+    "fontBytes": 432564,
+    "styles": [
+      "normal",
+      "italic"
+    ],
+    "weightRange": [
+      100,
+      1000
+    ],
+    "license": "SIL Open Font License 1.1",
+    "licensePublicUrl": "https://quenderin.org/fonts/ysabeau-office-OFL.txt",
+    "serving": "Self-hosted Unicode subsets; existing script fallback stacks retained.",
+    "provenanceManifest": "font-source-manifest.json: official upstream binary URLs, hashes and license source."
+  },
+  "verification": {
+    "independentReview": "PASS, no findings; all 25 owned hashes, official font binaries/OFL, unchanged baseline assets and semantic scope verified.",
+    "websiteTests": {
+      "passed": 23,
+      "failed": 0
+    },
+    "publicationSecretScan": "PASS on exact frozen artifact before publication.",
+    "wranglerDryRun": "PASS; no bundling; emitted site.js byte-identical to live 7992-byte module.",
+    "candidateChecks": "Full runtime, bindings, script ETag, routing, headers and Worker settings equal baseline. Exact artifact, configuration, module and current-deployment guards passed before promotion.",
+    "strictProducerWarning": "Wrangler --strict rejected the prior API-origin deployment generically. Supported non-strict inactive upload followed with all exact guards retained; no content/config mismatch was accepted.",
+    "liveHttp": {
+      "assetsPassed": 132,
+      "assetsChecked": 132,
+      "newFontsChecked": 16,
+      "workerModuleExact": true,
+      "fullResourcesEqual": true,
+      "apiGet200Valid": true,
+      "apiPost405": true
+    },
+    "renderedPreview": "Primary passed English/Russian 390px and wide light/dark rendering plus Arabic RTL fallback and blog, with all fonts loaded and no overflow.",
+    "renderedProduction": "Primary independently inspected the public homepage wide and at 390px: Ysabeau Office heading/body, all 16 font faces loaded, no horizontal overflow. Primary independently verified all 25 owned live asset hashes and font MIME."
+  },
+  "rollback": {
+    "versionId": "a9875091-c8bb-4e0b-aa31-4b338c27520d",
+    "route": "Cloudflare dashboard > Workers & Pages > quenderin > Deployments: restore the baseline version at 100%, after confirming this typography release remains current.",
+    "officialCliCommand": "wrangler versions deploy a9875091-c8bb-4e0b-aa31-4b338c27520d@100 --name quenderin --yes",
+    "dataMigrationRequired": false,
+    "status": "Not needed; post-release asset, module/resource and API checks passed."
+  },
+  "cleanup": {
+    "deployerToolkitRemoved": true,
+    "toolkitApparentBytesRemoved": 219515982,
+    "toolkitAllocatedBytesRemoved": 224571392,
+    "earlierInstallCacheApparentBytesRemoved": 194314176,
+    "totalDeployerApparentBytesRemoved": 413830158,
+    "toolkitPathRemoved": "/private/tmp/codex-session-storage/1be5fa6f5f247789fa2772d7/62045fc611514bfaadb5987998774adb",
+    "parentPreviewOwnership": "Primary owns c182b0371fb54da1bb63f2da57df77e0; deployer no longer needs it and did not remove it.",
+    "sourceFontsCssHtmlPreserved": true,
+    "providerBaselineVersionRetainedForRollback": true,
+    "afterSnapshotAvailableBytes": 2576670720,
+    "afterSnapshotSwapAllocatedBytes": 6442450944,
+    "volumeAttribution": "Free space and swap are volume-wide and affected by concurrent activity; only exact session-owned paths are counted as deployment cleanup."
+  }
+}

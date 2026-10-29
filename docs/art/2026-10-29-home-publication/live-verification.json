@@ -1,0 +1,1128 @@
+{
+  "checkedAtUtc": "2026-10-28T23:35:09.346965+00:00",
+  "site": "https://quenderin.org",
+  "assetsChecked": 135,
+  "assetsPassed": 135,
+  "exactArtifactHashes": 134,
+  "failedPaths": [],
+  "headersAndMime": {
+    "/": {
+      "mime": "text/html",
+      "mimePassed": true,
+      "securityHeadersEqual": true
+    },
+    "/assets/art/quenderin-home-20261028.webp": {
+      "mime": "image/webp",
+      "mimePassed": true,
+      "securityHeadersEqual": true
+    },
+    "/story-sections.css": {
+      "mime": "text/css",
+      "mimePassed": true,
+      "securityHeadersEqual": true
+    },
+    "/fonts/ysabeau-office-latin-normal.woff2": {
+      "mime": "font/woff2",
+      "mimePassed": true,
+      "securityHeadersEqual": true
+    }
+  },
+  "api": {
+    "GET": {
+      "httpStatus": "200",
+      "bytes": 9542,
+      "validJson": true,
+      "jsonShape": "dict",
+      "passed": true
+    },
+    "POST": {
+      "httpStatus": "405",
+      "bytes": 18,
+      "validJson": false,
+      "jsonShape": null,
+      "passed": true
+    }
+  },
+  "results": {
+    "website/404.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 1610,
+      "sha256": "ecdb9a09473b564efc43331acd026482c9c1aaf2552533de4aa54bae454e0f0a",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/accessibility.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3768,
+      "sha256": "27641e80e6adf03ff5421901ae5adc764fc405d150d9a7e26cdfb915e96f0b57",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/apple-touch-icon.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 68807,
+      "sha256": "968f31dc1582e173d28ddd0170cd4fe6ca5cf1e64a48f5d8ba22159f7f3a19de",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app-store-badge.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 10804,
+      "sha256": "a26fc5b38380272c92e9019a2eb8b45542a66814b3e2b203772db8904b9fb99f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/agent.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 104207,
+      "sha256": "10fcd106231be743dab70843e3d6fdf5523f17a4df21fb2250654fc8f9879970",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/chat.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 147911,
+      "sha256": "1d12cd905cb6b2b704546373b2b9cbf4a82f1d63a6e64ece9ddf8427a4c1fed6",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/icon-ios.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 284494,
+      "sha256": "00c2da04879cb71dcafdf3f063dba957c8dfe848c3e138dbbe1ddd16e687e347",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/icon-mac.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 202718,
+      "sha256": "168bd5b3e7acc5188c1067511472f98068b2e798794e9e7cccd941ec3533c59e",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/phone-chat.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 108733,
+      "sha256": "1ed404e203846d60318213a4570387c77c4f0d49a8af69c6d1d7b8599a31e6e2",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/phone-chat.webp": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 62684,
+      "sha256": "28ee8b8c95a62d2ef2c9acbec4dae3455498a9a7532f1b7461636d332be67086",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/picker.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 316271,
+      "sha256": "096eac9c48673c41c6ea21ac1834bf2880efe8698b22de8565c66d0b3de32658",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/profile.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 164723,
+      "sha256": "0822931592bbc6d04c53ffe892ccafe983b656563fb315b447aa3488af202299",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/app/welcome.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 192417,
+      "sha256": "2243b3073072af0bc84b5a816742885e2ce383fe592c47c7d9ce7aaddfa28e05",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/art/quenderin-home-20261028-960.webp": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 143652,
+      "sha256": "8dbf2e8746ff73c263c3308f40d7a781325ba8b94c71c10db121e280d943d411",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/art/quenderin-home-20261028.webp": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 302042,
+      "sha256": "a5a822757fb45b396515590cb4431824ed6214c05b6125287fc8589d209230ba",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/blog/open-model-library-20261018.jpg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 507729,
+      "sha256": "37e2ac72bc5068d8991e6816156a6528f3aa09d91b8382a92f695525aa11a334",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/blog/section-illustrations.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 62453,
+      "sha256": "ce6b0f67c53814429f00dcbcaec90a26de02c65709ffbdb15c2edaad39bcc48c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/blog/website-update-20261019.jpg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 91780,
+      "sha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/assets/social/feature-graphic-1024x500.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 442227,
+      "sha256": "da48e016aa4a3a30c4a66ba9636912e5ea31040b8b3717b5dbfa9fb9c549ef18",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-agent-hands.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 6482,
+      "sha256": "4a890b24c079e3e479608ea08fddc49f01d2e162fe7ef7e82669b279715248b0",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-android-beta.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 8161,
+      "sha256": "380961b829a07eecea1b33f9d6a2a83582fa4eb2a63325be2257413fbeb7da2c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-apple-launch.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7312,
+      "sha256": "efd804d7279491e620baf875ee570d0c55f22f0e539d97b7394944f759049cdb",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-bonsai-2.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7350,
+      "sha256": "475a172aaeb07ff1b82d1b27a1efb212bd69daf52eaf01095666273b559c7e4e",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-bonsai-small-muse-spark.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7407,
+      "sha256": "80ac6204ab694374a9c739999f04168a50c0a26d0654b4134dd2df5226a625ba",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-clearer-language.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 5175,
+      "sha256": "d8068c12f52018fe7b99dc1f1cb492192bb7d6f065965afd8e01056f26d3a543",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-cli.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 5464,
+      "sha256": "a5be83bfe0d4cebe3316c03ceaf703e2fd97d2f6cd20035a2984dd07c7a2c5b9",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-computer-use.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7526,
+      "sha256": "e8beea784bc1747b285fb0162773f34321db7b86b7fd43a63b8add98307211b0",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-development-october-2026.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7651,
+      "sha256": "cac9c539403681f531fd223b8694553bd3398f5321210e4a231c784fb1c4549b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-ggml-abort.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 9337,
+      "sha256": "9a3159bf1c9b96efc7ebeb3039ae35d542d54e8c86a6ce290280d2c0218dac1f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-illustrations.css": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 768,
+      "sha256": "d6828c4740d228788241f7d53df7190af3b9abc96829930e1510fddb4c850d17",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-model-integrity.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 9801,
+      "sha256": "164d5a6dbb0a823762bc5d7035bc10bd3a58c5654376afd347ac77be52cf5140",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-muse-engineering.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 13534,
+      "sha256": "788ff4172198280fc6dba4aaf6a2b268c5f3af8c925efc9ae0c5e3ffd7db4ddd",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-open-models-october-2026.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 14638,
+      "sha256": "4ee5a0c3aa6b7fe1144ca7a997d8142bb38dd6255de57ed563cbc4e1ffb118cf",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-setup.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7910,
+      "sha256": "3bfbb273ab07ab54509beca4620c5b981645a8498a04db8018c6a0dcf17970b0",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog-website-update-october-2026.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 6658,
+      "sha256": "3fe218abd55d4550f5b2183fb00d89c6d1add3c8f150e4be6ff5c9686c3332f1",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/blog.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 8947,
+      "sha256": "3cfc9360d201b21abbd603fe72ed75f14307392d1ee561dc4960394695381ea2",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/changelog.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 18040,
+      "sha256": "08700aad4730cc6aa30d0a0f89a6dffd728fc42538956358b11147a3efaf07c0",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/data/image-model-catalog.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 6287,
+      "sha256": "51db4c4614c396e810cc3767573df5d1ec2aa070df5e731c7a42440592654f0a",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/data/model-catalog.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 27070,
+      "sha256": "391bfe938d841ebb96e18e2c42f3fb12e5de94785b41f06a496b713518064123",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/data/model-releases.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 11679,
+      "sha256": "5ac15e2003691c7aac24d150acbb9740f704c505e2ed67b1c4d580271356b8a1",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/detail-page.css": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 19059,
+      "sha256": "333f7df8d15726ce5a266d2d77319b2aa31390060c40deed1d86ce338be97dc2",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/download.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 9526,
+      "sha256": "bcdc29c4e6b7c13eb903a539263be47fffd02131dbac111345cf7e8154e566dc",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/faq.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 13590,
+      "sha256": "13ad59b56e1634c600b028197b227ddbda4ae1a32e3ba7389f49ccad5a61476b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/favicon-16.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 923,
+      "sha256": "600a0d2a2c6090d457da246e4f38b53dd28cee75bcb4ada3a69678c1938d1447",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/favicon-32.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3129,
+      "sha256": "baefe71a9113f5453c45fb4ae43ccb6901d37c80d1cbc19aba30b190ce2a20de",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/favicon.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 15387,
+      "sha256": "f063a5c024c1ad854797d4d3701e34911ea07f79e41c02cd5328788336da917a",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/features.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 12429,
+      "sha256": "33364d1060ff9a342e129904552e29116d087737c8609f39cd333b5e13f514d4",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/bricolage-grotesque-latin.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 41344,
+      "sha256": "a97804dc9fbe5fc972a08018c5eda4dab7ef2346f64c57e61419d05e6de4ea1c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-OFL.txt": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4391,
+      "sha256": "1343b9162a2d24f685767766ea23a75a80b88ba13ba421244e65b72210578b78",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-cyrillic-ext-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 27088,
+      "sha256": "81f4297e24121a4e2a6e2d0064797a2e202b328975df8b73eb5d8d2f017a5992",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-cyrillic-ext-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 23976,
+      "sha256": "591926b7662b02353f867e58bd9153ec3aafc96fed63c5ac17e00d4bb66bac7f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-cyrillic-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 24884,
+      "sha256": "b7ab4268cb82e4404587c16f00af429f776a117e756399877f8c9273828960fe",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-cyrillic-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 22960,
+      "sha256": "0edcfc70d3bcc756b19ef0092c6f16a7349a6f638778f695dd25320879fcbdac",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-greek-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 14588,
+      "sha256": "852b6dc8b1beed7aa49587eef666187b9c25499579d0ff1658a7f0998acfe9fa",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-greek-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 13108,
+      "sha256": "20898773a936437a46c4988a19675290b85110ac79c48b1b3970d2d824a412d5",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-latin-ext-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 36628,
+      "sha256": "2ccab814e217d04cae0f3d8ce16bdbc4e608e1fb2ab601a571e4709f5db36268",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-latin-ext-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 34004,
+      "sha256": "541ed7ca1dc26dff9804e869664af6f4f3fdd0f639c398157617b0e6609237cd",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-latin-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 40140,
+      "sha256": "3fe0b2c3739ce7a9c54b3044df1b0efea8a1bc452f41576544a75a41ca484b97",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-latin-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 38480,
+      "sha256": "fe5cd0dcfbc6897cb893063b4e65b9b1fc47e1b6145ab3b9937bdfa2b71008b0",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-math-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 43292,
+      "sha256": "015f733f7597f51562617b4244b988369921a977a285d73d3ad5256bdf917288",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-math-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 40724,
+      "sha256": "1584f44460188e2b72f97761fef81a2c69ac59af84b8803c97673077de5ee9a3",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-symbols-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 23940,
+      "sha256": "08e02137cedd2e249e5fbe5402e1e3c7fb1ea9477bd07712069607c42090684b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-symbols-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 23284,
+      "sha256": "94d1cfa1a015492d4e6a36636ed5dde5bcc9b9019eb8c8ed26e30c926e7e560e",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-vietnamese-italic.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 13280,
+      "sha256": "d4e2cbd4b0fe57ee9431e1360b9ca6b548333fb80e9629a069c6a203b73b887f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/fonts/ysabeau-office-vietnamese-normal.woff2": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 12188,
+      "sha256": "e31642820dcc20b3e15e93cb6974e5ea0162eb4a074da25dc8bb95e065f851d6",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/gradient.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 9782,
+      "sha256": "b7dbf0b51c4fefaf4759fd51f0e86d6159f61b43ea3102eeef15f887e992997c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/help.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4788,
+      "sha256": "3ad2e2048185532b3f69da11baacd577b9b34f13f3b2d0fc22291b185774f42e",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/how-it-works.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 11585,
+      "sha256": "7493a9044c2ca7dae1f35ce18c5b1c0df867fb3485945fd69b0f409d8b64277b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4438,
+      "sha256": "985c24da464ca641889025fe3edcb098dff668b7c880523fae419fdb89b964ad",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/ar.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 34211,
+      "sha256": "79dd55076bc5062d29f77d9718902a3bee6f563a9d993f2e04e687a855196875",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/bn.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 51298,
+      "sha256": "1704e89ab30e56414fc16ef5358fece57c004fd8817b0aa471d5dd4244b368a1",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/ar.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 5907,
+      "sha256": "618015b07c2607cd4dba69bfb37baaf3ff9cd5eb38813ed147671736dd9e8e57",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/bn.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 8646,
+      "sha256": "1e416631bd47f60184142e1ef9097e0cd83c53bc2bbc7d9d80b228f70619caf3",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/en.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3691,
+      "sha256": "a3e0ad42fcf2082b810e052b828ff289f8ea8322f3222ead2792d432c5ca6b93",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/es.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4262,
+      "sha256": "7f46fc6e2c8e5e1117c2e3c14a996c10b8e5ffe1740103d7793c23c905eabf2c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/fr.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4719,
+      "sha256": "32d5a31f9baf601e47423621b9f2c95226eddc3283f2db5e94935bddb43771f2",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/hi.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 8764,
+      "sha256": "b0d18fdba2a3cf42c66d5aea2834bbeb4fc31f4488d2399190856cd692b891fd",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/id.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4326,
+      "sha256": "d6d543a023bdca4ede15fa49669ec38952899b071fcf4422ba0c5106a2be2649",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/ja.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 5319,
+      "sha256": "fcecb9748bcab14668d0bc9c3adfa879cc1d3835094b3ae25c2fce4d94715407",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/ko.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4873,
+      "sha256": "d9197272c09fcac0e936d197be6baf0890a39d9f94e5a4a9b51a67dcda0007dd",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/pt.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4148,
+      "sha256": "1bc22ac7686619c80af2b040870dddc8b6719c8737f257bd6af48a3d442cb16b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/ru.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 6984,
+      "sha256": "9dde85da8a497c27c18aa217d1ac567aa581d1b6b23c72aca3cc0d2ff183ea7f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/demos/zh.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3983,
+      "sha256": "952ca99275d6813bf45105014902a7e848d09975c8a1b826c61aad3528168c6c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/en.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 28032,
+      "sha256": "40aeb7bea3ecf49973782aa17fbcf81cb5ee3b0392195fe48d9246faf03bea25",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/es.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 27726,
+      "sha256": "e0704a1e273b29055de161121b67c7d0f6d5e5e7b7831de99a7d4df2146b5c0f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/fr.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 29389,
+      "sha256": "3a1104353c8bdf7465f08e133a9124905f7eb955569932d49e7a57d83b21c1f6",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/hi.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 50659,
+      "sha256": "55a2961f0f41416acb574922fee084ff9ad7a0dd9588afb4a0552d58316dce73",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/id.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 26179,
+      "sha256": "849409816131e4d19261a4900961cd3adc345e8c1c64e69ac569b8f68648df33",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/ja.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 32886,
+      "sha256": "b47fedc341b515a83ee7bddfd71c0337249a896754e06deffe187473eef244dc",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/ko.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 29711,
+      "sha256": "76096a02b942dabff919a82c2d547f2ae346173262803de6841f95be8be9feae",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/pt.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 26940,
+      "sha256": "d77b74b905f35b627b55ce87b7d5819f52edc0654cb2a1e1b051b3b529553695",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/ru.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 42136,
+      "sha256": "f9ea3d01116100a0ee72c5608dd1950e43fa3bd5d5ac4be702ea8e25e9890d78",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/i18n/zh.json": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 23931,
+      "sha256": "ce33962c6d3dc14e8111fd2aa037a7a8f5825b76c4f0065421416439e210c2cd",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icon-192.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 77647,
+      "sha256": "a4e6660a01d7ee940ebb9bed50973ee4cb60d0a3f62c602afd09451e1f478fb5",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icon-512.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 511806,
+      "sha256": "f51a92b66a363601ba0289a66ad6e74e81e7687b29bb656fefaf2ea9b2f7a9e6",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/android.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 272,
+      "sha256": "7901b74e44a777ae89ec6db525bb5f88656a475cd1b8727423d3af8e39fe8733",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/beam.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 386,
+      "sha256": "11e6ef9919c792f44072f1ce6018007efe77569d289c37ba325a6e093f05e0dc",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/bonsai.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 749,
+      "sha256": "ac05651aa2116b8d98968a4f9f0fd007aa1ae6b611cdd2183f78ee3a73a5e955",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/deepseek.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 2086,
+      "sha256": "7a55a0a7391d116eba7d32807d6838478f9209f6034612941e74fbb14934e2ef",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/gemma.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 457,
+      "sha256": "d8cf9fb2d5e234e03254f1d6400d8cc8160c309b010d031a64f37084b5a21d01",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/iphone.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 238,
+      "sha256": "3005768c3563f6670e1fc2ae3ef186279cbc5e4ad9e934c1f3e7b5a3c89ec6ed",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/jais.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 10743,
+      "sha256": "180701e033278234636ad13f87bedea9f8e3fa3213aa976dd5fa8dffc3ab0117",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/lfm.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 916,
+      "sha256": "06abfcc10eaf0ad150584076f366a6d00ded9db6a6ddf120ce2ecc96a2345e1a",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/linux.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 211,
+      "sha256": "a0eed2a1477c5d9359aad010c23d22b3e62a9fe315c872e31fa15c12ecc1efba",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/llama.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 1324,
+      "sha256": "e3e9db62f59dc477e5917687349b8aa9685b841d40300c1afad60ad85075cd2e",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/mac.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 238,
+      "sha256": "eeaed91e78689b61265bc6a40ddc264bbbf494706efc67ee90054627fde46706",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/minicpm.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 2639,
+      "sha256": "f39ef3ebaf7866756327a8e4606667cd1c53a9d7339b5c4d2bfa6c8bc5e4cddb",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/mistral.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 290,
+      "sha256": "88f00cf2e82e4d36bb4fdd0e913df200c6e7d6162ec627cc58cfdd6a4eb17d18",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/nemotron.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 1198,
+      "sha256": "77f55ec1a24a821d6ed54cfc4b8c852122f4fd4668b2d1dac6855b807b03bf27",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/phi.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 206,
+      "sha256": "f0fdaef83e59660c4da6e3988ca41fbe907e420cb86b48a94746caefec015bf9",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/qwen.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 805,
+      "sha256": "36854c60b26bfa5a0cc0d4123727c0ef559efba6f129c0dfa623f3c443fe3e5b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/icons/windows.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 232,
+      "sha256": "621e01082680799d17c6396c4a69ce4702917bf919dc488c5e3cdecae54973ea",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/index.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 9959,
+      "sha256": "3d8fa109e943f95837cf09a8418e40ac80762a914dc2bc7ad9edaabe0da3a58b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/legal.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3509,
+      "sha256": "42a534fa6d2a8bd26e95cf5bd8db8e02783930cf1cf53e7a8ad9fc796e329288",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/main.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7837,
+      "sha256": "858b7afb07da707b76d345d32bc866ff0edc886314247e67a2366d4539968f69",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/model-catalog.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7672,
+      "sha256": "2fb7d354cc057b1b6004de68a30dac5b8b2460ac55c22dbdb5a553d58165ffc9",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/models.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 29494,
+      "sha256": "b40ea17c6da4447d581c4019bbf43a4a12f83a77c167932dba3045c09a0fc405",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/og-image.png": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 192061,
+      "sha256": "20c5d85463f17fcb72d0db468babf628e94ba274e3a1a3ba00ab70e71ed52e1b",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/og-image.svg": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 2615284,
+      "sha256": "5e561c6a2b20c42ee1a6141abdd75fa79b3f4a165edf718531d982dd014cc117",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/post.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 2878,
+      "sha256": "747ff958e21790d471d47fcaf29f03cf32c8d301d893eff1e15e96c4f24a1f50",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/privacy.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 17684,
+      "sha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/reality.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 12917,
+      "sha256": "74679c1844ddcd4eaea57b849f3d2bbe83f22fc1500d27582b6e856d23f86f6f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/research.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7500,
+      "sha256": "a1eaec824f23ff0debf26b5eae4089544e28782ef3e3f3cb51b6584a2ee05c8a",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/roadmap.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 7873,
+      "sha256": "53a46f8c715083a2505c9824d73a7db1e8c8527a2a33966abf00eb3e5817e97a",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/robots.txt": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3326,
+      "sha256": "155fc8d250394051b6bf350e906d7b20d8f965ec94b274a46d458feb0aa680ee",
+      "artifactExact": false,
+      "managedRobotsPrefixOnly": true
+    },
+    "website/simple-home.css": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 8181,
+      "sha256": "ea9da6590967e835d7fc4fd6dd1acac1d618b6da2550a659cd0e807d7ae6cd70",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/site.webmanifest": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 898,
+      "sha256": "2ff7124c6612ccb017d76b0d41dd97331042cc18039a887afe376cf00f24c8f4",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/sitemap.xml": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3407,
+      "sha256": "fbb25a76b1ac01e389097c2a64f564ab511c7199286f7a32c45ebd3313948e0e",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/story-sections.css": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 10554,
+      "sha256": "d0909d92a37e7b0d97df8722a442f200a2136c915d4b3f9311625a8fc96e27f3",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/styles.css": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 78810,
+      "sha256": "687535a16665a965e94383470fa98af973c9cf33fbf4abbf14f8a5a2833246d0",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/sw.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 1648,
+      "sha256": "2ee89258e00bac64ebfb33a35d3f413ee1dd4b9de5a1641d0edbaac39995b50f",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/tell-me-more.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 80147,
+      "sha256": "974aeea0653fe3a3a146bc669d6c6327a1ff9bf2a0221dcfa6d7f077de8c7099",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/terms.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 4172,
+      "sha256": "f4e96142ec55922745b7cc190b564bee6110f45f49fde31517a6faaf9491d1fb",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/theme.js": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 3177,
+      "sha256": "306882cc97f34f8aa1eee6932ba9fc7af186fbaaed4a1a589f1029812c87c175",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    },
+    "website/why-local-agent.html": {
+      "passed": true,
+      "httpStatus": "200",
+      "bytes": 5551,
+      "sha256": "accecae1261114a1a765b4fc54dbcdba0c6e6f94d990768fbf4dbffbbe5de1bd",
+      "artifactExact": true,
+      "managedRobotsPrefixOnly": false
+    }
+  }
+}

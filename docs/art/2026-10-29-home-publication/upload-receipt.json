@@ -1,0 +1,22 @@
+{
+  "startedAtUtc": "2026-10-28T23:27:31.454598+00:00",
+  "completedAtUtc": "2026-10-28T23:27:39.657056+00:00",
+  "officialWrangler": "4.154.0",
+  "exitCode": 0,
+  "command": [
+    "node",
+    "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/53c287867d07400baf089d977a3fb3ed/toolkit/node_modules/wrangler/bin/wrangler.js",
+    "versions",
+    "upload",
+    "--config",
+    "wrangler.json",
+    "--no-experimental-provision",
+    "--no-experimental-auto-create",
+    "--message",
+    "Reviewed homepage art and navigation; exact live Worker/privacy/fonts/blog assets retained"
+  ],
+  "stdout": "\ud83c\udf00 Building list of assets...\n\u2728 Read 146 files from the assets directory /private/tmp/codex-session-storage/7199f0b461f883fefcf87082/169a499216eb42bfb256957b99521dbe/publication/website\n\ud83c\udf00 Starting asset upload...\n\ud83c\udf00 Found 9 new or modified static assets to upload. Proceeding with upload...\n+ /simple-home.css\n+ /detail-page.css\n+ /tell-me-more.html\n+ /index.html\n+ /i18n/en.json\n+ /assets/art/quenderin-home-20261028-960.webp\n+ /story-sections.css\n+ /styles.css\n+ /assets/art/quenderin-home-20261028.webp\nUploaded 3 of 9 assets\nUploaded 6 of 9 assets\nUploaded 9 of 9 assets\n\nTo deploy this version to production traffic use the command wrangler versions deploy\n\nChanges to non-versioned settings (config properties 'logpush' or 'tail_consumers') take effect after your next deployment using the command wrangler versions deploy\n\nChanges to triggers (routes, custom domains, cron schedules, etc) must be applied with the command wrangler triggers deploy\n\n",
+  "stderr": "",
+  "websiteAggregateSha256": "fc060b272f783a78cacc25502b7b6d177819a279fd903f462c552590d92c70a7",
+  "activation": false
+}

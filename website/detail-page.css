@@ -53,7 +53,7 @@ html[data-theme-mode="dark"] .detail-page .site-header {
 .detail-page .hero { background: var(--canvas); border: 0; overflow: visible; }
 .detail-page .hero::before, .detail-page .hero::after { display: none; }
 .detail-page .hero-inner { grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: 3rem; padding-block: 2.5rem 2rem; }
-.detail-page .hero h1 { color: var(--text); font-size: clamp(3rem, 5.3vw, 4.25rem); font-weight: 500; max-width: 15ch; line-height: 1.04; letter-spacing: -0.04em; text-wrap: balance; }
+.detail-page .hero h1 { color: var(--text); font-size: clamp(3.24rem, 5.724vw, 4.59rem); font-weight: 700; max-width: 15ch; line-height: 1.04; letter-spacing: -0.04em; text-wrap: balance; }
 .detail-page .hero .eyebrow { color: var(--text-secondary); }
 .detail-page .hero .lede { color: var(--text-secondary); font-size: 1.08rem; max-width: 49ch; margin-top: 1.5rem; line-height: 1.75; }
 .detail-page .hero .store-link { color: var(--text); }
@@ -78,13 +78,13 @@ html[data-theme-mode="dark"] .detail-page .site-header {
 .detail-page .section { padding-block: clamp(1.5rem, 2.5vw, 2rem); background: var(--canvas); }
 .detail-page .section.tint { background: var(--canvas); }
 .detail-page .section-head { max-width: 45rem; margin-bottom: 1.25rem; }
-.detail-page h2 { font-size: clamp(2rem, 3.7vw, 2.75rem); font-weight: 500; line-height: 1.15; text-wrap: balance; }
+.detail-page h2 { font-size: clamp(2.16rem, 3.996vw, 2.97rem); font-weight: 700; line-height: 1.15; text-wrap: balance; }
 .detail-page .section-head p { font-size: 1rem; line-height: 1.75; }
 .detail-page .section-sub { margin-inline: 0; }
 .detail-page .section-head .eyebrow, .detail-page .eyebrow { font-size: 0.75rem; color: var(--text-secondary); }
 .detail-page .section-head .eyebrow, .detail-page .split-copy > .eyebrow { margin-top: 0; }
 .detail-page .development-update { border-bottom: 1px solid var(--border); }
-.detail-page .development-update h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
+.detail-page .development-update h2 { font-size: clamp(1.62rem, 3.24vw, 2.16rem); }
 .development-notes { margin: 0; }
 .development-notes > div { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1.5rem; padding-block: 1rem; border-top: 1px solid var(--border); }
 .development-notes dt { color: var(--text-secondary); font-size: .8125rem; line-height: 1.7; }
@@ -100,7 +100,7 @@ html[data-theme-mode="dark"] .detail-page .site-header {
 .detail-page .trust-label, .detail-page .trust-list { font-size: 0.75rem; color: var(--text-secondary); }
 .detail-page .band { text-align: start; padding-block: 2rem; background: var(--surface-tint); }
 .detail-page .band-inner { max-width: none; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 4rem; }
-.detail-page .band h2 { font-size: clamp(1.8rem, 3vw, 2.4rem); }
+.detail-page .band h2 { font-size: clamp(1.944rem, 3.24vw, 2.592rem); }
 .detail-page .band p { font-size: 1rem; line-height: 1.8; margin-top: 0; }
 .detail-page .band .eyebrow { grid-column: 1 / -1; }
 .detail-page #story { background: var(--canvas); color: var(--text); border-block: 1px solid var(--border); }
@@ -235,7 +235,7 @@ html[dir="rtl"] .detail-page .shots-next { right: auto; left: 0; transform: scal
   .detail-page .lang-select:hover, .detail-page .lang-select:focus-visible { color: transparent; }
   .detail-page .nav { gap: 0.35rem; }
   .detail-page .nav-toggle { min-width: 44px; min-height: 44px; }
-  .detail-page .hero h1 { font-size: clamp(2.75rem, 10vw, 3.5rem); }
+  .detail-page .hero h1 { font-size: clamp(2.97rem, 10.8vw, 3.78rem); }
   .detail-page .hero .lede { font-size: 1rem; }
   .detail-page .hero .store-actions { gap: 1rem; }
   .detail-page .store-link > img { width: 132px; height: 44px; }
