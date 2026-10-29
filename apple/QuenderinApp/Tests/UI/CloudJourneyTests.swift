@@ -121,7 +121,12 @@ final class CloudJourneyTests: XCTestCase {
         tap(authorize)
         let error = app.staticTexts["remote-error"]
         require(error)
-        XCTAssertEqual(error.label, "Enter the HTTPS origin of your self-hosted Remote Harness server.")
+        #if os(macOS)
+        let errorText = error.value as? String
+        #else
+        let errorText = error.label
+        #endif
+        XCTAssertEqual(errorText, "Enter the HTTPS origin of your self-hosted Remote Harness server.")
         XCTAssertFalse(authorize.isEnabled, "A rejected authorization must clear the password")
         // A scrolled SwiftUI Form can omit earlier rows from its accessibility tree.
         revealFormControl(server, towardStart: true)
