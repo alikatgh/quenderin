@@ -3,6 +3,46 @@ import XCTest
 
 #if canImport(SwiftUI)
 final class MarkdownCodeCopyTests: XCTestCase {
+    @MainActor
+    func testAccessibleTextMatchesRenderedBlocksAndKeepsCodeLiteral() {
+        let markdown = """
+        # **Result**
+
+        17% of 240 = **40.8**. Read [details](https://example.invalid/hidden-destination).
+
+        > *Quoted text*
+
+        3. First
+        4. `Second`
+
+        - Third
+
+        ```swift
+        let literal = "**keep these**"
+        ```
+
+        ---
+
+        Demo mode: reply is canned.
+        """
+        XCTAssertEqual(markdownPresentedText(markdown), """
+        Result
+
+        17% of 240 = 40.8. Read details.
+
+        Quoted text
+
+        3. First
+        4. Second
+
+        • Third
+
+        let literal = "**keep these**"
+
+        Demo mode: reply is canned.
+        """)
+    }
+
     func testFencedCodeCopyPreservesOriginalContentBytes() {
         let fixtures: [(String, [String])] = [
             ("Before\r\n```swift\r\nlet value = 1\r\n```\r\nAfter", ["let value = 1\r\n"]),

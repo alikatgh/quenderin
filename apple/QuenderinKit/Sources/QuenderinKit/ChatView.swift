@@ -520,6 +520,14 @@ private struct ChatBubble: View {
 
     var body: some View {
         let mine = message.role == .user
+        let shown = mine ? message.text : ActionIntent.displayAssistantText(message.text)
+        let accessibleBody = shown.isEmpty
+            ? (mine && !message.documents.isEmpty ? "" : "…")
+            : (mine ? shown : markdownPresentedText(shown))
+        // Match the visible bubble: attachment names only, presented body, and its warning.
+        let accessibleText = (message.documents.map(\.name) + [accessibleBody]
+            + (message.isFlagged ? [SupportContact.flaggedOutputNotice] : []))
+            .filter { !$0.isEmpty }.joined(separator: "\n\n")
         let bubble = VStack(alignment: .leading, spacing: 2) {
             // Attached-document chips — the transcript shows WHAT was attached, not the extracted
             // text (that lives in engineText for the model).
@@ -547,7 +555,6 @@ private struct ChatBubble: View {
             } else {
                 // Rewrite old "I cannot fulfill… use the Agent tab" walls to the guided education
                 // (storage stays as-is; people see the correct path + handoff chip).
-                let shown = ActionIntent.displayAssistantText(message.text)
                 MarkdownText(text: shown, color: palette.onAssistantBubble)
                     .textSelection(.enabled)
             }
@@ -567,6 +574,9 @@ private struct ChatBubble: View {
         .frame(maxWidth: Self.bubbleMaxWidth, alignment: mine ? .trailing : .leading)
         .frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
         .accessibilityElement(children: .combine)
+        // Selectable Markdown can otherwise leave the combined Mac element unnamed.
+        .accessibilityLabel(Text(verbatim: accessibleText))
+        .accessibilityIdentifier("chat-message-\(message.role.rawValue)-\(message.id.uuidString)")
 
         // Every bubble answers a right-click: Copy always; Report on AI responses only
         // (Generative-AI content policy).

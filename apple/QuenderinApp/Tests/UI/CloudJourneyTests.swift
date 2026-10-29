@@ -50,10 +50,7 @@ final class CloudJourneyTests: XCTestCase {
         XCTAssertEqual(composer.value as? String, draft)
         capture("09-local-draft-after-navigation")
         tap(app.buttons["Send message"])
-        let canned = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "reply is canned")).firstMatch
-        require(canned, "The synthetic reply must identify its canned provenance")
-        require(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "40.8")).firstMatch,
-                "The known mock math prompt must display its expected answer")
+        requireSyntheticReply()
         require(app.buttons["Send message"])
         XCTAssertFalse(app.buttons["Send message"].isEnabled)
         capture("10-local-canned-reply")
@@ -189,10 +186,10 @@ final class CloudJourneyTests: XCTestCase {
         tap(app.menuBars.menuItems["Show Main Window"])
         let reopened = app.windows.containing(.textField, identifier: "Message").firstMatch
         require(reopened, "Show Main Window must recover the main scene while Settings is open")
-        requireSavedSyntheticReply()
+        requireSyntheticReply()
         XCTAssertEqual(app.windows.containing(.textField, identifier: "Message").count, 1)
         app.typeKey("0", modifierFlags: .command)
-        requireSavedSyntheticReply()
+        requireSyntheticReply()
         XCTAssertEqual(app.windows.containing(.textField, identifier: "Message").count, 1,
                        "Repeated Show Main Window must focus the existing main scene")
         capture("12b-mac-show-main-preserves-conversation")
@@ -204,14 +201,14 @@ final class CloudJourneyTests: XCTestCase {
 
         app.launch()
         require(app.textFields["Message"])
-        requireSavedSyntheticReply()
+        requireSyntheticReply()
         capture("13-mac-relaunch-after-settings-last-window")
         let restoredMain = app.windows.containing(.textField, identifier: "Message").firstMatch
         tap(restoredMain.buttons[XCUIIdentifierCloseWindow])
         XCTAssertTrue(app.wait(for: .notRunning, timeout: timeout), "Closing the sole main window must quit")
         app.launch()
         require(app.textFields["Message"])
-        requireSavedSyntheticReply()
+        requireSyntheticReply()
         capture("14-mac-relaunch-after-main-last-window")
 
         // Check New Chat last, after proving restoration of the saved conversation.
@@ -247,6 +244,13 @@ final class CloudJourneyTests: XCTestCase {
 
     @MainActor private func checkPhoneSettingsHistoryAndRelaunch() {
         dismissChatKeyboard()
+        // Establish the documented Chats root before switching to Settings.
+        tap(app.navigationBars.buttons["Chats"])
+        require(app.navigationBars["Chats"])
+        let row = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@ AND label CONTAINS %@", draft, "40.8"
+        )).firstMatch
+        require(row, "The completed synthetic conversation must appear in history before Settings")
         // The native TabView exposes destinations beyond its first four through More.
         tap(app.tabBars.buttons["More"])
         tap(app.staticTexts["Settings"])
@@ -258,13 +262,12 @@ final class CloudJourneyTests: XCTestCase {
         XCTAssertEqual(automatic.label, "Automatic model selection")
         capture("11-iphone-settings")
         tap(app.tabBars.buttons["Chat"])
-        require(app.textFields["Message"])
-        tap(app.navigationBars.buttons["Chats"])
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", draft)).firstMatch
-        require(row, "The completed synthetic conversation must appear in history")
+        require(app.navigationBars["Chats"])
+        require(row, "The same saved conversation must remain in history after Settings")
         capture("12-iphone-saved-history")
         tap(row)
-        requireSavedSyntheticReply()
+        require(app.textFields["Message"])
+        requireSyntheticReply()
         app.terminate()
         app.launch()
         // Returning iPhone users land on the conversation list.
@@ -272,14 +275,24 @@ final class CloudJourneyTests: XCTestCase {
         require(restoredRow, "Saved history must survive an app relaunch")
         tap(restoredRow)
         require(app.textFields["Message"])
-        requireSavedSyntheticReply()
+        requireSyntheticReply()
         capture("13-iphone-history-after-relaunch")
     }
     #endif
 
-    @MainActor private func requireSavedSyntheticReply() {
-        let reply = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "reply is canned")).firstMatch
-        require(reply)
+    @MainActor private func requireSyntheticReply(file: StaticString = #filePath, line: UInt = #line) {
+        // SwiftUI exposes combined bubbles as Other on macOS; identify the actual message
+        // independently of element type, then require both parts of its accessible content.
+        let reply = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "chat-message-assistant-"
+        )).firstMatch
+        require(reply, "The assistant message must be accessible", file: file, line: line)
+        let content = XCTNSPredicateExpectation(predicate: NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "reply is canned", "40.8"
+        ), object: reply)
+        XCTAssertEqual(XCTWaiter.wait(for: [content], timeout: timeout), .completed,
+                       "The assistant's accessible text must include the canned provenance and 40.8 answer",
+                       file: file, line: line)
     }
 
     @MainActor private func require(_ element: XCUIElement, _ message: String = "Required screen or control is missing",
