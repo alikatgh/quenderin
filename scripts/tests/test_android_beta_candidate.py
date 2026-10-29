@@ -6,6 +6,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 import json
 from pathlib import Path
+import struct
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,8 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import android_beta_candidate as candidate
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "native/remote-crypto/tools"))
+import native_sdk
 
 ENVIRONMENT = {"GITHUB_REPOSITORY": candidate.REPOSITORY,
                "CANDIDATE_SOURCE_COMMIT": "b" * 40, "CANDIDATE_RELEASE_ID": "418062491",
@@ -26,6 +29,7 @@ OLD_SOURCE = "eecf089ff328f7303a7d4a64358252e8913e32f5"
 
 class Fixture:
     def __init__(self, root: Path):
+        self.root = root
         self.source = root / "source"
         self.source.mkdir()
         self.gradle = self.source / "android/app/build.gradle.kts"
@@ -33,7 +37,24 @@ class Fixture:
         self.gradle.write_text('applicationId = "ai.quenderin.app"\nversionName = "0.6.0"\nversionCode = 6\n')
         self.bundle = self.source / "android/app/build/outputs/bundle/release/app-release.aab"
         self.bundle.parent.mkdir(parents=True)
+        self.apk = self.source / "android/app/build/outputs/apk/debug/app-debug.apk"
+        self.apk.parent.mkdir(parents=True)
+        self.sdk = root / "remote-sdk"
+        self.noise = self.elf()
+        self.jna = self.noise[:-1] + b"\x01"
+        for name, data in (("kotlin/" + native_sdk.KOTLIN, b"// synthetic binding"),
+                           ("jniLibs/arm64-v8a/libquenderin_remote_crypto.so", self.noise)):
+            path = self.sdk / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        self.aar = self.sdk / "jna/jna-5.19.1.aar"
+        self.aar.parent.mkdir()
+        with zipfile.ZipFile(self.aar, "w") as archive:
+            archive.writestr("classes.jar", b"synthetic JNA classes")
+            archive.writestr("jni/arm64-v8a/libjnidispatch.so", self.jna)
+        self.write_sdk_receipt()
         self.write_bundle()
+        self.write_apk()
         self.repository = {"full_name": candidate.REPOSITORY, "private": False}
         self.release = {"id": CANDIDATE.release_id, "draft": True, "prerelease": True,
                         "published_at": None, "tag_name": CANDIDATE.tag,
@@ -52,7 +73,6 @@ class Fixture:
         self.publish_after_upload = False
         self.calls = []
         self.uploads = []
-        self.root = root
         self.draft = candidate.Draft(CANDIDATE, self.run)
         self.bundletool = root / "bundletool.jar"
         self.bundletool.write_bytes(b"synthetic JAR for fake Java command")
@@ -60,11 +80,44 @@ class Fixture:
                          'package="ai.quenderin.app" android:versionName="0.6.0" android:versionCode="6"/>')
         self.java_failure = False
 
-    def write_bundle(self, extra=None, duplicate=False):
+    @staticmethod
+    def elf():
+        data = bytearray(128)
+        data[:6] = b"\x7fELF\x02\x01"
+        struct.pack_into("<HH", data, 16, 3, 183)
+        struct.pack_into("<Q", data, 32, 64)
+        struct.pack_into("<HH", data, 54, 56, 1)
+        struct.pack_into("<IIQQQQQQ", data, 64, 1, 5, 0, 0, 0, 64, 64, 16384)
+        return bytes(data)
+
+    def write_sdk_receipt(self):
+        receipt = {"schemaVersion": 1, "platform": "android", "rust": "1.90.0",
+                   "targets": native_sdk.TARGETS["android"], "sources": native_sdk.source_hashes(),
+                   "files": native_sdk.files(self.sdk), "minimumAPI": 28,
+                   "ndk": "26.3.11579264", "abis": ["arm64-v8a"]}
+        (self.sdk / native_sdk.RECEIPT).write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
+
+    def native_entries(self, prefix, omit=None, tamper=None):
+        result = {prefix + "libquenderin_llama.so": self.elf(),
+                  prefix + "libquenderin_remote_crypto.so": self.noise,
+                  prefix + "libjnidispatch.so": self.jna}
+        if omit:
+            del result[prefix + omit]
+        if tamper:
+            result[prefix + tamper] = result[prefix + tamper][:-1] + b"\x02"
+        return result
+
+    def write_apk(self, omit=None, tamper=None):
+        with zipfile.ZipFile(self.apk, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, data in self.native_entries("lib/arm64-v8a/", omit, tamper).items():
+                archive.writestr(name, data)
+
+    def write_bundle(self, extra=None, duplicate=False, omit=None, tamper=None):
         with zipfile.ZipFile(self.bundle, "w") as archive:
-            for name in ("BundleConfig.pb", "base/manifest/AndroidManifest.xml", "base/dex/classes.dex",
-                         "base/lib/arm64-v8a/libquenderin_llama.so"):
+            for name in ("BundleConfig.pb", "base/manifest/AndroidManifest.xml", "base/dex/classes.dex"):
                 archive.writestr(name, b"fixture payload")
+            for name, data in self.native_entries("base/lib/arm64-v8a/", omit, tamper).items():
+                archive.writestr(name, data)
             if extra:
                 archive.writestr(extra, b"signature")
             if duplicate:
@@ -121,8 +174,17 @@ class Fixture:
         elif args[0] == sys.executable:
             if self.fail_native:
                 raise ValueError("Native verification failed")
+            if "native_sdk.py" in args[1]:
+                assert args[1] == str(self.source / "native/remote-crypto/tools/native_sdk.py")
+                assert args[args.index("--sdk") + 1] == str(self.sdk)
+                if "verify-package" in args:
+                    native_sdk.verify_package(self.sdk, Path(args[args.index("--package") + 1]))
+                else:
+                    assert "verify" in args and args[args.index("--platform") + 1] == "android"
+                    native_sdk.verify(self.sdk, "android")
+                return ""
             if "verify_diffusion_android_package.py" in args[1]:
-                return json.dumps({"revision": "image-source", "verified": ["libquenderin_diffusion.so"],
+                return json.dumps({"revision": "image-source", "verified": ["libquenderin_diffusion.so", "libquenderin_diffusion_jni.so"],
                                    "alignment": 16384, "artifact": str(self.bundle)})
             if "prepare_prism_runtime.py" in args[1]:
                 return json.dumps({"revision": "prism-source", "sourcePatchId": "pinned-patch"})
@@ -137,7 +199,7 @@ class Fixture:
 
     def export(self, output="export"):
         return candidate.export(self.source, self.root / "jniLibs", self.root / "prism",
-                                self.root / output, self.draft, self.bundletool, self.run)
+                                self.sdk, self.root / output, self.draft, self.bundletool, self.run)
 
 
 class AndroidCandidateTests(unittest.TestCase):
@@ -151,6 +213,14 @@ class AndroidCandidateTests(unittest.TestCase):
         self.jar_digest.start()
         self.addCleanup(self.jar_size.stop)
         self.addCleanup(self.jar_digest.stop)
+        # Only the fixed JNA download identity is synthetic. Receipt/source, ELF,
+        # actual package bytes and archive gates use the real native SDK verifier.
+        for name, value in (("JNA_BYTES", self.fixture.aar.stat().st_size),
+                            ("JNA_SHA1", native_sdk.digest(self.fixture.aar, "sha1")),
+                            ("JNA_SHA256", native_sdk.digest(self.fixture.aar))):
+            mocked = patch.object(native_sdk, name, value)
+            mocked.start()
+            self.addCleanup(mocked.stop)
 
     def reject_without_upload(self):
         with self.assertRaises((ValueError, ET.ParseError, zipfile.BadZipFile)):
@@ -260,6 +330,14 @@ class AndroidCandidateTests(unittest.TestCase):
         self.assertEqual(receipt["digest"], candidate.digest(files[0]))
         self.assertEqual(receipt["runtimeProvenance"]["prism"]["revision"], "prism-source")
         self.assertNotIn("artifact", receipt["runtimeProvenance"]["image"])
+        remote = receipt["runtimeProvenance"]["remoteCrypto"]
+        self.assertEqual(remote["sdkReceipt"], json.loads((self.fixture.sdk / native_sdk.RECEIPT).read_text()))
+        self.assertEqual(remote["sdkReceiptDigest"], candidate.digest(self.fixture.sdk / native_sdk.RECEIPT))
+        self.assertEqual(remote["packages"]["aab"]["digest"], receipt["digest"])
+        self.assertEqual(remote["packages"]["debugApk"]["digest"], candidate.digest(self.fixture.apk))
+        for package in remote["packages"].values():
+            self.assertEqual(package["verified"], ["libquenderin_remote_crypto.so", "libjnidispatch.so"])
+            self.assertEqual(package["elfAlignment"], 16384)
         self.assertTrue(all(timeout <= 600 for _, timeout in self.fixture.calls))
 
     def test_repository_must_be_exact_and_public(self):
@@ -338,6 +416,47 @@ class AndroidCandidateTests(unittest.TestCase):
 
     def test_native_package_or_provenance_failure_prevents_upload(self):
         self.fixture.fail_native = True
+        self.reject_without_upload()
+
+    def test_missing_sdk_or_receipt_prevents_staging_and_upload(self):
+        receipt = self.fixture.sdk / native_sdk.RECEIPT
+        receipt.unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.fixture.export()
+        self.assertEqual(self.fixture.uploads, [])
+        self.assertFalse((self.fixture.root / "export").exists())
+        self.fixture.sdk = self.fixture.root / "missing-sdk"
+        self.reject_without_upload()
+
+    def test_stale_sdk_source_and_tampered_generated_or_native_bytes_prevent_upload(self):
+        path = self.fixture.sdk / native_sdk.RECEIPT
+        receipt = json.loads(path.read_text())
+        receipt["sources"]["Cargo.lock"] = "f" * 64
+        path.write_text(json.dumps(receipt))
+        self.reject_without_upload()
+        self.fixture.write_sdk_receipt()
+        for name in ("kotlin/" + native_sdk.KOTLIN,
+                     "jniLibs/arm64-v8a/libquenderin_remote_crypto.so", "jna/jna-5.19.1.aar"):
+            with self.subTest(component=name):
+                component = self.fixture.sdk / name
+                original = component.read_bytes()
+                component.write_bytes(original + b"tampered")
+                self.reject_without_upload()
+                component.write_bytes(original)
+        self.assertFalse((self.fixture.root / "export").exists())
+
+    def test_final_aab_and_apk_missing_or_tampered_noise_or_jna_prevent_upload(self):
+        for writer in (self.fixture.write_bundle, self.fixture.write_apk):
+            for library in ("libquenderin_remote_crypto.so", "libjnidispatch.so"):
+                for mutation in ("omit", "tamper"):
+                    with self.subTest(package=writer.__name__, library=library, mutation=mutation):
+                        writer(**{mutation: library})
+                        self.reject_without_upload()
+                        self.assertFalse((self.fixture.root / "export").exists())
+                        writer()
+
+    def test_missing_debug_apk_prevents_export_even_when_aab_is_valid(self):
+        self.fixture.apk.unlink()
         self.reject_without_upload()
 
     def test_packaged_manifest_mismatch_failure_or_unsafe_xml_prevents_staging_and_upload(self):

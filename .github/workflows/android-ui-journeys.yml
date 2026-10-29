@@ -44,7 +44,7 @@ jobs:
         timeout-minutes: 18
         working-directory: android
         run: |
-          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest \
+          ./gradlew :quenderin-core:test :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest \
             --no-daemon --console=plain --max-workers=2 \
             -Pquenderin.llamaDir="$RUNNER_TEMP/no-native-ui-source"
       - name: Enable KVM on this ephemeral hosted runner

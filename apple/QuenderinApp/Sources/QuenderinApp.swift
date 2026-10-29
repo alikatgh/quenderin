@@ -12,6 +12,12 @@ import QuenderinKit
 /// Both sit behind protocol seams, and onboarding + chat share ONE engine instance
 /// (load in onboarding, generate in chat).
 #if os(macOS)
+private enum QuenderinMacWindow {
+    enum Identity: String, Codable, Hashable { case main }
+    static let id = "main"
+    static let showMainWindow = Notification.Name("QuenderinShowMainWindow")
+}
+
 /// Quit must NOT run C++ static destructors: after any inference, llama.cpp's Metal backend
 /// keeps a residency-set worker alive for the process lifetime, and its GLOBAL teardown in
 /// `__cxa_finalize` hits `ggml_abort` → SIGABRT — "Quenderin quit unexpectedly" on every ⌘Q
@@ -20,8 +26,19 @@ import QuenderinKit
 /// action, settings via UserDefaults), so after a defaults flush a hard `_exit(0)` — which
 /// skips atexit/finalizers entirely — loses nothing and is the established workaround for
 /// ggml's Metal teardown assert. Never replace with `exit(0)`: that RUNS the finalizers.
+@MainActor
 final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
-    /// Quenderin is a single-window chat app: closing the main window must QUIT, not leave a
+    var showMainWindow: @MainActor () -> Void = {
+        NotificationCenter.default.post(name: QuenderinMacWindow.showMainWindow, object: nil)
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // Settings may be the visible window, so always restore/focus the main scene.
+        showMainWindow()
+        return false
+    }
+
+    /// Preserve last-window-close quitting instead of leaving a
     /// windowless ghost process with no way back (App Review 4.0.0 Design, 0.2.0(9), 2026-07-19 —
     /// "when the user closes the main window there is no menu item to re-open it"). Apple's
     /// sanctioned single-window remedy is exactly this: save state and quit on last-window-close.
@@ -36,6 +53,37 @@ final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         UserDefaults.standard.synchronize()
         _exit(0)
+    }
+}
+
+private struct QuenderinMacWindowRecovery: ViewModifier {
+    @Environment(\.openWindow) private var openWindow
+
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: QuenderinMacWindow.showMainWindow)) { _ in
+            openWindow(id: QuenderinMacWindow.id, value: QuenderinMacWindow.Identity.main)
+        }
+    }
+}
+
+private struct QuenderinMacWindowCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+    let conversations: ConversationCoordinator
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Chat") {
+                conversations.startNew()
+                openWindow(id: QuenderinMacWindow.id, value: QuenderinMacWindow.Identity.main)
+            }
+            .keyboardShortcut("n")
+        }
+        CommandGroup(before: .windowList) {
+            Button("Show Main Window") {
+                openWindow(id: QuenderinMacWindow.id, value: QuenderinMacWindow.Identity.main)
+            }
+            .keyboardShortcut("0")
+        }
     }
 }
 #endif
@@ -106,23 +154,23 @@ struct QuenderinApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
-            RootView(onboarding: onboarding, conversations: conversations, agent: agent)
-                #if os(macOS)
-                // The same SwiftUI flow runs on the Mac (QuenderinMac target); give the window a
-                // chat-app footprint instead of the tiny fit-to-content default.
-                .frame(minWidth: 720, minHeight: 560)
-                #endif
-        }
         #if os(macOS)
+        // A fixed presentation value makes every recovery action focus the same window.
+        // Keep WindowGroup's lifetime so closing main while Settings is open does not quit.
+        WindowGroup(id: QuenderinMacWindow.id, for: QuenderinMacWindow.Identity.self) { _ in
+            RootView(onboarding: onboarding, conversations: conversations, agent: agent)
+                .frame(minWidth: 720, minHeight: 560)
+                .modifier(QuenderinMacWindowRecovery())
+        } defaultValue: {
+            .main
+        }
         .defaultSize(width: 960, height: 700)
         .commands {
-            // ⌘N = new chat, in the File menu where Mac users expect it (replaces "New Window" —
-            // Quenderin is a single-window chat app).
-            CommandGroup(replacing: .newItem) {
-                Button("New Chat") { conversations.startNew() }
-                    .keyboardShortcut("n")
-            }
+            QuenderinMacWindowCommands(conversations: conversations)
+        }
+        #else
+        WindowGroup {
+            RootView(onboarding: onboarding, conversations: conversations, agent: agent)
         }
         #endif
 
@@ -144,6 +192,8 @@ struct QuenderinApp: App {
             .frame(minWidth: 680, minHeight: 440)
             .quenderinWindowCanvas()
             .preferredColorScheme(settings.theme.colorScheme)
+            // Keep the Dock bridge alive even after the main view has been removed.
+            .modifier(QuenderinMacWindowRecovery())
         }
         #endif
     }

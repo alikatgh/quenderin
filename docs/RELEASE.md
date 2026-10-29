@@ -4,6 +4,220 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 29 October 2026 — native integration evidence
+
+The final integration preserves the Apple application and dependencies from
+`a366f137c6293d9cccf70b384df8fcec6165eb6b`, with the independently reviewed,
+test-only accessibility correction in `d2efd3b`, and Android source at
+`25e50b497867383fa8755995f7b0093823fc8eb1`. The Apple tree matches `d2efd3b`
+and the Android tree matches that exact Android revision; shared runtime, remote-SDK and release dependency
+inputs are unchanged between them. Android retains its hosted-UI test dependency
+additions. This integration is separate from store publication.
+
+Cloud build 30 was started manually at the Apple revision above with the two
+synthetic Test actions (iOS and macOS) and two signed Archive actions. The included
+25-hour team allowance showed zero used immediately before the run. At the latest
+observation, both signed Archive actions succeeded and iOS Test is still running.
+The macOS journey failed because its exact error assertion read an empty
+accessibility label. The retained recording shows the expected HTTPS error,
+preserved server and email, cleared password, and disabled authorization. The
+reviewed correction reads macOS static text through its value; its Cloud runtime
+verification is still pending. This is not a passing Cloud result or evidence
+of complete Apple runtime readiness.
+
+Android's bounded, manual
+[hosted UI run 40788876323](https://github.com/alikatgh/quenderin/actions/runs/40788876323)
+at the Android revision above passed all four synthetic UI tests. Seven selected
+PNGs were inspected, including the intentional offline reporting error, keyboard,
+200% font and navigation-rail states. These results do not establish live
+provider inference, successful report delivery, physical-device behavior or a
+signed Play artifact. The reporting helpers and receiver fixtures are source
+and synthetic-test evidence only.
+
+The current published privacy HTML has SHA-256
+`0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c`;
+this integration retains that exact HTML and its matching policy source.
+The Android upload key remains unavailable; its private human-entry step and
+Google registration are outstanding. France remains enabled, while the owner's
+ANSSI/export-compliance determination and filing evidence are unresolved as
+described below. No 0.6.0 App Store or Play submission is established, and the
+native update is not ready for publication while these gates remain open.
+
+## 28 October 2026 — native 0.6.0 preparation
+
+The user authorized updated iOS, macOS and Android store submissions. Preparation
+started from main `b8ef18558dab1693c0baa666378dafd7c66a5f9a`; release changes
+are prepared on `codex/native-060-20261028` in
+[PR #196](https://github.com/alikatgh/quenderin/pull/196). Store drafts and source
+preparation are separate from signed archives, uploads and review submissions.
+
+Live console refresh in the established profiles:
+
+- Apple iOS and macOS **0.5.0 (22) Ready for Distribution**. Both **0.6.0**
+  drafts now show **Prepare for Submission**, with automatic release after
+  approval selected. The existing App Store build is 22; source floor is 23.
+- Xcode Cloud's included 25-hour team allowance showed **16h22 used / 8h38
+  available** immediately before build 23, resetting October 28 at 15:02 local.
+  No plan was changed. The existing workflow now starts manually from the 0.6.0
+  branch; its obsolete automatic branch trigger was removed. Both archive actions
+  in [build 23](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/d7febd65-02c0-4f8a-b395-b2a7bd5f07dd/summary)
+  at `fafcbe0340d4d4c11ad00504deb7187db4e42b46` stopped during post-clone SDK
+  staging, before archives or uploads. The generic error matches a reproduced
+  Python 3.9.6 missing-`tomllib` failure; the Cloud log did not expose its Python
+  version. The fix selects Python 3.11+ for source validation within the existing
+  SDK watchdog. A new Cloud run must establish the repair. Recheck capacity
+  before that run.
+- Google Play still has **2 (0.2.0)** active on **Closed testing - Alpha** and
+  the existing draft is now named **6 (0.6.0)** with updated release notes but
+  without a new bundle. Source targets **0.6.0 / 6**. No new signed bundle has
+  been uploaded. The live dashboard shows **7 opted-in testers** and disabled
+  production access; Google requires at least **12 for 14 continuous days**.
+
+[Cloud build 24](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/97eb2cd4-b02f-4273-84f3-5fda6113fc52/summary)
+at `8b368d1b80e019963a7273e81c36027e5f1ef1df` passed Python bootstrap and
+source validation, then compiled the host library, bindings and first two Apple
+targets. Both actions stopped before archives when an Intel-target build could
+not load `curve25519_dalek_derive`. This strongly matches the documented
+[macOS 27 stripped-proc-macro defect](https://github.com/rust-lang/rust/issues/157750);
+the malformed dylib itself was unavailable, so its precise loader failure is
+unconfirmed. The Apple-only Cargo build-dependency strip override now preserves
+host proc-macro dylibs. It changes neither the shipped target's strip profile nor
+the Rust/dependency pins or cryptography.
+
+[Cloud build 25](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/80860668-005c-47c0-924b-ddf1072f10b6/summary)
+at `9c9bffbd3655fc9ec16d272c065c57cf1828b12f` passed SDK/runtime preparation,
+archives and signed exports. The final unchanged remote-crypto gate then rejected
+the exports. Inspection of the exact Mac App Store package and archive log found
+all nine roots supplied to the linker, followed by default executable stripping;
+both final architectures lost the required exports. Release application targets
+now use `STRIP_STYLE=non-global`; the next signed exports must pass the same gate.
+Local signature trust verification of the downloaded package was unavailable
+(`CSSMERR_TP_NOT_TRUSTED`); metadata matched the expected team. This is not proof
+of a signature-integrity failure or a passing local signature check.
+
+The same source passed hosted iOS/macOS test-bundle compilation. Android's complete
+APK/AAB build passed compilation, but its final dependency-alignment check failed.
+The JNI CMake applied 16 KiB flags only to `SHARED` targets, while pinned ggml CPU
+plugins use `MODULE`. A configure-only regression demonstrates that omission;
+directory link options now cover both. Final packaged APK/AAB verification remains
+required; the exact first rejected packaged DSO was not retained by that CI job.
+
+The release packaging changes require the pinned real remote-crypto SDK in the
+normal Prism/image packages, and verify final native payloads and provenance.
+Apple Cloud staging and signed-export checks fail closed when the SDK or its
+archive proof is missing or stale. Android export retains the main-source,
+version, digest, unsigned/draft and no-overwrite gates. The private upload key
+is still missing; the nonsecret Varlock-backed human signing command is in
+[tools/android-release](../tools/android-release/README.md). Do not repeat the
+previous broad key/password search or generate/reset an upload key implicitly.
+
+The [privacy policy source](legal/privacy-policy.md), matching HTML, Apple
+manifest and [store guidance](STORE_SUBMISSION.md) now distinguish local use
+from optional direct DeepSeek and configured server/Host destinations. Store
+copy is in [the 0.6.0 drafts](releases/2026-10-28-native-060/store-copy.md).
+The old OS-only encryption exemption assertion is removed; complete the exact
+artifact's export-compliance determination before distribution.
+
+The privacy-only website candidate retains the exact active Worker module and
+all 112 historical asset inputs except `privacy.html`. Its inline theme setup
+avoids a dependency absent from those deployed assets. Independent content review,
+secret scans and rendered preview passed. Automatic approval review initially
+rejected possible service/environment grouping-tag normalization; the user
+explicitly approved that specific publication and risk afterward. The policy is
+now **published** at [quenderin.org/privacy](https://quenderin.org/privacy):
+version `1c0320c7-15a4-42e0-9560-819dcc1edb42`, deployment
+`02bb09ef-37f5-4f50-8a35-c504c28363c1`, 100% traffic on October 28.
+The uploader changed only `/privacy.html` (110 public assets reused). Readback
+matched the prior Worker ETag, bindings, compatibility, standard usage model,
+asset routing and headers; the primary-domain page rendered the October 28
+policy. A separate raw preview HTTP hash probe returned 403; it is not recorded
+as a passing hash check. Store privacy declarations have not yet changed.
+
+Hosted Debug test compilation first exposed an export-whitelist linker failure
+when Xcode made QuenderinKit a dynamic package product. Scoping it to Release did
+not repair the actual hosted Debug build: SwiftPM's Xcode bridge imparts those
+flags across configurations. The revised contract retains all nine exact real
+SDK/proof roots with `-u` and uses nonrestrictive `-export_dynamic`, preserving
+Swift APIs without an export whitelist. More ordinary globals may remain exported;
+hosted test-bundle linking, actual artifact size and exact signed Release export
+verification remain required. Source fixtures alone do not establish them.
+
+The user has approved bounded Xcode Cloud native tests and the free standard
+public-repository GitHub-hosted Android test route, using synthetic fixtures.
+No local simulator/emulator, physical-device run or local model-weight download
+is authorized by those exceptions. Keep cloud execution, rendered results,
+real inference and physical-device evidence distinct.
+
+Remaining release gates: current hosted and signed-artifact checks; changed
+native consent, credential persistence and rendered journeys; accurate live
+privacy declarations and public policy; Google in-app reporting compliance;
+and Android signing. The user authorized locating the existing upload key and
+preparing a replacement if unavailable. A bounded metadata search found no usable
+path or signing job; repository and `github-pages` environment secret counts are
+zero. Historical encrypted-store/vault contents remain unverified. Private key
+generation and Google registration have not occurred, and the registered upload
+certificate pin remains unchanged. These gaps are not passing checks, and no
+0.6.0 submission is established by this preparation.
+
+Cloud build 26 was started manually at `2924041e24d07d17432de12f72eb0f2cb2c9ad60`
+with one iPhone 17 / iOS 27 test destination, one Mac destination, and the two
+existing archive actions. Test plans are required, serial, and bounded to 300
+seconds per test. Included team capacity was 8h04 available of 25h before the
+run. No paid plan or automatic trigger was enabled. Hosted checks then caught
+the generated inference-performance cache identity left stale by the JNI CMake
+change. Both platform constants are now regenerated; fresh hosted checks remain
+required for that corrected revision.
+
+Build 26's **iOS and macOS archive actions passed**, including the unchanged
+signed-export crypto checks. Its test actions failed before the journeys: iOS
+lacked simulator slices in the Prism/image frameworks; the separate Mac
+`test-without-building` host had no cloned-source path. Test preparation now adds
+genuine, verified simulator variants only for iOS `build-for-testing`; the
+transported test phase validates genuine Cloud context and its test-products
+directory. Build/archive source and signed gates stay intact. Independent review
+and 54 focused runtime fixtures passed; fresh Cloud execution remains required.
+
+The human-only replacement-upload-key helper now has independent review and 37
+passing synthetic signer/generator tests, including private permissions, path
+substitution, process cancellation and partial-output recovery. It generates no
+key during those checks. Real key creation requires the human's hidden Terminal
+password entry; no replacement certificate has been registered with Google.
+
+### Cloud 27–28 and encryption provenance refresh
+
+Cloud 28 at `1761d8430ff51212c4bdca3a8bd45eb071471dca` again passed both
+signed archive actions. All three iPhone credential tests and all five Mac
+app-hosted credential/window tests passed. Both UI journeys failed: the iPhone
+recording shows the consent tap hitting its multiline label while the switch
+remains off; the Mac recording shows the Cloud machine's lock screen at both
+launch and failure. Mac activation failed before any journey assertion. No
+application activation change is justified by that locked-host result. The
+reviewed iPhone test correction targets the switch's trailing region and asserts
+consent becomes on before the existing Connect-enabled assertion. A fresh bounded
+Cloud run must establish this correction and the remaining journeys; archives
+alone do not establish UI readiness or a store submission.
+
+The previous store release used different encryption code. Cloud 22's source
+`53994b799eb021bed10e2b58a727539283f02559` has system HTTPS and CryptoKit
+SHA-256 integrity checks, without the native remote-crypto crate or its Swift
+SDK target. Noise was introduced after that release (`7c3f7a45`), followed by
+native integration (`26df619d`) and mandatory release packaging (`73920fd9`).
+The 0.6 “My computer” production path now uses
+`Noise_IK_25519_ChaChaPoly_SHA256` through the pinned Rust Snow default resolver:
+X25519, ChaCha20-Poly1305 and SHA-256 implementations outside Apple's system
+encryption APIs. The operating system supplies randomness; this does not make
+the selected algorithms OS-provided. Local-model chat does not use this path.
+Signed-export gates establish SDK inclusion, not a successful live Host session.
+
+France remains enabled in the live app availability. No attached encryption
+document or owner-supplied filing reference has been verified. Apple's current
+[documentation table](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption)
+requires a French declaration for industry-standard encryption outside the Apple
+OS when distributing in France. The old release's OS-only answer cannot be
+reused as evidence for this new implementation. No government filing, legal
+exemption, territory removal or replacement cryptography is established here;
+complete the exact candidate's export determination before distribution.
+
 ## 23 October 2026 — native DeepSeek source preparation
 
 The reviewed `codex/native-connections-20261023` change adds a separate native DeepSeek
@@ -635,7 +849,9 @@ is optional. For each submission select **Automatically release this version**.
 - **Age rating:** **17+** (mature local-LLM output).
 - **App Review notes (Guideline 4.2):** explain the ordinary device-sized models and optional large models, "be on Wi-Fi," and
   that onboarding *is* the first-use experience by design (it's not an empty app).
-- **App privacy:** "Data Not Collected."
+- **App privacy:** reconcile the exact shipped destinations and third-party
+  processing with the current [store guidance](STORE_SUBMISSION.md); do not
+  reuse the historical blanket "Data Not Collected" answer for remote routes.
 
 ---
 
@@ -647,6 +863,37 @@ your identity — they belong in your password manager / Apple's keychain, never
 build needs to *find* them is an absolute path in the gitignored properties file.
 
 ---
+
+## 28 October 2026 — GitHub security evidence
+
+Main `3a2c96b303c735a43eca23e7312ebca0f5a15a5d` includes CodeQL, dependency
+review, grouped Dependabot security updates and the bounded trusted-main Android
+dependency submission job. Private vulnerability reporting, secret scanning,
+push protection and the main PR/check ruleset are enabled. The Android graph's
+actual generation/submission still requires its first successful main run;
+source configuration is not proof of transitive dependency coverage.
+
+The newly enabled Dependabot alerts expose 16 existing findings in
+`native/remote-host/runtime-fixture/package-lock.json` and two build-time UI
+parser findings. The fixture dependencies are outside native store artifacts.
+Its current hosted test runs use bounded synthetic input, a sanitized environment
+and disabled external networking. The critical Vitest advisory requires API/UI
+exposure absent from this test route; Tinypool additionally requires a separate
+prototype-pollution primitive not demonstrated here. High Vite exposure concerns
+a Windows editor path, while this fixture runs on Ubuntu. Zod validation executes
+with synthetic fixtures; no untrusted production request path was established.
+These limits do not clear the alerts or prove the packages universally safe.
+
+Dependabot PRs [205](https://github.com/alikatgh/quenderin/pull/205),
+[206](https://github.com/alikatgh/quenderin/pull/206) and
+[207](https://github.com/alikatgh/quenderin/pull/207) contain overlapping identical
+Vitest lock updates. [204](https://github.com/alikatgh/quenderin/pull/204) leaves
+18 nested vulnerable Zod copies. Each fixture update also needs both provenance
+inventories and the reviewed workflow lock digest refreshed. A separate coherent
+fixture repair must verify the full closure, schema compatibility, attribution,
+provenance and the existing hosted Host/runtime gate before merging. The two
+UI parser copies need their own UI build verification. No alert was dismissed
+and none of these unverified dependency updates was merged during this audit.
 
 ## Cross-references
 - `docs/SHIP_READINESS.md` — the full "needs you" ledger (questionnaires, accounts, the closed items).

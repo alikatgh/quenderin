@@ -18,6 +18,9 @@ if [ "${CI_XCODEBUILD_EXIT_CODE:-1}" != "0" ]; then
   echo "Archive action failed; no runtime readiness claim." >&2
   exit 1
 fi
+if [ "${CI:-}" != "TRUE" ] || [ "${CI_XCODE_CLOUD:-}" != "TRUE" ]; then
+  echo "App Store export verification requires the genuine Xcode Cloud context." >&2; exit 1
+fi
 : "${CI_APP_STORE_SIGNED_APP_PATH:?Xcode Cloud App Store signed export path is required}"
 case "${CI_PRODUCT_PLATFORM:-}" in
   iOS) PLATFORM=ios ;;

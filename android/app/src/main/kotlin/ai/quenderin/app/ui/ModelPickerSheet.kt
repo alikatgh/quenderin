@@ -9,10 +9,11 @@ import ai.quenderin.core.MemorySeverity
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.ModelRuntimeSupport
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,11 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-
-/** Same warn orange as OnboardingScreen's StorageShortfallCard — the "tight / blocked" accent. */
-private val Warn = Color(0xFFE8963A)
 
 /**
  * Pick a different model: the catalog grouped so the first screenful is things you can actually
@@ -126,7 +123,7 @@ internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> 
 @Composable
 private fun SectionHeader(title: String, color: Color) {
     Text(
-        title.uppercase(),
+        title,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
         color = color,
@@ -144,54 +141,23 @@ private fun ModelPickerRow(
 ) {
     val runtimeSupported = ModelRuntimeSupport.supports(entry)
     val enabled = runtimeSupported && fitness.canLoad && !isCurrent
-    val (name, tag) = splitLabel(entry.label)
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = QuenderinShapes.card,
-        // Hairline border; brand-tinted on the recommended card (color changes, never geometry).
-        border = BorderStroke(
-            1.dp,
-            if (isRecommended) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            else MaterialTheme.colorScheme.outlineVariant,
-        ),
-        modifier = Modifier.fillMaxWidth().alpha(if (fitness.canLoad) 1f else 0.45f),
+        color = if (isCurrent) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             Modifier
-                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+                .selectable(selected = isCurrent, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+                .testTag("model.${entry.id}")
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Row(
-                    Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        // The NAME wins the row: wrap to a second line before the chip and badge
-                        // squeeze it into "Qwen3.6 35…" (twin of the iOS row, 2026-09-05).
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (tag != null) {
-                        Text(
-                            tag,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            modifier = Modifier
-                                .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f), QuenderinShapes.pill)
-                                .padding(horizontal = 6.dp, vertical = 1.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.width(10.dp))
+            Text(entry.label, style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (isRecommended) Text(stringResource(R.string.picker_recommended),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 if (!runtimeSupported) {
                     DotBadge(MaterialTheme.colorScheme.error, stringResource(R.string.fit_unavailable), MaterialTheme.colorScheme.error)
                 } else if (isCurrent) {
@@ -209,14 +175,13 @@ private fun ModelPickerRow(
                 modelBlurb(entry.id),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 stringResource(R.string.picker_model_meta, entry.sizeLabel.removeSuffix(" download"), entry.quantization, fmt1(entry.ramGB)),
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             if (!runtimeSupported) {
                 Text(ModelRuntimeSupport.unavailableMessage(entry),
                     style = MaterialTheme.typography.bodySmall,
@@ -237,7 +202,7 @@ private fun FitBadge(fitness: MemoryCheckResult) {
     when {
         !fitness.canLoad -> DotBadge(MaterialTheme.colorScheme.error, stringResource(R.string.fit_too_big), MaterialTheme.colorScheme.error)
         fitness.severity == MemorySeverity.SAFE -> DotBadge(Quenderin.colors.status, stringResource(R.string.fit_fits), Quenderin.colors.statusText)
-        else -> DotBadge(Warn, stringResource(R.string.fit_tight), Warn)
+        else -> DotBadge(MaterialTheme.colorScheme.tertiary, stringResource(R.string.fit_tight), MaterialTheme.colorScheme.tertiary)
     }
 }
 
@@ -257,10 +222,10 @@ private fun DotBadge(dot: Color, text: String, textColor: Color) {
  */
 @Composable
 private fun MemoryShortfallNote(fitness: MemoryCheckResult) {
-    Surface(color = Warn.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(7.dp).background(Warn, CircleShape))
+                Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.tertiary, CircleShape))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     stringResource(R.string.picker_not_enough_memory),

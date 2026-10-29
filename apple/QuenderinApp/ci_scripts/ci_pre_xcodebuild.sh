@@ -1,5 +1,21 @@
 #!/bin/bash
 set -euo pipefail
+# Cloud transports built test products to a separate test host. That phase has
+# no source checkout; source/runtime verification ran before build-for-testing.
+# https://developer.apple.com/documentation/xcode/environment-variable-reference
+if [ "${CI_XCODEBUILD_ACTION:-}" = test-without-building ]; then
+  if [ "${CI:-}" != TRUE ] || [ "${CI_XCODE_CLOUD:-}" != TRUE ] || [ "${QUENDERIN_RUNTIME:-}" != prism ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
+    echo "Cloud tests require the explicit verified Prism release profile." >&2; exit 1
+  fi
+  case "${CI_TEST_PRODUCTS_PATH:-}" in
+    /*) ;;
+    *) echo "CI_TEST_PRODUCTS_PATH must identify the absolute Cloud test products." >&2; exit 1 ;;
+  esac
+  if [ ! -d "$CI_TEST_PRODUCTS_PATH" ]; then
+    echo "CI_TEST_PRODUCTS_PATH test products are unavailable." >&2; exit 1
+  fi
+  exit 0
+fi
 case "${CI_PRIMARY_REPOSITORY_PATH:-}" in
   /*) ;;
   *) echo "CI_PRIMARY_REPOSITORY_PATH must identify the absolute Quenderin checkout." >&2; exit 1 ;;
@@ -13,9 +29,9 @@ for FILE in shared/prism-runtime.json shared/model-catalog.json scripts/verify_p
     echo "CI_PRIMARY_REPOSITORY_PATH is missing required Quenderin source: $FILE" >&2; exit 1
   fi
 done
-if [ "${CI:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
+if [ "${CI:-}" != "TRUE" ] || [ "${CI_XCODE_CLOUD:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "${QUENDERIN_LLAMA_DIR:-}" ]; then
   echo "Cloud requires the explicit verified Prism release profile." >&2
   exit 1
 fi
 test "$(cat "$ROOT/apple/QuenderinKit/.quenderin-prism-release")" = prism
-python3 "$ROOT/scripts/verify_prism_apple_runtime.py" verify-framework
+python3 -B "$ROOT/scripts/verify_prism_apple_runtime.py" verify-release

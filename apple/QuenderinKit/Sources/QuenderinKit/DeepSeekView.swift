@@ -154,6 +154,8 @@ private struct DeepSeekConnectionForm: View {
                     Text("DeepSeek V4 Pro").tag("deepseek-v4-pro")
                 }
                 Toggle("Send this key to DeepSeek for validation and save it securely on this device.", isOn: $consent)
+                    .accessibilityLabel("Send this key to DeepSeek for validation and save it securely on this device.")
+                    .accessibilityIdentifier("deepseek-validation-consent")
                 Button(controller.isBusy ? "Connecting…" : "Validate and save connection") {
                     let input = apiKey; apiKey = ""
                     Task { await controller.connect(input, selectedModel: model) }

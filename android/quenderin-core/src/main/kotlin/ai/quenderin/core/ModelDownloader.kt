@@ -28,7 +28,7 @@ interface ModelDownloader {
      * integrity-verified file already at the destination. Lets the caller run its download-only
      * preflights (disk space, cellular policy) ONLY when a fetch is real, so a model already on
      * disk is never spuriously Wi-Fi-blocked (twin of the Swift install() `if !fileExists` block).
-     * Default true (assume a fetch is needed) fails safe — the gates run — and keeps mocks unchanged.
+     * Default true (assume a fetch is needed) fails safe — the gates run.
      * A split-model adapter may return false for a complete structural candidate only when its
      * subsequent download() verifies offline and rejects drift without starting any network fetch.
      */
@@ -42,6 +42,9 @@ interface ModelDownloader {
 class MockModelDownloader(
     private val destinationPath: String = "/tmp/quenderin/mock.gguf",
 ) : ModelDownloader {
+    // The canned operation never fetches or writes model bytes, regardless of the device radio.
+    override fun needsFetch(model: ModelEntry): Boolean = false
+
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
         for (frac in listOf(0.25, 0.5, 0.75, 1.0)) onProgress(frac)
         return destinationPath

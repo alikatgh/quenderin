@@ -240,7 +240,34 @@ def bundle_metadata(bundle: Path, bundletool: Path, candidate: Candidate, run=ex
     return {**metadata, "versionCode": candidate.version_code}
 
 
-def export(source: Path, libraries: Path, prism: Path, output: Path, draft: Draft, bundletool: Path,
+def remote_runtime_provenance(source: Path, sdk: Path, bundle: Path, run=execute) -> dict:
+    """Recheck both final packages against the exact-source, sealed Noise/JNA SDK."""
+    verifier = source / "native/remote-crypto/tools/native_sdk.py"
+    run([sys.executable, str(verifier), "verify", "--platform", "android", "--sdk", str(sdk)], timeout=300)
+    receipt_path = sdk / "quenderin-remote-sdk.json"
+    if receipt_path.stat().st_size > 1024 * 1024:
+        raise ValueError("Unexpected or oversized native SDK receipt")
+    receipt_digest = digest(receipt_path)
+    receipt = json.loads(receipt_path.read_text())
+    packages = {}
+    apk = source / "android/app/build/outputs/apk/debug/app-debug.apk"
+    for label, package in (("aab", bundle), ("debugApk", apk)):
+        if package.is_symlink() or not package.is_file() or not 0 < package.stat().st_size <= MAX_BYTES:
+            raise ValueError("Both final native packages must be regular files at most 512 MiB")
+        checksum = digest(package)
+        run([sys.executable, str(verifier), "verify-package", "--sdk", str(sdk),
+             "--package", str(package)], timeout=300)
+        if digest(package) != checksum:
+            raise ValueError("Final Android package changed during verification")
+        packages[label] = {"digest": checksum, "size": package.stat().st_size,
+                           "verified": ["libquenderin_remote_crypto.so", "libjnidispatch.so"],
+                           "elfAlignment": 16384}
+    if digest(receipt_path) != receipt_digest:
+        raise ValueError("Native SDK receipt changed during verification")
+    return {"sdkReceipt": receipt, "sdkReceiptDigest": receipt_digest, "packages": packages}
+
+
+def export(source: Path, libraries: Path, prism: Path, remote_sdk: Path, output: Path, draft: Draft, bundletool: Path,
            run=execute, tools: Path | None = None) -> list[Path]:
     source = source.resolve()
     candidate = draft.candidate
@@ -254,12 +281,15 @@ def export(source: Path, libraries: Path, prism: Path, output: Path, draft: Draf
                            "--libraries", str(libraries), "--package", str(bundle)], timeout=300))
     prism_identity = json.loads(run([sys.executable, str(source / "scripts/prepare_prism_runtime.py"),
                                     "verify", "--source", str(prism)], timeout=300))
+    remote = remote_runtime_provenance(source, remote_sdk, bundle, run)
     draft.verify()
     # A new directory prevents replacement of any existing local review artifact.
     output.mkdir(parents=True, exist_ok=False)
     asset = output / candidate.name
     shutil.copyfile(bundle, asset)
     checksum = digest(asset)
+    if checksum != remote["packages"]["aab"]["digest"]:
+        raise ValueError("Staged Android bundle differs from the verified package")
     (output / candidate.names[1]).write_text(checksum.removeprefix("sha256:") + "  " + candidate.name + "\n")
     receipt = {"schemaVersion": 1, "repository": REPOSITORY, "sourceCommit": candidate.source_sha,
                "applicationId": PACKAGE, "versionName": candidate.version, "versionCode": candidate.version_code,
@@ -269,7 +299,8 @@ def export(source: Path, libraries: Path, prism: Path, output: Path, draft: Draf
                "verificationTools": {"bundletool": {"version": BUNDLETOOL_VERSION,
                    "digest": "sha256:" + BUNDLETOOL_SHA256}},
                "runtimeProvenance": {"prism": prism_identity,
-                   "image": {key: image[key] for key in ("revision", "verified", "alignment")}},
+                   "image": {key: image[key] for key in ("revision", "verified", "alignment")},
+                   "remoteCrypto": remote},
                "releaseId": candidate.release_id, "releaseTag": candidate.tag, "draft": True}
     (output / candidate.names[2]).write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     files = [output / name for name in candidate.names]
@@ -283,6 +314,7 @@ def main(argv=None, run=execute) -> None:
     parser.add_argument("--source", type=Path)
     parser.add_argument("--libraries", type=Path)
     parser.add_argument("--prism", type=Path)
+    parser.add_argument("--remote-sdk", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--bundletool", type=Path)
     args = parser.parse_args(argv)
@@ -301,9 +333,9 @@ def main(argv=None, run=execute) -> None:
             print("Pinned host manifest inspection tool verified.")
             return
         else:
-            if any(getattr(args, key) is None for key in ("source", "libraries", "prism", "output", "bundletool")):
-                raise ValueError("Explicit source, libraries, prism, bundletool, and new output paths are required")
-            export(args.source, args.libraries, args.prism, args.output, draft, args.bundletool, run, tools)
+            if any(getattr(args, key) is None for key in ("source", "libraries", "prism", "remote_sdk", "output", "bundletool")):
+                raise ValueError("Explicit source, libraries, prism, remote SDK, bundletool, and new output paths are required")
+            export(args.source, args.libraries, args.prism, args.remote_sdk, args.output, draft, args.bundletool, run, tools)
         print("Unsigned candidate draft verification passed; no Play upload or publication performed.")
     except (OSError, ValueError, KeyError, TypeError, ET.ParseError, subprocess.SubprocessError, zipfile.BadZipFile):
         parser.exit(1, "Android candidate export rejected; no automatic retry or overwrite.\n")

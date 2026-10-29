@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STAMP = 'quenderin-diffusion-runtime.json'
 DEFAULT = ROOT / 'apple/QuenderinKit/Frameworks/QuenderinDiffusion.xcframework'
 APPLE_TARGETS = {'ios': (2, 'iPhoneOS', 'MinimumOSVersion', '16.4'),
+                 'ios-simulator': (7, 'iPhoneSimulator', 'MinimumOSVersion', '16.4'),
                  'macos': (1, 'MacOSX', 'LSMinimumSystemVersion', '13.3')}
 spec = importlib.util.spec_from_file_location('prism_payload', ROOT / 'scripts/verify_prism_apple_runtime.py')
 prism = importlib.util.module_from_spec(spec)
@@ -69,9 +70,11 @@ def description(framework: Path, execute: bool = False) -> dict:
         if not binary.exists():
             binary = directory / 'Versions/A/QuenderinDiffusion'
         payload = prism.macho_payload(binary)
-        if item.get('SupportedPlatformVariant') is not None or item['SupportedPlatform'] not in ('ios', 'macos'):
+        identity = (item['SupportedPlatform'], item.get('SupportedPlatformVariant'))
+        target = {('ios', None):'ios', ('ios', 'simulator'):'ios-simulator', ('macos', None):'macos'}.get(identity)
+        if target is None:
             raise ValueError('Unexpected image framework platform')
-        expected = {'arm64'} if item['SupportedPlatform'] == 'ios' else {'arm64', 'x86_64'}
+        expected = {'arm64'} if target == 'ios' else {'arm64', 'x86_64'}
         if set(payload) != expected:
             raise ValueError('Image framework architecture set differs')
         subprocess.run(['python3', str(ROOT / 'scripts/prepare_diffusion_runtime.py'), 'verify-library',
@@ -84,15 +87,18 @@ def description(framework: Path, execute: bool = False) -> dict:
             raise ValueError('Image framework is missing its public C/Swift module')
         slices.append({'id': item['LibraryIdentifier'], 'platform': item['SupportedPlatform'],
                        'payload': payload, 'headerSha256': hashlib.sha256(header.read_bytes()).hexdigest(),
-                       'bundleMetadata': framework_metadata(directory, item['SupportedPlatform'], payload)})
+                       'bundleMetadata': framework_metadata(directory, target, payload)})
+        if identity[1] is not None:
+            slices[-1]['variant'] = identity[1]
         if execute and item['SupportedPlatform'] == 'macos':
             library = ctypes.CDLL(str(binary))
             library.quenderin_diffusion_abi.restype = ctypes.c_uint32
             library.quenderin_diffusion_revision.restype = ctypes.c_char_p
             if library.quenderin_diffusion_abi() != 1 or library.quenderin_diffusion_revision().decode() != lock['revision']:
                 raise ValueError('Compiled image runtime identity mismatch')
-    if sorted(s['platform'] for s in slices) != ['ios', 'macos']:
-        raise ValueError('Exactly one iOS and one universal macOS image framework required')
+    identities = [(s['platform'], s.get('variant')) for s in slices]
+    if len(set(identities)) != len(identities) or not {('ios', None), ('macos', None)}.issubset(identities):
+        raise ValueError('Exactly one iOS device and one universal macOS image framework, with at most one iOS simulator slice, required')
     return {'version': 1, 'repository': lock['repository'], 'revision': lock['revision'],
             'abiVersion': lock['abiVersion'], 'submodules': lock['submodules'], 'slices': slices}
 
@@ -120,7 +126,7 @@ def embed_evidence(app: Path, target: str, root: Path = ROOT) -> None:
 def verify_app(app: Path, target: str, root: Path = ROOT, signed: bool = False) -> dict:
     if target not in ('ios', 'macos'): raise ValueError('Image export must be iOS device or macOS')
     stamp = verify(source_framework(root))
-    expected = next(s for s in stamp['slices'] if s['platform'] == target)
+    expected = next(s for s in stamp['slices'] if s['platform'] == target and s.get('variant') is None)
     contents = app / 'Contents' if target == 'macos' else app
     resources = contents / 'Resources' if target == 'macos' else contents
     native = contents / 'Frameworks/QuenderinDiffusion.framework'

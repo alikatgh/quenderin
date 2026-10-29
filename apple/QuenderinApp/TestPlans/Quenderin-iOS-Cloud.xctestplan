@@ -1,0 +1,40 @@
+{
+  "configurations": [
+    {
+      "id": "F2A9B78A-1AC0-4DF1-926C-369E403A7701",
+      "name": "Offline UI and app-hosted Keychain",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": false,
+    "defaultTestExecutionTimeAllowance": 300,
+    "environmentVariableEntries": [
+      {
+        "key": "QUENDERIN_MOCK_UI",
+        "value": "1"
+      }
+    ],
+    "maximumTestExecutionTimeAllowance": 300,
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:Quenderin.xcodeproj",
+        "identifier": "CF03C5357B7E9A3D08FB7DF2",
+        "name": "QuenderinHostedTests"
+      }
+    },
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:Quenderin.xcodeproj",
+        "identifier": "F44344732D4817D21CE4A523",
+        "name": "QuenderinCloudUITests"
+      }
+    }
+  ],
+  "version": 1
+}

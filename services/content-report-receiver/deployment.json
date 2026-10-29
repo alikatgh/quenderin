@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "status": "deployed-and-synthetic-verified",
+  "verifiedOn": "2026-10-28",
+  "scriptId": "1CrK1Ip4IbktYdy7ittndd4LIhprns7o5MaBmfuPtHb6wI_ratUUaDZzg",
+  "deploymentId": "AKfycbwycXiGmhRpehG-SUnOnRCKBoosnaxpBEtpGerldMZyYHFF_X5wWfCs6Z_oYjPjEa7ftw",
+  "version": 1,
+  "deployedAt": "2026-10-28T10:53:00+08:00",
+  "deployedAtPrecision": "minute",
+  "endpoint": "https://script.google.com/macros/s/AKfycbwycXiGmhRpehG-SUnOnRCKBoosnaxpBEtpGerldMZyYHFF_X5wWfCs6Z_oYjPjEa7ftw/exec",
+  "artifact": {
+    "source": "Code.gs",
+    "sourceSha256": "5d31cf6273456723274a91eb93872342417c05e7ca2ec562d03f3eb93b48b90c",
+    "manifest": "appsscript.json",
+    "manifestSha256": "6e920b194119044b5bf697798ae67073bc9626ce6728dfd4a3e8aae5bf2dadc5"
+  },
+  "runtime": {
+    "runtimeVersion": "V8",
+    "timeZone": "Etc/UTC",
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS",
+    "oauthScopes": [],
+    "exceptionLogging": "NONE",
+    "libraries": [],
+    "advancedServices": [],
+    "externalCalls": [],
+    "triggers": []
+  },
+  "account": {
+    "category": "existing consumer Google account",
+    "googleCloudProject": "Apps Script default project",
+    "billedGoogleCloudProjectAttached": false,
+    "preexistingScriptProjectsObserved": 15,
+    "executionsObservedInPriorSevenDays": 0,
+    "remainingSharedDailyQuota": "not visible; not established",
+    "quotaBehavior": "Consumer Apps Script hard service quotas stop execution on exhaustion; no paid API or integration is configured."
+  },
+  "intake": {
+    "enabled": true,
+    "property": "qr.enabled",
+    "defaultDisabledVerified": true,
+    "maxReports": 32,
+    "maxRawPostBytes": 8192,
+    "maxStoredReportBytes": 8192,
+    "maxTotalStoredReportBytes": 262144,
+    "maxContentBytes": 6000,
+    "maxNoteBytes": 1000,
+    "lockWaitMilliseconds": 200,
+    "reportPropertiesPerReport": 1,
+    "configurationProperties": 1,
+    "automaticExpiry": false,
+    "automaticDeletion": false,
+    "notifications": false,
+    "review": "Owner manually reads Script Properties in the Apps Script project settings.",
+    "availabilityLimit": "Anonymous spam or shared account quota exhaustion can make intake unavailable; existing reports are retained."
+  },
+  "verification": {
+    "sourceFixtures": "17 passed",
+    "independentReadOnlyReview": "passed before deployment",
+    "publicGet": "method_not_allowed; no report data exposed",
+    "disabledSyntheticPost": "not run live; disabled-intake fixtures passed",
+    "enabledSyntheticPostRequests": 2,
+    "newStoredSyntheticReports": 1,
+    "identicalRetry": "same validated receipt returned",
+    "reportId": "957f86bd-d367-4f57-92c6-6e2eb2e1c2bf",
+    "receiptId": "d08edfeb-e67b-4bdb-bf20-e401466b4521",
+    "receivedAt": "2026-10-28T03:07:41.761Z",
+    "contentClass": "explicit synthetic fixture without personal data",
+    "redirectCounts": [
+      1,
+      1
+    ],
+    "redirectBehavior": "HTTPS ContentService 302 followed by GET to script.googleusercontent.com; no credentials or cookies sent",
+    "evidence": "codex-materials/2026-10-28-native-store/outputs/report-receiver-verification.json in the primary checkout",
+    "ownerUiReadback": {
+      "matchedStoredSyntheticRecord": true,
+      "scriptPropertyCount": 2,
+      "syntheticContentMatched": true
+    }
+  },
+  "remainingChecks": [
+    "Hosted Android compilation, native client runtime and rendered verification",
+    "Publication and live readback of the matching privacy disclosure",
+    "Store submission answers and review; this record is not store approval or proof of a released Android app"
+  ]
+}
