@@ -112,7 +112,7 @@ internal class BotJourneyFixture {
                     response(obj("status" to num(200), "json" to obj("ok" to bool(true), "value" to obj(
                         "schemaVersion" to num(1), "workspaceId" to str("workspace-a"), "revision" to num(revision.toLong()),
                         "readOnly" to bool(true), "bots" to array(obj("id" to str("bot-a"), "name" to str("Synthetic researcher"),
-                            "sessionId" to str("bot-session"), "model" to str("deepseek-flash"), "permission" to str("ask"))))))
+                            "sessionId" to str("bot-session"), "model" to str("deepseek-flash"), "permission" to str("ask")))))))
                 }
                 RemoteHarnessCodec.OPEN -> {
                     val endpoint = params.string("endpoint"); val streamID = params.string("streamId"); streams[endpoint] = streamID
