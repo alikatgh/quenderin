@@ -24,7 +24,7 @@ printf 'UI_SOURCE_COMMIT %s\n' "$(git rev-parse HEAD)"
 test_log="$RUNNER_TEMP/quenderin-ui-instrumentation.log"
 set +e
 timeout 600 adb -s "$serial" shell am instrument -w -r \
-  -e class ai.quenderin.app.NativeJourneysTest,ai.quenderin.app.OnboardingRecoveryTest,ai.quenderin.app.ContentReportJourneyTest \
+  -e class ai.quenderin.app.NativeJourneysTest,ai.quenderin.app.OnboardingRecoveryTest,ai.quenderin.app.ContentReportJourneyTest,ai.quenderin.app.BotHistoryJourneyTest \
   ai.quenderin.app.test/androidx.test.runner.AndroidJUnitRunner | tee "$test_log"
 test_status=${PIPESTATUS[0]}
 set -e
@@ -39,9 +39,9 @@ from pathlib import Path
 import re
 import sys
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
-if not re.search(r"OK \(4 tests?\)", text) or "INSTRUMENTATION_CODE: -1" not in text:
-    raise SystemExit("UI_JUNIT_FAILED: native instrumentation did not confirm all four tests passed")
+if not re.search(r"OK \(5 tests?\)", text) or "INSTRUMENTATION_CODE: -1" not in text:
+    raise SystemExit("UI_JUNIT_FAILED: native instrumentation did not confirm all five tests passed")
 if any(marker in text for marker in ("FAILURES!!!", "INSTRUMENTATION_FAILED", "Process crashed.", "shortMsg=")):
     raise SystemExit("UI_JUNIT_FAILED: instrumentation reported a failure")
-print("UI_JUNIT_PASSED: 4 synthetic native tests; rendered PNG review remains separate")
+print("UI_JUNIT_PASSED: 5 synthetic native tests; rendered PNG review remains separate")
 PY
