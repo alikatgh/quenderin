@@ -256,6 +256,8 @@ schemes:
       testPlans:
         - path: TestPlans/Quenderin-macOS-Cloud.xctestplan
           defaultPlan: true
+        - path: TestPlans/Quenderin-macOS-UI-Cloud.xctestplan
+          defaultPlan: false
       targets:
         - name: QuenderinMacHostedTests
           parallelizable: false

@@ -64,6 +64,7 @@
 		23F2880FBD01EDA75C1DFA64 /* Quenderin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Quenderin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4974BBB6A7EA82D1C2010080 /* Quenderin-macOS-UI-Cloud.xctestplan */ = {isa = PBXFileReference; path = "Quenderin-macOS-UI-Cloud.xctestplan"; sourceTree = "<group>"; };
 		52E8F1D7DB463C902F45B07F /* QuenderinCloudUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = QuenderinCloudUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D5C0485B714D2A06F701D64 /* CloudCredentialStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudCredentialStoreTests.swift; sourceTree = "<group>"; };
 		6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuenderinApp.swift; sourceTree = "<group>"; };
@@ -187,6 +188,7 @@
 			children = (
 				F1E547BC896E262A398692C0 /* Quenderin-iOS-Cloud.xctestplan */,
 				DDBB4EF7FE40F82F90B14B23 /* Quenderin-macOS-Cloud.xctestplan */,
+				4974BBB6A7EA82D1C2010080 /* Quenderin-macOS-UI-Cloud.xctestplan */,
 			);
 			path = TestPlans;
 			sourceTree = "<group>";

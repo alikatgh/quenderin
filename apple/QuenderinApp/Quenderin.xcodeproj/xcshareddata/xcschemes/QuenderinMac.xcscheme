@@ -62,6 +62,9 @@
             default = "YES"
             reference = "container:TestPlans/Quenderin-macOS-Cloud.xctestplan">
          </TestPlanReference>
+         <TestPlanReference
+            reference = "container:TestPlans/Quenderin-macOS-UI-Cloud.xctestplan">
+         </TestPlanReference>
       </TestPlans>
       <MacroExpansion>
          <BuildableReference

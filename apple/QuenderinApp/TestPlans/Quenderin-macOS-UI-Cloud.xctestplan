@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "id": "6271D2AE-7F26-441F-8FE7-3E1BEFCF2D11",
+      "name": "Offline UI journey isolation",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": false,
+    "defaultTestExecutionTimeAllowance": 300,
+    "environmentVariableEntries": [
+      {
+        "key": "QUENDERIN_MOCK_UI",
+        "value": "1"
+      }
+    ],
+    "maximumTestExecutionTimeAllowance": 300,
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:Quenderin.xcodeproj",
+        "identifier": "F9BC5B2DA629315376670840",
+        "name": "QuenderinMacCloudUITests"
+      }
+    }
+  ],
+  "version": 1
+}
