@@ -98,6 +98,9 @@ fun MainTabs(
         ai.quenderin.core.RoleSeat.ask = { id, text ->
             ai.quenderin.core.CheckerRun.ask(id, text, engine) { ai.quenderin.core.CheckerRun.installed(modelsDir, it) }
         }
+        ai.quenderin.core.RoleSeat.perceive = { id, kind, fixture ->
+            ai.quenderin.core.PerceptionRun.sample(id, kind, fixture, engine) { ai.quenderin.core.CheckerRun.installed(modelsDir, it) }
+        }
     }
     // The current window, including split screen, selects the native navigation pattern.
     BoxWithConstraints(Modifier.fillMaxSize()) {

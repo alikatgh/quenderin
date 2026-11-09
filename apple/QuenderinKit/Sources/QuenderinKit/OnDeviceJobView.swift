@@ -251,14 +251,17 @@ public struct OnDeviceJobCard: View {
             Text("This screen is the only place photos and speech load. Chat did not load them.")
                 .font(.footnote)
                 .foregroundStyle(palette.onSurfaceVariant)
+            Text(OnDeviceCopy.perceptionRuns)
+                .font(.footnote)
+                .foregroundStyle(palette.onSurfaceVariant)
             Button(OnDeviceCopy.look) {
                 PerceptionSeat.open(modelID: roles.perceptionModelID)
-                perceptionNote = PerceptionSeat.look("sample")
+                Task { perceptionNote = await PerceptionSeat.lookLive("sample") }
             }
             .buttonStyle(.bordered)
             Button(OnDeviceCopy.listen) {
                 PerceptionSeat.open(modelID: roles.perceptionModelID)
-                perceptionNote = PerceptionSeat.listen("clip")
+                Task { perceptionNote = await PerceptionSeat.listenLive("clip") }
             }
             .buttonStyle(.bordered)
             if !perceptionNote.isEmpty { Text(perceptionNote).font(.footnote) }

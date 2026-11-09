@@ -162,6 +162,47 @@ object CheckerRun {
     }
 }
 
+/**
+ * Loads a photo or speech model that is already on the device, runs the sample, then restores the previous model.
+ * A missing file is not downloaded. The words returned are a hold or a fixed sentence, not a tested description.
+ */
+object PerceptionRun {
+    const val GRAMMAR = "root ::= \"seen\""
+
+    fun prompt(kind: String, fixture: String) = """
+        A $kind sample is already on this device.
+        Sample:
+        $fixture
+        Reply with seen.
+    """.trimIndent()
+
+    fun sample(modelId: String, kind: String, fixture: String, engine: InferenceEngine, files: (String) -> CheckerFile?): String {
+        val target = files(modelId) ?: return OnDeviceCopy.PERCEPTION_MISSING
+        val previousId = engine.loadedModelId
+        val previous = previousId?.let { files(it) }
+        if (previousId != null && previousId != target.model.id && previous == null) return OnDeviceCopy.PERCEPTION_UNRESTORABLE
+        val switched = previousId != target.model.id
+        val ran = try {
+            if (switched) engine.load(target.model, target.path)
+            engine.completeWithGrammar(prompt(kind, fixture), GRAMMAR, maxTokens = 8)
+            true
+        } catch (_: Throwable) {
+            false
+        } finally {
+            if (switched && previous != null && engine.loadedModelId != previous.model.id) {
+                try { engine.load(previous.model, previous.path) } catch (_: Throwable) {}
+            } else if (switched && previousId == null) {
+                try { engine.unload() } catch (_: Throwable) {}
+            }
+        }
+        val restored = !switched ||
+            (previous != null && engine.loadedModelId == previous.model.id) ||
+            (previousId == null && engine.loadedModelId == null)
+        if (!restored || !ran) return OnDeviceCopy.PERCEPTION_FAILED
+        return OnDeviceCopy.PERCEPTION_USED
+    }
+}
+
 enum class OutputKind { REPLY, TOOL }
 
 data class OutputVerdict(val text: String, val held: Boolean, val askedChecker: Boolean)
@@ -245,6 +286,11 @@ object OnDeviceCopy {
     const val PERCEPTION_CLOSED = "Photos and speech stay closed until you open them. This checkup did not open them."
     const val PERCEPTION_OPEN = "The photos and speech screen is open. This checkup did not run a model."
     const val PERCEPTION_SAMPLE = "Using the selected model on this device. The sample stayed here. The model was not loaded. This is not tested inference."
+    const val PERCEPTION_RUNS = "When this model is on the device, Look and Listen load that file for the sample, then restore the previous model. A missing file is not downloaded."
+    const val PERCEPTION_MISSING = "That photo or speech model is not on this device. Nothing was downloaded."
+    const val PERCEPTION_USED = "The sample used the model already on this device, then the previous model was restored. This is not tested inference."
+    const val PERCEPTION_FAILED = "The photo or speech model did not finish. Nothing was downloaded."
+    const val PERCEPTION_UNRESTORABLE = "The model already in use cannot be restored from this device, so the photo or speech model was not loaded. Nothing was downloaded."
     const val MAC_COMMAND = "A command is available on Mac. This device uses a local address."
     const val NAME_SERVER = "Name the server in a few words."
     const val NEED_TARGET = "Add a local address or a Mac command."
@@ -1017,6 +1063,7 @@ fun verifyOnDeviceJob() {
     RoleSeat.reset()
 
     verifyCheckerRuns()
+    verifyPerceptionRuns()
     verifyMcpHosts()
     require(OnDeviceCopy.NOT_INFERENCE.contains("not tested inference"))
     require(!OnDeviceCopy.CARD.contains("account is"))
@@ -1031,6 +1078,7 @@ private class RecordingCheckerEngine(var reply: String) : InferenceEngine {
     override var loadedModelId: String? = null
     val events = mutableListOf<String>()
     var fail = false
+    var lastPrompt = ""
     override fun load(model: ModelEntry, filePath: String) {
         events += "load:$filePath"
         loadedModelId = model.id
@@ -1044,6 +1092,7 @@ private class RecordingCheckerEngine(var reply: String) : InferenceEngine {
         prompt: String, grammar: String, maxTokens: Int,
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
     ): String {
+        lastPrompt = prompt
         events += "grammar"
         if (fail) throw IllegalStateException("checker stopped")
         return reply
@@ -1089,6 +1138,45 @@ private fun verifyCheckerRuns() {
         RoleSeat.reset()
     }
     require(OnDeviceCopy.CHECKER_RUNS.contains("not downloaded"))
+}
+
+private fun verifyPerceptionRuns() {
+    val engine = RecordingCheckerEngine("seen")
+    val chat = checkerEntry("chat")
+    val vision = checkerEntry("vision")
+    val files = mapOf(
+        "chat" to CheckerFile(chat, "/models/chat.gguf"),
+        "vision" to CheckerFile(vision, "/models/vision.gguf"),
+    )
+    require(PerceptionRun.sample("absent", "photo", "sample", engine) { files[it] } == OnDeviceCopy.PERCEPTION_MISSING)
+    require(engine.events.isEmpty())
+    engine.load(chat, files.getValue("chat").path)
+    engine.events.clear()
+    require(PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] } == OnDeviceCopy.PERCEPTION_USED)
+    require(engine.events == listOf("load:/models/vision.gguf", "grammar", "load:/models/chat.gguf"))
+    require(engine.loadedModelId == "chat")
+    require(engine.lastPrompt.contains("photo") && engine.lastPrompt.contains("sample"))
+    require(!OnDeviceCopy.PERCEPTION_USED.contains("http"))
+    engine.loadedModelId = "gone"
+    engine.events.clear()
+    require(PerceptionRun.sample("vision", "speech", "clip", engine) { files[it] } == OnDeviceCopy.PERCEPTION_UNRESTORABLE)
+    require(engine.events.isEmpty() && engine.loadedModelId == "gone")
+    engine.loadedModelId = "vision"
+    engine.events.clear()
+    require(PerceptionRun.sample("vision", "speech", "clip", engine) { files[it] } == OnDeviceCopy.PERCEPTION_USED)
+    require(engine.events == listOf("grammar") && engine.loadedModelId == "vision")
+    engine.fail = true
+    engine.loadedModelId = "chat"
+    require(PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] } == OnDeviceCopy.PERCEPTION_FAILED)
+    require(engine.loadedModelId == "chat")
+    val checkup = deviceCheckup(DeviceFacts(
+        chatModelId = "chat", chatLabel = "Chat", chatOnDevice = true,
+        checkerModelId = null, checkerOnDevice = false,
+        perceptionModelId = "vision", perceptionOnDevice = true, perceptionOpen = false,
+        guidanceNotes = 0, guidanceReadable = true, skillCount = 0, skillsReadable = true,
+        builtinOn = emptyMap(), serverCount = 0, toolsOff = emptyList(),
+    ))
+    require(!checkup.ranModel && !checkup.startedChat)
 }
 
 private fun verifyMcpHosts() {

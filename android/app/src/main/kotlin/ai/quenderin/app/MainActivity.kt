@@ -92,6 +92,11 @@ class MainActivity : ComponentActivity() {
                 ai.quenderin.core.CheckerRun.installed(modelsDir, it)
             }
         }
+        ai.quenderin.core.RoleSeat.perceive = { id, kind, fixture ->
+            ai.quenderin.core.PerceptionRun.sample(id, kind, fixture, engine) {
+                ai.quenderin.core.CheckerRun.installed(modelsDir, it)
+            }
+        }
         // Real, resumable downloader that survives app death (WorkManager + the pure-core
         // ModelDownloadEngine). MockModelDownloader stays available for previews/tests.
         val downloader: ModelDownloader =

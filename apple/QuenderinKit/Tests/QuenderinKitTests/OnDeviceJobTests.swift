@@ -6,6 +6,7 @@ private final class CheckerEngine: InferenceEngine, @unchecked Sendable {
     var reply = "no"
     var events: [String] = []
     var fail = false
+    var lastPrompt = ""
     func loadedModelID() async -> String? { loaded.isEmpty ? nil : loaded }
     func load(model: ModelEntry, at fileURL: URL) async throws {
         events.append("load:\(fileURL.path)")
@@ -16,6 +17,7 @@ private final class CheckerEngine: InferenceEngine, @unchecked Sendable {
         loaded = ""
     }
     func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        lastPrompt = prompt
         events.append("generate")
         let text = self.reply
         let shouldFail = self.fail
@@ -189,5 +191,58 @@ final class OnDeviceJobTests: XCTestCase {
         XCTAssertTrue(verdict.askedChecker)
         XCTAssertEqual(verdict.text, OutputCheck.checkerHeld)
         XCTAssertTrue(OnDeviceCopy.checkerRuns.contains("not downloaded"))
+    }
+
+    func testPerceptionLoadsTheInstalledModelAndRestoresChat() async {
+        let engine = CheckerEngine()
+        let files = [
+            "chat": CheckerFile(model: checkerEntry("chat"), url: URL(fileURLWithPath: "/models/chat.gguf")),
+            "vision": CheckerFile(model: checkerEntry("vision"), url: URL(fileURLWithPath: "/models/vision.gguf")),
+        ]
+        let missing = await PerceptionRun.sample(modelID: "absent", kind: "photo", fixture: "sample", engine: engine) { files[$0] }
+        XCTAssertEqual(missing, OnDeviceCopy.perceptionMissing)
+        XCTAssertTrue(engine.events.isEmpty)
+        let used = await PerceptionRun.sample(modelID: "vision", kind: "photo", fixture: "sample", engine: engine) { files[$0] }
+        XCTAssertEqual(used, OnDeviceCopy.perceptionUsed)
+        XCTAssertEqual(engine.events, ["load:/models/vision.gguf", "generate", "load:/models/chat.gguf"])
+        XCTAssertEqual(engine.loaded, "chat")
+        XCTAssertTrue(engine.lastPrompt.contains("photo") && engine.lastPrompt.contains("sample"))
+        XCTAssertFalse(OnDeviceCopy.perceptionUsed.contains("http"))
+        engine.loaded = "gone"
+        engine.events = []
+        let held = await PerceptionRun.sample(modelID: "vision", kind: "speech", fixture: "clip", engine: engine) { files[$0] }
+        XCTAssertEqual(held, OnDeviceCopy.perceptionUnrestorable)
+        XCTAssertTrue(engine.events.isEmpty)
+        XCTAssertEqual(engine.loaded, "gone")
+        engine.loaded = "vision"
+        engine.events = []
+        let same = await PerceptionRun.sample(modelID: "vision", kind: "speech", fixture: "clip", engine: engine) { files[$0] }
+        XCTAssertEqual(same, OnDeviceCopy.perceptionUsed)
+        XCTAssertEqual(engine.events, ["generate"])
+        XCTAssertEqual(engine.loaded, "vision")
+        engine.fail = true
+        engine.loaded = "chat"
+        let stopped = await PerceptionRun.sample(modelID: "vision", kind: "photo", fixture: "sample", engine: engine) { files[$0] }
+        XCTAssertEqual(stopped, OnDeviceCopy.perceptionFailed)
+        XCTAssertEqual(engine.loaded, "chat")
+        PerceptionSeat.open(modelID: "vision")
+        RoleSeat.shared.setPerceiveLive { modelID, kind, fixture in
+            await PerceptionRun.sample(modelID: modelID, kind: kind, fixture: fixture, engine: engine) { files[$0] }
+        }
+        engine.fail = false
+        engine.loaded = "chat"
+        engine.events = []
+        let live = await PerceptionSeat.lookLive("sample")
+        XCTAssertEqual(live, OnDeviceCopy.perceptionUsed)
+        XCTAssertEqual(engine.loaded, "chat")
+        let checkup = deviceCheckup(DeviceFacts(
+            chatModelID: "chat", chatLabel: "Chat", chatOnDevice: true,
+            checkerModelID: nil, checkerOnDevice: false,
+            perceptionModelID: "vision", perceptionOnDevice: true, perceptionOpen: false,
+            guidanceNotes: 0, guidanceReadable: true, skillCount: 0, skillsReadable: true,
+            builtinOn: [:], serverCount: 0, toolsOff: []
+        ))
+        XCTAssertFalse(checkup.ranModel)
+        XCTAssertFalse(checkup.startedChat)
     }
 }

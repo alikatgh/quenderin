@@ -88,6 +88,7 @@ public final class RoleSeat: @unchecked Sendable {
     private var perceptionModelID: String?
     private var perceptionOpenFlag = false
     private var perceivePort: ((String, String, String) -> String)?
+    private var perceiveAsync: ((String, String, String) async -> String)?
 
     public func reset() {
         lock.lock(); defer { lock.unlock() }
@@ -97,6 +98,7 @@ public final class RoleSeat: @unchecked Sendable {
         perceptionModelID = nil
         perceptionOpenFlag = false
         perceivePort = nil
+        perceiveAsync = nil
     }
 
     public func setChecker(modelID: String?, ask: ((String, String) -> String)?) {
@@ -157,9 +159,19 @@ public final class RoleSeat: @unchecked Sendable {
         lock.lock(); perceptionOpenFlag = open; lock.unlock()
     }
 
+    public func setPerceiveLive(_ perceive: @escaping (String, String, String) async -> String) {
+        lock.lock(); defer { lock.unlock() }
+        perceiveAsync = perceive
+    }
+
     func perceptionState() -> (open: Bool, id: String, port: ((String, String, String) -> String)?) {
         lock.lock(); defer { lock.unlock() }
         return (perceptionOpenFlag, perceptionModelID ?? "", perceivePort)
+    }
+
+    func perceptionPorts() -> (open: Bool, id: String, asyncPort: ((String, String, String) async -> String)?, port: ((String, String, String) -> String)?) {
+        lock.lock(); defer { lock.unlock() }
+        return (perceptionOpenFlag, perceptionModelID ?? "", perceiveAsync, perceivePort)
     }
 }
 
@@ -243,6 +255,62 @@ public enum CheckerBinding {
     public static func install(_ engine: InferenceEngine) {
         RoleSeat.shared.setAskLive { modelID, text in
             await CheckerRun.ask(modelID: modelID, text: text, engine: engine)
+        }
+    }
+}
+
+/// Loads a photo or speech model that is already on the device, runs the sample, then restores the previous model.
+/// A missing file is not downloaded. The words returned are a hold or a fixed sentence, not a tested description.
+public enum PerceptionRun {
+    public static let grammar = "root ::= \"seen\""
+
+    public static func prompt(kind: String, fixture: String) -> String {
+        """
+        A \(kind) sample is already on this device.
+        Sample:
+        \(fixture)
+        Reply with seen.
+        """
+    }
+
+    public static func sample(modelID: String, kind: String, fixture: String, engine: InferenceEngine, files: (String) async -> CheckerFile? = { await CheckerRun.installedFile(modelID: $0) }) async -> String {
+        guard let target = await files(modelID) else { return OnDeviceCopy.perceptionMissing }
+        let previousID = await engine.loadedModelID()
+        let previous: CheckerFile?
+        if let previousID {
+            previous = await files(previousID)
+        } else {
+            previous = nil
+        }
+        if let previousID, previousID != target.model.id, previous == nil { return OnDeviceCopy.perceptionUnrestorable }
+        let switched = previousID != target.model.id
+        var ran = false
+        do {
+            if switched { try await engine.load(model: target.model, at: target.url) }
+            let options = GenerationOptions(maxTokens: 8, gbnfGrammar: grammar)
+            _ = try await engine.complete(prompt: prompt(kind: kind, fixture: fixture), options: options)
+            ran = true
+        } catch {
+            ran = false
+        }
+        if switched, let previous, await engine.loadedModelID() != previous.model.id {
+            try? await engine.load(model: previous.model, at: previous.url)
+        } else if switched, previousID == nil {
+            await engine.unload()
+        }
+        let restored = !switched
+            || (previous != nil && await engine.loadedModelID() == previous?.model.id)
+            || (previousID == nil && await engine.loadedModelID() == nil)
+        if !restored { return OnDeviceCopy.perceptionFailed }
+        return ran ? OnDeviceCopy.perceptionUsed : OnDeviceCopy.perceptionFailed
+    }
+}
+
+public enum PerceptionBinding {
+    /// Bind Look and Listen to the shared on-device engine. Selecting a model does not load it.
+    public static func install(_ engine: InferenceEngine) {
+        RoleSeat.shared.setPerceiveLive { modelID, kind, fixture in
+            await PerceptionRun.sample(modelID: modelID, kind: kind, fixture: fixture, engine: engine)
         }
     }
 }
@@ -347,6 +415,11 @@ public enum OnDeviceCopy {
     public static let perceptionClosed = "Photos and speech stay closed until you open them. This checkup did not open them."
     public static let perceptionOpen = "The photos and speech screen is open. This checkup did not run a model."
     public static let perceptionSample = "Using the selected model on this device. The sample stayed here. The model was not loaded. This is not tested inference."
+    public static let perceptionRuns = "When this model is on the device, Look and Listen load that file for the sample, then restore the previous model. A missing file is not downloaded."
+    public static let perceptionMissing = "That photo or speech model is not on this device. Nothing was downloaded."
+    public static let perceptionUsed = "The sample used the model already on this device, then the previous model was restored. This is not tested inference."
+    public static let perceptionFailed = "The photo or speech model did not finish. Nothing was downloaded."
+    public static let perceptionUnrestorable = "The model already in use cannot be restored from this device, so the photo or speech model was not loaded. Nothing was downloaded."
     public static let macCommand = "A command is available on Mac. This device uses a local address."
     public static let nameServer = "Name the server in a few words."
     public static let needTarget = "Add a local address or a Mac command."
@@ -607,6 +680,8 @@ public enum PerceptionSeat {
 
     public static func look(_ fixture: String) -> String { run(kind: "photo", fixture: fixture) }
     public static func listen(_ fixture: String) -> String { run(kind: "speech", fixture: fixture) }
+    public static func lookLive(_ fixture: String) async -> String { await runLive(kind: "photo", fixture: fixture) }
+    public static func listenLive(_ fixture: String) async -> String { await runLive(kind: "speech", fixture: fixture) }
 
     private static func run(kind: String, fixture: String) -> String {
         let state = RoleSeat.shared.perceptionState()
@@ -614,6 +689,15 @@ public enum PerceptionSeat {
         if state.id.isEmpty { return "No photo or speech model is selected. Nothing was loaded." }
         guard let port = state.port else { return OnDeviceCopy.perceptionSample }
         return port(state.id, kind, fixture)
+    }
+
+    private static func runLive(kind: String, fixture: String) async -> String {
+        let state = RoleSeat.shared.perceptionPorts()
+        if !state.open { return "Photos and speech are not open." }
+        if state.id.isEmpty { return "No photo or speech model is selected. Nothing was loaded." }
+        if let asyncPort = state.asyncPort { return await asyncPort(state.id, kind, fixture) }
+        if let port = state.port { return port(state.id, kind, fixture) }
+        return OnDeviceCopy.perceptionMissing
     }
 }
 

@@ -288,13 +288,24 @@ internal fun OnDeviceCard(
                         JobPage.PERCEPTION -> {
                             Text(roleTitle(ModelRole.PERCEPTION, roles, names), style = MaterialTheme.typography.bodyMedium)
                             Text("This screen is the only place photos and speech load. Chat did not load them.", style = MaterialTheme.typography.bodySmall)
+                            Text(OnDeviceCopy.PERCEPTION_RUNS, style = MaterialTheme.typography.bodySmall)
                             TextButton(onClick = {
-                                PerceptionSeat.open(roles.perceptionModelId)
-                                perceptionNote = PerceptionSeat.look("sample")
+                                val modelId = roles.perceptionModelId
+                                scope.launch {
+                                    perceptionNote = withContext(Dispatchers.IO) {
+                                        PerceptionSeat.open(modelId)
+                                        PerceptionSeat.look("sample")
+                                    }
+                                }
                             }) { Text(OnDeviceCopy.LOOK) }
                             TextButton(onClick = {
-                                PerceptionSeat.open(roles.perceptionModelId)
-                                perceptionNote = PerceptionSeat.listen("clip")
+                                val modelId = roles.perceptionModelId
+                                scope.launch {
+                                    perceptionNote = withContext(Dispatchers.IO) {
+                                        PerceptionSeat.open(modelId)
+                                        PerceptionSeat.listen("clip")
+                                    }
+                                }
                             }) { Text(OnDeviceCopy.LISTEN) }
                             if (perceptionNote.isNotEmpty()) Text(perceptionNote, style = MaterialTheme.typography.bodySmall)
                             Text(OnDeviceCopy.NOT_INFERENCE, style = MaterialTheme.typography.bodySmall)

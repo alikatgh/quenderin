@@ -534,7 +534,7 @@ public struct ChatView: View {
     }
 
     /// The checker and photo seats follow this conversation even after the card leaves the screen.
-    /// Selecting them does not load a model. The checker port stays empty until a host fixture binds one.
+    /// Selecting them does not load a file. Look and Listen load an installed photo or speech file.
     private func syncJobSeat() {
         let roles = JobStore.loadBook().roles(conversationID: conversationID ?? "new", chatFallback: activeModel?.id ?? "chat")
         RoleSeat.shared.selectChecker(modelID: roles.checkerModelID)
