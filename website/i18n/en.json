@@ -341,9 +341,9 @@
   "simple.note.local": "Free and open source. Local chat needs no account or subscription.",
   "hero.spec3.local": "cloud calls for local inference",
   "feat.free.b.local": "Local chat has no subscription or per-message charge.",
-  "feat.free.m.local": "Local replies are generated on your hardware. The source code is MIT licensed. Optional external connections in development use your own accounts; provider charges may apply.",
+  "feat.free.m.local": "Local replies are generated on your hardware. The source code is MIT licensed. Optional DeepSeek and a prepared computer, in the Mac and iPhone app, use your own accounts; provider charges may apply.",
   "feat.priv.b.local": "Local conversations stay on your device and need no account.",
-  "feat.priv.m.local": "Local chat does not send conversations to an inference service. Model downloads, search and release information use network requests. Optional external connections and AI reports in development require approval before sending content.",
+  "feat.priv.m.local": "Local chat does not send conversations to an inference service. Model downloads, search and release information use network requests. Optional DeepSeek and a prepared computer, in the Mac and iPhone app, send only the conversation you choose. An AI report sends a reviewed excerpt only when you submit it.",
   "priv.title.local": "Privacy for local chat",
   "priv.c1.local": "Local inference runs on your device",
   "priv.c2.local": "Local chat needs no API key, sign-in or account",
@@ -351,7 +351,7 @@
   "priv.net.bar.local": "Local chat · model network requests",
   "priv.net.noacct.local": "no local chat account",
   "priv.net.foot.local": "Local chats and files stay on-device",
-  "faq.a1.local": "Quenderin is free and MIT licensed. Local chat runs on your hardware with no subscription or per-message charge. Optional external connections in development use your own accounts; provider charges may apply.",
-  "faq.a2.local": "Local chats and files stay on your device, and local inference works offline. Model downloads, catalog search and release metadata use network requests. Optional external connections and AI reports in development send only the content you explicitly approve.",
+  "faq.a1.local": "Quenderin is free and MIT licensed. Local chat runs on your hardware with no account, subscription, or per-message charge. Optional DeepSeek and a prepared computer, in the Mac and iPhone app, use your own accounts; provider charges may apply.",
+  "faq.a2.local": "Local chats and files stay on your device, and local inference works offline. Model downloads, catalog search and release metadata use network requests. Optional DeepSeek and a prepared computer, in the Mac and iPhone app, send only the conversation you choose. An AI report sends a reviewed excerpt only when you submit it.",
   "cta.consent.local": "Local chat needs no account or subscription. See our <a href=\"privacy\" data-language-link>Privacy Policy</a>."
 }
