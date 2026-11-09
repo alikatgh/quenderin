@@ -362,4 +362,12 @@
     <string name="response_section">Section %1$d of %2$d</string>
     <string name="report_excerpt_too_long">This excerpt is too long. Use a shorter selection.</string>
     <string name="report_note_too_long">This note is too long. Shorten it before sending.</string>
+    <string name="settings_role_chat">Chat</string>
+    <string name="settings_role_check">Reply check</string>
+    <string name="settings_role_check_value">On this device, before you see the reply</string>
+    <string name="settings_role_perception">Photos and speech</string>
+    <string name="settings_role_perception_value">Separate, and not loaded with chat</string>
+    <string name="settings_practice_line">Calculator, units, and dates answer practice questions on this device. This does not test the model.</string>
+    <string name="settings_stays_here">Local chats, checks, and tools stay on this device. No account.</string>
+    <string name="settings_builtin_hint">These start on. Turn one off and it will not run.</string>
 </resources>

@@ -227,7 +227,8 @@ public struct MacRootView: View {
                             HStack(spacing: 6) {
                                 Circle().fill(p.status).frame(width: 7, height: 7)
                                 Text(model.label).font(.headline).foregroundStyle(p.onSurface)
-                                Text("on-device · private").font(.caption).foregroundStyle(p.statusText)
+                                Text(LocalPace.statusLine(firstUserText: chat.messages.first { $0.role == .user }?.text, badge: "on-device · private"))
+                                    .font(.caption).foregroundStyle(p.statusText).lineLimit(1)
                             }
                         }
                         .buttonStyle(.plain)

@@ -520,13 +520,12 @@ private struct ChatBubble: View {
 
     var body: some View {
         let mine = message.role == .user
-        let shown = mine ? message.text : ActionIntent.displayAssistantText(message.text)
+        let shown = mine ? message.text : (message.isFlagged ? SupportContact.flaggedOutputNotice : ActionIntent.displayAssistantText(message.text))
         let accessibleBody = shown.isEmpty
             ? (mine && !message.documents.isEmpty ? "" : "…")
             : (mine ? shown : markdownPresentedText(shown))
         // Match the visible bubble: attachment names only, presented body, and its warning.
-        let accessibleText = (message.documents.map(\.name) + [accessibleBody]
-            + (message.isFlagged ? [SupportContact.flaggedOutputNotice] : []))
+        let accessibleText = (message.documents.map(\.name) + [accessibleBody])
             .filter { !$0.isEmpty }.joined(separator: "\n\n")
         let bubble = VStack(alignment: .leading, spacing: 2) {
             // Attached-document chips — the transcript shows WHAT was attached, not the extracted
@@ -553,16 +552,10 @@ private struct ChatBubble: View {
             } else if message.text.isEmpty {
                 Text("…").foregroundStyle(palette.onAssistantBubble)
             } else {
-                // Rewrite old "I cannot fulfill… use the Agent tab" walls to the guided education
-                // (storage stays as-is; people see the correct path + handoff chip).
+                // A held reply shows the on-device notice, not the text. Other replies
+                // rewrite old "I cannot fulfill…" walls to the guided handoff.
                 MarkdownText(text: shown, color: palette.onAssistantBubble)
                     .textSelection(.enabled)
-            }
-            if message.isFlagged {
-                Label(SupportContact.flaggedOutputNotice, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .padding(.top, 2)
             }
         }
         .padding(.horizontal, 13)
