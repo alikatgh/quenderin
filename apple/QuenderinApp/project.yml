@@ -42,9 +42,10 @@ targets:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: NO
-        MARKETING_VERSION: "0.6.0"
-        # Candidate counter: verify the highest App Store Connect upload before archiving.
-        CURRENT_PROJECT_VERSION: 23
+        MARKETING_VERSION: "0.6.1"
+        # Candidate floor after recorded Cloud archive 30. Recheck the live App Store
+        # Connect upload before archiving; do not archive if a higher build was processed.
+        CURRENT_PROJECT_VERSION: 31
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
         # iPhone-only for the first release: the iPad layout is untested, and
@@ -114,9 +115,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ai.quenderin.Quenderin
         PRODUCT_NAME: Quenderin
         ENABLE_HARDENED_RUNTIME: YES
-        MARKETING_VERSION: "0.6.0"
-        # Candidate counter: verify the highest App Store Connect upload before archiving.
-        CURRENT_PROJECT_VERSION: 23
+        MARKETING_VERSION: "0.6.1"
+        # Candidate floor after recorded Cloud archive 30. Recheck the live App Store
+        # Connect upload before archiving; do not archive if a higher build was processed.
+        CURRENT_PROJECT_VERSION: 31
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
       configs:

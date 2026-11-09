@@ -4,6 +4,75 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 9 November 2026 — native 0.6.1 preparation, not a submission
+
+Public App Store listing for app **6789854363**, bundle `ai.quenderin.Quenderin`,
+shows **0.6.0** released **1 November 2026** (`currentVersionReleaseDate`
+`2026-11-01T22:30:52Z`). The public what's new matches the 28 October 0.6.0
+draft. That public release supersedes the 29 October statement that no 0.6.0
+App Store submission was established. The public lookup has no
+`CFBundleVersion`. iTunes Lookup fields do not include a build number.
+
+Google Play's public page for `ai.quenderin.app` returned **HTTP 404** on
+9 November. Play Console was not opened. The highest version code in source
+before this preparation was **6**. The latest unsigned GitHub draft remains
+[Android 0.6.0 (6)](https://github.com/alikatgh/quenderin/releases/tag/android-beta-0.6.0-candidate-0ad249d)
+at `0ad249dfd6cf09a2f2e437b2ee7576ee990b4485`. That draft is not a Play upload.
+
+The next native candidate is main `2875d5174e6d3249bbfd3f7aed906f254f6f1a3f`
+(Turnstone, [PR #218](https://github.com/alikatgh/quenderin/pull/218)).
+Prepared versions, not yet archived or uploaded:
+
+- Apple marketing version **0.6.1**, build floor **31**. The last Cloud archive
+  recorded in this file is build 30, and historical App Store build numbers
+  matched Cloud build numbers (19, 22). Floor 31 was **not** read from App
+  Store Connect. Do not archive it if a build above 30 was already processed.
+- Android **0.6.1 / versionCode 7**. This is above the last known Play upload
+  **2 (0.2.0)** and the unsigned draft code 6. It was **not** confirmed in
+  Play Console.
+
+Store draft copy is in
+[the 0.6.1 notes](releases/2026-11-09-native-061/store-copy.md). Turnstone
+changes local chat, model choice, one named note, one live writer, tool
+switches, and an on-device hold for a sensitive reply. It does not change
+remote crypto or add a destination. Host checks on this preparation passed:
+Turnstone adaptation parity (13 shared ids), Muse metadata (22 records), and
+catalog parity (28 models). Those checks are source and metadata evidence.
+They are not tested inference, a rendered journey, or a signed artifact.
+
+Nothing was submitted. The release gates below are still closed:
+
+- **Store login.** This environment has an empty Chrome Default profile only.
+  The required **Apple Developer** and **Albert - Main - CMax** profiles are
+  absent. No new sign-in was started. Xcode Cloud was not started. Play
+  Console was not opened. Live console build counters, review state, privacy
+  answers, and track membership were not refreshed.
+- **Android upload key.** `android/keystore.properties` is absent. No key was
+  generated or registered. The 28 October finding stands: the registered
+  upload certificate is unchanged and the private key was not available. The
+  0.6.1 unsigned export was not dispatched. The exporter accepts a commit only
+  after it is on `main`, and signing still cannot follow.
+- **Export compliance.** This repository still has no French declaration,
+  filing reference, territory change, or `ITSAppUsesNonExemptEncryption`
+  value. The public 0.6.0 release does not record which answer Apple accepted
+  for that build. Turnstone does not change the Noise inventory, so a new
+  build still needs the owner's determination before distribution.
+- **Required signed checks.** GitHub CI
+  [run 42559149325](https://github.com/alikatgh/quenderin/actions/runs/42559149325)
+  on `2875d517` had the native hosted jobs green: iOS QuenderinKit tests, iOS
+  simulator-SDK compile, Apple Prism framework, Android core, Android debug
+  APK, JNI syntax, and catalog parity. **Desktop native runtimes (macos-15)**
+  was still compiling the desktop addon when this note was written, so the
+  workflow was not complete. That desktop package is the Electron lab build,
+  not the Mac App Store app. No Xcode Cloud run and no signed Android artifact
+  exist for `2875d517` or for 0.6.1. Cloud UI journeys were already incomplete
+  on 29 October; they have not been rerun. The public App Store privacy label
+  still says **Data Not Collected**. Store privacy answers were not changed.
+
+No model weights were downloaded. No simulator or physical device was run
+for this preparation. Hosted CI's simulator-SDK compile, when green, is
+compilation evidence only.
+
 ## 29 October 2026 — native integration evidence
 
 The final integration preserves the Apple application and dependencies from
