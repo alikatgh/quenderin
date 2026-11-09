@@ -185,6 +185,11 @@ class AgentLoop(
                     record(AgentStep(decision, "Refused: answer touches a blocked topic."))
                     return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                 }
+                val shown = OutputCheck.finish(decision.answer, OutputKind.REPLY)
+                if (shown.held) {
+                    record(AgentStep(decision, shown.text))
+                    return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                }
                 // Every tool attempt was refused for missing permission ⇒ NOTHING executed, so any
                 // answer implying the task happened is false. Drop it and say what's actually true.
                 if (toolAttempts > 0 && refusedAttempts == toolAttempts) {
@@ -205,7 +210,7 @@ class AgentLoop(
                 // similar goal is primed with it (no-op if skill memory is unwired).
                 if (usedTools.isNotEmpty()) recordSkill(goal, usedTools.toList())
                 record(AgentStep(decision, null))
-                return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
+                return AgentRun(steps, shown.text, AgentRun.HaltReason.ANSWERED)
             }
 
             // Stuck detection: the model re-proposed the exact action it just ran. Don't re-execute
@@ -241,11 +246,16 @@ class AgentLoop(
                         transcript += "\n${LocalPace.HELD}"
                         LocalPace.HELD
                     } else {
-                    val obs = LocalPace.present(execute(decision.name, decision.input))
-                    if (obs == LocalPace.WITHHELD) {
-                        record(AgentStep(decision, obs))
+                    val raw = execute(decision.name, decision.input)
+                    val verdict = OutputCheck.gateTool(
+                        raw,
+                        tools.firstOrNull { it.name == decision.name }?.expectsJson == true,
+                    )
+                    if (verdict.held) {
+                        record(AgentStep(decision, verdict.text))
                         return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                     }
+                    val obs = verdict.text
                     toolAttempts++
                     if (isPermissionRefusal(obs)) refusedAttempts++
                     else if (!isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
@@ -275,10 +285,13 @@ class AgentLoop(
                     val obs = if (decision.calls.any { !LocalPace.admits(it.name) }) {
                         LocalPace.HELD + " Plan not executed."
                     } else if (unknown != null) unknownToolMessage(unknown, tools.map { it.name }) + " Plan not executed."
-                    else LocalPace.present(runner.executePlan(resolved))
-                    if (obs == LocalPace.WITHHELD) {
-                        record(AgentStep(decision, obs))
-                        return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                    else {
+                        val verdict = OutputCheck.gateTool(runner.executePlan(resolved), expectsJson = false)
+                        if (verdict.held) {
+                            record(AgentStep(decision, verdict.text))
+                            return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                        }
+                        verdict.text
                     }
                     if (unknown == null && !obs.startsWith(LocalPace.HELD) && !isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
                         for (call in decision.calls) usedTools.add(call.name)

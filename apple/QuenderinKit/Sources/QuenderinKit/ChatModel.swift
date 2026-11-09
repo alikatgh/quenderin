@@ -379,6 +379,8 @@ public final class ChatModel: ObservableObject {
                     break
                 }
                 assistant.text += token
+                let shaped = OutputCheck.shape(assistant.text, kind: .reply)
+                if shaped.held { assistant.text = shaped.text }
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
                 // message up by id each token: a captured index would crash (out of range) or write
@@ -388,6 +390,7 @@ public final class ChatModel: ObservableObject {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
+                if shaped.held { break }
             }
         } catch {
             // A stale A must not write or clear a newer B's ownership.
@@ -441,8 +444,10 @@ public final class ChatModel: ObservableObject {
         // the guard's between-checkpoints window and the Stop path alike), and never leave a
         // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
         assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
-        if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !stopRequested {
-            assistant.text = ChatUserFacing.emptyReply()
+        if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !stopRequested { assistant.text = ChatUserFacing.emptyReply() }
+        } else {
+            assistant.text = OutputCheck.finish(assistant.text, kind: .reply).text
         }
         lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {

@@ -163,6 +163,7 @@ fun ChatScreen(
     // Tapping the top-bar name/avatar opens the model "profile" sheet; from there the user can open
     // the model picker to switch models (same picker Settings uses).
     var showProfile by remember { mutableStateOf(false) }
+    var showThisChat by remember { mutableStateOf(false) }
     var showPicker by remember { mutableStateOf(false) }
     // A failed generation must be VISIBLE, not silently swallowed: a swallowed throw (engine not
     // loaded, native decode error) looks identical to "the app is ignoring me". Surface + log it.
@@ -241,6 +242,16 @@ fun ChatScreen(
             }
         }
     }
+    LaunchedEffect(coordinator.currentId, model.id) {
+        val roles = JobPrefs.book(context).roles(coordinator.currentId ?: "new", model.id)
+        ai.quenderin.core.RoleSeat.checkerModelId = roles.checkerModelId
+        ai.quenderin.core.RoleSeat.ask = null
+        if (!ai.quenderin.core.RoleSeat.perceptionOpen) {
+            ai.quenderin.core.RoleSeat.perceptionModelId = roles.perceptionModelId
+        }
+        JobPrefs.setCurrent(context, coordinator.currentId ?: "new")
+        JobPrefs.rememberNotes(context, coordinator.chat.guidance.noteCount())
+    }
     LaunchedEffect(coordinator) {
         messages = chat.messages
         draftOwner = coordinator.currentId
@@ -294,6 +305,7 @@ fun ChatScreen(
                 }
                 draftOwner = coordinator.currentId
             },
+            onThisChat = { showThisChat = true },
             onShare = {
                 val md = ConversationExporter.markdown(messages, model.label)
                 val share = Intent(Intent.ACTION_SEND).apply {
@@ -406,6 +418,10 @@ fun ChatScreen(
             EmptyState(
                 model = model,
                 modifier = Modifier.weight(1f),
+                conversationId = coordinator.currentId ?: "new",
+                guidanceNotes = coordinator.chat.guidance.noteCount(),
+                skillCount = ai.quenderin.app.PrefsSkillMemoryStore(context).count(),
+                onSelectChat = onSelectModel,
                 onStarter = { starter ->
                     // Paste-ready prompts end with ":\n\n" — fill composer. Others send now.
                     if (starter.prompt.endsWith(":\n\n") || starter.prompt.endsWith(":\n")) {
@@ -620,6 +636,19 @@ fun ChatScreen(
         }
     }
 
+    if (showThisChat) {
+        ModalBottomSheet(onDismissRequest = { showThisChat = false }) {
+            OnDeviceCard(
+                conversationId = coordinator.currentId ?: "new",
+                chatModel = model,
+                guidanceNotes = coordinator.chat.guidance.noteCount(),
+                skillCount = ai.quenderin.app.PrefsSkillMemoryStore(context).count(),
+                onSelectChat = onSelectModel,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+    }
+
     if (showPicker) {
         ModalBottomSheet(onDismissRequest = { showPicker = false }) {
             ModelPickerSheet(
@@ -647,6 +676,7 @@ private fun ChatTopBar(
     onBack: () -> Unit,
     onTitleClick: () -> Unit,
     onNew: () -> Unit,
+    onThisChat: () -> Unit,
     onShare: () -> Unit,
 ) {
     val colors = Quenderin.colors
@@ -713,6 +743,7 @@ private fun ChatTopBar(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.chat_new_conversation)) }, onClick = { menuOpen = false; onNew() })
+                    DropdownMenuItem(text = { Text(ai.quenderin.core.OnDeviceCopy.TITLE) }, onClick = { menuOpen = false; onThisChat() })
                     if (hasMessages) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) }, onClick = { menuOpen = false; onShare() })
                     }
@@ -1015,6 +1046,10 @@ private fun DayDivider(text: String) {
 private fun EmptyState(
     model: ModelEntry,
     modifier: Modifier,
+    conversationId: String = "new",
+    guidanceNotes: Int = 0,
+    skillCount: Int = 0,
+    onSelectChat: (ModelEntry) -> Unit = {},
     onStarter: (ChatStarter) -> Unit = {},
 ) {
     Column(
@@ -1052,6 +1087,15 @@ private fun EmptyState(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
+        Spacer(Modifier.height(16.dp))
+        OnDeviceCard(
+            conversationId = conversationId,
+            chatModel = model,
+            guidanceNotes = guidanceNotes,
+            skillCount = skillCount,
+            onSelectChat = onSelectChat,
+            modifier = Modifier.widthIn(max = 420.dp),
+        )
         Spacer(Modifier.height(16.dp))
         Text(
             stringResource(R.string.chat_try_one),

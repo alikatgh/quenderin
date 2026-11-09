@@ -239,6 +239,11 @@ public struct AgentLoop: Sendable {
                     record(AgentStep(decision: decision, observation: "Refused: answer touches a blocked topic."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
+                let shown = OutputCheck.finish(answer, kind: .reply)
+                if shown.held {
+                    record(AgentStep(decision: decision, observation: shown.text))
+                    return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
+                }
                 // Every tool attempt was refused for missing permission ⇒ NOTHING executed, so any
                 // answer implying the task happened is false. Drop it and say what's actually true.
                 // (A structured banner also beats an honest "I couldn't" — it names the fix.)
@@ -270,7 +275,7 @@ public struct AgentLoop: Sendable {
                 // similar goal is primed with it (retrieval-augmented planning; no-op if unwired).
                 if !usedTools.isEmpty { recordSkill(goal, usedTools) }
                 record(AgentStep(decision: decision, observation: nil))
-                return AgentRun(steps: steps, answer: answer, haltReason: .answered)
+                return AgentRun(steps: steps, answer: shown.text, haltReason: .answered)
             }
 
             // Stuck detection: the model re-proposed the exact action it just ran. Don't re-execute
@@ -311,11 +316,13 @@ public struct AgentLoop: Sendable {
                     transcript += "\n\(LocalPace.held)"
                     break
                 }
-                observation = LocalPace.present(await execute(name: name, input: input))
-                if observation == LocalPace.withheld {
-                    record(AgentStep(decision: decision, observation: observation))
+                let raw = await execute(name: name, input: input)
+                let verdict = OutputCheck.gateTool(raw, expectsJSON: tools.first { $0.name == name }?.expectsJson ?? false)
+                if verdict.held {
+                    record(AgentStep(decision: decision, observation: verdict.text))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
+                observation = verdict.text
                 toolAttempts += 1
                 usedTools.append(name)   // the run's tool sequence, recorded to skill memory on success
                 if Self.isPermissionRefusal(observation) { refusedAttempts += 1 }
@@ -345,11 +352,12 @@ public struct AgentLoop: Sendable {
                 } else if let unknown {
                     observation = Self.unknownToolMessage(unknown, available: tools.map(\.name)) + " Plan not executed."
                 } else {
-                    observation = LocalPace.present(await runner.executePlan(resolved))
-                    if observation == LocalPace.withheld {
-                        record(AgentStep(decision: decision, observation: observation))
+                    let verdict = OutputCheck.gateTool(await runner.executePlan(resolved), expectsJSON: false)
+                    if verdict.held {
+                        record(AgentStep(decision: decision, observation: verdict.text))
                         return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                     }
+                    observation = verdict.text
                     usedTools.append(contentsOf: calls.map(\.name))   // the plan's tools, for skill memory
                     // A plan that ran cleanly may satisfy several recipe steps in order.
                     if !Self.isFailureObservation(observation) {

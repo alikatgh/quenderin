@@ -473,9 +473,17 @@ public struct SettingsView: View {
         // (passing String into Text often binds as non-localizable verbatim — CHANGELOG localization gap).
         Section {
                 LabeledRow(title: "Active model", value: model.label)
-                LabeledRow(title: "Chat", value: model.label)
-                LabeledRow(title: "Reply check", value: LocalPace.roleCheck)
-                LabeledRow(title: "Photos and speech", value: LocalPace.rolePerception)
+                NavigationLink(OnDeviceCopy.title) {
+                    OnDeviceJobCard(
+                        conversationID: coordinator.currentID ?? "new",
+                        chatModel: model,
+                        guidanceNotes: coordinator.chat.guidance.noteCount(),
+                        skillCount: SkillMemoryStore.shared.count(),
+                        onSelectChat: onSelectModel
+                    )
+                    .padding(20)
+                }
+                Text(OnDeviceCopy.card).font(.footnote).foregroundStyle(.secondary)
                 Text(LocalPace.practiceLine).font(.footnote).foregroundStyle(.secondary)
                 Text(LocalPace.staysHere).font(.footnote).foregroundStyle(.secondary)
                 LabeledRow(title: "Size", value: model.sizeLabel)

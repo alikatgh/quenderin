@@ -43,6 +43,8 @@ public final class GuidanceNotebook: @unchecked Sendable {
 
     public init() {}
 
+    public func noteCount() -> Int { notes.count }
+
     public func save(name: String, text: String) -> GuidanceResult {
         guard let cleanedName = Self.normalizeName(name) else { return .rejected(NamedGuidance.nameMessage) }
         guard let cleanedText = Self.normalizeText(text) else { return .rejected(NamedGuidance.textMessage) }

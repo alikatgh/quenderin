@@ -25,19 +25,24 @@ class AgentSession(
      * share one instance across runs. App can pass a SharedPreferences-backed store later.
      */
     private val skills: SkillMemory = SkillMemory(),
+    /** Local MCP tools, read at the start of each run so a switch takes effect without a relaunch. */
+    private val localTools: () -> List<AgentTool> = { emptyList() },
     var onChange: () -> Unit = {},
 ) {
-    private val loop =
-        if (runner != null) AgentLoop(
-            engine, tools, maxSteps, runner, deliberate,
-            recallSkills = { skills.recall(it) },
-            recordSkill = { g, t -> skills.record(g, t) },
-        )
-        else AgentLoop(
-            engine, tools, maxSteps, deliberate = deliberate,
-            recallSkills = { skills.recall(it) },
-            recordSkill = { g, t -> skills.record(g, t) },
-        )
+    private val baseTools = tools
+    private val stepCap = maxSteps
+    private val capabilityRunner = runner
+    private val thinkFirst = deliberate
+
+    private fun liveLoop() = if (capabilityRunner != null) AgentLoop(
+        engine, baseTools + localTools(), stepCap, capabilityRunner, thinkFirst,
+        recallSkills = { skills.recall(it) },
+        recordSkill = { g, t -> skills.record(g, t) },
+    ) else AgentLoop(
+        engine, baseTools + localTools(), stepCap, deliberate = thinkFirst,
+        recallSkills = { skills.recall(it) },
+        recordSkill = { g, t -> skills.record(g, t) },
+    )
 
     /** Q-641: the current run's stop flag. cancel() flips it (and interrupts the in-flight decode); the
      *  loop checks it each step boundary and halts with CANCELLED. @Volatile — cancel() may run on the
@@ -98,7 +103,7 @@ class AgentSession(
             haltReason = null
             onChange()
 
-            val result = loop.run(
+            val result = liveLoop().run(
                 goal,
                 onStep = { step -> steps = steps + step; onChange() },
                 isCancelled = { cancelRequested },

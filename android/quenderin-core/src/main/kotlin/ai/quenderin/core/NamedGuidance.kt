@@ -40,6 +40,8 @@ class GuidanceNotebook {
     var active: String? = null
         private set
 
+    fun noteCount(): Int = notes.size
+
     fun save(name: String, text: String): GuidanceResult {
         val cleanedName = normalizeName(name) ?: return GuidanceResult.Rejected(NamedGuidance.NAME_MESSAGE)
         val cleanedText = normalizeText(text) ?: return GuidanceResult.Rejected(NamedGuidance.TEXT_MESSAGE)
