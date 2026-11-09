@@ -379,16 +379,19 @@ public final class ChatModel: ObservableObject {
                     break
                 }
                 assistant.text += token
-                let shaped = OutputCheck.shape(assistant.text, kind: .reply)
-                if shaped.held { assistant.text = shaped.text }
-                let checkerSelected = RoleSeat.shared.hasChecker
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
                 // message up by id each token: a captured index would crash (out of range) or write
                 // to the wrong message. If it's gone, the user moved on — stop streaming into it.
                 guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
+                // The word list is a full scan. Run it when a frame is due, not on every token,
+                // or a short burst spills across frames and the transcript writes once per token.
+                guard flushGate.shouldFlush() else { continue }
+                let shaped = OutputCheck.shape(assistant.text, kind: .reply)
+                if shaped.held { assistant.text = shaped.text }
+                let checkerSelected = RoleSeat.shared.hasChecker
                 if checkerSelected, !shaped.held { continue }
-                if flushGate.shouldFlush(), messages[i].text != assistant.text {
+                if messages[i].text != assistant.text {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
