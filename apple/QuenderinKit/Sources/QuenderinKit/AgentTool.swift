@@ -12,8 +12,14 @@ public protocol AgentTool: Sendable {
     var name: String { get }
     /// One line the planner sees to decide when to use it.
     var purpose: String { get }
+    /// True when the observation is only usable if it is JSON. Built-in tools stay false.
+    var expectsJson: Bool { get }
     /// Run with a string input, returning an observation string.
     func run(_ input: String) async throws -> String
+}
+
+public extension AgentTool {
+    var expectsJson: Bool { false }
 }
 
 extension Character {

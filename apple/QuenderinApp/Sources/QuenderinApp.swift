@@ -125,6 +125,8 @@ struct QuenderinApp: App {
             : ParallelRangeDownloader() // real GGUF download — multi-connection ranged (falls back to single-stream)
         // Q-578: onboarding's download gate honors the user's cellular opt-in (Settings → Downloaded
         // models). Off by default → Wi-Fi-only; the live network status comes from the model's own monitor.
+        CheckerBinding.install(engine)
+        PerceptionBinding.install(engine)
         let onboardingModel = OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy })
         _onboarding = StateObject(wrappedValue: onboardingModel)
         let automatic = AutomaticModelSelection(onboarding: onboardingModel, store: performanceStore, deviceBudgetGB: memoryBudget)
@@ -149,7 +151,16 @@ struct QuenderinApp: App {
             engine: engine,
             tools: AgentToolkit.standard(),
             consent: UserDefaultsConsentStore(),   // the Settings pane's toggles
-            ledger: FileAuditLedger()              // the on-disk flight recorder
+            ledger: FileAuditLedger(),             // the on-disk flight recorder
+            localTools: {
+                JobStore.loadDesk().agentTools { server in
+                    #if os(macOS)
+                    if let command = server.command, !command.isEmpty { return StdioMcp(command: command) }
+                    #endif
+                    if let address = server.address { return HttpMcp(address: address) }
+                    return SilentMcp()
+                }
+            }
         ))
     }
 

@@ -72,6 +72,9 @@ public struct MacRootView: View {
         }
         .quenderinDarkCanvas()
         .onAppear {
+            if conversations.summaries.isEmpty {
+                conversations.startNew()
+            }
             if selection.isEmpty, let id = conversations.currentID {
                 selection = [id]
             }

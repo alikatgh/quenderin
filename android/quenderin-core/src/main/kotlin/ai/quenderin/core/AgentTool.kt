@@ -19,6 +19,8 @@ interface AgentTool {
     val name: String
     /** One line the planner sees to decide when to use it. */
     val purpose: String
+    /** True when the observation is only usable if it is JSON. Built-in tools stay false. */
+    val expectsJson: Boolean get() = false
     /** Run with a string input, returning an observation string. */
     fun run(input: String): String
 }

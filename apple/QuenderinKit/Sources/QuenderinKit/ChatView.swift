@@ -17,6 +17,7 @@ public struct ChatView: View {
     /// Agent" handoff bar above the composer (see `ActionIntent`). Cleared on tap or dismiss.
     @State private var agentSuggestion: String?
     @State private var showAttachPicker = false
+    @State private var showThisChat = false
     /// Streaming auto-follows ONLY while true. Bool + hysteresis only — never continuous
     /// CGFloat scroll metrics (those force a full body rebuild every wheel tick).
     @State private var nearBottom = true
@@ -142,6 +143,12 @@ public struct ChatView: View {
                 Text(model.automaticSelectionStatus ?? "Automatic · selects installed, verified models before a new chat's first reply; estimated until observed locally")
                     .font(.caption2).foregroundStyle(.secondary).padding(6)
             }
+            if !model.messages.isEmpty, activeModel != nil {
+                Button(OnDeviceCopy.title) { showThisChat = true }
+                    .font(.caption.weight(.semibold))
+                    .padding(.top, 4)
+                    .accessibilityHint("Choose the chat, checker, and photo models, or run a checkup")
+            }
             // NO GeometryReader around ScrollView — that fights content size and makes wheel
             // scroll rubber-band, jump, and lag. nearBottom comes from AppKit (macOS) or a
             // cheap bottom sentinel (iOS) with hysteresis only.
@@ -151,6 +158,10 @@ public struct ChatView: View {
                         EmptyChatState(
                             palette: p,
                             activeModel: activeModel,
+                            conversationID: conversationID ?? "new",
+                            guidanceNotes: model.guidance.noteCount(),
+                            skillCount: SkillMemoryStore.shared.count(),
+                            onSelectChat: onSwitchModel,
                             onStarter: { starter in
                                 // Prompts that end with ":\n\n" want the user to paste — fill draft.
                                 // Complete prompts send immediately so first-run is one tap.
@@ -345,6 +356,27 @@ public struct ChatView: View {
         }
         .background(p.background)
         .quenderinDarkCanvas()
+        .sheet(isPresented: $showThisChat) {
+            if let activeModel {
+                NavigationStack {
+                    ScrollView {
+                        OnDeviceJobCard(
+                            conversationID: conversationID ?? "new",
+                            chatModel: activeModel,
+                            guidanceNotes: model.guidance.noteCount(),
+                            skillCount: SkillMemoryStore.shared.count(),
+                            onSelectChat: { onSwitchModel?($0) }
+                        )
+                        .padding(20)
+                    }
+                    .navigationTitle(OnDeviceCopy.title)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showThisChat = false } } }
+                }
+                .quenderinSheetWindowCanvas()
+            }
+        }
+        .onAppear { syncJobSeat() }
+        .onChange(of: conversationID) { _ in syncJobSeat() }
         .quenderinDarkChrome()
         .toolbar {
             #if os(iOS)
@@ -498,6 +530,16 @@ public struct ChatView: View {
             .disabled(!canSend && !model.isGenerating)
             .help(model.isGenerating ? String(localized: "Stop generating") : String(localized: "Send message"))
             .accessibilityLabel(model.isGenerating ? String(localized: "Stop generating") : String(localized: "Send message"))
+        }
+    }
+
+    /// The checker and photo seats follow this conversation even after the card leaves the screen.
+    /// Selecting them does not load a file. Look and Listen load an installed photo or speech file.
+    private func syncJobSeat() {
+        let roles = JobStore.loadBook().roles(conversationID: conversationID ?? "new", chatFallback: activeModel?.id ?? "chat")
+        RoleSeat.shared.selectChecker(modelID: roles.checkerModelID)
+        if !RoleSeat.shared.perceptionState().open {
+            RoleSeat.shared.setPerception(modelID: roles.perceptionModelID, open: false, perceive: nil)
         }
     }
 }
@@ -839,6 +881,10 @@ private struct DayDivider: View {
 private struct EmptyChatState: View {
     let palette: QuenderinPalette
     var activeModel: ModelEntry? = nil
+    var conversationID: String = "new"
+    var guidanceNotes: Int = 0
+    var skillCount: Int = 0
+    var onSelectChat: ((ModelEntry) -> Void)? = nil
     var onStarter: ((ChatStarter) -> Void)? = nil
 
     /// True when the loaded model's quantization is graded "Low" — the honest heads-up
@@ -873,6 +919,17 @@ private struct EmptyChatState: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
                     .padding(.top, 2)
+            }
+            if let activeModel {
+                OnDeviceJobCard(
+                    conversationID: conversationID,
+                    chatModel: activeModel,
+                    guidanceNotes: guidanceNotes,
+                    skillCount: skillCount,
+                    onSelectChat: { onSelectChat?($0) }
+                )
+                .frame(maxWidth: 420)
+                .padding(.top, 8)
             }
             // Starters turn a blank chat into a one-tap first success with small models.
             if let onStarter {

@@ -384,10 +384,18 @@ public final class ChatModel: ObservableObject {
                 // message up by id each token: a captured index would crash (out of range) or write
                 // to the wrong message. If it's gone, the user moved on — stop streaming into it.
                 guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
-                if flushGate.shouldFlush(), messages[i].text != assistant.text {
+                // The word list is a full scan. Run it when a frame is due, not on every token,
+                // or a short burst spills across frames and the transcript writes once per token.
+                guard flushGate.shouldFlush() else { continue }
+                let shaped = OutputCheck.shape(assistant.text, kind: .reply)
+                if shaped.held { assistant.text = shaped.text }
+                let checkerSelected = RoleSeat.shared.hasChecker
+                if checkerSelected, !shaped.held { continue }
+                if messages[i].text != assistant.text {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
+                if shaped.held { break }
             }
         } catch {
             // A stale A must not write or clear a newer B's ownership.
@@ -396,6 +404,9 @@ public final class ChatModel: ObservableObject {
                 // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
                 // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
                 assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+                if !assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
+                }
                 if let i = messages.firstIndex(where: { $0.id == assistantID }),
                    messages[i].text != assistant.text {
                     messages[i] = assistant
@@ -441,8 +452,10 @@ public final class ChatModel: ObservableObject {
         // the guard's between-checkpoints window and the Stop path alike), and never leave a
         // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
         assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
-        if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !stopRequested {
-            assistant.text = ChatUserFacing.emptyReply()
+        if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !stopRequested { assistant.text = ChatUserFacing.emptyReply() }
+        } else {
+            assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
         }
         lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {

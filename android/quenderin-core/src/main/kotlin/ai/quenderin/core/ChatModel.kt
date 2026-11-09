@@ -365,7 +365,7 @@ class ChatModel(
                 }
                 if (beganWriting) publishPhase(myGen, GenerationPhase.WRITING)
                 if (cancelDegeneration || cancelExternal) engine.requestCancel()
-                textToFlush?.let { writeAssistant(myGen, placeholderIndex, it) }
+                if (RoleSeat.checkerModelId == null) textToFlush?.let { writeAssistant(myGen, placeholderIndex, it) }
             }
             } catch (t: Exception) {
                 if (!isRevisionCurrent(myGen)) {
@@ -422,10 +422,12 @@ class ChatModel(
                     return@synchronized "" to null
                 }
                 val acceptedText = if (stopped && !sawEmission) "" else settled
-                val text = if (acceptedText.isBlank() && current && !stopped) {
+                val checkedText = if (acceptedText.isBlank()) acceptedText
+                else OutputCheck.finish(acceptedText, OutputKind.REPLY).text
+                val text = if (checkedText.isBlank() && current && !stopped) {
                     // Locale-aware notice (ru/ko/ja/zh); default EN for tests / unknown locales.
                     ChatUserFacing.emptyReply(java.util.Locale.getDefault().language)
-                } else acceptedText
+                } else checkedText
                 var snapshot: List<ChatMessage>? = null
                 if (current) {
                     lastHitTokenCap = capStatus == ChatCapStatus.HIT && !hitDegeneration && !stopped

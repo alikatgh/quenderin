@@ -87,6 +87,8 @@ class PrefsSkillMemoryStore(context: Context) {
 
     fun memory(): SkillMemory = memory
 
+    fun count(): Int = memory.size
+
     fun record(goal: String, tools: List<String>) {
         memory.record(goal, tools)
         persist()

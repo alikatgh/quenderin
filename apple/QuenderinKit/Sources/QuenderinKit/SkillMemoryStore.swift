@@ -23,6 +23,12 @@ public final class SkillMemoryStore: @unchecked Sendable {
         self.memory = m
     }
 
+    /// How many sequences are stored. Does not recall them into a chat.
+    public func count() -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return memory.size
+    }
+
     /// Proven sequences for goals similar to `goal` (primes the planner preamble).
     public func recall(_ goal: String) -> [SkillRecord] {
         lock.lock(); defer { lock.unlock() }

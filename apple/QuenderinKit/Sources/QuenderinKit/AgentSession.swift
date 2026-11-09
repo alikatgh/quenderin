@@ -33,6 +33,11 @@ public final class AgentSession: ObservableObject {
     @Published public private(set) var lastGoal = ""
 
     private var loop: AgentLoop
+    private let baseTools: [AgentTool]
+    private let localTools: @MainActor () -> [AgentTool]
+    private let stepCap: Int
+    private let skills: SkillMemoryStore
+    private var capabilityRunner: CapabilityRunner!
     /// Kept so `cancel()` can interrupt an in-flight decode (Q-641), the way ChatModel holds its engine.
     private let engine: InferenceEngine
     /// The current run's stop flag — a fresh one per run so a late cancel can't leak into the next.
@@ -49,11 +54,17 @@ public final class AgentSession: ObservableObject {
 
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
                 runner: CapabilityRunner? = nil,
-                skills: SkillMemoryStore = .shared) {
+                skills: SkillMemoryStore = .shared,
+                localTools: @escaping @MainActor () -> [AgentTool] = { [] }) {
         self.engine = engine
+        self.baseTools = tools
+        self.localTools = localTools
+        self.stepCap = maxSteps
+        self.skills = skills
         let broker = approvals
         let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) },
                                                   session: undoSession)
+        self.capabilityRunner = resolved
         // Skill memory is the reliability-compounding loop: prime the planner with proven tool
         // sequences for similar past goals, and remember this run when it answers. Closures hop
         // through the store (Sendable) so the loop stays pure.
@@ -61,6 +72,14 @@ public final class AgentSession: ObservableObject {
                               deliberate: { AgentDeliberation.isEnabled },
                               recallSkills: { skills.recall($0) },
                               recordSkill: { skills.record(goal: $0, tools: $1) })
+    }
+
+    private func makeLoop(runner: CapabilityRunner) -> AgentLoop {
+        let remembered = skills
+        return AgentLoop(engine: engine, tools: baseTools + localTools(), maxSteps: stepCap, runner: runner,
+                  deliberate: { AgentDeliberation.isEnabled },
+                  recallSkills: { remembered.recall($0) },
+                  recordSkill: { remembered.record(goal: $0, tools: $1) })
     }
 
     /// Q-641: hard-stop the running mission — interrupt the in-flight decode and flip the run's flag so
@@ -76,18 +95,17 @@ public final class AgentSession: ObservableObject {
     /// memory, and this session's approval dialog. Kept here so QuenderinApp stays one line.
     public convenience init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
                             consent: ConsentStore, ledger: AuditLedger,
-                            skills: SkillMemoryStore = .shared) {
-        self.init(engine: engine, tools: tools, maxSteps: maxSteps, runner: nil, skills: skills)
+                            skills: SkillMemoryStore = .shared,
+                            localTools: @escaping @MainActor () -> [AgentTool] = { [] }) {
+        self.init(engine: engine, tools: tools, maxSteps: maxSteps, runner: nil, skills: skills, localTools: localTools)
         // Rebuild the loop with a runner that has BOTH the stores and this session's approvals,
         // and the same skill-memory closures (re-init above already wired skills; rebuild keeps them).
         let broker = approvals
         let runner = CapabilityRunner(consent: consent, ledger: ledger,
                                       approve: { preview in await broker.request(preview) },
                                       session: undoSession)
-        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner,
-                              deliberate: { AgentDeliberation.isEnabled },
-                              recallSkills: { skills.recall($0) },
-                              recordSkill: { skills.record(goal: $0, tools: $1) })
+        capabilityRunner = runner
+        self.loop = makeLoop(runner: runner)
     }
 
     /// Run the agent to completion, publishing the result. (The loop also exposes a live
@@ -121,6 +139,7 @@ public final class AgentSession: ObservableObject {
             haltReason = .blocked
             return
         }
+        loop = makeLoop(runner: capabilityRunner)
         let flag = cancelFlag
         // Stream live: the loop fires onStep as each step lands and onProgress as the recipe cursor
         // advances. Both hop to the MainActor; the token gate drops a stale append from a prior run.

@@ -221,10 +221,13 @@ fun SettingsScreen(
 
         if (page == SettingsPage.MODELS) SettingsGroup(stringResource(R.string.settings_model), showHeading = false) {
             LabeledRow(stringResource(R.string.settings_active_model), model.label)
-            LabeledRow(stringResource(R.string.settings_role_chat), model.label)
-            LabeledRow(stringResource(R.string.settings_role_check), stringResource(R.string.settings_role_check_value))
-            LabeledRow(stringResource(R.string.settings_role_perception), stringResource(R.string.settings_role_perception_value))
-            Caption(stringResource(R.string.settings_practice_line))
+            OnDeviceCard(
+                conversationId = JobPrefs.current(context),
+                chatModel = model,
+                guidanceNotes = JobPrefs.notes(context),
+                skillCount = ai.quenderin.app.PrefsSkillMemoryStore(context).count(),
+                onSelectChat = onSelectModel,
+            )
             Caption(stringResource(R.string.settings_stays_here))
             LabeledRow(stringResource(R.string.settings_size), model.sizeLabel)
             val engineStatus = if (ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {

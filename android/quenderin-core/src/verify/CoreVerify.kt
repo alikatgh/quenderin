@@ -2559,6 +2559,12 @@ fun main() {
         check("local pace: ${error.message}", false)
     }
     try {
+        verifyOnDeviceJob()
+        check("on-device job covers roles, checks, tools, doctor, and practice", true)
+    } catch (error: Throwable) {
+        check("on-device job: ${error.message}", false)
+    }
+    try {
         verifyTurnstoneAdaptations()
         check("turnstone adaptations keep an explicit model, one named note, and one writer", true)
     } catch (error: Throwable) {

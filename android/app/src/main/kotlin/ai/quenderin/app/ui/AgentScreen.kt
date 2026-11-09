@@ -164,6 +164,13 @@ fun AgentScreen(
         val skillStore = ai.quenderin.app.PrefsSkillMemoryStore(context)
         AgentSession(
             engine, allTools, runner = runner,
+            localTools = {
+                val desk = JobPrefs.desk(context)
+                desk.agentTools { server ->
+                    val address = server.address
+                    if (address != null) ai.quenderin.core.HttpMcp(address) else ai.quenderin.core.SilentMcp()
+                }
+            },
             // Opt-in "Deeper reasoning" — read LIVE from prefs each step so the Settings toggle takes
             // effect on the next run (twin of iOS AgentSession reading AgentDeliberation.isEnabled).
             deliberate = {
