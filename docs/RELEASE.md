@@ -4,6 +4,45 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 9 November 2026, evening — 0.6.1 drafts saved, not submitted
+
+Source for this candidate is main `6e87618908b2f919c929d9cf7ae4cfa87df0885f`
+(PR #220). It includes the 0.6.1 preparation and the on-device roles, checker,
+Look and Listen, local tools, Doctor, and Practice. GitHub CI
+[run 42587997731](https://github.com/alikatgh/quenderin/actions/runs/42587997731)
+succeeded on that commit. That is hosted compilation and fixtures. It is not
+tested inference, not a simulator or device run, and not a signed archive.
+
+App Store Connect, in the Chrome profile **Apple Developer**, shows iOS and
+macOS **0.6.0** still **Ready for Sale**. The public lookup is unchanged.
+New **0.6.1** versions were created for both platforms and left at **Prepare
+for Submission**, with automatic release after approval. Their English
+description, What's New, and review notes match
+[the 0.6.1 store draft](releases/2026-11-09-native-061/store-copy.md). No
+build is attached. Nothing was submitted for review.
+
+The highest processed build is **34**, from
+`a6f6454fef670edac1f4500b9d60d7a5d6b74723`. Xcode Cloud run 34 is the latest
+and its workflow result is **Failed**. The next Cloud counter would be 35.
+The existing workflow **Bonsai 2 App Store**
+(`76741952-1095-40B7-AA3D-9DA19B3682F2`) is manual on `main` and runs two
+tests plus two archives. It was not started. The team has eight Xcode Cloud
+products, and this session could not read the live remaining compute hours.
+The 3 November reading of 21 minutes is historical. Local disk was under 5 Gi
+free, so no local archive was made.
+
+Android was not signed or uploaded. The keystore at the canonical path is the
+approved reset certificate `880aca18…84f8b6f`. Its receipt still says the
+reset was not requested and the certificate is not registered for Play. The
+last verified registered upload certificate remains `8b38f4e5…949cf3d`.
+`android/keystore.properties` is absent. The Play Console shell for **Albert -
+Main - CMax** loaded the existing app URL and did not include the certificate
+record. The public Play page for `ai.quenderin.app` is still HTTP 404.
+
+Issue #217, the French encryption filing, is still open. Builds 33 and 34
+record `usesNonExemptEncryption` false. No new classification was entered for
+0.6.1, because there is no 0.6.1 build to attach it to.
+
 ## 9 November 2026 — native 0.6.1 preparation, not a submission
 
 Public App Store listing for app **6789854363**, bundle `ai.quenderin.Quenderin`,
