@@ -21,6 +21,15 @@ public final class AutomaticModelPreferences: ObservableObject {
         defaults.set(id, forKey: "quenderin.automaticModels.manualModelID")
         enabled = false // Invalidates every in-flight Automatic decision, including an already disabled mode.
     }
+
+    /// A cancelled download is not a committed model. Drop that id so the next
+    /// recommendation can run. A model that already loaded stays remembered separately.
+    public func clearManualChoice() {
+        guard manualModelID != nil else { return }
+        manualModelID = nil
+        defaults.removeObject(forKey: "quenderin.automaticModels.manualModelID")
+        revision &+= 1
+    }
 }
 
 /// First-turn only: keeps the selected engine fixed for the rest of a conversation.

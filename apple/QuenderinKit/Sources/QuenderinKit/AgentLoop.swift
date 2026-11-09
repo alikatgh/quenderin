@@ -98,9 +98,14 @@ public struct AgentLoop: Sendable {
         // Retrieval-augmented planning (twin of the desktop preamble): prime the weak model with the tool
         // sequences that worked on SIMILAR past goals. A HINT it still reasons over; every step still gates.
         let recalled = recallSkills(goal)
-        if !recalled.isEmpty {
+        let recalledLines = recalled.compactMap { record -> String? in
+            let names = record.tools.filter { LocalPace.admits($0) }
+            if names.isEmpty { return nil }
+            return "\n- \"\(record.goal)\" → \(names.joined(separator: " → "))"
+        }
+        if !recalledLines.isEmpty {
             transcript += "\nYou completed similar tasks before — the tools that worked:"
-            for r in recalled { transcript += "\n- \"\(r.goal)\" → \(r.tools.joined(separator: " → "))" }
+            transcript += recalledLines.joined()
         }
         // The ordered tool names this run drove — recorded to skill memory if it reaches an answer.
         var usedTools: [String] = []
@@ -301,7 +306,16 @@ public struct AgentLoop: Sendable {
                     record(AgentStep(decision: decision, observation: "Refused: touches a blocked action."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
-                observation = await execute(name: name, input: input)
+                if !LocalPace.admits(name) {
+                    observation = LocalPace.held
+                    transcript += "\n\(LocalPace.held)"
+                    break
+                }
+                observation = LocalPace.present(await execute(name: name, input: input))
+                if observation == LocalPace.withheld {
+                    record(AgentStep(decision: decision, observation: observation))
+                    return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
+                }
                 toolAttempts += 1
                 usedTools.append(name)   // the run's tool sequence, recorded to skill memory on success
                 if Self.isPermissionRefusal(observation) { refusedAttempts += 1 }
@@ -326,10 +340,16 @@ public struct AgentLoop: Sendable {
                     }
                     resolved.append((capability, call.input))
                 }
-                if let unknown {
+                if calls.contains(where: { !LocalPace.admits($0.name) }) {
+                    observation = LocalPace.held + " Plan not executed."
+                } else if let unknown {
                     observation = Self.unknownToolMessage(unknown, available: tools.map(\.name)) + " Plan not executed."
                 } else {
-                    observation = await runner.executePlan(resolved)
+                    observation = LocalPace.present(await runner.executePlan(resolved))
+                    if observation == LocalPace.withheld {
+                        record(AgentStep(decision: decision, observation: observation))
+                        return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
+                    }
                     usedTools.append(contentsOf: calls.map(\.name))   // the plan's tools, for skill memory
                     // A plan that ran cleanly may satisfy several recipe steps in order.
                     if !Self.isFailureObservation(observation) {
@@ -390,7 +410,7 @@ public struct AgentLoop: Sendable {
     /// tick fires only on a real executed-tool match. Best-effort — any decode/parse/validation failure
     /// returns nil → the loop runs exactly as it does today. (docs/audits/2026-07-08-dynamic-planning.md)
     private func planDynamically(goal: String) async -> AgentRecipe? {
-        let toolList = tools.map { "- \($0.name): \($0.purpose)" }.joined(separator: "\n")
+        let toolList = LocalPace.offered(tools).map { "- \($0.name): \($0.purpose)" }.joined(separator: "\n")
         let prompt = """
         Plan how to accomplish this goal on the user's computer, as an ORDERED list of tool calls.
         Goal: \(goal)
@@ -520,6 +540,7 @@ public struct AgentLoop: Sendable {
     }
 
     private func execute(name: String, input: String) async -> String {
+        guard LocalPace.admits(name) else { return LocalPace.held }
         guard let tool = tools.first(where: { $0.name == name }) else {
             return Self.unknownToolMessage(name, available: tools.map(\.name))
         }
@@ -536,7 +557,7 @@ public struct AgentLoop: Sendable {
     }
 
     private func preamble(goal: String) -> String {
-        let toolList = tools.map { "- \($0.name): \($0.purpose)" }.joined(separator: "\n")
+        let toolList = LocalPace.offered(tools).map { "- \($0.name): \($0.purpose)" }.joined(separator: "\n")
         // The "answer is ONLY the final result" line exists because grammar-constrained decoding
         // (AgentDecisionGrammar) closed the accidental safety net: pre-grammar, a chatty model's
         // "Okay, let's calculate…" preamble FAILED the JSON parse and drew a retry nudge; under

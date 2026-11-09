@@ -276,8 +276,10 @@ fun ChatScreen(
         // Hoisted: the onShare lambda below is a non-composable event handler.
         val shareTitle = stringResource(R.string.chat_share_conversation)
         val shareSubject = stringResource(R.string.chat_share_subject)
+        val conversationTitle = messages.firstOrNull { it.role == Role.USER }?.text
         ChatTopBar(
             model = model,
+            conversationTitle = conversationTitle,
             hasMessages = messages.isNotEmpty(),
             onBack = { stashVisibleDraft(); chat.invalidatePreparedTurns(); onBack() },
             onTitleClick = { showProfile = true },
@@ -364,6 +366,14 @@ fun ChatScreen(
                             coordinator.recordLocalAdmission(prepared.model.id, automaticEnabled, conversationID)
                         })
                     } }
+                    chat.preparationError?.let { reason ->
+                        if (sendJob == myJob) sendError = reason
+                        if (useDraft && chat.messages.size == messageCountBeforeSend) {
+                            input = text
+                            pendingDocuments = docs
+                            coordinator.saveDraft(conversationID, text, docs)
+                        }
+                    }
                 } catch (t: Throwable) {
                     if (t is kotlinx.coroutines.CancellationException) {
                         if (useDraft && sendJob == myJob) coordinator.draftAfterCancelledAdmission(conversationID, lifecycleRevision, messageCountBeforeSend)?.let {
@@ -632,6 +642,7 @@ fun ChatScreen(
 @Composable
 private fun ChatTopBar(
     model: ModelEntry,
+    conversationTitle: String?,
     hasMessages: Boolean,
     onBack: () -> Unit,
     onTitleClick: () -> Unit,
@@ -677,9 +688,14 @@ private fun ChatTopBar(
                         Box(Modifier.size(7.dp).background(colors.status, CircleShape))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            stringResource(R.string.badge_on_device_private),
+                            ai.quenderin.core.LocalPace.statusLine(
+                                conversationTitle,
+                                stringResource(R.string.badge_on_device_private),
+                            ),
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.statusText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -812,7 +828,7 @@ private fun MessageBubble(msg: ChatMessage) {
     val mine = msg.role == Role.USER
     val colors = Quenderin.colors
     val context = androidx.compose.ui.platform.LocalContext.current
-    val canCopy = msg.text.isNotBlank()
+    val canCopy = msg.text.isNotBlank() && !msg.isFlagged
     val copyLabel = stringResource(R.string.chat_copy)
     val copiedToast = stringResource(R.string.chat_copied)
     var menuOpen by remember { mutableStateOf(false) }
@@ -886,6 +902,12 @@ private fun MessageBubble(msg: ChatMessage) {
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                             }
+                        } else if (msg.isFlagged) {
+                            Text(
+                                SupportContact.FLAGGED_OUTPUT_NOTICE,
+                                color = colors.onAssistantBubble,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                         } else {
                             // Rewrite old "I cannot fulfill… use the Agent" walls to guided education.
                             val shown = ActionIntent.displayAssistantText(
@@ -913,17 +935,9 @@ private fun MessageBubble(msg: ChatMessage) {
                 }
             }
         }
-        if (!mine && msg.text.isNotBlank()) ResponseActions(
+        if (!mine && msg.text.isNotBlank() && !msg.isFlagged) ResponseActions(
             ActionIntent.displayAssistantText(msg.text, java.util.Locale.getDefault().language), ReportSource.LOCAL_CHAT,
         )
-        if (msg.isFlagged) {
-            Text(
-                SupportContact.FLAGGED_OUTPUT_NOTICE,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, start = 4.dp),
-            )
-        }
     }
 }
 

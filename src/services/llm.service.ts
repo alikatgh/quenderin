@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import {
     agentDecisionMaxTokensCapped,
     agentDecisionTemperature,
     chatRepeatPenalty,
 } from './samplingProfiles.js';
+import { explicitSelection, modelHoldMessage } from './modelSelectionHold.js';
+import { appendGuidance, GuidanceNotebook } from './namedGuidance.js';
+import { ConversationWriter, type WriterPermit } from './conversationWriter.js';
 
 // node-llama-cpp is a native module that may not compile on exotic architectures.
 // We import it dynamically and provide a clear error if unavailable.
@@ -216,27 +220,63 @@ function selectBestModel(memorySafetyEnabled: boolean, runtime?: NodeLlamaRuntim
 /**
  * Honor a pinned activeModelId when its file exists; otherwise fall back to auto-selection.
  */
+type LoadedChoice =
+    | { kind: 'model'; entry: ModelEntry; path: string; degraded: boolean; notice: string }
+    | { kind: 'wait'; message: string }
+    | { kind: 'none' };
+
 function selectPinnedOrBestModel(
     activeModelId: string,
     memorySafetyEnabled: boolean,
-    runtime?: NodeLlamaRuntime,
-): { entry: ModelEntry; path: string; degraded: boolean } | null {
+    runtime: NodeLlamaRuntime | undefined,
+    explicit: boolean,
+): LoadedChoice {
     const pinned = MODEL_CATALOG.find((m) => m.id === activeModelId);
-    if (pinned && getModelRuntimeCompatibility(pinned, runtime).canLoad) {
-        const filePath = modelPath(pinned.id);
-        if (fs.existsSync(filePath)) {
-            const prismRequired = requiresPrismRuntime(pinned);
-            if (!memorySafetyEnabled && !prismRequired) {
-                return { entry: pinned, path: filePath, degraded: false };
-            }
-            const memCheck = checkMemoryForModel(pinned, runtime);
-            if (memCheck.canLoad) {
-                return { entry: pinned, path: filePath, degraded: false };
-            }
-            if (!prismRequired) return { entry: pinned, path: filePath, degraded: true };
+    if (explicit) {
+        const runtimeCanLoad = pinned ? getModelRuntimeCompatibility(pinned, runtime).canLoad : false;
+        const filePath = pinned ? modelPath(pinned.id) : '';
+        const filePresent = Boolean(pinned && fs.existsSync(filePath));
+        const experimentalSource = pinned ? requiresPrismRuntime(pinned) : false;
+        // Ordinary models skip the memory gate when safety is off. An experimental
+        // source model still has to pass it, and a miss waits instead of swapping.
+        const memoryCanLoad = !pinned || !filePresent || !runtimeCanLoad || (!memorySafetyEnabled && !experimentalSource)
+            ? true
+            : checkMemoryForModel(pinned, runtime).canLoad;
+        const decision = explicitSelection({
+            explicit: true,
+            modelId: activeModelId,
+            catalogHit: Boolean(pinned),
+            runtimeCanLoad,
+            filePresent,
+            memoryCanLoad,
+            experimentalSource,
+        });
+        if (decision.action === 'use' && pinned && filePresent) {
+            return { kind: 'model', entry: pinned, path: filePath, degraded: decision.degraded, notice: decision.notice };
         }
+        const message = decision.action === 'wait'
+            ? decision.message
+            : modelHoldMessage(activeModelId, 'missing');
+        return { kind: 'wait', message };
     }
-    return selectBestModel(memorySafetyEnabled, runtime);
+    const pinnedReady = pinned && getModelRuntimeCompatibility(pinned, runtime).canLoad
+        ? modelPath(pinned.id)
+        : '';
+    if (!explicit && pinned && pinnedReady && fs.existsSync(pinnedReady)) {
+        const prismRequired = requiresPrismRuntime(pinned);
+        if (!memorySafetyEnabled && !prismRequired) {
+            return { kind: 'model', entry: pinned, path: pinnedReady, degraded: false, notice: '' };
+        }
+        const memCheck = checkMemoryForModel(pinned, runtime);
+        if (memCheck.canLoad) {
+            return { kind: 'model', entry: pinned, path: pinnedReady, degraded: false, notice: '' };
+        }
+        if (!prismRequired) return { kind: 'model', entry: pinned, path: pinnedReady, degraded: true, notice: '' };
+    }
+    const fallback = selectBestModel(memorySafetyEnabled, runtime);
+    return fallback
+        ? { kind: 'model', entry: fallback.entry, path: fallback.path, degraded: fallback.degraded, notice: '' }
+        : { kind: 'none' };
 }
 
 export class LlmService extends EventEmitter implements ILlmProvider {
@@ -267,6 +307,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private isGeneratingAction: boolean = false;
     private tokenBuffer: string = "";
     private activeModelId: string = MODEL_CATALOG[0].id;
+    /** Set when the user names a model. Until then, startup may still recommend one. */
+    private explicitModelChoice = false;
+    private readonly guidance = new GuidanceNotebook();
+    private readonly conversationWriter = new ConversationWriter();
+    private activeChatPermit: WriterPermit | null = null;
     private activePreset: Preset = getPresetById('general');
     private currentSettings = {
         contextSize: 2048,  // user-facing setting; actual context is resolved per-situation
@@ -462,6 +507,26 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // Reset chat session to pick up the new system prompt
         this.disposeChatSession();
         logger.log(`[LLM] Preset switched to: ${preset.label}`);
+    }
+
+    /** Save a named note. It stays inactive until [selectNamedGuidance]. */
+    public saveNamedGuidance(name: string, text: string): void {
+        const saved = this.guidance.save(name, text);
+        if (!saved.ok) throw new Error(saved.message);
+        if (this.guidance.active === name.trim()) this.disposeChatSession();
+    }
+
+    /** Apply one saved note by its exact name. Replaces any note already active. */
+    public selectNamedGuidance(name: string): void {
+        const selected = this.guidance.select(name);
+        if (!selected.ok) throw new Error(selected.message);
+        this.disposeChatSession();
+    }
+
+    public clearNamedGuidance(): void {
+        if (!this.guidance.active) return;
+        this.guidance.clear();
+        this.disposeChatSession();
     }
 
     public getActivePresetId(): string {
@@ -703,6 +768,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             throw err;
         }
         if (this.loadedModelId === modelId) {
+            this.explicitModelChoice = true;
             this.activeModelId = modelId;
             logger.log(`[Lifecycle] Model ${modelId} already loaded, skipping`);
             return;
@@ -710,6 +776,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         await this.assertModelFileIdentity(entry, filePath,
             requiresPrismRuntime(entry) ? await this.getPrismRuntime() : undefined);
         this.unloadModel();
+        this.explicitModelChoice = true;
         this.activeModelId = modelId;
         // Pre-warm the model
         await this.getModelAndContext();
@@ -833,9 +900,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     this.activeModelId,
                     this.currentSettings.memorySafetyEnabled,
                     runtime,
+                    this.explicitModelChoice,
                 );
 
-                if (!selected) {
+                if (selected.kind === 'wait') {
+                    const err = new Error(selected.message) as TaggedError;
+                    err.code = 'MODEL_HELD';
+                    throw err;
+                }
+                if (selected.kind === 'none') {
                     // No model file exists on disk at all — ask user to download one
                     const freeRamGb = availableMemBytes() / (1024 ** 3);
                     const totalRamGb = os.totalmem() / (1024 ** 3);
@@ -858,9 +931,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 if (selected.degraded) {
                     logger.warn(`[Lifecycle] RAM is tight — loading ${selected.entry.label} in degraded mode (minimal context). Performance may be reduced.`);
                 }
+                if (selected.notice) logger.warn(`[LLM] ${selected.notice}`);
 
-                // Keep an explicitly pinned id; only update when auto-selecting
-                if (selected.entry.id !== this.activeModelId) {
+                // An explicit choice keeps its id. Auto-selection may adopt the model it found.
+                if (!this.explicitModelChoice && selected.entry.id !== this.activeModelId) {
                     this.activeModelId = selected.entry.id;
                 }
                 this.activeModelEntry = selected.entry;
@@ -1610,8 +1684,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async generalChat(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean; thoughtTokens?: number }): Promise<{ text: string; meta: GenerationMeta }> {
+        const claim = this.conversationWriter.claim('desktop-chat', randomUUID(), Date.now(), 120_000);
+        if (!claim.ok) {
+            const err = new Error(claim.message) as TaggedError;
+            err.code = 'CONVERSATION_BUSY';
+            throw err;
+        }
+        this.activeChatPermit = claim.permit;
         const release = nativeWorkloads.beginOrdinary(this);
-        try { return await this.generalChatWithLease(userMsg, onToken, opts); } finally { release(); }
+        try { return await this.generalChatWithLease(userMsg, onToken, opts); }
+        finally {
+            release();
+            const permit = this.activeChatPermit;
+            this.activeChatPermit = null;
+            if (permit) this.conversationWriter.release(permit, Date.now());
+        }
     }
     private async generalChatWithLease(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean; thoughtTokens?: number }): Promise<{ text: string; meta: GenerationMeta }> {
         // Claim the busy flag BEFORE loading: the memory-pressure monitor skips unload only
@@ -1657,11 +1744,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // short directive remains: small models often IMITATE a function call as plain text
                 // instead of emitting the wrapper's real call syntax (live-caught on a 1B) — telling
                 // them not to measurably improves trigger reliability at a ~20-token cost.
-                const fullSystemPrompt = opts?.plainChat || jais
+                const basePrompt = opts?.plainChat || jais
                     ? this.activePreset.systemPrompt
                     : useNativeFunctions
                         ? `${this.activePreset.systemPrompt}\n\nWhen a calculation, conversion, file read, or lookup is needed, call the corresponding provided function. Never write an imitation of a function call as text.`
                         : `${this.activePreset.systemPrompt}\n\n${buildToolPrompt()}`;
+                const fullSystemPrompt = appendGuidance(basePrompt, this.guidance.render(this.getActiveModelLabel()));
                 this.generalChatSession = this.createChatSession({
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt

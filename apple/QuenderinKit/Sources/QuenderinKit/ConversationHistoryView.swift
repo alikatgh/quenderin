@@ -59,7 +59,8 @@ public struct ChatHomeView: View {
                             Text(model.label).font(.headline).foregroundStyle(p.onSurface).lineLimit(1)
                             HStack(spacing: 4) {
                                 Circle().fill(p.status).frame(width: 6, height: 6)
-                                Text("on-device · private").font(.caption2).foregroundStyle(p.statusText)
+                                Text(LocalPace.statusLine(firstUserText: chat.messages.first { $0.role == .user }?.text, badge: "on-device · private"))
+                                    .font(.caption2).foregroundStyle(p.statusText).lineLimit(1)
                             }
                         }
                     }

@@ -91,9 +91,13 @@ class AgentLoop(
         // sequences that worked on SIMILAR past goals. A HINT it still reasons over; every step gates.
         val recalled = recallSkills(goal)
         if (recalled.isNotEmpty()) {
-            transcript += "\nYou completed similar tasks before — the tools that worked:"
-            for (r in recalled) {
-                transcript += "\n- \"${r.goal}\" → ${r.tools.joinToString(" → ")}"
+            val lines = recalled.mapNotNull { record ->
+                val names = record.tools.filter { LocalPace.admits(it) }
+                if (names.isEmpty()) null else "\n- \"${record.goal}\" → ${names.joinToString(" → ")}"
+            }
+            if (lines.isNotEmpty()) {
+                transcript += "\nYou completed similar tasks before — the tools that worked:"
+                transcript += lines.joinToString("")
             }
         }
         // Ordered tool names this run drove — recorded to skill memory if it reaches an answer.
@@ -232,7 +236,16 @@ class AgentLoop(
                         record(AgentStep(decision, "Refused: touches a blocked action."))
                         return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                     }
-                    val obs = execute(decision.name, decision.input)
+                    if (!LocalPace.admits(decision.name)) {
+                        record(AgentStep(decision, LocalPace.HELD))
+                        transcript += "\n${LocalPace.HELD}"
+                        LocalPace.HELD
+                    } else {
+                    val obs = LocalPace.present(execute(decision.name, decision.input))
+                    if (obs == LocalPace.WITHHELD) {
+                        record(AgentStep(decision, obs))
+                        return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                    }
                     toolAttempts++
                     if (isPermissionRefusal(obs)) refusedAttempts++
                     else if (!isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
@@ -241,6 +254,7 @@ class AgentLoop(
                     }
                     transcript += "\nUsed ${decision.name}(${decision.input}) → $obs"
                     obs
+                    }
                 }
                 is AgentDecision.Plan -> {
                     // Safety gate per step, BEFORE anything runs — a plan containing a blocked
@@ -258,9 +272,15 @@ class AgentLoop(
                         if (capability == null) { unknown = call.name; break }
                         resolved.add(capability to call.input)
                     }
-                    val obs = if (unknown != null) unknownToolMessage(unknown, tools.map { it.name }) + " Plan not executed."
-                    else runner.executePlan(resolved)
-                    if (unknown == null && !isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
+                    val obs = if (decision.calls.any { !LocalPace.admits(it.name) }) {
+                        LocalPace.HELD + " Plan not executed."
+                    } else if (unknown != null) unknownToolMessage(unknown, tools.map { it.name }) + " Plan not executed."
+                    else LocalPace.present(runner.executePlan(resolved))
+                    if (obs == LocalPace.WITHHELD) {
+                        record(AgentStep(decision, obs))
+                        return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                    }
+                    if (unknown == null && !obs.startsWith(LocalPace.HELD) && !isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
                         for (call in decision.calls) usedTools.add(call.name)
                     }
                     val described = decision.calls.joinToString(", ") { "${it.name}(${it.input})" }
@@ -360,6 +380,7 @@ class AgentLoop(
     }
 
     private fun execute(name: String, input: String): String {
+        if (!LocalPace.admits(name)) return LocalPace.HELD
         val tool = tools.firstOrNull { it.name == name }
             ?: return unknownToolMessage(name, tools.map { it.name })
         // Capabilities go through the runner (blocklist → consent → preview → run → ledger);
@@ -373,7 +394,7 @@ class AgentLoop(
     }
 
     private fun preamble(goal: String): String {
-        val toolList = tools.joinToString("\n") { "- ${it.name}: ${it.purpose}" }
+        val toolList = LocalPace.offered(tools).joinToString("\n") { "- ${it.name}: ${it.purpose}" }
         // The "answer is ONLY the final result" line exists because grammar-constrained decoding
         // (AgentDecisionGrammar) closed the accidental safety net: pre-grammar, a chatty model's
         // "Okay, let's calculate…" preamble FAILED the JSON parse and drew a retry nudge; under

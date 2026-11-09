@@ -143,8 +143,8 @@ public final class OnboardingModel: ObservableObject {
         // Relaunch fast-path: a model that loaded successfully before, and whose file is still on
         // disk, goes straight back to .ready — no first-run onboarding replay. Only from the
         // pristine .probing phase (an explicit "Back to model choice" must show the choice), and
-        // install() re-runs the integrity gate before trusting the file, so a corrupted leftover
-        // still falls through to a fresh recommendation below.
+        // install() re-runs the integrity gate before trusting the file. A manual choice that
+        // cannot load stays on that choice; only an unpinned launch recommends another model.
         if case .probing = phase, let id = (automaticPreferences.enabled ? recallActiveModelID() : (automaticPreferences.manualModelID ?? recallActiveModelID())),
            // A searched Hugging Face model isn't in the compiled-in catalog, so resolve it from the
            // sideloaded registry too — otherwise "Use" on an open-catalog model is forgotten on relaunch
@@ -154,6 +154,34 @@ public final class OnboardingModel: ObservableObject {
            Self.resolveModelFile(model: remembered, primary: modelsDir) != nil {
             await install(remembered)
             if case .ready = phase { return }
+        }
+        // A manual choice that cannot be loaded stays selected. Do not offer a different model.
+        if !automaticPreferences.enabled,
+           let manual = automaticPreferences.manualModelID?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !manual.isEmpty {
+            let entry = ModelCatalog.entry(id: manual) ?? SideloadedModels.shared.entry(id: manual)
+            let onDisk = entry.flatMap { Self.resolveModelFile(model: $0, primary: modelsDir) } != nil
+            let availability: ModelAvailability
+            if entry == nil {
+                availability = .unreadable
+            } else if !onDisk {
+                availability = .missing
+            } else if let entry, !ModelRuntimeSupport.supports(entry) {
+                availability = .incompatible
+            } else {
+                availability = .present
+            }
+            if availability != .present {
+                let evidence: ModelEvidence = (entry.map { ModelRuntimeSupport.requiresPrism($0) || ModelRuntimeSupport.isMuse($0) } ?? false)
+                    ? .experimentalSource : .ordinary
+                if case .wait(_, _, let message) = ModelSelectionHold.decide(
+                    explicitModelId: manual, availability: availability, evidence: evidence) {
+                    phase = .failed(message)
+                    return
+                }
+            } else if case .failed = phase {
+                return
+            }
         }
         phase = .probing
         let hardware = HardwareProbe.current()
@@ -228,6 +256,16 @@ public final class OnboardingModel: ObservableObject {
         return true
     }
 
+    /// A cancelled download did not commit a model. Forget that tap so `start()` can
+    /// recommend again. A model that already became the active one stays put.
+    private func returnToChoice(afterCancelling model: ModelEntry) async {
+        let remembered = recallActiveModelID()?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if automaticPreferences.manualModelID == model.id, remembered != model.id {
+            automaticPreferences.clearManualChoice()
+        }
+        await start()
+    }
+
     /// Abort an in-flight install. A cancelled DOWNLOAD returns to the recommendation screen
     /// (nothing was committed; a partial file is re-verified and discarded on the next attempt) —
     /// it is NOT surfaced as a failure.
@@ -285,7 +323,7 @@ public final class OnboardingModel: ObservableObject {
                 }
                 try Task.checkCancellation()
             } catch {
-                if error is CancellationError || Task.isCancelled { await start() }
+                if error is CancellationError || Task.isCancelled { await returnToChoice(afterCancelling: model) }
                 else { phase = .failed(Self.describe(error)) }
                 return
             }
@@ -366,9 +404,9 @@ public final class OnboardingModel: ObservableObject {
                 // screen (start() is idempotent). The partial file is re-verified — and discarded —
                 // by the integrity gate on the next install attempt.
                 if error is CancellationError || Task.isCancelled {
-                    await start()
+                    await returnToChoice(afterCancelling: model)
                 } else if case DownloadError.cancelled = error {
-                    await start()
+                    await returnToChoice(afterCancelling: model)
                 } else {
                     phase = .failed(Self.describe(error))
                 }
@@ -379,7 +417,7 @@ public final class OnboardingModel: ObservableObject {
             // reach here with no file on disk. Don't march into engine.load on a missing file;
             // treat it as the cancel it is.
             if Task.isCancelled || !FileManager.default.fileExists(atPath: destination.path) {
-                await start()
+                await returnToChoice(afterCancelling: model)
                 return
             }
         }

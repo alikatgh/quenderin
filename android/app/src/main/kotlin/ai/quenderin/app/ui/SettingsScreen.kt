@@ -5,7 +5,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import ai.quenderin.app.R
 import ai.quenderin.app.probeDeviceProfile
+import ai.quenderin.app.BuiltinToolPrefs
 import ai.quenderin.core.AndroidModelSelector
+import ai.quenderin.core.LocalPace
 import ai.quenderin.app.HyMemoryController
 import ai.quenderin.app.Step5Controller
 import ai.quenderin.app.VisionController
@@ -219,6 +221,11 @@ fun SettingsScreen(
 
         if (page == SettingsPage.MODELS) SettingsGroup(stringResource(R.string.settings_model), showHeading = false) {
             LabeledRow(stringResource(R.string.settings_active_model), model.label)
+            LabeledRow(stringResource(R.string.settings_role_chat), model.label)
+            LabeledRow(stringResource(R.string.settings_role_check), stringResource(R.string.settings_role_check_value))
+            LabeledRow(stringResource(R.string.settings_role_perception), stringResource(R.string.settings_role_perception_value))
+            Caption(stringResource(R.string.settings_practice_line))
+            Caption(stringResource(R.string.settings_stays_here))
             LabeledRow(stringResource(R.string.settings_size), model.sizeLabel)
             val engineStatus = if (ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {
                 stringResource(R.string.settings_engine_real)
@@ -296,7 +303,25 @@ fun SettingsScreen(
                     ai.quenderin.app.docWorkspaceCapabilities({ null }, ai.quenderin.app.DocUndoJournal()) +
                     ai.quenderin.app.devicePerceptionCapabilities(context)
             }
-            Caption(stringResource(R.string.settings_always_on_tools))
+            Caption(stringResource(R.string.settings_builtin_hint))
+            val toolContext = LocalContext.current
+            remember { BuiltinToolPrefs.load(toolContext) }
+            for (id in LocalPace.builtinIds) {
+                var on by remember(id) { mutableStateOf(LocalPace.isOn(id)) }
+                fun update(value: Boolean) {
+                    on = value
+                    BuiltinToolPrefs.set(toolContext, id, value)
+                }
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = on, role = Role.Switch, onValueChange = ::update),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(capabilityTitle(id), color = MaterialTheme.colorScheme.onSurface)
+                        Caption(capabilityPurpose(id, ""))
+                    }
+                    Switch(checked = on, onCheckedChange = null)
+                }
+            }
             // Opt-in "Deeper reasoning" for the AGENT (distinct from chat's Deep thinking) — the twin of
             // the iOS Settings → Agent "Deeper reasoning" toggle. Writes the SAME "agent.deliberation"
             // key the Agent screen reads live at run time. Self-contained (local state + direct prefs

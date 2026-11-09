@@ -317,12 +317,20 @@ public struct SettingsView: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .accessibilityLabel("Allow \(row.displayName)")
+                    } else if LocalPace.builtinIDs.contains(row.id) {
+                        Toggle("", isOn: Binding(
+                            get: { LocalPace.isOn(row.id) },
+                            set: { LocalPace.setOn(row.id, $0); consentRefresh.toggle() }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .accessibilityLabel("\(row.displayName) on this device")
                     } else {
                         Text("Always on").font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
-            Text("A capability above \u{201C}computes only\u{201D} runs ONLY with your permission — grant it here, revoke it any time. The agent can never grant itself anything.")
+            Text("Calculator, units, and dates start on. Turn one off and it will not run. Anything that reads or changes files still needs your permission. The agent cannot grant itself anything.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .id(consentRefresh)
@@ -465,6 +473,11 @@ public struct SettingsView: View {
         // (passing String into Text often binds as non-localizable verbatim — CHANGELOG localization gap).
         Section {
                 LabeledRow(title: "Active model", value: model.label)
+                LabeledRow(title: "Chat", value: model.label)
+                LabeledRow(title: "Reply check", value: LocalPace.roleCheck)
+                LabeledRow(title: "Photos and speech", value: LocalPace.rolePerception)
+                Text(LocalPace.practiceLine).font(.footnote).foregroundStyle(.secondary)
+                Text(LocalPace.staysHere).font(.footnote).foregroundStyle(.secondary)
                 LabeledRow(title: "Size", value: model.sizeLabel)
                 LabeledRow(
                     title: "Inference engine",

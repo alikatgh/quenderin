@@ -204,6 +204,11 @@ public final class ChatModel: ObservableObject {
     var didRecordGuidedTurn: (@MainActor () -> Void)?
     private let engine: InferenceEngine
     private let context: ConversationContext
+    /// Shared by every chat unless a test supplies its own registry.
+    public var writers = ConversationWriter.shared
+    /// When set, only one live reply may write this conversation.
+    public var conversationKey: String?
+    public let guidance = GuidanceNotebook()
 
     public init(engine: InferenceEngine, context: ConversationContext = .init(),
                 admitTurn: (@MainActor () throws -> Void)? = nil,
@@ -241,6 +246,25 @@ public final class ChatModel: ObservableObject {
     ) async {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
+
+        let writerPermit: WriterPermit?
+        if let key = conversationKey?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
+            switch writers.claim(conversationId: key, writerId: UUID().uuidString,
+                                 nowMs: Int64(Date().timeIntervalSince1970 * 1000), ttlMs: 120_000) {
+            case .granted(let permit):
+                writerPermit = permit
+            case .busy(_, let message):
+                preparationError = message
+                return
+            }
+        } else {
+            writerPermit = nil
+        }
+        defer {
+            if let writerPermit {
+                _ = writers.release(writerPermit, nowMs: Int64(Date().timeIntervalSince1970 * 1000))
+            }
+        }
 
         isGenerating = true
         generationPhase = .loadingPrompt
@@ -282,7 +306,10 @@ public final class ChatModel: ObservableObject {
         let tier = ChatTier.of(model: selectedModel)
         var resolvedOptions = options ?? tier.chatOptions
         resolvedOptions.collectPerformance = true
-        let systemPrompt = tier.systemPrompt
+        let systemPrompt = NamedGuidance.append(
+            tier.systemPrompt,
+            rendered: guidance.render(modelLabel: selectedModel?.label ?? "")
+        )
 
         // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
         // matches the actual native window instead of the configured 4096 (Q-167 — Android had this,

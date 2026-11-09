@@ -96,6 +96,7 @@ fun AgentScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    remember { ai.quenderin.app.BuiltinToolPrefs.load(context) }
     var steps by remember { mutableStateOf<List<AgentStep>>(emptyList()) }
     var answer by remember { mutableStateOf<String?>(null) }
     var running by remember { mutableStateOf(false) }

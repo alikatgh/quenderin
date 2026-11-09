@@ -45,11 +45,10 @@ public enum SupportContact {
     public static let consentLegal =
         "By continuing you agree: Quenderin is provided \u{201C}as is\u{201D}, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce."
 
-    /// Shown on a chat response that trips `SafetyBlocklist` — a non-blocking, on-device
-    /// "minimize risk" safeguard for the Generative-AI policies. Kept identical to Android
-    /// `SupportContact.FLAGGED_OUTPUT_NOTICE` (cross-platform parity).
+    /// Shown instead of a local reply that trips `SafetyBlocklist`. The text stays on
+    /// device and is not sent. Kept identical to Android `SupportContact.FLAGGED_OUTPUT_NOTICE`.
     public static let flaggedOutputNotice =
-        "This response mentions a sensitive action (e.g. payments, deletion, or credentials). It isn't filtered — verify before acting, and report if inappropriate."
+        "Held on this device. This reply mentions a sensitive action, so it is not shown. Nothing was sent."
 
     /// A `mailto:` URL pre-filled to report an AI response. `context` is "chat" or "agent".
     /// All user/model text is percent-encoded so arbitrary output can't break the URL.

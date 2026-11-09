@@ -90,7 +90,10 @@ public final class ConversationCoordinator: ObservableObject {
         refresh()
     }
 
-    private func refresh() { summaries = manager.list() }
+    private func refresh() {
+        summaries = manager.list()
+        chat.conversationKey = manager.currentID
+    }
     private func stashComposer() {
         guard let id = manager.currentID else { return }
         let snapshot = chat.composer.snapshot()

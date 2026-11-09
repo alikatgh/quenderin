@@ -2552,6 +2552,19 @@ fun main() {
         }
     })
     check("Jais incomplete reasoning is discarded", JaisOutputFilter.finalText("private</ifm|thi").isEmpty())
+    try {
+        verifyLocalPace()
+        check("local pace keeps tools, checks, and chats on this device", true)
+    } catch (error: Throwable) {
+        check("local pace: ${error.message}", false)
+    }
+    try {
+        verifyTurnstoneAdaptations()
+        check("turnstone adaptations keep an explicit model, one named note, and one writer", true)
+    } catch (error: Throwable) {
+        check("turnstone adaptations: ${error.message}", false)
+    }
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

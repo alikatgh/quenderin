@@ -168,7 +168,13 @@ fun AppRoot(
     // Relaunch fast-path: restore the last successfully-loaded model straight to Ready instead of
     // replaying first-run onboarding. Blocking (integrity re-check + load) → IO, like every other
     // core call here.
-    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { onboarding.restoreAtLaunch() } }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val explicit = !automaticMode.enabled() &&
+                selectionPrefs.contains(ai.quenderin.core.AutomaticSelectionMode.MANUAL_MODEL_KEY)
+            onboarding.restoreAtLaunch(explicitModel = explicit)
+        }
+    }
 
     // First launch ever: one calm page of who Quenderin is, before any setup (twin of iOS
     // WelcomeGate). The same "quenderin" prefs file the model-restore seam uses.

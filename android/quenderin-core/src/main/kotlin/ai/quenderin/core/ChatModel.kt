@@ -79,7 +79,14 @@ class ChatModel(
     private val engine: InferenceEngine,
     var onChange: (List<ChatMessage>) -> Unit = {},
     private val context: ConversationContext = ConversationContext(),
+    val guidance: GuidanceNotebook = GuidanceNotebook(),
+    private val writers: ConversationWriter = ConversationWriter.shared,
 ) {
+    /** When set, only one live reply may write this conversation. */
+    var conversationKey: String? = null
+    /** Shell notice when a second writer was refused. The transcript is left unchanged. */
+    var preparationError: String? = null
+        private set
     fun <T> withSelectedModel(expectedID: String, action: () -> T): T = engine.withLoadedModel(expectedID, action)
     fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = engine.pendingChatFits(model, request)
     fun captureTurnAdmission(isCurrent: () -> Boolean = { true }): ChatTurnAdmission = synchronized(lock) { ChatTurnAdmission(admissionRevision, isCurrent) }
@@ -218,9 +225,28 @@ class ChatModel(
         // (which returns "" too).
         if (trimmed.isEmpty() && documents.isEmpty()) return ""
         val tier = ChatTier.of(model)
-        val systemPrompt = tier.systemPrompt
+        val systemPrompt = NamedGuidance.append(tier.systemPrompt, guidance.render(model?.label ?: ""))
+        var heldPermit: WriterPermit? = null
+        try {
+        return sendOwned(text, documents, model, systemPrompt, admission, isCancelled, onAdmitted) { heldPermit = it }
+        } finally {
+            heldPermit?.let { writers.release(it, System.currentTimeMillis()) }
+        }
+    }
+
+    private fun sendOwned(
+        text: String,
+        documents: List<AttachedDocument>,
+        model: ModelEntry?,
+        systemPrompt: String,
+        admission: ChatTurnAdmission?,
+        isCancelled: () -> Boolean,
+        onAdmitted: (() -> Unit)?,
+        holdPermit: (WriterPermit) -> Unit,
+    ): String {
+        val trimmed = text.trim()
         // Cap decode for tiny models (LlamaEngine honors chatMaxTokensOverride).
-        engine.setChatTokenBudget(tier.maxTokens)
+        engine.setChatTokenBudget(ChatTier.of(model).maxTokens)
         // The user line + placeholder assistant slot + this generation's id are established atomically
         // under the lock, so a concurrent reset/restore either happens fully before (this send sees the
         // new transcript) or fully after (it bumps our id and we drop our writes below), never
@@ -235,6 +261,21 @@ class ChatModel(
         synchronized(lock) {
             if (admission != null && (admission.revision != admissionRevision || !admission.isCurrent())) throw AutomaticSelectionChangedException()
             if (isGenerating) return ""
+            val key = conversationKey?.trim().orEmpty()
+            if (key.isNotEmpty()) {
+                when (val claim = writers.claim(key, java.util.UUID.randomUUID().toString(), System.currentTimeMillis(), 120_000)) {
+                    is WriterClaim.Busy -> {
+                        preparationError = claim.message
+                        return ""
+                    }
+                    is WriterClaim.Granted -> {
+                        preparationError = null
+                        holdPermit(claim.permit)
+                    }
+                }
+            } else {
+                preparationError = null
+            }
             isGenerating = true
             stopRequested = false                // a fresh turn is never a stopped one
             myGen = ++activeGeneration
