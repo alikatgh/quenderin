@@ -75,10 +75,11 @@ public final class AgentSession: ObservableObject {
     }
 
     private func makeLoop(runner: CapabilityRunner) -> AgentLoop {
-        AgentLoop(engine: engine, tools: baseTools + localTools(), maxSteps: stepCap, runner: runner,
+        let remembered = skills
+        return AgentLoop(engine: engine, tools: baseTools + localTools(), maxSteps: stepCap, runner: runner,
                   deliberate: { AgentDeliberation.isEnabled },
-                  recallSkills: { skills.recall($0) },
-                  recordSkill: { skills.record(goal: $0, tools: $1) })
+                  recallSkills: { remembered.recall($0) },
+                  recordSkill: { remembered.record(goal: $0, tools: $1) })
     }
 
     /// Q-641: hard-stop the running mission — interrupt the in-flight decode and flip the run's flag so

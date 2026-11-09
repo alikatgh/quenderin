@@ -133,15 +133,17 @@ public final class RoleSeat: @unchecked Sendable {
     }
 
     public func checkerAnswerLive(_ text: String) async -> String? {
-        lock.lock()
-        let id = checkerModelID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let asyncPort = askAsync
-        let port = askPort
-        lock.unlock()
-        if id.isEmpty { return nil }
-        if let asyncPort { return await asyncPort(id, text) }
-        if let port { return port(id, text) }
+        let snapshot = checkerPorts()
+        if snapshot.id.isEmpty { return nil }
+        if let asyncPort = snapshot.asyncPort { return await asyncPort(snapshot.id, text) }
+        if let port = snapshot.port { return port(snapshot.id, text) }
         return "unloaded"
+    }
+
+    private func checkerPorts() -> (id: String, asyncPort: ((String, String) async -> String)?, port: ((String, String) -> String)?) {
+        lock.lock(); defer { lock.unlock() }
+        let id = checkerModelID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return (id, askAsync, askPort)
     }
 
     public func setPerception(modelID: String?, open: Bool, perceive: ((String, String, String) -> String)?) {
@@ -198,17 +200,22 @@ public enum CheckerPrompt {
 /// A missing file returns "unloaded" and nothing is loaded. A different model is loaded
 /// only from its local file, then the model that was already loaded is loaded again.
 public enum CheckerRun {
-    public static func installedFile(modelID: String) -> CheckerFile? {
+    public static func installedFile(modelID: String) async -> CheckerFile? {
         guard let entry = ModelCatalog.entry(id: modelID) else { return nil }
-        let storage = OnboardingModel.defaultModelStorage()
+        let storage = await OnboardingModel.defaultModelStorage()
         guard ModelManager(storage: storage).isInstalled(modelID), let url = storage.url(for: entry.filename) else { return nil }
         return CheckerFile(model: entry, url: url)
     }
 
-    public static func ask(modelID: String, text: String, engine: InferenceEngine, files: (String) -> CheckerFile? = { installedFile(modelID: $0) }) async -> String {
-        guard let target = files(modelID) else { return "unloaded" }
+    public static func ask(modelID: String, text: String, engine: InferenceEngine, files: (String) async -> CheckerFile? = { await installedFile(modelID: $0) }) async -> String {
+        guard let target = await files(modelID) else { return "unloaded" }
         let previousID = await engine.loadedModelID()
-        let previous = previousID.flatMap { files($0) }
+        let previous: CheckerFile?
+        if let previousID {
+            previous = await files(previousID)
+        } else {
+            previous = nil
+        }
         if let previousID, previousID != target.model.id, previous == nil { return "failed" }
         let switched = previousID != target.model.id
         var verdict = "failed"
@@ -866,7 +873,7 @@ public func splitCommand(_ raw: String) -> [String] {
     var current = ""
     var quote: Character?
     for char in raw.trimmingCharacters(in: .whitespacesAndNewlines) {
-        if let quote, char == quote {
+        if let open = quote, char == open {
             quote = nil
         } else if quote != nil {
             current.append(char)
@@ -887,6 +894,11 @@ public struct SilentMcp: McpTransport {
     public func exchange(_ request: String) -> String { OnDeviceCopy.serverSilent }
 }
 
+private final class HttpBody: @unchecked Sendable {
+    var text: String
+    init(_ text: String) { self.text = text }
+}
+
 public struct HttpMcp: McpTransport {
     public let address: String
     public init(address: String) { self.address = address }
@@ -898,17 +910,17 @@ public struct HttpMcp: McpTransport {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.httpBody = request.data(using: .utf8)
         let semaphore = DispatchSemaphore(value: 0)
-        var body = OnDeviceCopy.serverSilent
+        let box = HttpBody(OnDeviceCopy.serverSilent)
         let task = URLSession.shared.dataTask(with: urlRequest) { data, response, _ in
             if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
                let data, let text = String(data: data, encoding: .utf8) {
-                body = text
+                box.text = text
             }
             semaphore.signal()
         }
         task.resume()
         _ = semaphore.wait(timeout: .now() + 4)
-        return body
+        return box.text
     }
 }
 

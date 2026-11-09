@@ -307,13 +307,13 @@ public struct OnDeviceJobCard: View {
 
     private func addServer() {
         #if os(macOS)
-        let command = serverCommand
+        let command = serverCommand.nilIfBlank
         let allow = true
         #else
         let command: String? = nil
         let allow = false
         #endif
-        switch desk.add(name: serverName, address: serverAddress.nilIfBlank, command: command?.nilIfBlank, allowCommand: allow) {
+        switch desk.add(name: serverName, address: serverAddress.nilIfBlank, command: command, allowCommand: allow) {
         case .ok:
             toolNote = ""
             serverName = ""
