@@ -256,6 +256,16 @@ public final class OnboardingModel: ObservableObject {
         return true
     }
 
+    /// A cancelled download did not commit a model. Forget that tap so `start()` can
+    /// recommend again. A model that already became the active one stays put.
+    private func returnToChoice(afterCancelling model: ModelEntry) async {
+        let remembered = recallActiveModelID()?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if automaticPreferences.manualModelID == model.id, remembered != model.id {
+            automaticPreferences.clearManualChoice()
+        }
+        await start()
+    }
+
     /// Abort an in-flight install. A cancelled DOWNLOAD returns to the recommendation screen
     /// (nothing was committed; a partial file is re-verified and discarded on the next attempt) —
     /// it is NOT surfaced as a failure.
@@ -313,7 +323,7 @@ public final class OnboardingModel: ObservableObject {
                 }
                 try Task.checkCancellation()
             } catch {
-                if error is CancellationError || Task.isCancelled { await start() }
+                if error is CancellationError || Task.isCancelled { await returnToChoice(afterCancelling: model) }
                 else { phase = .failed(Self.describe(error)) }
                 return
             }
@@ -394,9 +404,9 @@ public final class OnboardingModel: ObservableObject {
                 // screen (start() is idempotent). The partial file is re-verified — and discarded —
                 // by the integrity gate on the next install attempt.
                 if error is CancellationError || Task.isCancelled {
-                    await start()
+                    await returnToChoice(afterCancelling: model)
                 } else if case DownloadError.cancelled = error {
-                    await start()
+                    await returnToChoice(afterCancelling: model)
                 } else {
                     phase = .failed(Self.describe(error))
                 }
@@ -407,7 +417,7 @@ public final class OnboardingModel: ObservableObject {
             // reach here with no file on disk. Don't march into engine.load on a missing file;
             // treat it as the cancel it is.
             if Task.isCancelled || !FileManager.default.fileExists(atPath: destination.path) {
-                await start()
+                await returnToChoice(afterCancelling: model)
                 return
             }
         }
