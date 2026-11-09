@@ -381,11 +381,13 @@ public final class ChatModel: ObservableObject {
                 assistant.text += token
                 let shaped = OutputCheck.shape(assistant.text, kind: .reply)
                 if shaped.held { assistant.text = shaped.text }
+                let checkerSelected = RoleSeat.shared.hasChecker
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
                 // message up by id each token: a captured index would crash (out of range) or write
                 // to the wrong message. If it's gone, the user moved on — stop streaming into it.
                 guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
+                if checkerSelected, !shaped.held { continue }
                 if flushGate.shouldFlush(), messages[i].text != assistant.text {
                     messages[i] = assistant
                     transcriptRevision &+= 1
@@ -399,6 +401,9 @@ public final class ChatModel: ObservableObject {
                 // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
                 // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
                 assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+                if !assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
+                }
                 if let i = messages.firstIndex(where: { $0.id == assistantID }),
                    messages[i].text != assistant.text {
                     messages[i] = assistant
@@ -447,7 +452,7 @@ public final class ChatModel: ObservableObject {
         if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             if !stopRequested { assistant.text = ChatUserFacing.emptyReply() }
         } else {
-            assistant.text = OutputCheck.finish(assistant.text, kind: .reply).text
+            assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
         }
         lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {

@@ -31,6 +31,7 @@ PHRASES = [
     "Photos and speech stay closed until you open them. This checkup did not open them.",
     "A command is available on Mac. This device uses a local address.",
     "Selected. This checkup did not load it.",
+    "When this model is on the device, it runs before a reply or tool result is shown. A missing file is not downloaded.",
     "This checkup did not run a tool.",
     "This chat",
     "Run checkup",
@@ -55,6 +56,15 @@ def main() -> int:
         if needle not in text:
             missing.append(f"{name} does not show {needle}")
     mac = (ROOT / "apple" / "QuenderinKit" / "Sources" / "QuenderinKit" / "MacRootView.swift").read_text(encoding="utf-8")
+    app = (ROOT / "apple" / "QuenderinApp" / "Sources" / "QuenderinApp.swift").read_text(encoding="utf-8")
+    if "CheckerBinding.install" not in app:
+        missing.append("Apple app does not bind the checker")
+    tabs = (ROOT / "android" / "app" / "src" / "main" / "kotlin" / "ai" / "quenderin" / "app" / "ui" / "MainTabs.kt").read_text(encoding="utf-8")
+    activity = (ROOT / "android" / "app" / "src" / "main" / "kotlin" / "ai" / "quenderin" / "app" / "MainActivity.kt").read_text(encoding="utf-8")
+    if "CheckerRun.ask" not in tabs or "CheckerRun.ask" not in activity:
+        missing.append("Android app does not bind the checker")
+    if "selectChecker" not in (ROOT / "apple" / "QuenderinKit" / "Sources" / "QuenderinKit" / "ChatView.swift").read_text(encoding="utf-8"):
+        missing.append("iOS chat clears the checker runner")
     if "ChatView(" not in mac:
         missing.append("macOS detail does not open ChatView")
     if "scoreLive" not in (ROOT / "apple" / "QuenderinKit" / "Sources" / "QuenderinKit" / "OnDeviceJobView.swift").read_text(encoding="utf-8"):

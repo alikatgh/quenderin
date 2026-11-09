@@ -244,8 +244,7 @@ fun ChatScreen(
     }
     LaunchedEffect(coordinator.currentId, model.id) {
         val roles = JobPrefs.book(context).roles(coordinator.currentId ?: "new", model.id)
-        ai.quenderin.core.RoleSeat.checkerModelId = roles.checkerModelId
-        ai.quenderin.core.RoleSeat.ask = null
+        ai.quenderin.core.RoleSeat.selectChecker(roles.checkerModelId)
         if (!ai.quenderin.core.RoleSeat.perceptionOpen) {
             ai.quenderin.core.RoleSeat.perceptionModelId = roles.perceptionModelId
         }

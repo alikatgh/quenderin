@@ -365,7 +365,7 @@ class ChatModel(
                 }
                 if (beganWriting) publishPhase(myGen, GenerationPhase.WRITING)
                 if (cancelDegeneration || cancelExternal) engine.requestCancel()
-                textToFlush?.let { writeAssistant(myGen, placeholderIndex, it) }
+                if (RoleSeat.checkerModelId == null) textToFlush?.let { writeAssistant(myGen, placeholderIndex, it) }
             }
             } catch (t: Exception) {
                 if (!isRevisionCurrent(myGen)) {

@@ -54,6 +54,10 @@ public struct OnDeviceJobCard: View {
                 .font(.footnote)
                 .foregroundStyle(palette.onSurfaceVariant)
                 .fixedSize(horizontal: false, vertical: true)
+            Text(OnDeviceCopy.checkerRuns)
+                .font(.footnote)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 jobButton(OnDeviceCopy.doctorButton, palette: palette) { sheet = .doctor }
                 jobButton(OnDeviceCopy.practiceButton, palette: palette) { sheet = .practice }
@@ -295,7 +299,7 @@ public struct OnDeviceJobCard: View {
 
     private func syncSeat() {
         let current = roles
-        RoleSeat.shared.setChecker(modelID: current.checkerModelID, ask: nil)
+        RoleSeat.shared.selectChecker(modelID: current.checkerModelID)
         if !RoleSeat.shared.perceptionState().open {
             RoleSeat.shared.setPerception(modelID: current.perceptionModelID, open: false, perceive: nil)
         }

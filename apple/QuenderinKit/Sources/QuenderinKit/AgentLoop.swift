@@ -239,7 +239,7 @@ public struct AgentLoop: Sendable {
                     record(AgentStep(decision: decision, observation: "Refused: answer touches a blocked topic."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
-                let shown = OutputCheck.finish(answer, kind: .reply)
+                let shown = await OutputCheck.finishLive(answer, kind: .reply)
                 if shown.held {
                     record(AgentStep(decision: decision, observation: shown.text))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
@@ -317,7 +317,7 @@ public struct AgentLoop: Sendable {
                     break
                 }
                 let raw = await execute(name: name, input: input)
-                let verdict = OutputCheck.gateTool(raw, expectsJSON: tools.first { $0.name == name }?.expectsJson ?? false)
+                let verdict = await OutputCheck.gateToolLive(raw, expectsJSON: tools.first { $0.name == name }?.expectsJson ?? false)
                 if verdict.held {
                     record(AgentStep(decision: decision, observation: verdict.text))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
@@ -352,7 +352,7 @@ public struct AgentLoop: Sendable {
                 } else if let unknown {
                     observation = Self.unknownToolMessage(unknown, available: tools.map(\.name)) + " Plan not executed."
                 } else {
-                    let verdict = OutputCheck.gateTool(await runner.executePlan(resolved), expectsJSON: false)
+                    let verdict = await OutputCheck.gateToolLive(await runner.executePlan(resolved), expectsJSON: false)
                     if verdict.held {
                         record(AgentStep(decision: decision, observation: verdict.text))
                         return AgentRun(steps: steps, answer: nil, haltReason: .blocked)

@@ -77,12 +77,14 @@ public final class ModelRoleBook: @unchecked Sendable {
     }
 }
 
-/// The checker seat. A selected model is asked only through `ask`. No weight is loaded here.
+/// The checker seat. A selected model is asked through the bound port.
+/// The seat itself does not download or load a file.
 public final class RoleSeat: @unchecked Sendable {
     public static let shared = RoleSeat()
     private let lock = NSLock()
     private var checkerModelID: String?
     private var askPort: ((String, String) -> String)?
+    private var askAsync: ((String, String) async -> String)?
     private var perceptionModelID: String?
     private var perceptionOpenFlag = false
     private var perceivePort: ((String, String, String) -> String)?
@@ -91,6 +93,7 @@ public final class RoleSeat: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         checkerModelID = nil
         askPort = nil
+        askAsync = nil
         perceptionModelID = nil
         perceptionOpenFlag = false
         perceivePort = nil
@@ -100,6 +103,23 @@ public final class RoleSeat: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         checkerModelID = modelID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         askPort = ask
+        askAsync = nil
+    }
+
+    /// Remember which checker was picked. Does not clear the runner and does not load a file.
+    public func selectChecker(modelID: String?) {
+        lock.lock(); defer { lock.unlock() }
+        checkerModelID = modelID?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    public var hasChecker: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return !(checkerModelID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    public func setAskLive(_ ask: @escaping (String, String) async -> String) {
+        lock.lock(); defer { lock.unlock() }
+        askAsync = ask
     }
 
     public func checkerAnswer(_ text: String) -> String? {
@@ -110,6 +130,18 @@ public final class RoleSeat: @unchecked Sendable {
         if id.isEmpty { return nil }
         guard let port else { return "unloaded" }
         return port(id, text)
+    }
+
+    public func checkerAnswerLive(_ text: String) async -> String? {
+        lock.lock()
+        let id = checkerModelID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let asyncPort = askAsync
+        let port = askPort
+        lock.unlock()
+        if id.isEmpty { return nil }
+        if let asyncPort { return await asyncPort(id, text) }
+        if let port { return port(id, text) }
+        return "unloaded"
     }
 
     public func setPerception(modelID: String?, open: Bool, perceive: ((String, String, String) -> String)?) {
@@ -126,6 +158,83 @@ public final class RoleSeat: @unchecked Sendable {
     func perceptionState() -> (open: Bool, id: String, port: ((String, String, String) -> String)?) {
         lock.lock(); defer { lock.unlock() }
         return (perceptionOpenFlag, perceptionModelID ?? "", perceivePort)
+    }
+}
+
+public struct CheckerFile: Sendable {
+    public let model: ModelEntry
+    public let url: URL
+    public init(model: ModelEntry, url: URL) {
+        self.model = model
+        self.url = url
+    }
+}
+
+/// The one-word question the checker model answers. It is not a download and not a chat.
+public enum CheckerPrompt {
+    public static let grammar = "root ::= \"yes\" | \"no\""
+
+    public static func of(_ text: String) -> String {
+        """
+        You check one text before it is shown on this device.
+        Reply with yes if it may be shown.
+        Reply with no if it should be held.
+        Text:
+        \(text)
+        """
+    }
+
+    public static func verdict(_ raw: String) -> String {
+        let word = String(raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().prefix { $0.isLetter })
+        switch word {
+        case "yes": return "yes"
+        case "no": return "no"
+        default: return "failed"
+        }
+    }
+}
+
+/// Runs the checker on a model file that is already on the device.
+/// A missing file returns "unloaded" and nothing is loaded. A different model is loaded
+/// only from its local file, then the model that was already loaded is loaded again.
+public enum CheckerRun {
+    public static func installedFile(modelID: String) -> CheckerFile? {
+        guard let entry = ModelCatalog.entry(id: modelID) else { return nil }
+        let storage = OnboardingModel.defaultModelStorage()
+        guard ModelManager(storage: storage).isInstalled(modelID), let url = storage.url(for: entry.filename) else { return nil }
+        return CheckerFile(model: entry, url: url)
+    }
+
+    public static func ask(modelID: String, text: String, engine: InferenceEngine, files: (String) -> CheckerFile? = { installedFile(modelID: $0) }) async -> String {
+        guard let target = files(modelID) else { return "unloaded" }
+        let previousID = await engine.loadedModelID()
+        let previous = previousID.flatMap { files($0) }
+        if let previousID, previousID != target.model.id, previous == nil { return "failed" }
+        let switched = previousID != target.model.id
+        var verdict = "failed"
+        do {
+            if switched { try await engine.load(model: target.model, at: target.url) }
+            let options = GenerationOptions(maxTokens: 8, gbnfGrammar: CheckerPrompt.grammar)
+            let raw = try await engine.complete(prompt: CheckerPrompt.of(text), options: options)
+            verdict = CheckerPrompt.verdict(raw)
+        } catch {
+            verdict = "failed"
+        }
+        if switched, let previous, await engine.loadedModelID() != previous.model.id {
+            try? await engine.load(model: previous.model, at: previous.url)
+        } else if switched, previousID == nil {
+            await engine.unload()
+        }
+        return verdict
+    }
+}
+
+public enum CheckerBinding {
+    /// Bind the checker to the shared on-device engine. A later select only changes which installed file is asked.
+    public static func install(_ engine: InferenceEngine) {
+        RoleSeat.shared.setAskLive { modelID, text in
+            await CheckerRun.ask(modelID: modelID, text: text, engine: engine)
+        }
     }
 }
 
@@ -188,6 +297,24 @@ public enum OutputCheck {
         return finish(raw, kind: .tool, expectsJSON: expectsJSON)
     }
 
+    public static func finishLive(_ text: String, kind: OutputKind, expectsJSON: Bool = false) async -> OutputVerdict {
+        let shaped = shape(text, kind: kind, expectsJSON: expectsJSON)
+        if shaped.held { return shaped }
+        switch await RoleSeat.shared.checkerAnswerLive(text) {
+        case nil: return shaped
+        case "no": return hold(checkerHeld, asked: true)
+        case "failed": return hold(checkerFailed, asked: true)
+        default: return OutputVerdict(text: shaped.text, held: false, askedChecker: true)
+        }
+    }
+
+    public static func gateToolLive(_ raw: String, expectsJSON: Bool) async -> OutputVerdict {
+        if raw == LocalPace.held || raw.hasPrefix("No such tool") {
+            return OutputVerdict(text: raw, held: false, askedChecker: false)
+        }
+        return await finishLive(raw, kind: .tool, expectsJSON: expectsJSON)
+    }
+
     private static func hold(_ sentence: String, asked: Bool = false) -> OutputVerdict {
         OutputVerdict(text: sentence, held: true, askedChecker: asked)
     }
@@ -215,6 +342,7 @@ public enum OnDeviceCopy {
     public static let nameServer = "Name the server in a few words."
     public static let needTarget = "Add a local address or a Mac command."
     public static let checkerWaiting = "Selected. This checkup did not load it."
+    public static let checkerRuns = "When this model is on the device, it runs before a reply or tool result is shown. A missing file is not downloaded."
     public static let toolsUntouched = "This checkup did not run a tool."
     public static let title = "This chat"
     public static let change = "Change"
@@ -371,7 +499,7 @@ public enum PracticeQuestions {
                 return
             }
             let raw = runTool(name, input)
-            let verdict = OutputCheck.finish(raw, kind: .tool, expectsJSON: false)
+            let verdict = OutputCheck.shape(raw, kind: .tool, expectsJSON: false)
             if verdict.held { lines.append(PracticeLine(prompt: prompt, outcome: "held", detail: verdict.text)) }
             else if raw == expect { lines.append(PracticeLine(prompt: prompt, outcome: "passed", detail: raw)) }
             else { lines.append(PracticeLine(prompt: prompt, outcome: "missed", detail: raw)) }
@@ -380,7 +508,7 @@ public enum PracticeQuestions {
         tool(prompt: "How many meters are in 1 km?", name: "units", input: "1 km to m", expect: "1 km = 1000 m")
         tool(prompt: "What date is 90 days after 2026-06-08?", name: "date", input: "2026-06-08 plus 90 days", expect: "2026-09-06")
         func shape(prompt: String, raw: String, expectsJSON: Bool) {
-            let verdict = OutputCheck.finish(raw, kind: .tool, expectsJSON: expectsJSON)
+            let verdict = OutputCheck.shape(raw, kind: .tool, expectsJSON: expectsJSON)
             if verdict.held && verdict.text != raw {
                 lines.append(PracticeLine(prompt: prompt, outcome: "held", detail: verdict.text))
             } else {
@@ -430,7 +558,7 @@ public enum PracticeQuestions {
                 return
             }
             let raw = await runTool(name, input)
-            let verdict = OutputCheck.finish(raw, kind: .tool, expectsJSON: false)
+            let verdict = OutputCheck.shape(raw, kind: .tool, expectsJSON: false)
             if verdict.held { lines.append(PracticeLine(prompt: prompt, outcome: "held", detail: verdict.text)) }
             else if raw == expect { lines.append(PracticeLine(prompt: prompt, outcome: "passed", detail: raw)) }
             else { lines.append(PracticeLine(prompt: prompt, outcome: "missed", detail: raw)) }
@@ -439,7 +567,7 @@ public enum PracticeQuestions {
         await tool(prompt: "How many meters are in 1 km?", name: "units", input: "1 km to m", expect: "1 km = 1000 m")
         await tool(prompt: "What date is 90 days after 2026-06-08?", name: "date", input: "2026-06-08 plus 90 days", expect: "2026-09-06")
         func shape(prompt: String, raw: String, expectsJSON: Bool) {
-            let verdict = OutputCheck.finish(raw, kind: .tool, expectsJSON: expectsJSON)
+            let verdict = OutputCheck.shape(raw, kind: .tool, expectsJSON: expectsJSON)
             if verdict.held && verdict.text != raw {
                 lines.append(PracticeLine(prompt: prompt, outcome: "held", detail: verdict.text))
             } else {

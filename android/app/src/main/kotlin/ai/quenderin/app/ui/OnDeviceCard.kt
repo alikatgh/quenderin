@@ -118,8 +118,7 @@ internal fun OnDeviceCard(
         JobPrefs.setCurrent(context, conversationId)
         JobPrefs.rememberNotes(context, guidanceNotes)
         val current = book.roles(conversationId, chatModel.id)
-        RoleSeat.checkerModelId = current.checkerModelId
-        RoleSeat.ask = null
+        RoleSeat.selectChecker(current.checkerModelId)
         if (!RoleSeat.perceptionOpen) RoleSeat.perceptionModelId = current.perceptionModelId
     }
     fun refresh() { revision += 1 }
@@ -141,6 +140,7 @@ internal fun OnDeviceCard(
             RoleLine("Check", roleTitle(ModelRole.CHECKER, roles, names)) { page = JobPage.CHECK }
             RoleLine(OnDeviceCopy.PHOTOS, roleTitle(ModelRole.PERCEPTION, roles, names)) { page = JobPage.PHOTOS }
             Text(OnDeviceCopy.CARD, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(OnDeviceCopy.CHECKER_RUNS, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { page = JobPage.DOCTOR }, modifier = Modifier.weight(1f)) { Text(OnDeviceCopy.DOCTOR_BUTTON) }
                 OutlinedButton(onClick = { page = JobPage.PRACTICE }, modifier = Modifier.weight(1f)) { Text(OnDeviceCopy.PRACTICE_BUTTON) }

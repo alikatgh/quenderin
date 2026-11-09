@@ -85,6 +85,11 @@ object RoleSeat {
         perceive = null
     }
 
+    /** Remember which checker was picked. Does not clear [ask] and does not load a file. */
+    fun selectChecker(modelId: String?) {
+        checkerModelId = modelId?.trim()?.ifEmpty { null }
+    }
+
     fun checkerAnswer(text: String): String? {
         val id = checkerModelId?.trim().orEmpty()
         if (id.isEmpty()) return null
@@ -94,6 +99,66 @@ object RoleSeat {
         } catch (_: Throwable) {
             "failed"
         }
+    }
+}
+
+data class CheckerFile(val model: ModelEntry, val path: String)
+
+/** The one-word question the checker model answers. It is not a download and not a chat. */
+object CheckerPrompt {
+    const val GRAMMAR = "root ::= \"yes\" | \"no\""
+
+    fun of(text: String): String = """
+        You check one text before it is shown on this device.
+        Reply with yes if it may be shown.
+        Reply with no if it should be held.
+        Text:
+        $text
+    """.trimIndent()
+
+    fun verdict(raw: String): String {
+        val word = raw.trim().lowercase().takeWhile { it.isLetter() }
+        return when (word) {
+            "yes" -> "yes"
+            "no" -> "no"
+            else -> "failed"
+        }
+    }
+}
+
+/**
+ * Runs the checker on a model file that is already on the device.
+ * A missing file returns "unloaded" and nothing is loaded. A different model is loaded
+ * only from its local path, then the model that was already loaded is loaded again.
+ */
+object CheckerRun {
+    fun ask(modelId: String, text: String, engine: InferenceEngine, files: (String) -> CheckerFile?): String {
+        val target = files(modelId) ?: return "unloaded"
+        val previousId = engine.loadedModelId
+        val previous = previousId?.let { files(it) }
+        if (previousId != null && previousId != target.model.id && previous == null) return "failed"
+        val switched = previousId != target.model.id
+        return try {
+            if (switched) engine.load(target.model, target.path)
+            CheckerPrompt.verdict(engine.completeWithGrammar(CheckerPrompt.of(text), CheckerPrompt.GRAMMAR, maxTokens = 8))
+        } catch (_: Throwable) {
+            "failed"
+        } finally {
+            if (switched && previous != null && engine.loadedModelId != previous.model.id) {
+                try { engine.load(previous.model, previous.path) } catch (_: Throwable) {}
+            } else if (switched && previousId == null) {
+                try { engine.unload() } catch (_: Throwable) {}
+            }
+        }
+    }
+
+    /** The catalog file in [directory], or null when it is not on disk. Does not download. */
+    fun installed(directory: java.io.File, modelId: String): CheckerFile? {
+        val entry = ModelCatalog.entry(modelId) ?: return null
+        if (!ModelManager(FileModelStorage(directory)).isInstalled(modelId)) return null
+        val path = java.io.File(directory, entry.filename)
+        if (!path.isFile) return null
+        return CheckerFile(entry, path.absolutePath)
     }
 }
 
@@ -184,6 +249,7 @@ object OnDeviceCopy {
     const val NAME_SERVER = "Name the server in a few words."
     const val NEED_TARGET = "Add a local address or a Mac command."
     const val CHECKER_WAITING = "Selected. This checkup did not load it."
+    const val CHECKER_RUNS = "When this model is on the device, it runs before a reply or tool result is shown. A missing file is not downloaded."
     const val TOOLS_UNTOUCHED = "This checkup did not run a tool."
     const val TITLE = "This chat"
     const val CHANGE = "Change"
@@ -308,7 +374,7 @@ object PracticeQuestions {
                 return
             }
             val raw = runTool(name, input)
-            val verdict = OutputCheck.finish(raw, OutputKind.TOOL, expectsJson = false)
+            val verdict = OutputCheck.shape(raw, OutputKind.TOOL, expectsJson = false)
             when {
                 verdict.held -> lines += PracticeLine(prompt, "held", verdict.text)
                 raw == expect -> lines += PracticeLine(prompt, "passed", raw)
@@ -319,7 +385,7 @@ object PracticeQuestions {
         tool("How many meters are in 1 km?", "units", "1 km to m", "1 km = 1000 m")
         tool("What date is 90 days after 2026-06-08?", "date", "2026-06-08 plus 90 days", "2026-09-06")
         fun shape(prompt: String, raw: String, expectsJson: Boolean) {
-            val verdict = OutputCheck.finish(raw, OutputKind.TOOL, expectsJson)
+            val verdict = OutputCheck.shape(raw, OutputKind.TOOL, expectsJson)
             if (verdict.held && verdict.text != raw) lines += PracticeLine(prompt, "held", verdict.text)
             else lines += PracticeLine(prompt, "missed", raw)
         }
@@ -950,10 +1016,79 @@ fun verifyOnDeviceJob() {
     require(PerceptionSeat.look("sample") == "Photos and speech are not open.")
     RoleSeat.reset()
 
+    verifyCheckerRuns()
     verifyMcpHosts()
     require(OnDeviceCopy.NOT_INFERENCE.contains("not tested inference"))
     require(!OnDeviceCopy.CARD.contains("account is"))
     require(OnDeviceCopy.CARD.contains("No account."))
+}
+
+private fun checkerEntry(id: String) = ModelEntry(
+    id, id, "$id.gguf", 1.0, "1 GB", 1.0, "Q4_K_M", "https://example.invalid/$id.gguf",
+)
+
+private class RecordingCheckerEngine(var reply: String) : InferenceEngine {
+    override var loadedModelId: String? = null
+    val events = mutableListOf<String>()
+    var fail = false
+    override fun load(model: ModelEntry, filePath: String) {
+        events += "load:$filePath"
+        loadedModelId = model.id
+    }
+    override fun unload() {
+        events += "unload"
+        loadedModelId = null
+    }
+    override fun complete(prompt: String) = reply
+    override fun completeWithGrammar(
+        prompt: String, grammar: String, maxTokens: Int,
+        topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+    ): String {
+        events += "grammar"
+        if (fail) throw IllegalStateException("checker stopped")
+        return reply
+    }
+}
+
+private fun verifyCheckerRuns() {
+    val engine = RecordingCheckerEngine("no")
+    val chat = checkerEntry("chat")
+    val check = checkerEntry("check")
+    val files = mapOf(
+        "chat" to CheckerFile(chat, "/models/chat.gguf"),
+        "check" to CheckerFile(check, "/models/check.gguf"),
+    )
+    engine.load(chat, files.getValue("chat").path)
+    engine.events.clear()
+    require(CheckerRun.ask("absent", "hello", engine) { files[it] } == "unloaded")
+    require(engine.events.isEmpty())
+    require(CheckerRun.ask("check", "hello", engine) { files[it] } == "no")
+    require(engine.events == listOf("load:/models/check.gguf", "grammar", "load:/models/chat.gguf"))
+    require(engine.loadedModelId == "chat")
+    engine.reply = "Yes, show it"
+    engine.events.clear()
+    require(CheckerRun.ask("chat", "hello", engine) { files[it] } == "yes")
+    require(engine.events == listOf("grammar"))
+    engine.fail = true
+    engine.reply = "no"
+    require(CheckerRun.ask("check", "hello", engine) { files[it] } == "failed")
+    require(engine.loadedModelId == "chat")
+    engine.fail = false
+    engine.reply = "No thanks"
+    RoleSeat.selectChecker("check")
+    RoleSeat.ask = { id, text -> CheckerRun.ask(id, text, engine) { files[it] } }
+    try {
+        val verdict = OutputCheck.finish("a plain reply", OutputKind.REPLY)
+        require(verdict.held && verdict.askedChecker && verdict.text == OutputCheck.CHECKER_HELD)
+        require(!verdict.text.contains("http"))
+        engine.events.clear()
+        val practice = PracticeQuestions.score()
+        require(practice.passed == 3 && practice.held == 3 && practice.missed == 0 && !practice.scoredModel)
+        require(engine.events.isEmpty())
+    } finally {
+        RoleSeat.reset()
+    }
+    require(OnDeviceCopy.CHECKER_RUNS.contains("not downloaded"))
 }
 
 private fun verifyMcpHosts() {

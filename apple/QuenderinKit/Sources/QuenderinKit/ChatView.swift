@@ -537,7 +537,7 @@ public struct ChatView: View {
     /// Selecting them does not load a model. The checker port stays empty until a host fixture binds one.
     private func syncJobSeat() {
         let roles = JobStore.loadBook().roles(conversationID: conversationID ?? "new", chatFallback: activeModel?.id ?? "chat")
-        RoleSeat.shared.setChecker(modelID: roles.checkerModelID, ask: nil)
+        RoleSeat.shared.selectChecker(modelID: roles.checkerModelID)
         if !RoleSeat.shared.perceptionState().open {
             RoleSeat.shared.setPerception(modelID: roles.perceptionModelID, open: false, perceive: nil)
         }

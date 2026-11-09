@@ -125,6 +125,7 @@ struct QuenderinApp: App {
             : ParallelRangeDownloader() // real GGUF download — multi-connection ranged (falls back to single-stream)
         // Q-578: onboarding's download gate honors the user's cellular opt-in (Settings → Downloaded
         // models). Off by default → Wi-Fi-only; the live network status comes from the model's own monitor.
+        CheckerBinding.install(engine)
         let onboardingModel = OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy })
         _onboarding = StateObject(wrappedValue: onboardingModel)
         let automatic = AutomaticModelSelection(onboarding: onboardingModel, store: performanceStore, deviceBudgetGB: memoryBudget)

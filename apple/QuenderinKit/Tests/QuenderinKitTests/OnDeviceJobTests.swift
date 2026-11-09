@@ -1,6 +1,36 @@
 import XCTest
 @testable import QuenderinKit
 
+private final class CheckerEngine: InferenceEngine, @unchecked Sendable {
+    var loaded = "chat"
+    var reply = "no"
+    var events: [String] = []
+    var fail = false
+    func loadedModelID() async -> String? { loaded.isEmpty ? nil : loaded }
+    func load(model: ModelEntry, at fileURL: URL) async throws {
+        events.append("load:\(fileURL.path)")
+        loaded = model.id
+    }
+    func unload() async {
+        events.append("unload")
+        loaded = ""
+    }
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        events.append("generate")
+        let text = self.reply
+        let shouldFail = self.fail
+        return AsyncThrowingStream { continuation in
+            if shouldFail { continuation.finish(throwing: InferenceError.modelNotLoaded) }
+            else { continuation.yield(text); continuation.finish() }
+        }
+    }
+}
+
+private func checkerEntry(_ id: String) -> ModelEntry {
+    ModelEntry(id: id, label: id, filename: "\(id).gguf", ramGB: 1, sizeLabel: "1 GB",
+               paramsBillions: 1, quantization: "Q4_K_M", urlString: "https://example.invalid/\(id).gguf", sha256: nil)
+}
+
 final class OnDeviceJobTests: XCTestCase {
     override func tearDown() {
         RoleSeat.shared.reset()
@@ -124,5 +154,40 @@ final class OnDeviceJobTests: XCTestCase {
         PerceptionSeat.close()
         XCTAssertEqual(PerceptionSeat.look("sample"), "Photos and speech are not open.")
         XCTAssertTrue(OnDeviceCopy.notInference.contains("not tested inference"))
+    }
+
+    func testCheckerRunsTheInstalledModelAndRestoresChat() async {
+        let engine = CheckerEngine()
+        let files = [
+            "chat": CheckerFile(model: checkerEntry("chat"), url: URL(fileURLWithPath: "/models/chat.gguf")),
+            "check": CheckerFile(model: checkerEntry("check"), url: URL(fileURLWithPath: "/models/check.gguf")),
+        ]
+        let missing = await CheckerRun.ask(modelID: "absent", text: "hello", engine: engine) { files[$0] }
+        XCTAssertEqual(missing, "unloaded")
+        XCTAssertTrue(engine.events.isEmpty)
+        let held = await CheckerRun.ask(modelID: "check", text: "hello", engine: engine) { files[$0] }
+        XCTAssertEqual(held, "no")
+        XCTAssertEqual(engine.events, ["load:/models/check.gguf", "generate", "load:/models/chat.gguf"])
+        XCTAssertEqual(engine.loaded, "chat")
+        engine.reply = "Yes, show it"
+        engine.events = []
+        let shown = await CheckerRun.ask(modelID: "chat", text: "hello", engine: engine) { files[$0] }
+        XCTAssertEqual(shown, "yes")
+        XCTAssertEqual(engine.events, ["generate"])
+        engine.fail = true
+        let stopped = await CheckerRun.ask(modelID: "check", text: "hello", engine: engine) { files[$0] }
+        XCTAssertEqual(stopped, "failed")
+        XCTAssertEqual(engine.loaded, "chat")
+        engine.fail = false
+        engine.reply = "No thanks"
+        RoleSeat.shared.selectChecker(modelID: "check")
+        RoleSeat.shared.setAskLive { modelID, text in
+            await CheckerRun.ask(modelID: modelID, text: text, engine: engine) { files[$0] }
+        }
+        let verdict = await OutputCheck.finishLive("a plain reply", kind: .reply)
+        XCTAssertTrue(verdict.held)
+        XCTAssertTrue(verdict.askedChecker)
+        XCTAssertEqual(verdict.text, OutputCheck.checkerHeld)
+        XCTAssertTrue(OnDeviceCopy.checkerRuns.contains("not downloaded"))
     }
 }
