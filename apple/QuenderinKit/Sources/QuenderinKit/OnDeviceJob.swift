@@ -293,14 +293,21 @@ public enum PerceptionRun {
         } catch {
             ran = false
         }
-        if switched, let previous, await engine.loadedModelID() != previous.model.id {
+        let loadedNow = await engine.loadedModelID()
+        if switched, let previous, loadedNow != previous.model.id {
             try? await engine.load(model: previous.model, at: previous.url)
         } else if switched, previousID == nil {
             await engine.unload()
         }
-        let restored = !switched
-            || (previous != nil && await engine.loadedModelID() == previous?.model.id)
-            || (previousID == nil && await engine.loadedModelID() == nil)
+        let loadedAfter = await engine.loadedModelID()
+        let restored: Bool
+        if !switched {
+            restored = true
+        } else if let previous {
+            restored = loadedAfter == previous.model.id
+        } else {
+            restored = previousID == nil && loadedAfter == nil
+        }
         if !restored { return OnDeviceCopy.perceptionFailed }
         return ran ? OnDeviceCopy.perceptionUsed : OnDeviceCopy.perceptionFailed
     }
