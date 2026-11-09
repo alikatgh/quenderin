@@ -143,8 +143,8 @@ public final class OnboardingModel: ObservableObject {
         // Relaunch fast-path: a model that loaded successfully before, and whose file is still on
         // disk, goes straight back to .ready — no first-run onboarding replay. Only from the
         // pristine .probing phase (an explicit "Back to model choice" must show the choice), and
-        // install() re-runs the integrity gate before trusting the file, so a corrupted leftover
-        // still falls through to a fresh recommendation below.
+        // install() re-runs the integrity gate before trusting the file. A manual choice that
+        // cannot load stays on that choice; only an unpinned launch recommends another model.
         if case .probing = phase, let id = (automaticPreferences.enabled ? recallActiveModelID() : (automaticPreferences.manualModelID ?? recallActiveModelID())),
            // A searched Hugging Face model isn't in the compiled-in catalog, so resolve it from the
            // sideloaded registry too — otherwise "Use" on an open-catalog model is forgotten on relaunch
@@ -154,6 +154,34 @@ public final class OnboardingModel: ObservableObject {
            Self.resolveModelFile(model: remembered, primary: modelsDir) != nil {
             await install(remembered)
             if case .ready = phase { return }
+        }
+        // A manual choice that cannot be loaded stays selected. Do not offer a different model.
+        if !automaticPreferences.enabled,
+           let manual = automaticPreferences.manualModelID?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !manual.isEmpty {
+            let entry = ModelCatalog.entry(id: manual) ?? SideloadedModels.shared.entry(id: manual)
+            let onDisk = entry.flatMap { Self.resolveModelFile(model: $0, primary: modelsDir) } != nil
+            let availability: ModelAvailability
+            if entry == nil {
+                availability = .unreadable
+            } else if !onDisk {
+                availability = .missing
+            } else if let entry, !ModelRuntimeSupport.supports(entry) {
+                availability = .incompatible
+            } else {
+                availability = .present
+            }
+            if availability != .present {
+                let evidence: ModelEvidence = (entry.map { ModelRuntimeSupport.requiresPrism($0) || ModelRuntimeSupport.isMuse($0) } ?? false)
+                    ? .experimentalSource : .ordinary
+                if case .wait(_, _, let message) = ModelSelectionHold.decide(
+                    explicitModelId: manual, availability: availability, evidence: evidence) {
+                    phase = .failed(message)
+                    return
+                }
+            } else if case .failed = phase {
+                return
+            }
         }
         phase = .probing
         let hardware = HardwareProbe.current()

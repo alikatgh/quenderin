@@ -73,6 +73,7 @@ class ConversationCoordinator(
 
     private fun refresh() {
         summaries = manager.list()
+        chat.conversationKey = manager.currentId
         onChange(summaries)
     }
 

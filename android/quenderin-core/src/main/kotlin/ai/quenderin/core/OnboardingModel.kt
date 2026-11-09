@@ -141,15 +141,31 @@ class OnboardingModel(
      * corrupted leftover still falls back to normal first-run onboarding. Blocking; call off-main
      * at launch. Twin of the fast-path at the top of Swift `start()`.
      */
-    fun restoreAtLaunch(): Boolean {
+    fun restoreAtLaunch(explicitModel: Boolean = false): Boolean {
         if (phase !is OnboardingPhase.Idle) return false
-        val remembered = recallActiveModelID()?.let { ModelCatalog.entry(it) } ?: return false
+        val recalled = recallActiveModelID()?.trim().orEmpty()
+        if (explicitModel && recalled.isNotEmpty()) {
+            val entry = ModelCatalog.entry(recalled)
+            val availability = when {
+                entry == null -> ModelAvailability.UNREADABLE
+                !activeModelFileExists(entry) -> ModelAvailability.MISSING
+                !ModelRuntimeSupport.supports(entry) -> ModelAvailability.INCOMPATIBLE
+                else -> ModelAvailability.PRESENT
+            }
+            if (availability != ModelAvailability.PRESENT) {
+                val decision = ModelSelectionHold.decide(recalled, availability, ModelSelectionHold.evidenceFor(entry))
+                if (decision is ModelHoldDecision.Wait) {
+                    phase = OnboardingPhase.Failed(decision.message)
+                    return false
+                }
+            }
+        }
+        val remembered = recalled.let { ModelCatalog.entry(it) } ?: return false
         if (!activeModelFileExists(remembered)) return false
         acceptAndPrepare(remembered)
         if (phase is OnboardingPhase.Ready) return true
-        // Restore didn't make it (corrupt file while offline, engine failure…) — back to the
-        // pristine screen for the normal first-run flow, exactly as the Swift fast-path falls
-        // through to a fresh recommendation.
+        // An explicit choice keeps the failure. An unpinned relaunch can still recommend.
+        if (explicitModel) return false
         phase = OnboardingPhase.Idle
         return false
     }

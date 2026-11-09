@@ -364,6 +364,14 @@ fun ChatScreen(
                             coordinator.recordLocalAdmission(prepared.model.id, automaticEnabled, conversationID)
                         })
                     } }
+                    chat.preparationError?.let { reason ->
+                        if (sendJob == myJob) sendError = reason
+                        if (useDraft && chat.messages.size == messageCountBeforeSend) {
+                            input = text
+                            pendingDocuments = docs
+                            coordinator.saveDraft(conversationID, text, docs)
+                        }
+                    }
                 } catch (t: Throwable) {
                     if (t is kotlinx.coroutines.CancellationException) {
                         if (useDraft && sendJob == myJob) coordinator.draftAfterCancelledAdmission(conversationID, lifecycleRevision, messageCountBeforeSend)?.let {
