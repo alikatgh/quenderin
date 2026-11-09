@@ -42,9 +42,11 @@ public enum LocalPace {
     }
 
     public static func practiceOk() async -> Bool {
-        (try? await CalculatorTool().run("2+2")) == "4"
-            && (try? await UnitConverterTool().run("1 km to m")) == "1 km = 1000 m"
-            && (try? await DateCalcTool().run("2026-06-08 plus 90 days")) == "2026-09-06"
+        // Await each tool on its own. `&&` wraps the right side in a non-async closure.
+        let arithmetic = (try? await CalculatorTool().run("2+2")) == "4"
+        let units = (try? await UnitConverterTool().run("1 km to m")) == "1 km = 1000 m"
+        let date = (try? await DateCalcTool().run("2026-06-08 plus 90 days")) == "2026-09-06"
+        return arithmetic && units && date
     }
 
     public static func offered(_ tools: [AgentTool], defaults: UserDefaults = .standard) -> [AgentTool] {
@@ -55,6 +57,6 @@ public enum LocalPace {
     public static func statusLine(firstUserText: String?, badge: String) -> String {
         let trimmed = firstUserText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if trimmed.isEmpty { return badge }
-        return "\(ConversationSummary.title(fromFirstUserMessage: trimmed)) · \(badge)"
+        return "\(ConversationLibrary.title(fromFirstUserMessage: trimmed)) · \(badge)"
     }
 }
