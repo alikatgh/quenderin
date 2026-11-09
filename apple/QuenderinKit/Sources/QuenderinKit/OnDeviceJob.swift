@@ -201,10 +201,12 @@ public enum CheckerPrompt {
 /// only from its local file, then the model that was already loaded is loaded again.
 public enum CheckerRun {
     public static func installedFile(modelID: String) async -> CheckerFile? {
-        guard let entry = ModelCatalog.entry(id: modelID) else { return nil }
-        let storage = await OnboardingModel.defaultModelStorage()
-        guard ModelManager(storage: storage).isInstalled(modelID), let url = storage.url(for: entry.filename) else { return nil }
-        return CheckerFile(model: entry, url: url)
+        await MainActor.run {
+            guard let entry = ModelCatalog.entry(id: modelID) else { return nil }
+            let storage = OnboardingModel.defaultModelStorage()
+            guard ModelManager(storage: storage).isInstalled(modelID), let url = storage.url(for: entry.filename) else { return nil }
+            return CheckerFile(model: entry, url: url)
+        }
     }
 
     public static func ask(modelID: String, text: String, engine: InferenceEngine, files: (String) async -> CheckerFile? = { await installedFile(modelID: $0) }) async -> String {
