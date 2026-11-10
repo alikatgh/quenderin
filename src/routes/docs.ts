@@ -1,10 +1,20 @@
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
 
 const router = Router();
+
+// This router is mounted on the app, and the file read below is its own route installation.
+router.use(rateLimit({
+    windowMs: 60_000,
+    limit: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests' },
+}));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -14,6 +14,7 @@ import os from 'os';
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger.js';
 import { atomicWriteFileSync } from '../utils/atomicWrite.js';
+import { resolveInside } from '../utils/safePath.js';
 import { MAX_SESSIONS, MAX_MESSAGES_PER_SESSION, SESSION_FLUSH_INTERVAL_MS } from '../constants.js';
 
 export interface SessionMessage {
@@ -47,9 +48,13 @@ function ensureDir(): void {
 }
 
 function sessionPath(id: string): string {
-    // Sanitise id to prevent path traversal
+    // Sanitise id to prevent path traversal, then resolve it inside the session directory.
     const safe = id.replace(/[^a-zA-Z0-9\-_]/g, '').slice(0, 64);
-    return path.join(SESSIONS_DIR, `${safe}.json`);
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(safe)) {
+        throw new Error('Invalid session id');
+    }
+    ensureDir();
+    return resolveInside(SESSIONS_DIR, `${safe}.json`);
 }
 
 export class SessionService {

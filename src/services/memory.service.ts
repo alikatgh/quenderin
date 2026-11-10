@@ -4,6 +4,7 @@ import os from 'os';
 import { pipeline, env } from '@xenova/transformers';
 import logger from '../utils/logger.js';
 import { atomicWriteFile } from '../utils/atomicWrite.js';
+import { resolveInside } from '../utils/safePath.js';
 import { sanitizeNoteFilename, sanitizeNoteTitle } from '../utils/notes.js';
 import { redactSecrets } from './capability/redaction.js';
 
@@ -304,14 +305,24 @@ export class MemoryService {
             };
         }
 
-        const notePath = path.join(this.notesDir, `${safeTitle}.md`);
+        let notePath: string;
+        try {
+            notePath = resolveInside(this.notesDir, `${safeTitle}.md`);
+        } catch {
+            return {
+                error: 'Title has no filename-safe characters; use letters, digits, spaces, - or _',
+            };
+        }
         const header = `# ${trimmedTitle}\n_Saved: ${new Date().toISOString()}_\n\n`;
 
         await this.withWriteLock(async () => {
             await fs.mkdir(this.notesDir, { recursive: true });
+            // Re-check inside the write callback: the path used for the write is the confined one.
+            const confined = resolveInside(this.notesDir, `${safeTitle}.md`);
             // Atomic write-temp-rename like every other store (r16) — a bare writeFile truncates the
             // note the instant it opens, so a crash mid-write leaves a half-note (bug hunt r-uc #6).
-            await atomicWriteFile(notePath, header + trimmedContent);
+            await atomicWriteFile(confined, header + trimmedContent);
+            notePath = confined;
         });
 
         return { path: notePath };
