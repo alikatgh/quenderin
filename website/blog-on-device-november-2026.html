@@ -12,14 +12,14 @@
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Quenderin" />
 <meta property="og:title" content="A chosen model, one note, and checks on the device" />
-<meta property="og:description" content="Mac and iPhone 0.6.0 are on the App Store. The newer on-device behavior is in the source and has not been submitted." />
+<meta property="og:description" content="The 9 November on-device note. iOS and macOS 0.6.1 build 35 are waiting for review and are not on sale." />
 <meta property="og:url" content="https://quenderin.org/blog-on-device-november-2026" />
 <meta property="og:image" content="https://quenderin.org/og-image.png" />
 <meta property="article:published_time" content="2026-11-09" />
-<meta property="article:modified_time" content="2026-11-09" />
+<meta property="article:modified_time" content="2026-11-10" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="styles.css?v=release-marks-20261028" />
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"A chosen model, one note, and checks on the device","datePublished":"2026-11-09","dateModified":"2026-11-09","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-on-device-november-2026"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"A chosen model, one note, and checks on the device","datePublished":"2026-11-09","dateModified":"2026-11-10","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-on-device-november-2026"}</script>
 <link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
 </head>
 <body>
@@ -34,16 +34,16 @@
   <p class="eyebrow">App update</p>
   <h1>A chosen model, one note, and checks on the device</h1>
   <p class="legal-updated"><time datetime="2026-11-09">9 November 2026</time> &middot; Quenderin</p>
-  <p>Quenderin is a native app for iPhone, Android, and Mac. There is no account. A local model stays on the device, and a local chat is not sent away for an answer. This note separates the app you can install today from the behavior that is in the source and not yet a store build.</p>
+  <p>Quenderin is a native app for iPhone, Android, and Mac. There is no account. A local model stays on the device, and a local chat is not sent away for an answer. This note describes the on-device behavior. Store status is in the <a href="blog-review-november-2026">10 November update</a>: iOS and macOS 0.6.1 build 35 are Waiting for Review and are not on sale.</p>
 
   <h2 id="available">What you can install today</h2>
   <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#devices"></use></svg>
-  <p>Checked on 9 November 2026, <strong>Mac and iPhone 0.6.0</strong> are on the App Store, released 1 November 2026. <a href="https://apps.apple.com/app/id6789854363" rel="noopener">Open the listing</a>. The published notes add optional DeepSeek with your own key, and an optional connection to a computer you prepare. They also cover automatic model choice among installed models, recovering a remote draft, formatted replies, copying code, and when Stop and Continue apply. Local chat in that build still needs no account.</p>
-  <p>That store app does not include the newer behavior below. The public Google Play page for the Android app is not a production listing. Android remains a closed test, and version 0.6.1 has not been uploaded there. <a href="download">Download the current apps</a>.</p>
+  <p>Checked on 9 November 2026, and again on 10 November, <strong>Mac and iPhone 0.6.0</strong> are the version on sale, released 1 November 2026. <a href="https://apps.apple.com/app/id6789854363" rel="noopener">Open the listing</a>. The published notes add optional DeepSeek with your own key, and an optional connection to a computer you prepare. They also cover automatic model choice among installed models, recovering a remote draft, formatted replies, copying code, and when Stop and Continue apply. Local chat in that build still needs no account.</p>
+  <p>That store app is 0.6.0. iOS and macOS 0.6.1 build 35 are Waiting for Review and are not on sale. The public Google Play page for the Android app is not a production listing. Play still shows upload certificate <code>8b38f4e5</code>, and nothing was uploaded. <a href="download">Download the current apps</a>.</p>
 
   <h2 id="candidate">The next candidate, still on this machine</h2>
   <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#conversation"></use></svg>
-  <p>Version <strong>0.6.1</strong> is prepared in the source for iPhone, Android, and Mac. It has not been submitted to the App Store or Play. You still choose a model and download it yourself. When you have no chats yet, the app opens a new one. There is no account to create.</p>
+  <p>Version <strong>0.6.1</strong> is prepared in the source for iPhone, Android, and Mac. iOS and macOS build 35 are Waiting for Review and are not on sale. The Android package has not been uploaded. You still choose a model and download it yourself. When you have no chats yet, the app opens a new one. There is no account to create.</p>
   <ul>
     <li><strong>Keep a chosen model.</strong> If you pick a model and the file is missing, cannot be read, does not run in this build, or does not fit memory, that choice stays selected. The app does not quietly swap in another model. If you have not chosen one, it can still recommend.</li>
     <li><strong>A named note.</strong> You save a note under a name, then choose that name. One note is active. It does not change the model or which tools can run.</li>
@@ -53,11 +53,11 @@
     <li><strong>A reply held on the device.</strong> A local reply that mentions a sensitive action is not shown. Nothing is sent.</li>
   </ul>
   <p>Optional DeepSeek, Step 5, and a prepared computer are unchanged. Each sends data only after you choose that destination. On iPhone, the chat keyboard has a Done control that dismisses it and keeps what you typed. On iPhone and Mac, a reply can be read by the accessibility tools from the text on screen. Those two fixes are in the source; the published 0.6.0 notes do not list them, so this page does not treat them as part of the store build.</p>
-  <p>The candidate is <a href="https://github.com/alikatgh/quenderin/pull/218" rel="noopener">the local-chat source</a>, prepared as <a href="https://github.com/alikatgh/quenderin/pull/219" rel="noopener">0.6.1</a> and not submitted.</p>
+  <p>The candidate is <a href="https://github.com/alikatgh/quenderin/pull/218" rel="noopener">the local-chat source</a>, prepared as <a href="https://github.com/alikatgh/quenderin/pull/219" rel="noopener">0.6.1</a>. The iOS and macOS build waiting for review does not include the security fixes at <a href="https://github.com/alikatgh/quenderin/commit/41c12e55" rel="noopener"><code>41c12e55</code></a>.</p>
 
   <h2 id="on-device">Five more behaviors, same source, same limit</h2>
   <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#local"></use></svg>
-  <p>After that candidate, the source on main also includes five behaviors for the same three apps. They are not a new store release. Choosing one does not download a model file.</p>
+  <p>After that candidate, the source on main also includes five behaviors for the same three apps. This note does not say they are on sale, and choosing one does not download a model file.</p>
   <ul>
     <li><strong>A checker model.</strong> You can select a model that is already on the device. Before a reply or a tool result is shown, that model can be asked. If the file is missing, nothing is downloaded. If you do not select one, a shape and word check still runs on the device.</li>
     <li><strong>Look and Listen.</strong> Photos and speech stay closed until you open them. If you select a photo or speech model that is already on the device, Look and Listen load that file for the sample, then restore the previous model. A missing file is not downloaded.</li>
@@ -71,7 +71,7 @@
   <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#boundaries"></use></svg>
   <p>This is not tested inference. Doctor does not run a model. Practice does not score a model. Selecting a checker, or opening Look and Listen, does not by itself prove that a full model produced an answer.</p>
   <p>An experimental catalog model is source support. The app can say so when you select one. That label is not a tested run, and it is not a store release.</p>
-  <p>No signed 0.6.1 build was produced for this note, and nothing was uploaded to the App Store or Play. No model weights were downloaded here, and no simulator or phone was run. <a href="changelog#2026-11-09">Read the changelog</a> or follow the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">commit history</a>.</p>
+  <p>iOS and macOS 0.6.1 build 35 are Waiting for Review and are not on sale. Nothing was uploaded to Play. Security fixes at <a href="https://github.com/alikatgh/quenderin/commit/41c12e55" rel="noopener"><code>41c12e55</code></a> are not in the store build. No model weights were downloaded for this note, and no simulator or phone was run. <a href="changelog#2026-11-10">Read the changelog</a> or follow the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">commit history</a>.</p>
 </main>
 </body>
 </html>
