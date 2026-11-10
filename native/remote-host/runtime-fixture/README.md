@@ -6,7 +6,7 @@ It does not reuse the older mixed dependency closure in the remote plugin's
 pnpm lock. `package-lock.json` pins the complete npm closure and
 `dependency-provenance.json` inventories every resolved URL, integrity, license
 and lifecycle-script marker. `registry-metadata.json` records exact-version
-manifest comparisons for all 220 unique package artifacts (238 dependency
+manifest comparisons for all 197 unique package artifacts (215 dependency
 entries). Direct dependencies use exact versions. The official Harness package
 manifests identify its source repository but supply no `gitHead` or npm build
 attestation; an exact artifact-to-source-commit attestation is not established.
@@ -103,13 +103,13 @@ the reported full-lock SHA256. Bootstrap requires that exact hash as an
 explicit argument and a hosted Node 22 runner. It stops before dependency
 imports or package execution if the hash is missing, stale or malformed.
 `npm ci --ignore-scripts` pins installation and disables every lifecycle hook;
-the lock records hooks in esbuild, fsevents and koffi for review. fsevents is
+the lock records hooks in fsevents and koffi for review. fsevents is
 optional and platform restricted. This test exercises neither native openers
 nor desktop file handoffs. The exact locked JSONL artifact's Linux
 `SessionWriteLease` uses the prebuilt Node-API `node-addon-system/flock`
 binding; its Windows lease branch dynamically loads Koffi/kernel32. This is
 not a native-free runtime test. The hosted runner needs that prebuilt native
-lock package and esbuild's platform package for Vitest's ordinary TypeScript
+lock package and the locked Vite/rolldown platform package for Vitest's TypeScript
 transformation; no native application build runs.
 
 ## Smallest hosted integration

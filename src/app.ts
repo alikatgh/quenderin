@@ -1,4 +1,5 @@
 import express, { Express } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import cors from 'cors';
 import path from 'path';
 import * as fs from 'fs/promises';
@@ -94,6 +95,15 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         }
     }));
     app.use(express.json({ limit: '256kb' }));
+    // Local loopback server: cap request rate before auth and the filesystem/download routes.
+    // 600/minute is enough for the dashboard's polls and still bounds a tight local flood.
+    app.use(rateLimit({
+        windowMs: 60_000,
+        limit: 600,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { error: 'Too many requests' },
+    }));
 
     // Serve strictly static frontend relative to this file to support packaged ASARs
     const __filename = fileURLToPath(import.meta.url);
