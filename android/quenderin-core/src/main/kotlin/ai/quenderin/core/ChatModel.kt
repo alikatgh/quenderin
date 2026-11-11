@@ -427,7 +427,6 @@ class ChatModel(
                         if (myGen == activeGeneration) inFlightAssistantId = null
                         return@synchronized "" to _messages.toList()
                     }
-                    if (myGen == activeGeneration) inFlightAssistantId = null
                     return@synchronized "" to null
                 }
                 val acceptedText = if (stopped && !sawEmission) "" else settled
