@@ -143,7 +143,7 @@ public struct OnDeviceJobCard: View {
                 .buttonStyle(.bordered)
             }
             if installed.isEmpty {
-                Text("Only the open chat model is on this device. Nothing will be downloaded.")
+                Text(OnDeviceCopy.noModelFiles)
                     .font(.footnote)
                     .foregroundStyle(palette.onSurfaceVariant)
             }
@@ -273,7 +273,11 @@ public struct OnDeviceJobCard: View {
     }
 
     private func makeCheckup() -> Checkup {
-        let ids = Set(installed.map(\.id)).union([chatModel.id])
+        let ids = onDeviceModelIDs(
+            installedIDs: Set(installed.map(\.id)),
+            openChatID: chatModel.id,
+            openChatFilePresent: OnboardingModel.defaultModelStorage().isComplete(chatModel)
+        )
         return deviceCheckup(DeviceFacts(
             chatModelID: roles.chatModelID,
             chatLabel: names[roles.chatModelID] ?? roles.chatModelID,

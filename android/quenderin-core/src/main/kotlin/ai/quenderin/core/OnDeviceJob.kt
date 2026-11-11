@@ -97,7 +97,7 @@ object RoleSeat {
         return try {
             port(id, text)
         } catch (_: Throwable) {
-            "failed"
+            "load-failed"
         }
     }
 }
@@ -126,6 +126,23 @@ object CheckerPrompt {
     }
 }
 
+/** A path that is not on disk is left to the engine seam. Bytes that are present and are not a GGUF header are refused before load. */
+private object ModelFileHead {
+    fun ggufIfPresent(path: String): Boolean? {
+        val file = java.io.File(path)
+        if (!file.isFile) return null
+        return try {
+            file.inputStream().use { input ->
+                val head = ByteArray(4)
+                val n = input.read(head)
+                n == 4 && ModelIntegrity.hasGGUFMagic(head)
+            }
+        } catch (_: Throwable) {
+            false
+        }
+    }
+}
+
 /**
  * Runs the checker on a model file that is already on the device.
  * A missing file returns "unloaded" and nothing is loaded. A different model is loaded
@@ -134,15 +151,21 @@ object CheckerPrompt {
 object CheckerRun {
     fun ask(modelId: String, text: String, engine: InferenceEngine, files: (String) -> CheckerFile?): String {
         val target = files(modelId) ?: return "unloaded"
+        if (ModelFileHead.ggufIfPresent(target.path) == false) return "unreadable"
         val previousId = engine.loadedModelId
         val previous = previousId?.let { files(it) }
-        if (previousId != null && previousId != target.model.id && previous == null) return "failed"
+        if (previousId != null && previousId != target.model.id && previous == null) return "unrestorable"
+        if (previous != null && ModelFileHead.ggufIfPresent(previous.path) == false) return "unrestorable"
         val switched = previousId != target.model.id
-        return try {
-            if (switched) engine.load(target.model, target.path)
+        var loadedTarget = false
+        val verdict = try {
+            if (switched) {
+                engine.load(target.model, target.path)
+                loadedTarget = true
+            }
             CheckerPrompt.verdict(engine.completeWithGrammar(CheckerPrompt.of(text), CheckerPrompt.GRAMMAR, maxTokens = 8))
         } catch (_: Throwable) {
-            "failed"
+            if (loadedTarget) "failed" else "load-failed"
         } finally {
             if (switched && previous != null && engine.loadedModelId != previous.model.id) {
                 try { engine.load(previous.model, previous.path) } catch (_: Throwable) {}
@@ -150,6 +173,7 @@ object CheckerRun {
                 try { engine.unload() } catch (_: Throwable) {}
             }
         }
+        return verdict
     }
 
     /** The catalog file in [directory], or null when it is not on disk. Does not download. */
@@ -178,9 +202,11 @@ object PerceptionRun {
 
     fun sample(modelId: String, kind: String, fixture: String, engine: InferenceEngine, files: (String) -> CheckerFile?): String {
         val target = files(modelId) ?: return OnDeviceCopy.PERCEPTION_MISSING
+        if (ModelFileHead.ggufIfPresent(target.path) == false) return OnDeviceCopy.PERCEPTION_UNREADABLE
         val previousId = engine.loadedModelId
         val previous = previousId?.let { files(it) }
         if (previousId != null && previousId != target.model.id && previous == null) return OnDeviceCopy.PERCEPTION_UNRESTORABLE
+        if (previous != null && ModelFileHead.ggufIfPresent(previous.path) == false) return OnDeviceCopy.PERCEPTION_UNRESTORABLE
         val switched = previousId != target.model.id
         val ran = try {
             if (switched) engine.load(target.model, target.path)
@@ -219,7 +245,7 @@ object OutputCheck {
     const val HIDDEN = "The text has hidden characters, so it was not shown."
     const val TOO_LONG = "The text is too long to show or use."
     const val CHECKER_HELD = "The checker kept this on the device. Nothing was shown."
-    const val CHECKER_FAILED = "The checker did not finish. Nothing was shown."
+    const val CHECKER_FAILED = "The checker did not finish. Nothing was shown. Turn the checker off in This chat, or try again."
     const val LIMIT = 12_000
 
     private val injections = listOf(
@@ -249,12 +275,7 @@ object OutputCheck {
     fun finish(text: String, kind: OutputKind, expectsJson: Boolean = false): OutputVerdict {
         val shaped = shape(text, kind, expectsJson)
         if (shaped.held) return shaped
-        return when (RoleSeat.checkerAnswer(text)) {
-            null -> shaped
-            "no" -> hold(CHECKER_HELD, asked = true)
-            "failed" -> hold(CHECKER_FAILED, asked = true)
-            else -> shaped.copy(askedChecker = true)
-        }
+        return checked(shaped, RoleSeat.checkerAnswer(text))
     }
 
     /** System lines the loop already decided, such as a tool that was switched off. */
@@ -266,6 +287,23 @@ object OutputCheck {
     }
 
     private fun hold(sentence: String, asked: Boolean = false) = OutputVerdict(sentence, held = true, askedChecker = asked)
+
+    /** The checker could not run. Keep the reply and say what to do next. */
+    private fun reveal(shaped: OutputVerdict, notice: String): OutputVerdict {
+        val body = shaped.text.trim()
+        return OutputVerdict(if (body.isEmpty()) notice else "$body\n\n$notice", held = false, askedChecker = false)
+    }
+
+    private fun checked(shaped: OutputVerdict, answer: String?): OutputVerdict = when (answer) {
+        null -> shaped
+        "no" -> hold(CHECKER_HELD, asked = true)
+        "failed" -> hold(CHECKER_FAILED, asked = true)
+        "unloaded" -> reveal(shaped, OnDeviceCopy.CHECKER_MISSING)
+        "unreadable" -> reveal(shaped, OnDeviceCopy.CHECKER_UNREADABLE)
+        "load-failed" -> reveal(shaped, OnDeviceCopy.CHECKER_LOAD_FAILED)
+        "unrestorable" -> reveal(shaped, OnDeviceCopy.CHECKER_UNRESTORABLE)
+        else -> shaped.copy(askedChecker = true)
+    }
 
     private fun isToolInvocation(text: String): Boolean {
         val obj = JsonMini.parse(text.trim()) as? JsonValue.Obj ?: return false
@@ -282,15 +320,22 @@ object OnDeviceCopy {
     const val NOT_INFERENCE = "This is not tested inference."
     const val NO_SERVERS = "No local tool servers. Add one on this device if you want."
     const val LOCAL_ONLY = "Only a tool server on this device is allowed."
-    const val SERVER_SILENT = "The local tool server did not answer."
+    const val SERVER_SILENT = "The local tool server did not answer. Check the address or command, then try again."
     const val PERCEPTION_CLOSED = "Photos and speech stay closed until you open them. This checkup did not open them."
     const val PERCEPTION_OPEN = "The photos and speech screen is open. This checkup did not run a model."
     const val PERCEPTION_SAMPLE = "Using the selected model on this device. The sample stayed here. The model was not loaded. This is not tested inference."
     const val PERCEPTION_RUNS = "When this model is on the device, Look and Listen load that file for the sample, then restore the previous model. A missing file is not downloaded."
-    const val PERCEPTION_MISSING = "That photo or speech model is not on this device. Nothing was downloaded."
+    const val PERCEPTION_MISSING = "That photo or speech model is not on this device. Choose one that is already installed. Nothing was downloaded."
+    const val PERCEPTION_UNSELECTED = "No photo or speech model is selected. Choose one in This chat. Nothing was loaded."
+    const val PERCEPTION_UNREADABLE = "That photo or speech file cannot be read. Choose another model that is already on this device, or download it again. Nothing was downloaded."
     const val PERCEPTION_USED = "The sample used the model already on this device, then the previous model was restored. This is not tested inference."
-    const val PERCEPTION_FAILED = "The photo or speech model did not finish. Nothing was downloaded."
-    const val PERCEPTION_UNRESTORABLE = "The model already in use cannot be restored from this device, so the photo or speech model was not loaded. Nothing was downloaded."
+    const val PERCEPTION_FAILED = "The photo or speech model did not finish. Choose another model or try again. Nothing was downloaded."
+    const val PERCEPTION_UNRESTORABLE = "The model already in use cannot be restored from this device, so the photo or speech model was not loaded. Choose another model to continue. Nothing was downloaded."
+    const val NO_MODEL_FILES = "No catalog model file is on this device. Download one in the Model library to use a separate checker or photo model. Nothing will be downloaded from here."
+    const val CHECKER_MISSING = "The checker model is not on this device, so this reply was not checked. Choose a checker that is already installed, or leave the checker off. Nothing was downloaded."
+    const val CHECKER_UNREADABLE = "The checker file cannot be read, so this reply was not checked. Choose another model or download it again. Nothing was downloaded."
+    const val CHECKER_LOAD_FAILED = "The checker model did not load, so this reply was not checked. Choose another model or try again. Nothing was downloaded."
+    const val CHECKER_UNRESTORABLE = "The model already in use cannot be restored, so the checker was not loaded. Choose another model to continue. This reply was not checked. Nothing was downloaded."
     const val MAC_COMMAND = "A command is available on Mac. This device uses a local address."
     const val NAME_SERVER = "Name the server in a few words."
     const val NEED_TARGET = "Add a local address or a Mac command."
@@ -345,6 +390,26 @@ data class DeviceFacts(
     val serverCount: Int,
     val toolsOff: List<String>,
 )
+
+/**
+ * Catalog files already on disk, plus the open chat model when its own file is on disk.
+ * A selected id with no file is not treated as installed.
+ */
+fun onDeviceModelIDs(installedIds: Set<String>, openChatId: String, openChatFilePresent: Boolean): Set<String> {
+    val ids = installedIds.toMutableSet()
+    if (openChatFilePresent) ids += openChatId
+    return ids
+}
+
+/** True when every file for [model] is already in [storage]. A missing file stays false. Does not download. */
+fun openChatFilePresent(model: ModelEntry, storage: ModelStorage): Boolean {
+    val names = runCatching { ModelArtifacts.filenames(model) }.getOrDefault(emptyList())
+    if (names.isEmpty()) return false
+    val present = storage.installedFilenames().toSet()
+    if (!names.all { it in present }) return false
+    if (model.artifacts.isEmpty()) return true
+    return model.artifacts.all { storage.sizeBytes(it.filename) == it.downloadBytes }
+}
 
 /** Read-only checkup. It has no engine and it does not start a chat or call a tool. */
 fun deviceCheckup(facts: DeviceFacts): Checkup {
@@ -470,12 +535,12 @@ object PerceptionSeat {
     private fun run(kind: String, fixture: String): String {
         if (!RoleSeat.perceptionOpen) return "Photos and speech are not open."
         val id = RoleSeat.perceptionModelId?.trim().orEmpty()
-        if (id.isEmpty()) return "No photo or speech model is selected. Nothing was loaded."
+        if (id.isEmpty()) return OnDeviceCopy.PERCEPTION_UNSELECTED
         val port = RoleSeat.perceive ?: return OnDeviceCopy.PERCEPTION_SAMPLE
         return try {
             port(id, kind, fixture)
         } catch (_: Throwable) {
-            OnDeviceCopy.PERCEPTION_SAMPLE
+            OnDeviceCopy.PERCEPTION_FAILED
         }
     }
 }
@@ -888,11 +953,22 @@ class StdioMcp(private val command: List<String>) : McpTransport, AutoCloseable 
     private val reader: BufferedReader = BufferedReader(InputStreamReader(process.inputStream, StandardCharsets.UTF_8))
 
     override fun exchange(request: String): String {
-        synchronized(this) {
-            writer.write(request)
-            writer.newLine()
-            writer.flush()
-            return reader.readLine() ?: OnDeviceCopy.SERVER_SILENT
+        val task = java.util.concurrent.FutureTask {
+            synchronized(this) {
+                writer.write(request)
+                writer.newLine()
+                writer.flush()
+                reader.readLine() ?: OnDeviceCopy.SERVER_SILENT
+            }
+        }
+        val worker = Thread(task)
+        worker.isDaemon = true
+        worker.start()
+        return try {
+            task.get(4, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (_: java.util.concurrent.TimeoutException) {
+            process.destroyForcibly()
+            OnDeviceCopy.SERVER_SILENT
         }
     }
 
@@ -1065,6 +1141,7 @@ fun verifyOnDeviceJob() {
     verifyCheckerRuns()
     verifyPerceptionRuns()
     verifyMcpHosts()
+    verifyFreshInstallFaults()
     require(OnDeviceCopy.NOT_INFERENCE.contains("not tested inference"))
     require(!OnDeviceCopy.CARD.contains("account is"))
     require(OnDeviceCopy.CARD.contains("No account."))
@@ -1079,9 +1156,11 @@ private class RecordingCheckerEngine(var reply: String) : InferenceEngine {
     val events = mutableListOf<String>()
     var fail = false
     var lastPrompt = ""
+    var failLoad = false
     override fun load(model: ModelEntry, filePath: String) {
         events += "load:$filePath"
         loadedModelId = model.id
+        if (failLoad) throw IllegalStateException("unreadable")
     }
     override fun unload() {
         events += "unload"
@@ -1234,4 +1313,170 @@ private fun verifyMcpHosts() {
         socket.close()
         thread.join(4000)
     }
+}
+
+private fun namesNextStep(text: String): Boolean {
+    val lowered = text.lowercase()
+    return lowered.contains("choose ") || lowered.contains("try again") || lowered.contains("download one")
+        || lowered.contains("download it again") || lowered.contains("leave the checker off")
+        || lowered.contains("turn the checker off") || lowered.contains("add one")
+}
+
+private fun verifyFreshInstallFaults() {
+    RoleSeat.reset()
+    val plain = OutputCheck.finish("a plain reply", OutputKind.REPLY)
+    require(!plain.held && plain.text == "a plain reply")
+    val checkup = deviceCheckup(DeviceFacts(
+        chatModelId = "qwen3-4b", chatLabel = "Qwen3 4B", chatOnDevice = false,
+        checkerModelId = null, checkerOnDevice = false,
+        perceptionModelId = null, perceptionOnDevice = false, perceptionOpen = false,
+        guidanceNotes = 0, guidanceReadable = true, skillCount = 0, skillsReadable = true,
+        builtinOn = emptyMap(), serverCount = 0, toolsOff = emptyList(),
+    ))
+    require(!checkup.startedChat && !checkup.ranModel)
+    val chat = checkup.rows.first { it.name == "Chat model" }.detail
+    require(namesNextStep(chat)) { chat }
+    val onlyChat = deviceCheckup(DeviceFacts(
+        chatModelId = "qwen3-4b", chatLabel = "Qwen3 4B", chatOnDevice = true,
+        checkerModelId = null, checkerOnDevice = false,
+        perceptionModelId = null, perceptionOnDevice = false, perceptionOpen = false,
+        guidanceNotes = 0, guidanceReadable = true, skillCount = 0, skillsReadable = true,
+        builtinOn = mapOf("calculator" to true), serverCount = 0, toolsOff = emptyList(),
+    ))
+    require(onlyChat.rows.any { it.name == "Chat model" && it.detail.contains("is on this device") })
+    require(onlyChat.rows.any { it.detail.contains("No second model is loaded") })
+    require(onlyChat.rows.any { it.detail == OnDeviceCopy.PERCEPTION_CLOSED })
+    require(!onlyChat.ranModel)
+    val practice = PracticeQuestions.score()
+    require(practice.passed == 3 && practice.missed == 0 && !practice.scoredModel)
+    require(OnDeviceCopy.NO_SERVERS == "No local tool servers. Add one on this device if you want.")
+    require(namesNextStep(OnDeviceCopy.NO_MODEL_FILES)) { OnDeviceCopy.NO_MODEL_FILES }
+    require(OnDeviceCopy.NO_MODEL_FILES.contains("Nothing will be downloaded"))
+    PerceptionSeat.open(null)
+    val look = PerceptionSeat.look("sample")
+    require(look.isNotEmpty() && namesNextStep(look)) { look }
+    PerceptionSeat.close()
+
+    RoleSeat.selectChecker("absent-checker")
+    RoleSeat.ask = { _, _ -> "unloaded" }
+    val shown = OutputCheck.finish("the sum is four", OutputKind.REPLY)
+    require(!shown.held && shown.text.contains("the sum is four") && namesNextStep(shown.text)) { shown.text }
+    val tool = OutputCheck.gateTool("4", expectsJson = false)
+    require(!tool.held && tool.text.contains("4") && namesNextStep(tool.text)) { tool.text }
+
+    val engine = RecordingCheckerEngine("no")
+    val chatFile = checkerEntry("chat")
+    val checkFile = checkerEntry("check")
+    val visionFile = checkerEntry("vision")
+    val files = mutableMapOf(
+        "chat" to CheckerFile(chatFile, "/models/chat.gguf"),
+        "check" to CheckerFile(checkFile, "/models/check.gguf"),
+        "vision" to CheckerFile(visionFile, "/models/vision.gguf"),
+    )
+    engine.load(chatFile, files.getValue("chat").path)
+    engine.events.clear()
+    engine.failLoad = true
+    val failed = CheckerRun.ask("check", "hello", engine) { files[it] }
+    require(failed != "yes" && failed != "no" && engine.loadedModelId == "chat")
+    RoleSeat.selectChecker("check")
+    RoleSeat.ask = { _, _ -> failed }
+    val afterLoad = OutputCheck.finish("the sum is four", OutputKind.REPLY)
+    require(!afterLoad.held && afterLoad.text.contains("the sum is four") && namesNextStep(afterLoad.text)) { afterLoad.text }
+
+    engine.failLoad = false
+    engine.loadedModelId = "gone"
+    engine.events.clear()
+    val unrestorable = CheckerRun.ask("check", "hello", engine) { files[it] }
+    require(engine.events.isEmpty() && engine.loadedModelId == "gone")
+    RoleSeat.ask = { _, _ -> unrestorable }
+    val kept = OutputCheck.finish("the sum is four", OutputKind.REPLY)
+    require(!kept.held && kept.text.contains("the sum is four") && namesNextStep(kept.text)) { kept.text }
+
+    val directory = java.io.File(System.getProperty("java.io.tmpdir"), "quenderin-fault-${java.util.UUID.randomUUID()}")
+    check(directory.mkdirs())
+    try {
+        val bad = java.io.File(directory, "bad.gguf").also { it.writeBytes(byteArrayOf(0x3c, 0x68, 0x74, 0x6d)) }
+        val good = java.io.File(directory, "good.gguf").also { it.writeBytes(byteArrayOf(0x47, 0x47, 0x55, 0x46)) }
+        files["check"] = CheckerFile(checkFile, bad.absolutePath)
+        engine.loadedModelId = "chat"
+        engine.events.clear()
+        val corrupt = CheckerRun.ask("check", "hello", engine) { files[it] }
+        require(engine.events.none { it == "load:${bad.absolutePath}" }) { engine.events.joinToString() }
+        RoleSeat.ask = { _, _ -> corrupt }
+        val readable = OutputCheck.finish("the sum is four", OutputKind.REPLY)
+        require(!readable.held && readable.text.contains("the sum is four") && namesNextStep(readable.text)) { readable.text }
+        files["vision"] = CheckerFile(visionFile, bad.absolutePath)
+        engine.events.clear()
+        val photo = PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] }
+        require(engine.events.none { it == "load:${bad.absolutePath}" }) { engine.events.joinToString() }
+        require(photo.isNotEmpty() && namesNextStep(photo)) { photo }
+        files["check"] = CheckerFile(checkFile, good.absolutePath)
+        engine.events.clear()
+        engine.loadedModelId = "chat"
+        CheckerRun.ask("check", "hello", engine) { files[it] }
+        require(engine.events.any { it == "load:${good.absolutePath}" }) { "a readable file must still load" }
+    } finally {
+        directory.deleteRecursively()
+        RoleSeat.reset()
+    }
+
+    engine.failLoad = false
+    engine.loadedModelId = "chat"
+    engine.events.clear()
+    files["vision"] = CheckerFile(visionFile, "/models/vision.gguf")
+    val missing = PerceptionRun.sample("absent", "speech", "clip", engine) { files[it] }
+    require(engine.events.isEmpty() && namesNextStep(missing)) { missing }
+    engine.failLoad = true
+    val stopped = PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] }
+    require(engine.loadedModelId == "chat" && stopped.isNotEmpty() && namesNextStep(stopped)) { stopped }
+    engine.failLoad = false
+    engine.loadedModelId = "gone"
+    engine.events.clear()
+    val blocked = PerceptionRun.sample("vision", "speech", "clip", engine) { files[it] }
+    require(engine.events.isEmpty() && namesNextStep(blocked)) { blocked }
+
+    RoleSeat.perceive = { _, _, _ -> throw IllegalStateException("perception stopped") }
+    PerceptionSeat.open("vision")
+    val thrown = PerceptionSeat.look("sample")
+    require(thrown != OnDeviceCopy.PERCEPTION_SAMPLE && namesNextStep(thrown)) { thrown }
+    PerceptionSeat.close()
+    RoleSeat.reset()
+
+    require(namesNextStep(OnDeviceCopy.SERVER_SILENT)) { OnDeviceCopy.SERVER_SILENT }
+    require("qwen3-4b" !in onDeviceModelIDs(emptySet(), "qwen3-4b", openChatFilePresent = false))
+    require("hf-local" in onDeviceModelIDs(emptySet(), "hf-local", openChatFilePresent = true))
+    require("qwen3-4b" in onDeviceModelIDs(setOf("qwen3-4b"), "qwen3-4b", openChatFilePresent = false))
+    val storage = InMemoryModelStorage()
+    val catalogChat = ModelCatalog.entry("qwen3-4b")!!
+    require(!openChatFilePresent(catalogChat, storage))
+    storage.install(catalogChat.filename, 1L)
+    require(openChatFilePresent(catalogChat, storage))
+    val unloaded = ChatModel(MockInferenceEngine())
+    var unloadedThrew = false
+    try {
+        unloaded.send("hello")
+    } catch (_: EngineNotLoadedException) {
+        unloadedThrew = true
+    }
+    require(unloadedThrew)
+    require(!unloaded.isGenerating)
+    require(unloaded.messages.none { it.role == Role.ASSISTANT && it.text.isBlank() }) {
+        "a model that is not loaded left an empty reply"
+    }
+    require(namesNextStep(EngineNotLoadedException().message ?: ""))
+    val started = System.nanoTime()
+    val pending = java.util.concurrent.FutureTask {
+        McpClient(StdioMcp(listOf("python3", "-c", "import time; time.sleep(30)"))).initialize()
+    }
+    val worker = Thread(pending)
+    worker.isDaemon = true
+    worker.start()
+    val answered = try {
+        pending.get(6, java.util.concurrent.TimeUnit.SECONDS)
+        true
+    } catch (_: java.util.concurrent.TimeoutException) {
+        false
+    }
+    val elapsed = (System.nanoTime() - started) / 1_000_000_000.0
+    require(answered && elapsed < 6.0) { "Look up tools waited ${elapsed}s" }
 }

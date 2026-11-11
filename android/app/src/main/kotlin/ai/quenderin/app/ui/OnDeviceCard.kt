@@ -16,6 +16,8 @@ import ai.quenderin.core.PracticeQuestions
 import ai.quenderin.core.PerceptionSeat
 import ai.quenderin.core.RoleSeat
 import ai.quenderin.core.deviceCheckup
+import ai.quenderin.core.onDeviceModelIDs
+import ai.quenderin.core.openChatFilePresent
 import ai.quenderin.core.roleTitle
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
@@ -109,6 +111,9 @@ internal fun OnDeviceCard(
         val dir = java.io.File(context.filesDir, "models")
         runCatching { ModelManager(FileModelStorage(dir), chatModel.id).installed().map { it.model } }.getOrDefault(emptyList())
     }
+    val openChatOnDisk = remember(chatModel.id) {
+        runCatching { openChatFilePresent(chatModel, FileModelStorage(java.io.File(context.filesDir, "models"))) }.getOrDefault(false)
+    }
     val tick = revision
     val roles = if (tick >= 0) book.roles(conversationId, chatModel.id) else book.roles(conversationId, chatModel.id)
     val names = remember(installed, chatModel.id, revision) {
@@ -182,7 +187,7 @@ internal fun OnDeviceCard(
                                 }
                             }
                             if (installed.isEmpty()) {
-                                Text("Only the open chat model is on this device. Nothing will be downloaded.", style = MaterialTheme.typography.bodySmall)
+                                Text(OnDeviceCopy.NO_MODEL_FILES, style = MaterialTheme.typography.bodySmall)
                             }
                             val choices = if (installed.any { it.id == chatModel.id }) installed else listOf(chatModel) + installed
                             choices.forEach { entry ->
@@ -194,7 +199,7 @@ internal fun OnDeviceCard(
                             Text(OnDeviceCopy.NOT_INFERENCE, style = MaterialTheme.typography.bodySmall)
                         }
                         JobPage.DOCTOR -> {
-                            TextButton(onClick = { checkup = checkupOf(roles, names, installed, chatModel, guidanceNotes, skillCount, desk) }) {
+                            TextButton(onClick = { checkup = checkupOf(roles, names, installed, chatModel, openChatOnDisk, guidanceNotes, skillCount, desk) }) {
                                 Text(OnDeviceCopy.RUN_CHECKUP)
                             }
                             checkup?.let { result ->
@@ -332,17 +337,18 @@ private fun checkupOf(
     names: Map<String, String>,
     installed: List<ModelEntry>,
     chatModel: ModelEntry,
+    openChatOnDisk: Boolean,
     guidanceNotes: Int,
     skillCount: Int,
     desk: LocalToolDesk,
 ) = deviceCheckup(DeviceFacts(
     chatModelId = roles.chatModelId,
-    chatLabel = names[roles.chatModelId] ?: roles.chatModelId,
-    chatOnDevice = installed.any { it.id == roles.chatModelId } || roles.chatModelId == chatModel.id,
+    chatLabel = names[roles.chatModelId] ?: if (roles.chatModelId == chatModel.id) chatModel.label else roles.chatModelId,
+    chatOnDevice = onDeviceModelIDs(installed.map { it.id }.toSet(), chatModel.id, openChatOnDisk).contains(roles.chatModelId),
     checkerModelId = roles.checkerModelId,
-    checkerOnDevice = roles.checkerModelId?.let { id -> installed.any { it.id == id } } ?: false,
+    checkerOnDevice = roles.checkerModelId?.let { onDeviceModelIDs(installed.map { it.id }.toSet(), chatModel.id, openChatOnDisk).contains(it) } ?: false,
     perceptionModelId = roles.perceptionModelId,
-    perceptionOnDevice = roles.perceptionModelId?.let { id -> installed.any { it.id == id } } ?: false,
+    perceptionOnDevice = roles.perceptionModelId?.let { onDeviceModelIDs(installed.map { it.id }.toSet(), chatModel.id, openChatOnDisk).contains(it) } ?: false,
     perceptionOpen = false,
     guidanceNotes = guidanceNotes,
     guidanceReadable = true,

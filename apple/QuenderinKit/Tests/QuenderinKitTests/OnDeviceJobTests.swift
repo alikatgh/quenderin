@@ -7,10 +7,12 @@ private final class CheckerEngine: InferenceEngine, @unchecked Sendable {
     var events: [String] = []
     var fail = false
     var lastPrompt = ""
+    var failLoad = false
     func loadedModelID() async -> String? { loaded.isEmpty ? nil : loaded }
     func load(model: ModelEntry, at fileURL: URL) async throws {
         events.append("load:\(fileURL.path)")
         loaded = model.id
+        if failLoad { throw InferenceError.loadFailed(reason: "unreadable") }
     }
     func unload() async {
         events.append("unload")
@@ -245,4 +247,181 @@ final class OnDeviceJobTests: XCTestCase {
         XCTAssertFalse(checkup.ranModel)
         XCTAssertFalse(checkup.startedChat)
     }
+
+    func testNoModelsStillNamesANextStepForDoctorPracticeToolsAndLook() async {
+        let reply = await OutputCheck.finishLive("a plain reply", kind: .reply)
+        XCTAssertFalse(reply.held)
+        XCTAssertEqual(reply.text, "a plain reply")
+        let checkup = deviceCheckup(DeviceFacts(
+            chatModelID: "qwen3-4b", chatLabel: "Qwen3 4B", chatOnDevice: false,
+            checkerModelID: nil, checkerOnDevice: false,
+            perceptionModelID: nil, perceptionOnDevice: false, perceptionOpen: false,
+            guidanceNotes: 0, guidanceReadable: true, skillCount: 0, skillsReadable: true,
+            builtinOn: [:], serverCount: 0, toolsOff: []
+        ))
+        XCTAssertFalse(checkup.startedChat)
+        XCTAssertFalse(checkup.ranModel)
+        let chat = checkup.rows.first { $0.name == "Chat model" }?.detail ?? ""
+        XCTAssertTrue(namesNextStep(chat), chat)
+        let practice = await PracticeQuestions.scoreLive()
+        XCTAssertEqual(practice.passed, 3)
+        XCTAssertEqual(practice.missed, 0)
+        XCTAssertFalse(practice.scoredModel)
+        XCTAssertEqual(OnDeviceCopy.noServers, "No local tool servers. Add one on this device if you want.")
+        XCTAssertFalse(onDeviceModelIDs(installedIDs: [], openChatID: "qwen3-4b", openChatFilePresent: false).contains("qwen3-4b"))
+        XCTAssertTrue(onDeviceModelIDs(installedIDs: [], openChatID: "hf-local", openChatFilePresent: true).contains("hf-local"))
+        XCTAssertTrue(onDeviceModelIDs(installedIDs: ["qwen3-4b"], openChatID: "qwen3-4b", openChatFilePresent: false).contains("qwen3-4b"))
+        XCTAssertTrue(namesNextStep(OnDeviceCopy.noModelFiles), OnDeviceCopy.noModelFiles)
+        XCTAssertTrue(OnDeviceCopy.noModelFiles.contains("Nothing will be downloaded"))
+        PerceptionSeat.open(modelID: nil)
+        let look = await PerceptionSeat.lookLive("sample")
+        XCTAssertFalse(look.isEmpty)
+        XCTAssertTrue(namesNextStep(look), look)
+        PerceptionSeat.close()
+    }
+
+    func testOnlyTheChatModelLeavesTheCheckerOff() async {
+        let checkup = deviceCheckup(DeviceFacts(
+            chatModelID: "qwen3-4b", chatLabel: "Qwen3 4B", chatOnDevice: true,
+            checkerModelID: nil, checkerOnDevice: false,
+            perceptionModelID: nil, perceptionOnDevice: false, perceptionOpen: false,
+            guidanceNotes: 0, guidanceReadable: true, skillCount: 0, skillsReadable: true,
+            builtinOn: ["calculator": true], serverCount: 0, toolsOff: []
+        ))
+        XCTAssertTrue(checkup.rows.contains { $0.name == "Chat model" && $0.detail.contains("is on this device") })
+        XCTAssertTrue(checkup.rows.contains { $0.detail.contains("No second model is loaded") })
+        XCTAssertTrue(checkup.rows.contains { $0.detail == OnDeviceCopy.perceptionClosed })
+        XCTAssertFalse(checkup.ranModel)
+        let reply = OutputCheck.finish("the sum is four", kind: .reply)
+        XCTAssertFalse(reply.held)
+        XCTAssertEqual(reply.text, "the sum is four")
+    }
+
+    func testMissingCheckerShowsTheReplyAndANextStep() async {
+        RoleSeat.shared.selectChecker(modelID: "absent-checker")
+        RoleSeat.shared.setAskLive { _, _ in "unloaded" }
+        let reply = await OutputCheck.finishLive("the sum is four", kind: .reply)
+        XCTAssertFalse(reply.held)
+        XCTAssertTrue(reply.text.contains("the sum is four"))
+        XCTAssertTrue(namesNextStep(reply.text), reply.text)
+        let tool = await OutputCheck.gateToolLive("4", expectsJSON: false)
+        XCTAssertFalse(tool.held)
+        XCTAssertTrue(tool.text.contains("4"))
+        XCTAssertTrue(namesNextStep(tool.text), tool.text)
+    }
+
+    func testCheckerLoadFailureShowsTheReplyAndANextStep() async {
+        let engine = CheckerEngine()
+        engine.failLoad = true
+        let files = checkerFiles()
+        let code = await CheckerRun.ask(modelID: "check", text: "hello", engine: engine) { files[$0] }
+        XCTAssertNotEqual(code, "yes")
+        XCTAssertNotEqual(code, "no")
+        XCTAssertEqual(engine.loaded, "chat")
+        RoleSeat.shared.selectChecker(modelID: "check")
+        RoleSeat.shared.setAskLive { _, _ in code }
+        let reply = await OutputCheck.finishLive("the sum is four", kind: .reply)
+        XCTAssertFalse(reply.held)
+        XCTAssertTrue(reply.text.contains("the sum is four"), reply.text)
+        XCTAssertTrue(namesNextStep(reply.text), reply.text)
+        XCTAssertFalse(reply.text.isEmpty)
+    }
+
+    func testCorruptCheckerOrPerceptionFileIsNotLoaded() async throws {
+        let engine = CheckerEngine()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("quenderin-fault-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let bad = directory.appendingPathComponent("bad.gguf")
+        let good = directory.appendingPathComponent("good.gguf")
+        try Data([0x3c, 0x68, 0x74, 0x6d]).write(to: bad)
+        try Data([0x47, 0x47, 0x55, 0x46]).write(to: good)
+        var files = checkerFiles()
+        files["check"] = CheckerFile(model: checkerEntry("check"), url: bad)
+        let corrupt = await CheckerRun.ask(modelID: "check", text: "hello", engine: engine) { files[$0] }
+        XCTAssertFalse(engine.events.contains("load:\(bad.path)"), engine.events.joined(separator: ","))
+        RoleSeat.shared.selectChecker(modelID: "check")
+        RoleSeat.shared.setAskLive { _, _ in corrupt }
+        let reply = await OutputCheck.finishLive("the sum is four", kind: .reply)
+        XCTAssertFalse(reply.held)
+        XCTAssertTrue(reply.text.contains("the sum is four"), reply.text)
+        XCTAssertTrue(namesNextStep(reply.text), reply.text)
+        engine.events = []
+        files["vision"] = CheckerFile(model: checkerEntry("vision"), url: bad)
+        let photo = await PerceptionRun.sample(modelID: "vision", kind: "photo", fixture: "sample", engine: engine) { files[$0] }
+        XCTAssertFalse(engine.events.contains("load:\(bad.path)"), engine.events.joined(separator: ","))
+        XCTAssertTrue(namesNextStep(photo), photo)
+        XCTAssertFalse(photo.isEmpty)
+        engine.events = []
+        files["check"] = CheckerFile(model: checkerEntry("check"), url: good)
+        _ = await CheckerRun.ask(modelID: "check", text: "hello", engine: engine) { files[$0] }
+        XCTAssertTrue(engine.events.contains("load:\(good.path)"), "a readable file must still load")
+    }
+
+    func testUnrestorableChatModelDoesNotHoldTheReply() async {
+        let engine = CheckerEngine()
+        engine.loaded = "gone"
+        let files = checkerFiles()
+        let code = await CheckerRun.ask(modelID: "check", text: "hello", engine: engine) { files[$0] }
+        XCTAssertTrue(engine.events.isEmpty)
+        XCTAssertEqual(engine.loaded, "gone")
+        RoleSeat.shared.selectChecker(modelID: "check")
+        RoleSeat.shared.setAskLive { _, _ in code }
+        let reply = await OutputCheck.finishLive("the sum is four", kind: .reply)
+        XCTAssertFalse(reply.held)
+        XCTAssertTrue(reply.text.contains("the sum is four"), reply.text)
+        XCTAssertTrue(namesNextStep(reply.text), reply.text)
+    }
+
+    func testPerceptionFaultsNameANextStepAndRestoreChat() async {
+        let engine = CheckerEngine()
+        let files = checkerFiles()
+        let missing = await PerceptionRun.sample(modelID: "absent", kind: "speech", fixture: "clip", engine: engine) { files[$0] }
+        XCTAssertTrue(engine.events.isEmpty)
+        XCTAssertTrue(namesNextStep(missing), missing)
+        engine.failLoad = true
+        let stopped = await PerceptionRun.sample(modelID: "vision", kind: "photo", fixture: "sample", engine: engine) { files[$0] }
+        XCTAssertEqual(engine.loaded, "chat")
+        XCTAssertTrue(namesNextStep(stopped), stopped)
+        XCTAssertFalse(stopped.isEmpty)
+        engine.loaded = "gone"
+        engine.events = []
+        engine.failLoad = false
+        let held = await PerceptionRun.sample(modelID: "vision", kind: "speech", fixture: "clip", engine: engine) { files[$0] }
+        XCTAssertTrue(engine.events.isEmpty)
+        XCTAssertTrue(namesNextStep(held), held)
+    }
+
+    func testSilentLocalCommandDoesNotHang() {
+        #if os(macOS)
+        let client = McpClient(transport: StdioMcp(command: ["/bin/sleep", "30"]))
+        let done = DispatchSemaphore(value: 0)
+        var listed: [RemoteTool] = []
+        Thread {
+            listed = client.listTools()
+            done.signal()
+        }.start()
+        XCTAssertEqual(done.wait(timeout: .now() + 6), .success, "Look up tools must not wait on a silent command")
+        XCTAssertTrue(listed.isEmpty)
+        XCTAssertTrue(namesNextStep(OnDeviceCopy.serverSilent), OnDeviceCopy.serverSilent)
+        #else
+        XCTAssertTrue(namesNextStep(OnDeviceCopy.serverSilent), OnDeviceCopy.serverSilent)
+        #endif
+    }
 }
+
+private func checkerFiles() -> [String: CheckerFile] {
+    [
+        "chat": CheckerFile(model: checkerEntry("chat"), url: URL(fileURLWithPath: "/models/chat.gguf")),
+        "check": CheckerFile(model: checkerEntry("check"), url: URL(fileURLWithPath: "/models/check.gguf")),
+        "vision": CheckerFile(model: checkerEntry("vision"), url: URL(fileURLWithPath: "/models/vision.gguf")),
+    ]
+}
+
+private func namesNextStep(_ text: String) -> Bool {
+    let lowered = text.lowercased()
+    return lowered.contains("choose ") || lowered.contains("try again") || lowered.contains("download one")
+        || lowered.contains("download it again") || lowered.contains("leave the checker off")
+        || lowered.contains("turn the checker off") || lowered.contains("add one")
+}
+

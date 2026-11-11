@@ -134,7 +134,7 @@ interface InferenceEngine {
     fun chatCapStatus(): ChatCapStatus = ChatCapStatus.UNKNOWN
 }
 
-class EngineNotLoadedException : IllegalStateException("No model is loaded")
+class EngineNotLoadedException : IllegalStateException("No model is loaded. Choose a model in the Model library.")
 
 /**
  * Canned engine for previews, tests, and bringing up the app before JNI exists.

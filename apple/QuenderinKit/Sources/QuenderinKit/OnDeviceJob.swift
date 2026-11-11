@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#endif
 
 /// One conversation can keep three model jobs: chat, the checker, and photos or speech.
 /// Choosing a job does not download weights and does not load a second model with chat.
@@ -208,6 +211,17 @@ public enum CheckerPrompt {
     }
 }
 
+/// A path that is not on disk is left to the engine seam. Bytes that are present and are not a GGUF header are refused before load.
+enum ModelFileHead {
+    static func ggufIfPresent(_ url: URL) -> Bool? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let head = (try? handle.read(upToCount: 4)) ?? Data()
+        return ModelIntegrity.hasGGUFMagic(head)
+    }
+}
+
 /// Runs the checker on a model file that is already on the device.
 /// A missing file returns "unloaded" and nothing is loaded. A different model is loaded
 /// only from its local file, then the model that was already loaded is loaded again.
@@ -223,6 +237,7 @@ public enum CheckerRun {
 
     public static func ask(modelID: String, text: String, engine: InferenceEngine, files: (String) async -> CheckerFile? = { await installedFile(modelID: $0) }) async -> String {
         guard let target = await files(modelID) else { return "unloaded" }
+        if ModelFileHead.ggufIfPresent(target.url) == false { return "unreadable" }
         let previousID = await engine.loadedModelID()
         let previous: CheckerFile?
         if let previousID {
@@ -230,16 +245,21 @@ public enum CheckerRun {
         } else {
             previous = nil
         }
-        if let previousID, previousID != target.model.id, previous == nil { return "failed" }
+        if let previousID, previousID != target.model.id, previous == nil { return "unrestorable" }
+        if let previous, ModelFileHead.ggufIfPresent(previous.url) == false { return "unrestorable" }
         let switched = previousID != target.model.id
+        var loadedTarget = false
         var verdict = "failed"
         do {
-            if switched { try await engine.load(model: target.model, at: target.url) }
+            if switched {
+                try await engine.load(model: target.model, at: target.url)
+                loadedTarget = true
+            }
             let options = GenerationOptions(maxTokens: 8, gbnfGrammar: CheckerPrompt.grammar)
             let raw = try await engine.complete(prompt: CheckerPrompt.of(text), options: options)
             verdict = CheckerPrompt.verdict(raw)
         } catch {
-            verdict = "failed"
+            verdict = loadedTarget ? "failed" : "load-failed"
         }
         if switched, let previous, await engine.loadedModelID() != previous.model.id {
             try? await engine.load(model: previous.model, at: previous.url)
@@ -275,6 +295,7 @@ public enum PerceptionRun {
 
     public static func sample(modelID: String, kind: String, fixture: String, engine: InferenceEngine, files: (String) async -> CheckerFile? = { await CheckerRun.installedFile(modelID: $0) }) async -> String {
         guard let target = await files(modelID) else { return OnDeviceCopy.perceptionMissing }
+        if ModelFileHead.ggufIfPresent(target.url) == false { return OnDeviceCopy.perceptionUnreadable }
         let previousID = await engine.loadedModelID()
         let previous: CheckerFile?
         if let previousID {
@@ -283,6 +304,7 @@ public enum PerceptionRun {
             previous = nil
         }
         if let previousID, previousID != target.model.id, previous == nil { return OnDeviceCopy.perceptionUnrestorable }
+        if let previous, ModelFileHead.ggufIfPresent(previous.url) == false { return OnDeviceCopy.perceptionUnrestorable }
         let switched = previousID != target.model.id
         var ran = false
         do {
@@ -338,7 +360,7 @@ public enum OutputCheck {
     public static let hidden = "The text has hidden characters, so it was not shown."
     public static let tooLong = "The text is too long to show or use."
     public static let checkerHeld = "The checker kept this on the device. Nothing was shown."
-    public static let checkerFailed = "The checker did not finish. Nothing was shown."
+    public static let checkerFailed = "The checker did not finish. Nothing was shown. Turn the checker off in This chat, or try again."
     public static let limit = 12_000
 
     private static let injections = [
@@ -366,12 +388,7 @@ public enum OutputCheck {
     public static func finish(_ text: String, kind: OutputKind, expectsJSON: Bool = false) -> OutputVerdict {
         let shaped = shape(text, kind: kind, expectsJSON: expectsJSON)
         if shaped.held { return shaped }
-        switch RoleSeat.shared.checkerAnswer(text) {
-        case nil: return shaped
-        case "no": return hold(checkerHeld, asked: true)
-        case "failed": return hold(checkerFailed, asked: true)
-        default: return OutputVerdict(text: shaped.text, held: false, askedChecker: true)
-        }
+        return checked(shaped, answer: RoleSeat.shared.checkerAnswer(text))
     }
 
     public static func gateTool(_ raw: String, expectsJSON: Bool) -> OutputVerdict {
@@ -384,12 +401,7 @@ public enum OutputCheck {
     public static func finishLive(_ text: String, kind: OutputKind, expectsJSON: Bool = false) async -> OutputVerdict {
         let shaped = shape(text, kind: kind, expectsJSON: expectsJSON)
         if shaped.held { return shaped }
-        switch await RoleSeat.shared.checkerAnswerLive(text) {
-        case nil: return shaped
-        case "no": return hold(checkerHeld, asked: true)
-        case "failed": return hold(checkerFailed, asked: true)
-        default: return OutputVerdict(text: shaped.text, held: false, askedChecker: true)
-        }
+        return checked(shaped, answer: await RoleSeat.shared.checkerAnswerLive(text))
     }
 
     public static func gateToolLive(_ raw: String, expectsJSON: Bool) async -> OutputVerdict {
@@ -401,6 +413,25 @@ public enum OutputCheck {
 
     private static func hold(_ sentence: String, asked: Bool = false) -> OutputVerdict {
         OutputVerdict(text: sentence, held: true, askedChecker: asked)
+    }
+
+    /// The checker could not run. Keep the reply and say what to do next.
+    private static func reveal(_ shaped: OutputVerdict, notice: String) -> OutputVerdict {
+        let body = shaped.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return OutputVerdict(text: body.isEmpty ? notice : body + "\n\n" + notice, held: false, askedChecker: false)
+    }
+
+    private static func checked(_ shaped: OutputVerdict, answer: String?) -> OutputVerdict {
+        switch answer {
+        case nil: return shaped
+        case "no": return hold(checkerHeld, asked: true)
+        case "failed": return hold(checkerFailed, asked: true)
+        case "unloaded": return reveal(shaped, notice: OnDeviceCopy.checkerMissing)
+        case "unreadable": return reveal(shaped, notice: OnDeviceCopy.checkerUnreadable)
+        case "load-failed": return reveal(shaped, notice: OnDeviceCopy.checkerLoadFailed)
+        case "unrestorable": return reveal(shaped, notice: OnDeviceCopy.checkerUnrestorable)
+        default: return OutputVerdict(text: shaped.text, held: false, askedChecker: true)
+        }
     }
 
     private static func isToolInvocation(_ text: String) -> Bool {
@@ -418,15 +449,22 @@ public enum OnDeviceCopy {
     public static let notInference = "This is not tested inference."
     public static let noServers = "No local tool servers. Add one on this device if you want."
     public static let localOnly = "Only a tool server on this device is allowed."
-    public static let serverSilent = "The local tool server did not answer."
+    public static let serverSilent = "The local tool server did not answer. Check the address or command, then try again."
     public static let perceptionClosed = "Photos and speech stay closed until you open them. This checkup did not open them."
     public static let perceptionOpen = "The photos and speech screen is open. This checkup did not run a model."
     public static let perceptionSample = "Using the selected model on this device. The sample stayed here. The model was not loaded. This is not tested inference."
     public static let perceptionRuns = "When this model is on the device, Look and Listen load that file for the sample, then restore the previous model. A missing file is not downloaded."
-    public static let perceptionMissing = "That photo or speech model is not on this device. Nothing was downloaded."
+    public static let perceptionMissing = "That photo or speech model is not on this device. Choose one that is already installed. Nothing was downloaded."
+    public static let perceptionUnselected = "No photo or speech model is selected. Choose one in This chat. Nothing was loaded."
+    public static let perceptionUnreadable = "That photo or speech file cannot be read. Choose another model that is already on this device, or download it again. Nothing was downloaded."
     public static let perceptionUsed = "The sample used the model already on this device, then the previous model was restored. This is not tested inference."
-    public static let perceptionFailed = "The photo or speech model did not finish. Nothing was downloaded."
-    public static let perceptionUnrestorable = "The model already in use cannot be restored from this device, so the photo or speech model was not loaded. Nothing was downloaded."
+    public static let perceptionFailed = "The photo or speech model did not finish. Choose another model or try again. Nothing was downloaded."
+    public static let perceptionUnrestorable = "The model already in use cannot be restored from this device, so the photo or speech model was not loaded. Choose another model to continue. Nothing was downloaded."
+    public static let noModelFiles = "No catalog model file is on this device. Download one in the Model library to use a separate checker or photo model. Nothing will be downloaded from here."
+    public static let checkerMissing = "The checker model is not on this device, so this reply was not checked. Choose a checker that is already installed, or leave the checker off. Nothing was downloaded."
+    public static let checkerUnreadable = "The checker file cannot be read, so this reply was not checked. Choose another model or download it again. Nothing was downloaded."
+    public static let checkerLoadFailed = "The checker model did not load, so this reply was not checked. Choose another model or try again. Nothing was downloaded."
+    public static let checkerUnrestorable = "The model already in use cannot be restored, so the checker was not loaded. Choose another model to continue. This reply was not checked. Nothing was downloaded."
     public static let macCommand = "A command is available on Mac. This device uses a local address."
     public static let nameServer = "Name the server in a few words."
     public static let needTarget = "Add a local address or a Mac command."
@@ -508,6 +546,14 @@ public struct DeviceFacts: Sendable {
         self.serverCount = serverCount
         self.toolsOff = toolsOff
     }
+}
+
+/// Catalog files already on disk, plus the open chat model when its own file is on disk.
+/// A selected id with no file is not treated as installed.
+public func onDeviceModelIDs(installedIDs: Set<String>, openChatID: String, openChatFilePresent: Bool) -> Set<String> {
+    var ids = installedIDs
+    if openChatFilePresent { ids.insert(openChatID) }
+    return ids
 }
 
 /// Read-only checkup. It has no engine and it does not start a chat or call a tool.
@@ -693,7 +739,7 @@ public enum PerceptionSeat {
     private static func run(kind: String, fixture: String) -> String {
         let state = RoleSeat.shared.perceptionState()
         if !state.open { return "Photos and speech are not open." }
-        if state.id.isEmpty { return "No photo or speech model is selected. Nothing was loaded." }
+        if state.id.isEmpty { return OnDeviceCopy.perceptionUnselected }
         guard let port = state.port else { return OnDeviceCopy.perceptionSample }
         return port(state.id, kind, fixture)
     }
@@ -701,7 +747,7 @@ public enum PerceptionSeat {
     private static func runLive(kind: String, fixture: String) async -> String {
         let state = RoleSeat.shared.perceptionPorts()
         if !state.open { return "Photos and speech are not open." }
-        if state.id.isEmpty { return "No photo or speech model is selected. Nothing was loaded." }
+        if state.id.isEmpty { return OnDeviceCopy.perceptionUnselected }
         if let asyncPort = state.asyncPort { return await asyncPort(state.id, kind, fixture) }
         if let port = state.port { return port(state.id, kind, fixture) }
         return OnDeviceCopy.perceptionMissing
@@ -1042,7 +1088,8 @@ public final class StdioMcp: McpTransport, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         guard let data = (request + "\n").data(using: .utf8) else { return OnDeviceCopy.serverSilent }
         input.fileHandleForWriting.write(data)
-        let line = output.fileHandleForReading.readLine()
+        let line = output.fileHandleForReading.readLine(timeout: 4)
+        if line == nil { process.terminate() }
         return line ?? OnDeviceCopy.serverSilent
     }
 
@@ -1053,13 +1100,26 @@ public final class StdioMcp: McpTransport, @unchecked Sendable {
 }
 
 private extension FileHandle {
-    func readLine() -> String? {
+    func readLine(timeout: TimeInterval) -> String? {
+        let fd = fileDescriptor
+        let deadline = Date().addingTimeInterval(timeout)
         var bytes: [UInt8] = []
         while true {
-            let data = readData(ofLength: 1)
-            if data.isEmpty { return bytes.isEmpty ? nil : String(bytes: bytes, encoding: .utf8) }
-            if data[0] == 10 { return String(bytes: bytes, encoding: .utf8) }
-            if data[0] != 13 { bytes.append(data[0]) }
+            let remaining = deadline.timeIntervalSinceNow
+            if remaining <= 0 { return nil }
+            var fds = [pollfd(fd: fd, events: Int16(POLLIN), revents: 0)]
+            let waitMs = Int32(min(remaining, 1) * 1000)
+            let rc: Int32 = fds.withUnsafeMutableBufferPointer { buffer in
+                guard let base = buffer.baseAddress else { return -1 }
+                return poll(base, nfds_t(buffer.count), waitMs)
+            }
+            if rc == 0 { continue }
+            if rc < 0 { return bytes.isEmpty ? nil : String(bytes: bytes, encoding: .utf8) }
+            var byte: UInt8 = 0
+            let n = Darwin.read(fd, &byte, 1)
+            if n <= 0 { return bytes.isEmpty ? nil : String(bytes: bytes, encoding: .utf8) }
+            if byte == 10 { return String(bytes: bytes, encoding: .utf8) }
+            if byte != 13 { bytes.append(byte) }
         }
     }
 }
