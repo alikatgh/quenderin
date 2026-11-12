@@ -419,6 +419,14 @@ class ChatModel(
                 }
                 if (!stopped && completionFailure != null) {
                     if (ownsRevision || completionFailure is java.util.concurrent.CancellationException) failureToThrow = completionFailure
+                    val pending = inFlightAssistantId
+                    val index = if (pending == null) -1 else _messages.indexOfFirst { it.id == pending }
+                    if (index >= 0 && _messages[index].role == Role.ASSISTANT && _messages[index].text.isBlank()) {
+                        _messages.removeAt(index)
+                        transcriptRevision++
+                        if (myGen == activeGeneration) inFlightAssistantId = null
+                        return@synchronized "" to _messages.toList()
+                    }
                     return@synchronized "" to null
                 }
                 val acceptedText = if (stopped && !sawEmission) "" else settled

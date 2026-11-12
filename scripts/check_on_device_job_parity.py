@@ -33,7 +33,7 @@ PHRASES = [
     "Selected. This checkup did not load it.",
     "When this model is on the device, it runs before a reply or tool result is shown. A missing file is not downloaded.",
     "When this model is on the device, Look and Listen load that file for the sample, then restore the previous model. A missing file is not downloaded.",
-    "That photo or speech model is not on this device. Nothing was downloaded.",
+    "That photo or speech model is not on this device. Choose one that is already installed. Nothing was downloaded.",
     "The sample used the model already on this device, then the previous model was restored. This is not tested inference.",
     "This checkup did not run a tool.",
     "This chat",

@@ -61,6 +61,9 @@ final class ChatModelTests: XCTestCase {
 
         XCTAssertEqual(chat.messages.count, 2)
         XCTAssertTrue(chat.messages[1].text.contains("⚠️"), "should surface a friendly error")
+        XCTAssertFalse(chat.messages[1].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        XCTAssertTrue(chat.messages[1].text.localizedCaseInsensitiveContains("choose "), chat.messages[1].text)
+        XCTAssertFalse(chat.isGenerating)
     }
 
     func testResetClearsConversation() async {

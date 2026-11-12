@@ -694,10 +694,10 @@ public final class OnboardingModel: ObservableObject {
             }
         case let error as InferenceError:
             switch error {
-            case .modelNotLoaded: return "No model is loaded yet."
-            case .modelFileMissing(let path): return "Model file is missing at \(path)."
-            case .loadFailed(let reason): return "Couldn't load the model: \(reason)"
-            case .generationFailed(let reason): return "Generation failed: \(reason)"
+            case .modelNotLoaded: return "No model is loaded yet. Choose a model in the Model library."
+            case .modelFileMissing(let path): return "Model file is missing at \(path). Download it again from the Model library."
+            case .loadFailed(let reason): return "Couldn't load the model: \(reason). Choose another model or try again."
+            case .generationFailed(let reason): return "Generation failed: \(reason). Try again."
             case .cancelled: return "Cancelled."
             case .timedOut(let seconds): return "Timed out after \(seconds)s."
             }
