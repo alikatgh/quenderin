@@ -1,0 +1,130 @@
+{
+  "updatedAt": "2026-11-05T12:30:38Z",
+  "branch": "codex/mac-cloud-ui-isolation-20261103",
+  "revision": "37598755cdb01fa7c77afbf2a941340a54995577",
+  "baseline": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+  "branchUrl": "https://github.com/alikatgh/quenderin/tree/codex/mac-cloud-ui-isolation-20261103",
+  "files": [
+    {
+      "path": "apple/QuenderinApp/TestPlans/Quenderin-macOS-UI-Cloud.xctestplan",
+      "bytes": 714,
+      "sha256": "28ea8544754b300fe30f975625bd7f231a0798dee1fdfeafe1e0ba7ca58355bb"
+    },
+    {
+      "path": "apple/QuenderinApp/project.yml",
+      "bytes": 10153,
+      "sha256": "246d9a14cfaf7b33299ab862bc2fb1c91c4c1341fb2cfbbb88693d01e1c9f5de"
+    },
+    {
+      "path": "apple/QuenderinApp/Quenderin.xcodeproj/project.pbxproj",
+      "bytes": 38318,
+      "sha256": "8ef7623a0f7f73fb85e066b4973334ae91128585fb378003406c91f1bfb7ecd6"
+    },
+    {
+      "path": "apple/QuenderinApp/Quenderin.xcodeproj/xcshareddata/xcschemes/QuenderinMac.xcscheme",
+      "bytes": 5979,
+      "sha256": "87bf06b159d1cab6853e7ec2331184ed0ce5d722c11527c6268edc551d3d5582"
+    }
+  ],
+  "purpose": "Isolate unchanged Mac UI journey from previously passing hosted tests; session-interference hypothesis not established cause",
+  "originalCombinedPlanUnchanged": true,
+  "appCodeAndUiAssertionsUnchanged": true,
+  "releaseBuildSettingsAndSigningUnchanged": true,
+  "uiPlan": "Quenderin-macOS-UI-Cloud",
+  "uiTarget": "QuenderinMacCloudUITests",
+  "uiTargetCount": 1,
+  "timeoutSeconds": 300,
+  "parallelizable": false,
+  "independentReview": "Fresh Sol6.1xhigh read-only review: no High/Medium/Low findings; JSON/XML/PBX/spec/source comparisons passed",
+  "generatorVersion": "2.45.4",
+  "generationByteReproducible": true,
+  "stagedSecretScan": "passed4files",
+  "localNativeBuildsRun": false,
+  "localTestsRun": false,
+  "remoteBranchPushed": true,
+  "cloudWorkflowConfigured": false,
+  "cloudRunStarted": false,
+  "runtimeUiVerified": false,
+  "quotaLiveObserved": {
+    "date": "2026-11-03",
+    "planHours": 25,
+    "used": "24h39m",
+    "available": "21m",
+    "resetLocal": "2026-11-28T16:02:00+08:00",
+    "method": "Native AppleDeveloper AppStoreConnect teamusage AXstate",
+    "quotaScreenshotValid": false,
+    "paidPlanChanged": false
+  },
+  "requiredNextCloudConfiguration": {
+    "sourceBranch": "codex/mac-cloud-ui-isolation-20261103",
+    "sourceRevision": "37598755cdb01fa7c77afbf2a941340a54995577",
+    "manualStartOnly": true,
+    "testPlan": "Quenderin-macOS-UI-Cloud",
+    "testPlanSelection": "Only this new UI-only plan, not All Test Plans",
+    "scheme": "QuenderinMac",
+    "requirement": "Required to Pass",
+    "destinations": 1,
+    "testWorkerCount": 1,
+    "repeats": 0,
+    "automaticRetries": 0,
+    "clean": true,
+    "environment": "Match archived build34 Xcode27.1/macOS27.2RC when supported",
+    "actions": [
+      "Mac Test only; no Archive repeat"
+    ],
+    "postActions": []
+  },
+  "currentBlocker": "Scoped browser host unavailable; native connection recovered but foreground changed profiles during navigation, so input stopped. Mac UI-check exception and Android human credential handoff pending. Cloud spend gate not verified.",
+  "latestAttempt20261105": {
+    "observedAt": "2026-11-05T12:30:38Z",
+    "appleAccount": "Albert Nikanorov",
+    "browserProfile": "Apple Developer",
+    "observationMethod": "Native Chrome App Store Connect app-grid accessibility state",
+    "iosVersion": "0.6.0",
+    "iosStatus": "Ready for Distribution",
+    "macosVersion": "0.6.0",
+    "macosStatus": "Prepare for Submission",
+    "macosSelectedBuildRefreshed": false,
+    "macosLastVerifiedBuild": 34,
+    "scopedBrowserHostAvailable": false,
+    "nativeAccessRecovered": true,
+    "nativeForegroundStable": false,
+    "initialStaleTargetClickRejected": true,
+    "fullFreshSnapshotTakenBeforeRetry": true,
+    "foregroundChangedProfilesAfterRetry": true,
+    "nativeInputStoppedAndReleased": true,
+    "cloudQuotaRefreshed": false,
+    "cloudWorkflowChangedBySession": false,
+    "cloudRunStartedBySession": false,
+    "macosSubmittedBySession": false,
+    "specificMacUiExceptionRequested": true,
+    "specificMacUiExceptionAnswered": false,
+    "androidHumanCredentialHandoffRequested": true,
+    "androidResetReceiptVerified": false,
+    "sourceWorktreeClean": true,
+    "cloudSpendGate": {
+      "decision": "BLOCK",
+      "additionalVariableAllowanceUSD": 0,
+      "currentSharedCapacityVerified": false,
+      "queuedAndInflightUsageVerified": false,
+      "worstCaseComputeVerified": false,
+      "providerChargePreventionVerified": false,
+      "planOrBillingChanged": false,
+      "paidRiskExceptionInferred": false
+    }
+  },
+  "foregroundInterruption": {
+    "accidentalPdfTabClosed": true,
+    "undoRejectedByAutomaticReview": true,
+    "userInstructedManualCmdShiftT": true,
+    "originalPdfFilesMetadataStillPresent": true,
+    "invalidSessionScreenshotRemoved": true
+  },
+  "sessionScratchRemovedBytes": 1915,
+  "retention": "Retain source branch/worktree and concise evidence until the Cloud isolation run and Mac release are resolved; no compiler/model/download scratch retained",
+  "invalidScreenshotCleanupBytes": 792174,
+  "temporaryQuotaTabMayRemainOpen": true,
+  "foregroundInputReleased": true,
+  "sourceWorktreeClean": true,
+  "sourceWorktreeAllocatedKiB": 76932
+}

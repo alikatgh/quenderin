@@ -1,0 +1,29 @@
+{
+  "status": "synthetic-post-and-identical-duplicate-passed",
+  "endpoint": "https://script.google.com/macros/s/AKfycbwycXiGmhRpehG-SUnOnRCKBoosnaxpBEtpGerldMZyYHFF_X5wWfCs6Z_oYjPjEa7ftw/exec",
+  "scriptId": "1CrK1Ip4IbktYdy7ittndd4LIhprns7o5MaBmfuPtHb6wI_ratUUaDZzg",
+  "version": 1,
+  "oauthScopes": [],
+  "consumerAccount": true,
+  "defaultGcpProject": true,
+  "intakeEnabled": true,
+  "maxReports": 32,
+  "recordByteLimit": 8192,
+  "postRequests": 2,
+  "newStoredReports": 1,
+  "contentClass": "explicit synthetic fixture without personal data",
+  "reportId": "957f86bd-d367-4f57-92c6-6e2eb2e1c2bf",
+  "receiptId": "d08edfeb-e67b-4bdb-bf20-e401466b4521",
+  "receivedAt": "2026-10-28T03:07:41.761Z",
+  "redirectCounts": [
+    1,
+    1
+  ],
+  "sourceSha256": "5d31cf6273456723274a91eb93872342417c05e7ca2ec562d03f3eb93b48b90c",
+  "manifestSha256": "6e920b194119044b5bf697798ae67073bc9626ce6728dfd4a3e8aae5bf2dadc5",
+  "ownerUiReadback": {
+    "matchedStoredSyntheticRecord": true,
+    "scriptPropertyCount": 2,
+    "syntheticContentMatched": true
+  }
+}

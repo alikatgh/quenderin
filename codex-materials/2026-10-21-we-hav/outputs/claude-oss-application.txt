@@ -1,0 +1,54 @@
+CLAUDE FOR OPEN SOURCE — APPLICATION
+Date: 21 October 2026
+Status: Submitted and receipt confirmed on 21 October 2026. Selection is pending.
+Applicant: Albert Nikanorov
+Email: wallmarkets@gmail.com
+GitHub identity verified: alikatgh
+Repository: https://github.com/alikatgh/quenderin
+Requested track: Discretionary Ecosystem Impact Track
+
+REACH AND IMPACT (167 words)
+I am the creator and primary maintainer of Quenderin, an MIT-licensed app for running open language models on users' own devices. It is available on iPhone and Mac, with Android source and downloadable Windows/Linux previews. It combines model selection, integrity-checked installation and cross-platform parity checks in a public codebase that other developers can inspect and adapt.
+
+I am requesting discretionary Ecosystem Impact Track consideration. Adoption is early: App Store Connect reports 69 first-time downloads for July 22-October 19, 2026, including 37 for September 20-October 19. These are app acquisitions, not active-user counts or package-registry downloads. I am not claiming large downstream dependency counts.
+
+I maintain native model and engine integrations, verified multipart downloads, memory admission checks, privacy disclosures, tests and release provenance. Recent public work includes:
+https://github.com/alikatgh/quenderin/pull/163
+https://github.com/alikatgh/quenderin/pull/164
+https://github.com/alikatgh/quenderin/pull/167
+
+The gap it addresses is practical access to open models on personal hardware, including the installation, compatibility and correctness work needed across different platforms. I would welcome consideration based on this useful, auditable implementation and its ongoing maintenance.
+
+SUBSCRIPTION USE
+I would use Claude Code and Claude Max for maintaining the public repository: reviewing model-loader and parser changes, reasoning through memory and cancellation boundaries, creating regression tests for partial or corrupt model downloads, checking Swift/Kotlin/TypeScript behavior against shared test vectors, triaging reproducible issues and reviewing dependency updates.
+
+I would also improve contributor setup and architecture documentation so others can build and understand the project. I would reproduce findings, inspect proposed diffs, run targeted tests and check affected user journeys before merging or releasing. My priority is sustained correctness and cross-platform support as new open-model architectures arrive. I would keep work within the subscription's included usage.
+
+OTHER INFO
+I also authored six published Flask utilities: flask-supercache, flask-i18n-pro, flask-querymonitor, flask-ratelimit-simple, flask-security-headers and flask-imagekit. PyPIStats records 400 combined downloads excluding mirrors for Sep 21-Oct 20, 2026; these are not unique-user counts. Their PyPI pages link to public wallmarkets repositories. Related Go work: https://github.com/alikatgh/safeheaders-go
+
+CRITERIA AND CONSENT
+The standard numerical eligibility thresholds have not been established by the
+verified evidence. The request explicitly uses the discretionary route. GitHub
+verification confirms the account and selected repository, not program approval.
+The external merged-PR search returned 0 qualifying public PRs in the previous
+12 months; self-owned PRs must not be counted toward the external criterion.
+
+Application: https://claude.com/contact-sales/claude-for-oss
+Terms: https://www.anthropic.com/claude-for-oss-terms
+Submitting accepts these terms. Program benefits last six months. The terms say
+an existing paid plan resumes afterward unless cancelled, and usage overages
+can be billed. This application does not activate a subscription or authorize
+new paid usage. The user explicitly approved submission and acceptance of these terms on 21 October 2026.
+
+Evidence reused: codex-oss-evidence.json and quenderin-download-evidence.png.
+OpenAI application status remains submitted and receipt-confirmed.
+
+
+SUBMISSION CONFIRMED
+On 21 October 2026, the live form was replaced by this receipt:
+Thank you for applying to the Claude for Open Source program. If approved, you'll get a link to activate Claude Max on your account for the subscription period.
+
+Screenshot: claude-oss-submission-confirmation.png
+The earlier form delay resolved. No additional submission was made during
+confirmation. Selection remains pending; no subscription was activated.

@@ -1,0 +1,114 @@
+{
+  "applicationId": "ai.quenderin.app",
+  "asset": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab",
+  "bundleManifest": {
+    "applicationId": "ai.quenderin.app",
+    "versionCode": 6,
+    "versionName": "0.6.0"
+  },
+  "digest": "sha256:c9718cd9a64c6c45f9be4de731f95ba8e1dc9ba861e3b472435b5cfaf0a2ffe5",
+  "draft": true,
+  "playUploadReady": false,
+  "releaseId": 427362598,
+  "releaseTag": "android-beta-0.6.0-candidate-a1d9c9e",
+  "repository": "alikatgh/quenderin",
+  "runtimeProvenance": {
+    "image": {
+      "alignment": 16384,
+      "revision": "f0aac524d3f29140e60ba78f3cfb16d6acea87db",
+      "verified": [
+        "libquenderin_diffusion.so",
+        "libquenderin_diffusion_jni.so"
+      ]
+    },
+    "prism": {
+      "beamABI": 1,
+      "beamPatchId": "beam-text-v1",
+      "beamPatchSha256": "e98d4d58833d466c43afa888b856f1ec8ef064ce4b8b3a7e215c5e3d287ac033",
+      "graniteConverterPatchId": "granite41-official-converter-v1",
+      "graniteConverterPatchSha256": "301fbf51eb833e8481b4f516b28a23cd374f25db88c3e6e8af8277ecad826248",
+      "museSparkABI": 1,
+      "repository": "https://github.com/PrismML-Eng/llama.cpp.git",
+      "revision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+      "sourcePatchId": "muse-spark-open-v1",
+      "sourcePatchSha256": "9e9a58a113332a9062c222633fa411f9b000a790a1ba1cb5c1ec989615ea0cf9",
+      "version": 1,
+      "visionABI": 1,
+      "visionPatchId": "vision-minicpm47-supervl-v1",
+      "visionPatchSha256": "417a4d19ed4e05625cd4bc3ec269bf1a4331e8dd9263956b95e86b6158f938a9",
+      "weeklyTextABI": 1,
+      "weeklyTextPatchId": "weekly-text-k2-nemotron-v1",
+      "weeklyTextPatchSha256": "962eb2afaa72f211bc9f6dd24c1e9946c0e61ca9c2b662268f99c97982c8348d"
+    },
+    "remoteCrypto": {
+      "packages": {
+        "aab": {
+          "digest": "sha256:c9718cd9a64c6c45f9be4de731f95ba8e1dc9ba861e3b472435b5cfaf0a2ffe5",
+          "elfAlignment": 16384,
+          "size": 36394728,
+          "verified": [
+            "libquenderin_remote_crypto.so",
+            "libjnidispatch.so"
+          ]
+        },
+        "debugApk": {
+          "digest": "sha256:d80dc25ad2e768450bb70dc3f05c21d16ce42593d1c4d8e62b70530e601d00bd",
+          "elfAlignment": 16384,
+          "size": 54957388,
+          "verified": [
+            "libquenderin_remote_crypto.so",
+            "libjnidispatch.so"
+          ]
+        }
+      },
+      "sdkReceipt": {
+        "abis": [
+          "arm64-v8a"
+        ],
+        "files": {
+          "LICENSES.md": "8f98afdc57dd0351d24ecd46d41a729915d10b37839d46629c75c0572f16b5fb",
+          "jna/jna-5.19.1.aar": "b57125cb7d16253f0d65a80f7d3a4c3664effa711b8bdbb7f87fb572ce1624ed",
+          "jniLibs/arm64-v8a/libquenderin_remote_crypto.so": "d741eea45a89fb05ce11564669f679720f5001734a84c8d74837e7b708895b23",
+          "kotlin/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt": "f27595175bca0464fb97b077fec02085db307764d6aca324f7a4c6191a3cbe44"
+        },
+        "jnaSHA1": "af25a9b1e286a62e2786388671c703b9a1f75a65",
+        "jnaSHA256": "b57125cb7d16253f0d65a80f7d3a4c3664effa711b8bdbb7f87fb572ce1624ed",
+        "minimumAPI": 28,
+        "ndk": "26.3.11579264",
+        "platform": "android",
+        "rust": "1.90.0",
+        "schemaVersion": 1,
+        "sourceRevision": "a1d9c9eff3c1a244f55f23f697af63e7ef98308d",
+        "sources": {
+          "Cargo.lock": "71e2581d368849cfc64242216cdc3cb5196ce9d5ba0e92c5430f2981641c6147",
+          "Cargo.toml": "7e52f5676ece57d34fc5760682a026301bd78b4cbd70d713c81f095a6b57254f",
+          "LICENSES.md": "8f98afdc57dd0351d24ecd46d41a729915d10b37839d46629c75c0572f16b5fb",
+          "rust-toolchain.toml": "c33d1f0b1b8fda448bea32d7dc867aa64947c87169fd9de7122ffccad1dd80f9",
+          "src/bin/bindgen.rs": "f7a2dd11fb370e9595bdfa6c32fc41a9b67a60bbab06ec711cb7a03eb873ffa6",
+          "src/lib.rs": "8cfd3deeef5806428d7ba8984418221211eddd8ffa19c1adc53b813fc6292674",
+          "src/resolver.rs": "af6095e4a881435b9070e1ed3cced90c1ae0999bb8149ff898805d15a2ebbd3d",
+          "src/tests.rs": "f82314a02a744da66f1703c86187c15aae8a5c78fc79b99142bdede79958a263",
+          "tools/native_sdk.py": "80c8928d52857b5db2b038b5649e915fac57ba74d40811a42d143bfafb565d3f",
+          "tools/verify_build_gate.py": "300c6b86672a1bd518d2a5c8bb0ffd3ff7e3c7f459aa43ee63d44a807ac113ae",
+          "uniffi.toml": "5f0341a155e47c891568b9658b4c55e68a81f1128aeb8d18b671bf905ac62b41"
+        },
+        "targets": [
+          "aarch64-linux-android"
+        ]
+      },
+      "sdkReceiptDigest": "sha256:a05b58aabef26768772d9f3906f2dd4309043eae24c6c00d5c42910c86c78431"
+    }
+  },
+  "schemaVersion": 1,
+  "signed": false,
+  "size": 36394728,
+  "sourceCommit": "a1d9c9eff3c1a244f55f23f697af63e7ef98308d",
+  "verificationTools": {
+    "bundletool": {
+      "digest": "sha256:a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
+      "version": "1.18.3"
+    }
+  },
+  "versionCode": 6,
+  "versionName": "0.6.0"
+}

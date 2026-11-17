@@ -1,0 +1,75 @@
+{
+  "command": [
+    "node",
+    "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/node_modules/wrangler/bin/wrangler.js",
+    "versions",
+    "upload",
+    "--config",
+    "wrangler.json",
+    "--dry-run",
+    "--outdir",
+    "dryrun",
+    "--outfile",
+    "dryrun.multipart",
+    "--no-experimental-provision",
+    "--no-experimental-auto-create"
+  ],
+  "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/privacy-publish-stage",
+  "exitCode": 0,
+  "stderrBytes": 0,
+  "dryRunExitSeen": true,
+  "files": [
+    {
+      "path": "dryrun/README.md",
+      "bytes": 110,
+      "sha256": "7fb476b190229261f399e65bd33f71d946bf8e6f121ca6ae820b79a4080cd4f9"
+    },
+    {
+      "path": "dryrun/site.js",
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    }
+  ],
+  "multipartParts": [
+    {
+      "name": "metadata",
+      "contentType": "text/plain",
+      "bytes": 213,
+      "sha256": "f24177bd4a0ad909183859384f3288c22d0d1d50bd60f09d3bc412e0b7d9e988"
+    },
+    {
+      "name": "site.js",
+      "contentType": "application/javascript+module",
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    }
+  ],
+  "dryrunMetadata": {
+    "main_module": "site.js",
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      }
+    ],
+    "compatibility_date": "2026-07-04",
+    "compatibility_flags": [],
+    "keep_bindings": [
+      "plain_text",
+      "json",
+      "secret_text",
+      "secret_key"
+    ],
+    "annotations": {}
+  },
+  "notes": [
+    "Wrangler skips the asset upload session in dry-run; resulting dryrun metadata does not attach a new asset JWT or full live assets config."
+  ],
+  "stdoutSummary": [
+    "Total Upload: 7.80 KiB / gzip: 2.90 KiB",
+    "Your Worker has access to the following bindings:",
+    "env.ASSETS         Assets        ",
+    "--dry-run: exiting now."
+  ],
+  "emittedWorkerExact": true
+}

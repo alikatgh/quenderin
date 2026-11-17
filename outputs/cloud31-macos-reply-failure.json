@@ -1,0 +1,19 @@
+{
+  "cloud_build": 31,
+  "platform": "macOS 27.0.1 (26A434), Cloud virtual machine",
+  "test": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()",
+  "failure": "CloudJourneyTests.swift:54: The synthetic reply must identify its canned provenance",
+  "frame_seconds": 89.8,
+  "recording_duration_seconds": 90.9,
+  "png_sha256": "ce4a40c064dc34fed9162f1fa7d5a40b23ebe8bb25860d9af81040990325807d",
+  "png_bytes": 1734618,
+  "visual_observation": "40.8 and complete canned provenance footer are visibly rendered; composer is empty; Send is disabled.",
+  "query": "Query chain:\n \u2192Find: Target Application 'ai.quenderin.Quenderin'\n  \u21aa\ufe0eFind: Descendants matching type StaticText\n    \u21aa\ufe0eFind: Elements matching predicate 'label CONTAINS \"reply is canned\"'\n      \u21aa\ufe0eFind: First Match\n",
+  "failure_ax_excerpt": "          ScrollView, 0x763df25b80, {{479.0, 82.0}, {641.0, 562.0}}, Disabled <AX element pid: 3079, token: BwwAAAAAAABvY29jAgEAAAAAAAA=>\n            StaticText, 0x763df25900, {{773.0, 94.0}, {53.5, 21.0}}, value: Today <AX element pid: 3079, token: BwwAAAAAAABvY29jIQEAAAAAAAA=>\n            Other, 0x763df243c0, {{941.5, 121.0}, {166.5, 37.0}}, label: 'What is 17% of 240?' <AX element pid: 3079, token: BwwAAAAAAABvY29jIgEAAAAAAAA=>\n            Other, 0x763df26bc0, {{491.0, 164.0}, {406.0, 100.0}} <AX element pid: 3079, token: BwwAAAAAAABvY29jIwEAAAAAAAA=>\n          StaticText, 0x763df24c80, {{602.8, 645.0}, {393.5, 13.0}}, value: Responses are AI-g... <AX element pid: 3079, token: BwwAAAAAAABvY29jAwEAAAAAAAA=>\n          Button, 0x763df24500, {{489.0, 673.0}, {34.0, 34.0}}, identifier: 'paperclip', label: 'Attach a file' <AX element pid: 3079, token: BwwAAAAAAABvY29jBAEAAAAAAAA=>\n          TextField, 0x763df24140, {{546.0, 681.0}, {497.0, 18.0}}, placeholderValue: 'Message', Keyboard Focused <AX element pid: 3079, token: BwwAAAAAAABvY29jBQEAAAAAAAA=>\n          Button, 0x763d1a2f80, {{1066.0, 668.0}, {44.0, 44.0}}, identifier: 'arrow.up', label: 'Send message', Disabled <AX element pid: 3079, token: BwwAAAAAAABvY29jBgEAAAAAAAA=>",
+  "finding": "The rendered assistant bubble is an Other element without label, value, or child text. This is not solely a StaticText label versus value mismatch.",
+  "limits": "Offline XCResult inspection only; no source changes, local app build, simulator, device, provider call or Cloud run.",
+  "raw_asset_cleanup": "Completed after parent visual and hash verification; selected PNG and AX metadata retained.",
+  "source_archive_sha256": "ff35126c573daf76bd5ed07991d91e349c58828cb8d8baa120b31f86e100ab39",
+  "source_archive_bytes": 68433831,
+  "source_commit": "488658071ecafbd982a815ca993b6a722d9c23a3"
+}

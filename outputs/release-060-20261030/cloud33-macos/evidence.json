@@ -1,0 +1,104 @@
+{
+  "session": "01a18b70-3917-70a3-ae30-648d3c3345fa",
+  "revision": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+  "build": 33,
+  "buildId": "9fc6c34a-d877-4359-889d-e7b49309d6ac",
+  "actionId": "7368d23c-cadf-44c9-830d-7e5ba1baebcd",
+  "resultSummary": {
+    "devicesAndConfigurations": [
+      {
+        "device": {
+          "architecture": "arm64e",
+          "deviceId": "0000FE00-81FC2E8815B88023",
+          "deviceName": "My Mac",
+          "modelName": "Virtual Machine",
+          "osBuildNumber": "26A434",
+          "osVersion": "27.0.1",
+          "platform": "macOS"
+        },
+        "expectedFailures": 0,
+        "failedTests": 1,
+        "passedTests": 5,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Offline UI and app-hosted Keychain"
+        }
+      }
+    ],
+    "environmentDescription": "Quenderin-macOS-Cloud \u00b7 Built with macOS 27.0.1",
+    "expectedFailures": 0,
+    "failedTests": 1,
+    "finishTime": 1793518346.878,
+    "passedTests": 5,
+    "result": "Failed",
+    "skippedTests": 0,
+    "startTime": 1793518277.367,
+    "statistics": [],
+    "testFailures": [
+      {
+        "failureText": "Failed to activate application 'ai.quenderin.Quenderin at /Volumes/workspace/TestProducts.xctestproducts/Binaries/0/Debug/Quenderin.app' (current state: Running Background)",
+        "targetName": "QuenderinMacCloudUITests",
+        "testIdentifier": 6,
+        "testIdentifierString": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()",
+        "testIdentifierURL": "test://com.apple.xcode/Quenderin/QuenderinMacCloudUITests/CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery",
+        "testName": "testFreshOfflineEntryConnectionsChatAndRecovery()"
+      }
+    ],
+    "title": "Test - QuenderinMac",
+    "topInsights": [],
+    "totalTestCount": 6
+  },
+  "recordingMetadata": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 2560,
+        "height": 1600
+      }
+    ],
+    "format": {
+      "duration": "62.650000",
+      "size": "217839189"
+    }
+  },
+  "archive": {
+    "downloadBytes": 217950248,
+    "downloadSha256": "99c92168c543bd881a9403bf41b2d371139203d5139fed94ae087f576e6de97c",
+    "uncompressedBytes": 217878182,
+    "entries": 53,
+    "bundle": "/private/tmp/codex-session-storage/b6a478cfaf756e3ef959ec66/ab3605afe2274113a55180e72e221d6c/result/Quenderin Build 33 XCResult for Quenderin-macOS-Cloud test-without-building on macOS Golden Gate 27.0.1 (26A434).xcresult"
+  },
+  "visualDiagnosis": {
+    "framesAtSeconds": [
+      1,
+      60
+    ],
+    "bothFrames": "Managed macOS virtual machine remains at local user's password lock screen",
+    "failure": "App cannot be activated from Running Background at app.launch()",
+    "appStartupDefectEstablished": false,
+    "journeyAssertionsReached": false
+  },
+  "officialReferences": [
+    "https://developer.apple.com/forums/thread/840965",
+    "https://developer.apple.com/documentation/xcode/reporting-feedback-for-xcode-cloud"
+  ],
+  "retention": {
+    "purpose": "Selected evidence of blocked Cloud33 managed Mac GUI session",
+    "cleanupCondition": "Review after 0.6.0 release or Apple host issue is resolved or explicitly abandoned"
+  },
+  "frames": [
+    {
+      "name": "mac-launch-first.png",
+      "bytes": 3460212,
+      "sha256": "9a6bc7b37b2fd7dea8021ca3dac293f20361f8df30e3f1c1d4fe69d22db62a8d"
+    },
+    {
+      "name": "mac-launch-failure.png",
+      "bytes": 3521045,
+      "sha256": "15071626b88049a6acce0025d46bfef4701e4a2a6def09770b37151275fa68a5"
+    }
+  ]
+}

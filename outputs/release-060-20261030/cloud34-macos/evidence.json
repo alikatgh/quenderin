@@ -1,0 +1,64 @@
+{
+  "build": 34,
+  "buildId": "226b233c-c28d-492e-b6ef-83b124b1a3d2",
+  "revision": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+  "xcode": "27.1 (27A9275)",
+  "host": "macOS27.2RC(26B118)",
+  "resultSummary": {
+    "devicesAndConfigurations": [
+      {
+        "device": {
+          "architecture": "arm64e",
+          "deviceId": "0000FE00-BE706FB324502BBD",
+          "deviceName": "My Mac",
+          "modelName": "Virtual Machine",
+          "osBuildNumber": "26B118",
+          "osVersion": "27.2",
+          "platform": "macOS"
+        },
+        "expectedFailures": 0,
+        "failedTests": 1,
+        "passedTests": 5,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Offline UI and app-hosted Keychain"
+        }
+      }
+    ],
+    "environmentDescription": "Quenderin-macOS-Cloud \u00b7 Built with macOS 27.2",
+    "expectedFailures": 0,
+    "failedTests": 1,
+    "finishTime": 1793603560.001,
+    "passedTests": 5,
+    "result": "Failed",
+    "skippedTests": 0,
+    "startTime": 1793603490.517,
+    "statistics": [],
+    "testFailures": [
+      {
+        "failureText": "Failed to activate application 'ai.quenderin.Quenderin at /Volumes/workspace/TestProducts.xctestproducts/Binaries/0/Debug/Quenderin.app' (current state: Running Background)",
+        "targetName": "QuenderinMacCloudUITests",
+        "testIdentifier": 6,
+        "testIdentifierString": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()",
+        "testIdentifierURL": "test://com.apple.xcode/Quenderin/QuenderinMacCloudUITests/CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery",
+        "testName": "testFreshOfflineEntryConnectionsChatAndRecovery()"
+      }
+    ],
+    "title": "Test - QuenderinMac",
+    "topInsights": [],
+    "totalTestCount": 6
+  },
+  "primaryVisualReview": "Exact test recording at 1s and60s shows managed local-user password lock screen; app launch blocked before journey assertions",
+  "video": {
+    "durationSeconds": 62.633333,
+    "width": 2560,
+    "height": 1600
+  },
+  "download": {
+    "bytes": 218653442,
+    "sha256": "03826e6d9a69916ad954183036213d72013a566d786f0da28c9d7923b2a40215"
+  },
+  "sourceFixApplied": false,
+  "newImageResolvedHostLock": false
+}

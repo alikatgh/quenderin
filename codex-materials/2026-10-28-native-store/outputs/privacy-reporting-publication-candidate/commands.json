@@ -1,0 +1,100 @@
+{
+  "readOnlyDeployments": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+      "deployments",
+      "list",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--json"
+    ]
+  },
+  "uploadAfterParentContentReviewFollowup": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "upload",
+      "--config",
+      "wrangler.json",
+      "--no-experimental-provision",
+      "--no-experimental-auto-create",
+      "--message",
+      "Privacy policy Android reporting disclosure only; exact deployed Worker retained"
+    ]
+  },
+  "inspectUploadedVersion": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "view",
+      "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--json"
+    ]
+  },
+  "activateOnlyAfterParentReadbackAndRenderedChecks": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "deploy",
+      "29ec91c0-214d-43c1-a974-84fd171dfb1d@100%",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--yes",
+      "--message",
+      "Publish verified Android reporting privacy disclosure asset"
+    ]
+  },
+  "rollback": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "deploy",
+      "1c0320c7-15a4-42e0-9560-819dcc1edb42@100%",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--yes",
+      "--message",
+      "Restore privacy policy before Android reporting disclosure"
+    ]
+  }
+}

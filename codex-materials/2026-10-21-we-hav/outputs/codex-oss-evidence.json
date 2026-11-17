@@ -1,0 +1,227 @@
+{
+  "checkedDate": "2026-10-21",
+  "recommendedRepository": "https://github.com/alikatgh/quenderin",
+  "program": "https://openai.com/form/codex-for-oss/",
+  "applicationStatus": "submitted_confirmed",
+  "repositories": [
+    {
+      "repository": "alikatgh/quenderin",
+      "public": true,
+      "license": "MIT",
+      "stars": 0,
+      "forks": 0,
+      "pushedAt": "2026-10-20T12:26:07Z",
+      "repositoryTraffic": {
+        "views": {
+          "count": 17,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 10
+        },
+        "clones": {
+          "count": 1158,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 153
+        }
+      },
+      "source": "https://github.com/alikatgh/quenderin/graphs/traffic"
+    },
+    {
+      "repository": "alikatgh/safeheaders-go",
+      "public": true,
+      "license": "MIT",
+      "stars": 5,
+      "forks": 1,
+      "pushedAt": "2026-07-08T05:51:28Z",
+      "repositoryTraffic": {
+        "views": {
+          "count": 28,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 9
+        },
+        "clones": {
+          "count": 149,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 24
+        }
+      },
+      "source": "https://github.com/alikatgh/safeheaders-go/graphs/traffic"
+    },
+    {
+      "repository": "alikatgh/benchmarkwatcher",
+      "public": true,
+      "license": "MIT",
+      "stars": 4,
+      "forks": 1,
+      "pushedAt": "2026-10-19T06:32:59Z",
+      "repositoryTraffic": {
+        "views": {
+          "count": 8,
+          "days": 14,
+          "first": "2026-10-07T00:00:00Z",
+          "last": "2026-10-20T00:00:00Z",
+          "uniques": 4
+        },
+        "clones": {
+          "count": 477,
+          "days": 14,
+          "first": "2026-10-07T00:00:00Z",
+          "last": "2026-10-20T00:00:00Z",
+          "uniques": 146
+        }
+      },
+      "source": "https://github.com/alikatgh/benchmarkwatcher/graphs/traffic"
+    },
+    {
+      "repository": "alikatgh/le-cli",
+      "public": true,
+      "license": "MIT",
+      "stars": 1,
+      "forks": 0,
+      "pushedAt": "2026-09-09T08:23:52Z",
+      "repositoryTraffic": {
+        "views": {
+          "count": 0,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 0
+        },
+        "clones": {
+          "count": 94,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 11
+        }
+      },
+      "source": "https://github.com/alikatgh/le-cli/graphs/traffic"
+    },
+    {
+      "repository": "alikatgh/euclid",
+      "public": true,
+      "license": "MIT",
+      "stars": 0,
+      "forks": 0,
+      "pushedAt": "2026-10-10T14:02:34Z",
+      "repositoryTraffic": {
+        "views": {
+          "count": 8,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 2
+        },
+        "clones": {
+          "count": 94,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 52
+        }
+      },
+      "source": "https://github.com/alikatgh/euclid/graphs/traffic"
+    },
+    {
+      "repository": "alikatgh/famemu",
+      "public": true,
+      "license": "MIT",
+      "stars": 0,
+      "forks": 0,
+      "pushedAt": "2026-09-24T07:56:26Z",
+      "repositoryTraffic": {
+        "views": {
+          "count": 30,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 6
+        },
+        "clones": {
+          "count": 7,
+          "days": 14,
+          "first": "2026-10-06T00:00:00Z",
+          "last": "2026-10-19T00:00:00Z",
+          "uniques": 7
+        }
+      },
+      "source": "https://github.com/alikatgh/famemu/graphs/traffic"
+    }
+  ],
+  "quenderinAppStore": {
+    "source": "https://appstoreconnect.apple.com/apps/6789854363/analytics/metrics?dateSpec=d90&frequency=day&measureKey=units",
+    "publicListing": "https://apps.apple.com/us/app/quenderin-offline-ai-chat/id6789854363",
+    "metric": "First-Time Downloads",
+    "fullPeriod": {
+      "from": "2026-07-22",
+      "to": "2026-10-19",
+      "timezone": "UTC",
+      "count": 69
+    },
+    "recentPeriod": {
+      "from": "2026-09-20",
+      "to": "2026-10-19",
+      "timezone": "UTC",
+      "count": 37,
+      "calculation": "Sum the daily First-Time Downloads rows for the inclusive period in the 90-day table."
+    },
+    "limitations": "Acquisition/downloads, not active-user counts. Private account analytics, not independently public verification."
+  },
+  "quenderinRecentMaintenance": [
+    "https://github.com/alikatgh/quenderin/pull/163",
+    "https://github.com/alikatgh/quenderin/pull/164",
+    "https://github.com/alikatgh/quenderin/pull/165",
+    "https://github.com/alikatgh/quenderin/pull/166",
+    "https://github.com/alikatgh/quenderin/pull/167"
+  ],
+  "releaseDownloads": {
+    "quenderin": {
+      "publishedReleases": 2,
+      "cumulativeBinaryAssetRequests": 23
+    },
+    "leCli": {
+      "publishedReleases": 26,
+      "cumulativeBinaryAssetRequests": 61
+    },
+    "limitations": "Raw cumulative published binary-asset request counters, excluding drafts and checksum files. Not unique users or monthly downloads; may include CI and maintainer downloads."
+  },
+  "trafficLimitations": "GitHub visitors/cloners are analytics measures, not verified independent users. Maintainer activity, CI and automation may contribute. Quenderin had 101 Actions runs between Oct 6 and Oct 20, 2026; do not attribute clone totals to adoption.",
+  "externalCitation": {
+    "project": "safeheaders-go",
+    "url": "https://github.com/yourfriendaaron/meat-mode/blob/f1d40a7b9b9d78a271a09d997f03a3616f5b7c1b/docs/research/0006-rich-todos/export.md#L50",
+    "interpretation": "An external project's research notes cite the course's decompression-limit lesson. This is an educational citation, not a verified code dependency."
+  },
+  "fields": {
+    "qualification": {
+      "text": "Quenderin is an MIT-licensed app for running open language models on-device, available on iPhone and Mac with Windows/Linux previews. App Store Connect records 69 first-time downloads for Jul 22-Oct 19, 2026, including 37 for Sep 20-Oct 19. I maintain model integrations, download integrity, cross-platform behavior and releases. Codex would support ongoing review and security work in a privacy-focused open-model client.",
+      "characters": 422
+    },
+    "credits": {
+      "text": "I would use credits to review pull requests and dependency updates, triage reproducible issues, generate regression tests for model installation and parsers, and check release artifacts and cross-platform parity. Work would be limited to this public repository, with bounded jobs and human review before changes merge. Credits would support OSS maintenance.",
+      "characters": 357
+    },
+    "extra": {
+      "text": "I am the primary maintainer. Recent merged work covers native model integrations, integrity-checked multi-part downloads, memory admission checks, privacy disclosures and Android release provenance. Code, changes and release notes are public: github.com/alikatgh/quenderin. Adoption is early; download counts are acquisition evidence, not active-user counts. I would welcome Codex Security review of model files, local services and experimental agent boundaries.",
+      "characters": 462
+    },
+    "security": {
+      "text": "Quenderin loads downloaded and user-imported model files and includes local services and an experimental computer-use agent. I would use Codex Security to examine untrusted-input parsing, download integrity, localhost access controls, filesystem and command boundaries, and permission checks across Swift, Kotlin and TypeScript. I would reproduce findings, add regression tests and review fixes before release.",
+      "characters": 410
+    }
+  },
+  "submission": {
+    "date": "2026-10-21",
+    "timezone": "Asia/Ulaanbaatar",
+    "repository": "https://github.com/alikatgh/quenderin",
+    "confirmation": "Thanks for your submission! We\u2019ll be reviewing entries and will reach out if you\u2019re selected. We appreciate your interest.",
+    "proof": "codex-oss-submission-confirmation.png",
+    "selectionStatus": "not_yet_selected_or_approved"
+  }
+}

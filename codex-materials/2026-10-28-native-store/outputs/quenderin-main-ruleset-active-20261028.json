@@ -1,0 +1,151 @@
+{
+  "ruleset": {
+    "id": 26011468,
+    "name": "main: pull requests and verified checks",
+    "target": "branch",
+    "source_type": "Repository",
+    "source": "alikatgh/quenderin",
+    "enforcement": "active",
+    "conditions": {
+      "ref_name": {
+        "exclude": [],
+        "include": [
+          "refs/heads/main"
+        ]
+      }
+    },
+    "rules": [
+      {
+        "type": "deletion"
+      },
+      {
+        "type": "non_fast_forward"
+      },
+      {
+        "type": "pull_request",
+        "parameters": {
+          "required_approving_review_count": 0,
+          "dismiss_stale_reviews_on_push": false,
+          "required_reviewers": [],
+          "require_code_owner_review": false,
+          "require_last_push_approval": false,
+          "required_review_thread_resolution": true,
+          "require_extra_approval_for_unattributed_changes": true,
+          "allowed_merge_methods": [
+            "merge",
+            "squash",
+            "rebase"
+          ]
+        }
+      },
+      {
+        "type": "required_status_checks",
+        "parameters": {
+          "strict_required_status_checks_policy": true,
+          "do_not_enforce_on_create": false,
+          "required_status_checks": [
+            {
+              "context": "secret-scan",
+              "integration_id": 15368
+            },
+            {
+              "context": "Model catalog parity",
+              "integration_id": 15368
+            },
+            {
+              "context": "Test (20.x)",
+              "integration_id": 15368
+            },
+            {
+              "context": "Test (22.x)",
+              "integration_id": 15368
+            },
+            {
+              "context": "Dependency review",
+              "integration_id": 15368
+            }
+          ]
+        }
+      }
+    ],
+    "node_id": "RRS_lACqUmVwb3NpdG9yec49HwV0zgGM50w",
+    "created_at": "2026-10-28T12:48:51.405+08:00",
+    "updated_at": "2026-10-28T12:48:51.559+08:00",
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "_links": {
+      "self": {
+        "href": "https://api.github.com/repos/alikatgh/quenderin/rulesets/26011468"
+      },
+      "html": {
+        "href": "https://github.com/alikatgh/quenderin/rules/26011468"
+      }
+    }
+  },
+  "effective": [
+    {
+      "type": "deletion",
+      "ruleset_source_type": "Repository",
+      "ruleset_source": "alikatgh/quenderin",
+      "ruleset_id": 26011468
+    },
+    {
+      "type": "non_fast_forward",
+      "ruleset_source_type": "Repository",
+      "ruleset_source": "alikatgh/quenderin",
+      "ruleset_id": 26011468
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true,
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": [
+          "merge",
+          "squash",
+          "rebase"
+        ]
+      },
+      "ruleset_source_type": "Repository",
+      "ruleset_source": "alikatgh/quenderin",
+      "ruleset_id": 26011468
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "secret-scan",
+            "integration_id": 15368
+          },
+          {
+            "context": "Model catalog parity",
+            "integration_id": 15368
+          },
+          {
+            "context": "Test (20.x)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Test (22.x)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Dependency review",
+            "integration_id": 15368
+          }
+        ]
+      },
+      "ruleset_source_type": "Repository",
+      "ruleset_source": "alikatgh/quenderin",
+      "ruleset_id": 26011468
+    }
+  ]
+}

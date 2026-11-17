@@ -1,0 +1,83 @@
+{
+  "source": "existing hosted Android synthetic UI journey run; no local device/emulator/model run",
+  "repository": "alikatgh/quenderin",
+  "head_sha": "25e50b497867383fa8755995f7b0093823fc8eb1",
+  "run_id": 40788876323,
+  "job_id": 123168832696,
+  "job_url": "https://github.com/alikatgh/quenderin/actions/runs/40788876323/job/123168832696",
+  "conclusion": "success",
+  "instrumentation_summary": "OK (4 tests), 46.844 seconds",
+  "tests": [
+    {
+      "class": "ai.quenderin.app.NativeJourneysTest",
+      "test": "firstRunLocalChatConnectionsSettingsAndAdaptiveStates",
+      "status": "passed"
+    },
+    {
+      "class": "ai.quenderin.app.OnboardingRecoveryTest",
+      "test": "failedSetupKeepsChoicesAndCanReturnToLocalSetup",
+      "status": "passed"
+    },
+    {
+      "class": "ai.quenderin.app.ContentReportJourneyTest",
+      "test": "stableHostSurvivesPartialRowReplacementWhileSendIsPending",
+      "status": "passed"
+    },
+    {
+      "class": "ai.quenderin.app.ContentReportJourneyTest",
+      "test": "editedPreviewRequiresExplicitSendAndManualRetryKeepsExactRequest",
+      "status": "passed"
+    }
+  ],
+  "passive_back_diagnostics": [
+    "phase=peer.bar.before composerFocused=true composerDisabled=false uptimeMs=50530 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=androidx.compose.ui.platform.AndroidComposeView androidFocusIsEditor=true androidXEnabledCallbacks=true | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=peer.bar.after composerFocused=null composerDisabled=true uptimeMs=50913 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=false | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=responses.scroll.before composerFocused=null composerDisabled=true uptimeMs=50934 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=false | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=responses.click.before composerFocused=null composerDisabled=true uptimeMs=50941 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=false | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=responses.before composerFocused=null composerDisabled=true uptimeMs=51129 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=true | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=responses.after composerFocused=null composerDisabled=true uptimeMs=51295 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=false | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@174363 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=peer.rail.before composerFocused=true composerDisabled=false uptimeMs=62886 lifecycle=RESUMED windowFocus=true imeVisible=true androidFocusClass=androidx.compose.ui.platform.AndroidComposeView androidFocusIsEditor=true androidXEnabledCallbacks=true | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=peer.rail.after composerFocused=null composerDisabled=true uptimeMs=63354 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=false | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=models.before composerFocused=null composerDisabled=true uptimeMs=63756 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=true | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false",
+    "phase=models.after composerFocused=null composerDisabled=true uptimeMs=63824 lifecycle=RESUMED windowFocus=true imeVisible=false androidFocusClass=null androidFocusIsEditor=null androidXEnabledCallbacks=false | WindowOnBackDispatcher: | Top Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 | Callbacks: | Callback: android.view.ViewRootImpl$$ExternalSyntheticLambda11@b586a68 Priority=0 | ImeBackAnimationController: | mLastProgress=0.0 | mTriggerBack=false | mIsPreCommitAnimationInProgress=false | mStartRootScrollY=0 | isBackAnimationAllowed=true | isAdjustPan=false | isHideAnimationInProgress=false"
+  ],
+  "screenshots": [
+    {
+      "file": "01-welcome-light.png",
+      "bytes": 94187,
+      "sha256": "d64931862aea7c1e46f550014f73469cf1c065f74e3b11e8bdd26e93e470cf77"
+    },
+    {
+      "file": "02-setup-light.png",
+      "bytes": 138789,
+      "sha256": "20cc54e49de50524085689b83345acc3f8d4fb4a7158498a78233dcbafdbd83d"
+    },
+    {
+      "file": "03-chat-light.png",
+      "bytes": 136214,
+      "sha256": "8647ced19201da6bf9f579d4a9e1cfdc7fa91b7cc23014f043559440f0efe831"
+    },
+    {
+      "file": "04-report-light.png",
+      "bytes": 102124,
+      "sha256": "6be1516582e25e68bef242ba7e1d338044b630db142c3d315a3333a3ec5a2ef6"
+    },
+    {
+      "file": "05-chat-dark-keyboard.png",
+      "bytes": 176336,
+      "sha256": "f5e3c2b5c6b1c59087187baacf411b6d971b3410d343343a6745e7236bbce9b0"
+    },
+    {
+      "file": "06-setup-large-text.png",
+      "bytes": 131867,
+      "sha256": "910fd349c2a479cfc37c22e264f8da59f0acb037909a97d342c28f161fedd221"
+    },
+    {
+      "file": "07-settings-short-window.png",
+      "bytes": 85455,
+      "sha256": "293ca4f6cd8efffb2684390c749faa2bf4ef9d0caf85f2728a88b92b91c5fa50"
+    }
+  ],
+  "scope": "Synthetic fixtures; visual inspection still required; not actual model inference or store release verification",
+  "raw_log_bytes_before_cleanup": 1256179
+}

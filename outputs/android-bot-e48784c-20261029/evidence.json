@@ -1,0 +1,21 @@
+{
+  "run": 40807371964,
+  "job": 123229429066,
+  "sourceCommit": "e48784c4e8682f5dcdd24ef4875e92bd4e54bc29",
+  "botJourney": "passed",
+  "overallSuite": "failed unchanged NativeJourneys keyboard visibility assertion",
+  "selected": {
+    "09-bot-roster.png": {
+      "bytes": 99347,
+      "sha256": "83bc44f1f2e4e9303f990330074982b7a177d2b78be489dbf4f9b3c15021ecf9"
+    },
+    "10-bot-history.png": {
+      "bytes": 98192,
+      "sha256": "67a1ff8bde5363d313d1b38a508e4e2081c3e809923920a3340b99ae954e3282"
+    },
+    "08-failure.png": {
+      "bytes": 138694,
+      "sha256": "3d2dfff3bd84f2c00cf0f9eb62173f611fe2e6297f8aa8055483aa407754c0f0"
+    }
+  }
+}

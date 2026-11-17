@@ -1,0 +1,24 @@
+{
+  "releaseId": 427362598,
+  "sourceCommit": "a1d9c9eff3c1a244f55f23f697af63e7ef98308d",
+  "assets": [
+    {
+      "name": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab",
+      "bytes": 36394728,
+      "sha256": "c9718cd9a64c6c45f9be4de731f95ba8e1dc9ba861e3b472435b5cfaf0a2ffe5",
+      "id": 686965447
+    },
+    {
+      "name": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab.receipt.json",
+      "bytes": 4925,
+      "sha256": "72c0707122c206460a80990dbc91dd14cff600879dccea38a267d540c5c08077",
+      "id": 686965617
+    },
+    {
+      "name": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab.sha256",
+      "bytes": 113,
+      "sha256": "8d72b5d6c4d131b54640e116a3bdcdc1db6fd4f8b372503139e2b3ba3edf7753",
+      "id": 686965551
+    }
+  ]
+}

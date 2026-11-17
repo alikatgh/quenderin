@@ -1,0 +1,108 @@
+{
+  "checkedAt": "2026-10-28T03:55:36.080947+00:00",
+  "status": "passed-source-preservation-with-shared-delivery-insertion",
+  "activeVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "deploymentId": "3533e634-2ca3-425c-ae2c-fa5a19ef843c",
+  "probes": [
+    {
+      "url": "https://quenderin.org/",
+      "asset": "/index.html",
+      "expectedSha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+      "expectedBytes": 9745,
+      "httpStatus": 200,
+      "finalUrl": "https://quenderin.org/",
+      "bytes": 10112,
+      "sha256": "4c1817d40729d0e65b794a913a68a90bd55917135b719c0a5ababfeb3960ae4b",
+      "hashMatches": false,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      },
+      "securityHeadersMatch": true,
+      "cacheStatus": "HIT",
+      "etag": null,
+      "status": "passed-source-preservation",
+      "sourceBytesPreserved": true,
+      "sourceSha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+      "deliveryInsertionBytes": 367,
+      "deliveryInsertionSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084"
+    },
+    {
+      "url": "https://quenderin.org/tell-me-more.html",
+      "asset": "/tell-me-more.html",
+      "expectedSha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+      "expectedBytes": 67348,
+      "httpStatus": 200,
+      "finalUrl": "https://quenderin.org/tell-me-more",
+      "bytes": 67715,
+      "sha256": "2bb2848d354a82e94aa1aa6b8f973719f0735ee93dbd48c69f92fa6f063a7a0b",
+      "hashMatches": false,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      },
+      "securityHeadersMatch": true,
+      "cacheStatus": "HIT",
+      "etag": null,
+      "status": "passed-source-preservation",
+      "sourceBytesPreserved": true,
+      "sourceSha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+      "deliveryInsertionBytes": 367,
+      "deliveryInsertionSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084"
+    },
+    {
+      "url": "https://quenderin.org/privacy",
+      "asset": "/privacy.html",
+      "expectedSha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+      "expectedBytes": 17684,
+      "httpStatus": 200,
+      "finalUrl": "https://quenderin.org/privacy",
+      "bytes": 18051,
+      "sha256": "ee1ce158df55fd47c3470452c2bd7868877ebe7fb27901024ec46add268448b4",
+      "hashMatches": false,
+      "securityHeaders": {
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        "permissions-policy": "interest-cohort=()",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      },
+      "securityHeadersMatch": true,
+      "cacheStatus": "HIT",
+      "etag": null,
+      "status": "passed-source-preservation",
+      "sourceBytesPreserved": true,
+      "sourceSha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+      "deliveryInsertionBytes": 367,
+      "deliveryInsertionSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084"
+    }
+  ],
+  "parentBrowserVerification": "passed: primary-domain browser DOM and screenshot",
+  "rawHashStatus": "mismatch: same367-byte inline beacon script is inserted into each response",
+  "deliveryInsertion": {
+    "checkedAt": "2026-10-28T03:57:30.898280+00:00",
+    "insertionBytes": 367,
+    "insertionSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084",
+    "insertionHints": {
+      "cloudflareInsights": true,
+      "beacon": true,
+      "scriptTag": false,
+      "dataCfBeacon": true,
+      "urls": [
+        {
+          "host": "static.cloudflareinsights.com",
+          "path": "/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ]
+    },
+    "privacyReconstructedSha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+    "privacyExactSourcePreserved": true,
+    "scriptContentsRetained": false
+  }
+}

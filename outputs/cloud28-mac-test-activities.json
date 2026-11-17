@@ -1,0 +1,80 @@
+{
+  "testIdentifier" : "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()",
+  "testIdentifierURL" : "test://com.apple.xcode/Quenderin/QuenderinMacCloudUITests/CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery",
+  "testName" : "testFreshOfflineEntryConnectionsChatAndRecovery()",
+  "testRuns" : [
+    {
+      "activities" : [
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Screen Recording 2026-10-28 at 01.07.31 PM.mp4",
+              "payloadId" : "0~biOSB-HN9Cs6JJghkCHVP8F7XuHX6B1gA8bckGmxSrLWoLiBqf_SmI48KYZdwH6MVjMR6nQB7GVL2e2D67Kyzg==",
+              "timestamp" : 1793164051.507,
+              "uuid" : "C803BD22-7C55-47FB-85AF-A9393B66D0B0"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164051.507,
+              "title" : "kXCTAttachmentScreenRecording"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164051.136,
+          "title" : "Start Test at 2026-10-27 22:07:31.135"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164051.569,
+          "title" : "Set Up"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "childActivities" : [
+                    {
+                      "isAssociatedWithFailure" : false,
+                      "title" : ""
+                    }
+                  ],
+                  "isAssociatedWithFailure" : true,
+                  "startTime" : 1793164114.038,
+                  "title" : "Failed to activate application 'ai.quenderin.Quenderin at /Volumes/workspace/TestProducts.xctestproducts/Binaries/0/Debug/Quenderin.app' (current state: Running Background)"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164114.101,
+                  "title" : "Tear Down"
+                }
+              ],
+              "isAssociatedWithFailure" : true,
+              "startTime" : 1793164051.613,
+              "title" : "Launch ai.quenderin.Quenderin"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164051.577,
+          "title" : "Open ai.quenderin.Quenderin"
+        }
+      ],
+      "device" : {
+        "architecture" : "arm64e",
+        "deviceId" : "0000FE00-30F7500E43669E52",
+        "deviceName" : "My Mac",
+        "modelName" : "Virtual Machine",
+        "osBuildNumber" : "26A434",
+        "osVersion" : "27.0.1",
+        "platform" : "macOS"
+      },
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Offline UI and app-hosted Keychain"
+      }
+    }
+  ]
+}

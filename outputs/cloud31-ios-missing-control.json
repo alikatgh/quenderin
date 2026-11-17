@@ -1,0 +1,87 @@
+{
+  "buildNumber": 31,
+  "buildId": "551cb544-03fe-4890-b449-1c26318247cc",
+  "actionId": "ac0a015f-dced-4efb-8844-5287c9d87db1",
+  "sourceCommit": "488658071ecafbd982a815ca993b6a722d9c23a3",
+  "test": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()",
+  "environment": {
+    "device": "iPhone 17",
+    "platform": "Xcode Cloud iOS Simulator",
+    "osVersion": "27.0",
+    "osBuild": "24A434"
+  },
+  "result": {
+    "passedTests": 3,
+    "failedTests": 1,
+    "uiTestDurationSeconds": 149.54812097549438,
+    "failure": "XCTAssertTrue failed - Required screen or control is missing",
+    "sourceFile": "apple/QuenderinApp/Tests/UI/CloudJourneyTests.swift",
+    "sourceLineOneBased": 261,
+    "xcresultLocation": "file:///Volumes/workspace/repository/apple/QuenderinApp/Tests/UI/CloudJourneyTests.swift#EndingLineNumber=260&StartingLineNumber=260",
+    "operation": "Wait 15 seconds for Message TextField after Settings > Chat"
+  },
+  "observations": [
+    "Both chat-dismiss-keyboard taps passed keyboard-disappearance assertions.",
+    "First dismissal preserved typed draft across DeepSeek and Chat navigation.",
+    "Canned reply and 40.8 assertions passed.",
+    "Settings automatic-model-selection switch assertion passed.",
+    "Failure hierarchy has Chat selected and Chats list containing saved synthetic conversation.",
+    "No Message TextField in failure hierarchy."
+  ],
+  "axExcerpt": [
+    "NavigationBar, 0x10605ae40, {{0.0, 62.0}, {402.0, 106.0}}, identifier: 'Chats' <AX element pid: 3332, elementOrHash.elementID: 4652507392.547>",
+    "Button, 0x11099c500, {{16.0, 168.0}, {370.0, 74.0}}, label: 'What is 17% of 240?, 17% of 240 = 0.17 \u00d7 240 = 40.8. Demo mode: no native llama.cpp in this build \u2014 r\u2026, Last active just now' <AX element pid: 3332, elementOrHash.elementID: 4708098336.997>",
+    "StaticText, 0x11099c780, {{88.0, 187.2}, {156.0, 20.3}}, label: 'What is 17% of 240?' <AX element pid: 3332, elementOrHash.elementID: 4708097376.999>",
+    "Button, 0x11099db80, {{25.0, 795.0}, {82.9, 54.0}}, identifier: 'bubble.left', label: 'Chat', Selected <AX element pid: 3332, elementOrHash.elementID: 4655614976.550>"
+  ],
+  "image": {
+    "path": "/Users/s_avelova/Documents/projects/quenderin/outputs/cloud31-ios-missing-control.png",
+    "bytes": 161186,
+    "sha256": "655b02ea378130486ce8575e0ced61a03d7fb96a62e93c288f9968107133182a",
+    "width": 1206,
+    "height": 2622,
+    "provenance": "Final-state frame extracted offline from exact test screen recording; no failure PNG was present in activities.",
+    "recordingTimestampSeconds": 134.5,
+    "recordingDurationSeconds": 135.286667,
+    "recordingPayloadId": "0~jR7kWCQ-isnGHeQR-jA0-_CiQ73QqtQbSzYWhvV3iecD5zfwYvoNSfRiUfeDw-O98-I36NnBpFVhkgfPhv-Qzg=="
+  },
+  "diagnosis": {
+    "confirmed": "The test assumes return from Settings preserves conversation detail, but the rendered app is at its documented Chats root with the saved reply present.",
+    "uncertain": "The artifact alone does not prove why SwiftUI returned this navigation stack to its root or whether preserving detail is an intended product contract.",
+    "minimalProposal": "Enter and verify history before leaving for Settings; on return require saved history row, reopen it, then retain strict saved-reply and relaunch assertions. No product source edits proposed without a detail-retention requirement."
+  },
+  "limits": [
+    "Inspection only; no source edits, builds, Cloud runs, model downloads or device runs.",
+    "No real inference tested: Debug mock reply is synthetic.",
+    "Later history/relaunch steps were not executed because continueAfterFailure=false.",
+    "Runtime warning Invalid frame dimension (negative or non-finite) recorded; no causal link established.",
+    "Failure frame is from recording at 134.5 s, consistent with failure AX; recording and wall-clock durations differ."
+  ],
+  "scratch": {
+    "owner": "parent session 01a17d85-25ea-7803-b7f7-a8b0f3e13457",
+    "asset": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/7094932f42f348f5b718936169b28f58",
+    "createdFiles": [
+      {
+        "name": "ios-failure-ax.txt",
+        "bytes": 12937
+      },
+      {
+        "name": "ios-failure-snapshot",
+        "bytes": 56900
+      },
+      {
+        "name": "ios-screen-recording.mp4",
+        "bytes": 84657733
+      },
+      {
+        "name": "ios-failure-frame.png",
+        "bytes": 161186
+      }
+    ],
+    "cleanup": "Complete after parent image/AX/hash verification; selected PNG and metadata retained.",
+    "videoExportSizeCapBytes": 157286400
+  },
+  "retention": "Keep selected PNG and metadata only for Cloud31 failure review and comparison with corrected Cloud journey; remove when release evidence supersedes them.",
+  "rawSourceZipSha256": "a18415f684f729ab25dd316aba9d065edc741b4d21beaa1e208e0cdbe3807b51",
+  "rawSourceZipBytes": 137786555
+}

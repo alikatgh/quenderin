@@ -1,0 +1,63 @@
+{
+  "baselineWebsiteRevision": "53994b799eb021bed10e2b58a727539283f02559",
+  "activeVersion": "84a87b78-310e-4ecf-86fe-ad259374d6cb",
+  "activeScriptETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+  "worker": {
+    "name": "site.js",
+    "bytes": 7992,
+    "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+  },
+  "assetInputCount": 112,
+  "publicAssetCount": 111,
+  "headersConfigCount": 1,
+  "assetDelta": [
+    {
+      "path": "/privacy.html",
+      "oldBytes": 9686,
+      "newBytes": 16202,
+      "oldSha256": "c33a229ef9c51e280d325f039a3a4f0443d31a987e95e296fc2114adbfda421e",
+      "newSha256": "c5aba35c8210c2f5447f3914a678f9d2d9e0087ce481780634fb7b35bc7f6756"
+    }
+  ],
+  "preservedPages": {
+    "/index.html": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+    "/tell-me-more.html": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+    "/_headers": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0"
+  },
+  "priorDefaultReproductionSha256": "67131a973be67e75499457db701d6814a8f816b20bb8e8dfd8e2b6da53430833",
+  "preservedAssetRouting": {
+    "directory": "./website",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ],
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "base_path": "/"
+  },
+  "dryrunEmittedWorkerExact": true,
+  "preservationLimits": [
+    "Real assets attachment is skipped by Wrangler dry-run; verify uploaded version assets metadata and immutable preview before traffic activation.",
+    "Version upload may normalize existing cf:service= and cf:environment= tags; no unconditional keep-tags option exists in pinned Wrangler. Current tags require the supported provider metadata read before claiming full settings preservation.",
+    "usage_model is absent from current Wrangler schema and metadata; active value is standard and new version readback must confirm it remains standard.",
+    "Version annotations and provider upload provenance necessarily change.",
+    "Version upload leaves logpush and observability undefined and does not write routes, schedules, domain mappings or workers.dev/preview flags."
+  ],
+  "tagInspection": {
+    "versionViewReturnsTags": false,
+    "supportedApi": "GET /accounts/4c1e57b6972105286a7aeb46b2b89c78/workers/scripts/quenderin/script-settings",
+    "field": "tags",
+    "uploaderRead": "GET /accounts/4c1e57b6972105286a7aeb46b2b89c78/workers/services/quenderin",
+    "uploaderReadField": "default_environment.script.tags",
+    "publicWranglerReadCommand": null,
+    "legacy_env": "Unsupported and deleted by config normalization in 4.151.1; does not bypass tag normalization."
+  },
+  "privacyBaseRevision": "73920fd935c937d64c9bb0ef5847066515a24ce2",
+  "privacySource": {
+    "file": "/Users/s_avelova/Documents/projects/quenderin/.worktrees/integrate-remaining-20261027/website/privacy.html",
+    "bytes": 16202,
+    "sha256": "c5aba35c8210c2f5447f3914a678f9d2d9e0087ce481780634fb7b35bc7f6756",
+    "state": "uncommitted parent correction; not byte-identical to base revision"
+  },
+  "privacyThemeDependency": "Restored historical inline initializer; no external theme.js reference in staged privacy HTML."
+}

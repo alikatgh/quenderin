@@ -1,0 +1,42 @@
+{
+  "status": "published-live-verified",
+  "preparedAt": "2026-10-28T03:25:01.529670+00:00",
+  "assetInputCount": 112,
+  "publicAssetCount": 111,
+  "changedPaths": [
+    "/privacy.html"
+  ],
+  "unchangedPublicAssets": 110,
+  "privacySha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+  "workerSha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5",
+  "controlReadback": "passed",
+  "dryRun": "passed-byte-exact",
+  "secretPatternScan": "passed-114-files",
+  "contentReview": "passed: parent independent privacy/client alignment review no findings",
+  "uploaded": true,
+  "activated": true,
+  "previewRendered": "passed: parent DOM and screenshot",
+  "liveVerified": "passed: parent primary-domain browser and screenshot",
+  "temporaryAssetId": "1bd1fe914a8b49db84e9e119a436fec8",
+  "cleanupCondition": "Remove registered CLI/stage as soon as this second publication phase completes or is abandoned; retain only this minimal evidence pack.",
+  "newVersionId": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "previewUrls": [
+    "https://29ec91c0-quenderin.wallmarketshq.workers.dev"
+  ],
+  "versionReadback": "passed",
+  "activeVersionStill100Percent": true,
+  "activeVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "deploymentId": "3533e634-2ca3-425c-ae2c-fa5a19ef843c",
+  "trafficPercent": 100,
+  "activationReadback": "passed",
+  "temporaryCliStageCleanup": "completed: exact registered220MB CLI/stage removed; receipts/rollback metadata retained",
+  "publicAssetHashes": "passed-source-preservation-with-shared-delivery-insertion",
+  "livePolicyUrl": "https://quenderin.org/privacy",
+  "liveScreenshot": {
+    "path": "/Users/s_avelova/Documents/projects/quenderin/codex-materials/2026-10-28-native-store/outputs/privacy-reporting-live.png",
+    "bytes": 128322,
+    "sha256": "e985c8825d427bfd7e8c8ec5b0e5cbd61eda4cc4a4c92891d37fdb20dda5aac1",
+    "review": "Parent primary browser PASS: all3 reporting paragraphs rendered correctly in light theme at https://quenderin.org/privacy"
+  },
+  "remainingPublicationChecks": []
+}

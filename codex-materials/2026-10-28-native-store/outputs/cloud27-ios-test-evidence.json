@@ -1,0 +1,25 @@
+{
+  "build": 27,
+  "source": "3030bf175f1e94b6be9c2d742eeecf1e86c4ae4b",
+  "action": "95c336ce-f0c2-4cae-ab0f-1e5ca4acac7d",
+  "testsPassed": 3,
+  "testsTotal": 4,
+  "archiveSha256": "c3bbae6a4f4fdc338d67c377a8f67fcb886a2f63a09e4f8bef117d088c662a40",
+  "recordedSwipeCount": 5,
+  "eachSwipeStart": [
+    201,
+    568
+  ],
+  "eachSwipeEnd": [
+    201,
+    368
+  ],
+  "logicalScreen": [
+    402,
+    874
+  ],
+  "keyboardTopApproximate": 546.5,
+  "keyboardMeasurement": "Recorded screenshot divided by 3; binary UI snapshot had no child hierarchy",
+  "retainedScreenshot": "cloud27-ios-deepseek-failure.png",
+  "fix": "Clip real gestures to runtime visible scroll surface above keyboard; assertions preserved"
+}

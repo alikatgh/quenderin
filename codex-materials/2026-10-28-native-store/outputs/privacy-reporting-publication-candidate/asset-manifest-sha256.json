@@ -1,0 +1,898 @@
+{
+  "/404.html": {
+    "baselineSha256": "6dff54972794569ef9182be3a72a0487ef0c7e8e3fc4da1c03ee5ccb63474be5",
+    "baselineSize": 1577,
+    "role": "public asset",
+    "sha256": "6dff54972794569ef9182be3a72a0487ef0c7e8e3fc4da1c03ee5ccb63474be5",
+    "size": 1577,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/_headers": {
+    "baselineSha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+    "baselineSize": 613,
+    "role": "headers configuration",
+    "sha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+    "size": 613,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/accessibility.html": {
+    "baselineSha256": "ece033bc1e7410dd93d0e122a012488259feb8be2b92576c62fd84c952554607",
+    "baselineSize": 3966,
+    "role": "public asset",
+    "sha256": "ece033bc1e7410dd93d0e122a012488259feb8be2b92576c62fd84c952554607",
+    "size": 3966,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/apple-touch-icon.png": {
+    "baselineSha256": "968f31dc1582e173d28ddd0170cd4fe6ca5cf1e64a48f5d8ba22159f7f3a19de",
+    "baselineSize": 68807,
+    "role": "public asset",
+    "sha256": "968f31dc1582e173d28ddd0170cd4fe6ca5cf1e64a48f5d8ba22159f7f3a19de",
+    "size": 68807,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app-store-badge.svg": {
+    "baselineSha256": "a26fc5b38380272c92e9019a2eb8b45542a66814b3e2b203772db8904b9fb99f",
+    "baselineSize": 10804,
+    "role": "public asset",
+    "sha256": "a26fc5b38380272c92e9019a2eb8b45542a66814b3e2b203772db8904b9fb99f",
+    "size": 10804,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/agent.png": {
+    "baselineSha256": "10fcd106231be743dab70843e3d6fdf5523f17a4df21fb2250654fc8f9879970",
+    "baselineSize": 104207,
+    "role": "public asset",
+    "sha256": "10fcd106231be743dab70843e3d6fdf5523f17a4df21fb2250654fc8f9879970",
+    "size": 104207,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/chat.png": {
+    "baselineSha256": "1d12cd905cb6b2b704546373b2b9cbf4a82f1d63a6e64ece9ddf8427a4c1fed6",
+    "baselineSize": 147911,
+    "role": "public asset",
+    "sha256": "1d12cd905cb6b2b704546373b2b9cbf4a82f1d63a6e64ece9ddf8427a4c1fed6",
+    "size": 147911,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/icon-ios.png": {
+    "baselineSha256": "00c2da04879cb71dcafdf3f063dba957c8dfe848c3e138dbbe1ddd16e687e347",
+    "baselineSize": 284494,
+    "role": "public asset",
+    "sha256": "00c2da04879cb71dcafdf3f063dba957c8dfe848c3e138dbbe1ddd16e687e347",
+    "size": 284494,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/icon-mac.png": {
+    "baselineSha256": "168bd5b3e7acc5188c1067511472f98068b2e798794e9e7cccd941ec3533c59e",
+    "baselineSize": 202718,
+    "role": "public asset",
+    "sha256": "168bd5b3e7acc5188c1067511472f98068b2e798794e9e7cccd941ec3533c59e",
+    "size": 202718,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/phone-chat.png": {
+    "baselineSha256": "1ed404e203846d60318213a4570387c77c4f0d49a8af69c6d1d7b8599a31e6e2",
+    "baselineSize": 108733,
+    "role": "public asset",
+    "sha256": "1ed404e203846d60318213a4570387c77c4f0d49a8af69c6d1d7b8599a31e6e2",
+    "size": 108733,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/phone-chat.webp": {
+    "baselineSha256": "28ee8b8c95a62d2ef2c9acbec4dae3455498a9a7532f1b7461636d332be67086",
+    "baselineSize": 62684,
+    "role": "public asset",
+    "sha256": "28ee8b8c95a62d2ef2c9acbec4dae3455498a9a7532f1b7461636d332be67086",
+    "size": 62684,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/picker.png": {
+    "baselineSha256": "096eac9c48673c41c6ea21ac1834bf2880efe8698b22de8565c66d0b3de32658",
+    "baselineSize": 316271,
+    "role": "public asset",
+    "sha256": "096eac9c48673c41c6ea21ac1834bf2880efe8698b22de8565c66d0b3de32658",
+    "size": 316271,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/profile.png": {
+    "baselineSha256": "0822931592bbc6d04c53ffe892ccafe983b656563fb315b447aa3488af202299",
+    "baselineSize": 164723,
+    "role": "public asset",
+    "sha256": "0822931592bbc6d04c53ffe892ccafe983b656563fb315b447aa3488af202299",
+    "size": 164723,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/app/welcome.png": {
+    "baselineSha256": "2243b3073072af0bc84b5a816742885e2ce383fe592c47c7d9ce7aaddfa28e05",
+    "baselineSize": 192417,
+    "role": "public asset",
+    "sha256": "2243b3073072af0bc84b5a816742885e2ce383fe592c47c7d9ce7aaddfa28e05",
+    "size": 192417,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/blog/open-model-library-20261018.jpg": {
+    "baselineSha256": "37e2ac72bc5068d8991e6816156a6528f3aa09d91b8382a92f695525aa11a334",
+    "baselineSize": 507729,
+    "role": "public asset",
+    "sha256": "37e2ac72bc5068d8991e6816156a6528f3aa09d91b8382a92f695525aa11a334",
+    "size": 507729,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/blog/website-update-20261019.jpg": {
+    "baselineSha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432",
+    "baselineSize": 91780,
+    "role": "public asset",
+    "sha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432",
+    "size": 91780,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/assets/social/feature-graphic-1024x500.png": {
+    "baselineSha256": "da48e016aa4a3a30c4a66ba9636912e5ea31040b8b3717b5dbfa9fb9c549ef18",
+    "baselineSize": 442227,
+    "role": "public asset",
+    "sha256": "da48e016aa4a3a30c4a66ba9636912e5ea31040b8b3717b5dbfa9fb9c549ef18",
+    "size": 442227,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-agent-hands.html": {
+    "baselineSha256": "f3b1fbadf62a5ec9b116734c74510a8c71e06e47ae875c5110dd3cd60ba3d28b",
+    "baselineSize": 5863,
+    "role": "public asset",
+    "sha256": "f3b1fbadf62a5ec9b116734c74510a8c71e06e47ae875c5110dd3cd60ba3d28b",
+    "size": 5863,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-android-beta.html": {
+    "baselineSha256": "21b3ed0f357cacd4205b6a9868036834c0ab61709270068aaf9725f1f7bc0f2e",
+    "baselineSize": 7352,
+    "role": "public asset",
+    "sha256": "21b3ed0f357cacd4205b6a9868036834c0ab61709270068aaf9725f1f7bc0f2e",
+    "size": 7352,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-apple-launch.html": {
+    "baselineSha256": "7f028735db2b68197afa4e5b7816bce0209b2112efc37a3a4928a0c9c377e1c9",
+    "baselineSize": 6686,
+    "role": "public asset",
+    "sha256": "7f028735db2b68197afa4e5b7816bce0209b2112efc37a3a4928a0c9c377e1c9",
+    "size": 6686,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-bonsai-2.html": {
+    "baselineSha256": "ad30eb67968185396b0cd6c20bcc985bb34874a4306e22a38d0ade96bb5bbc11",
+    "baselineSize": 6725,
+    "role": "public asset",
+    "sha256": "ad30eb67968185396b0cd6c20bcc985bb34874a4306e22a38d0ade96bb5bbc11",
+    "size": 6725,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-bonsai-small-muse-spark.html": {
+    "baselineSha256": "f314f9122246886e6178bacbd2c4d67eef770830618291ec5cec18331ebf30c2",
+    "baselineSize": 6780,
+    "role": "public asset",
+    "sha256": "f314f9122246886e6178bacbd2c4d67eef770830618291ec5cec18331ebf30c2",
+    "size": 6780,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-clearer-language.html": {
+    "baselineSha256": "547e5870ab254ef9a5430349a1007533b681b482a97abfe30fa17dc37840aa6a",
+    "baselineSize": 5373,
+    "role": "public asset",
+    "sha256": "547e5870ab254ef9a5430349a1007533b681b482a97abfe30fa17dc37840aa6a",
+    "size": 5373,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-cli.html": {
+    "baselineSha256": "f50cf727bc7d86e971bd947b51e6286614c870b4d9030903608a54f06f9f1c33",
+    "baselineSize": 4842,
+    "role": "public asset",
+    "sha256": "f50cf727bc7d86e971bd947b51e6286614c870b4d9030903608a54f06f9f1c33",
+    "size": 4842,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-computer-use.html": {
+    "baselineSha256": "3c0107b110a9c30c1052600f9e9d8c5a4ac4c0c436d3481a9f9d18cd84b33953",
+    "baselineSize": 6712,
+    "role": "public asset",
+    "sha256": "3c0107b110a9c30c1052600f9e9d8c5a4ac4c0c436d3481a9f9d18cd84b33953",
+    "size": 6712,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-ggml-abort.html": {
+    "baselineSha256": "c26d9db78b9594740cdaef5315c2b90e9a77976673317872e37cd256d5123f78",
+    "baselineSize": 8711,
+    "role": "public asset",
+    "sha256": "c26d9db78b9594740cdaef5315c2b90e9a77976673317872e37cd256d5123f78",
+    "size": 8711,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-model-integrity.html": {
+    "baselineSha256": "66b8f61bb7ca847e2844d11cd9eb38b55dbe40ce03aa40ce42624d10b3a4c9eb",
+    "baselineSize": 9167,
+    "role": "public asset",
+    "sha256": "66b8f61bb7ca847e2844d11cd9eb38b55dbe40ce03aa40ce42624d10b3a4c9eb",
+    "size": 9167,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-muse-engineering.html": {
+    "baselineSha256": "50066f01628895c09312902cd3412af6fb34cf6f77f8f245bee9a6cde781d2a6",
+    "baselineSize": 12533,
+    "role": "public asset",
+    "sha256": "50066f01628895c09312902cd3412af6fb34cf6f77f8f245bee9a6cde781d2a6",
+    "size": 12533,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-open-models-october-2026.html": {
+    "baselineSha256": "a0f7b165093ae8eb09e321f454f776a9dff3b4ba98a00bf6ce6836d2c9a14f65",
+    "baselineSize": 13458,
+    "role": "public asset",
+    "sha256": "a0f7b165093ae8eb09e321f454f776a9dff3b4ba98a00bf6ce6836d2c9a14f65",
+    "size": 13458,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-setup.html": {
+    "baselineSha256": "b6e1de4d7e2fdb236c2f77cc9f91fd66efa0118fd0242570a543317aed20a947",
+    "baselineSize": 7286,
+    "role": "public asset",
+    "sha256": "b6e1de4d7e2fdb236c2f77cc9f91fd66efa0118fd0242570a543317aed20a947",
+    "size": 7286,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog-website-update-october-2026.html": {
+    "baselineSha256": "9cd6649f548d2d3554f5c2c0951650b1bf40331994ca2fc1b626d74573eb332d",
+    "baselineSize": 6227,
+    "role": "public asset",
+    "sha256": "9cd6649f548d2d3554f5c2c0951650b1bf40331994ca2fc1b626d74573eb332d",
+    "size": 6227,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/blog.html": {
+    "baselineSha256": "8c9132710b42df0417fc44b03cacd51c4bc13b6c66700664c4d9d2a53e2eb582",
+    "baselineSize": 8651,
+    "role": "public asset",
+    "sha256": "8c9132710b42df0417fc44b03cacd51c4bc13b6c66700664c4d9d2a53e2eb582",
+    "size": 8651,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/changelog.html": {
+    "baselineSha256": "3dea809c425e4f9428b6a3010e5743236102234ee184d31fb3d059b0df347709",
+    "baselineSize": 17363,
+    "role": "public asset",
+    "sha256": "3dea809c425e4f9428b6a3010e5743236102234ee184d31fb3d059b0df347709",
+    "size": 17363,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/data/image-model-catalog.json": {
+    "baselineSha256": "51db4c4614c396e810cc3767573df5d1ec2aa070df5e731c7a42440592654f0a",
+    "baselineSize": 6287,
+    "role": "public asset",
+    "sha256": "51db4c4614c396e810cc3767573df5d1ec2aa070df5e731c7a42440592654f0a",
+    "size": 6287,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/data/model-catalog.json": {
+    "baselineSha256": "391bfe938d841ebb96e18e2c42f3fb12e5de94785b41f06a496b713518064123",
+    "baselineSize": 27070,
+    "role": "public asset",
+    "sha256": "391bfe938d841ebb96e18e2c42f3fb12e5de94785b41f06a496b713518064123",
+    "size": 27070,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/data/model-releases.json": {
+    "baselineSha256": "5ac15e2003691c7aac24d150acbb9740f704c505e2ed67b1c4d580271356b8a1",
+    "baselineSize": 11679,
+    "role": "public asset",
+    "sha256": "5ac15e2003691c7aac24d150acbb9740f704c505e2ed67b1c4d580271356b8a1",
+    "size": 11679,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/detail-page.css": {
+    "baselineSha256": "5fbee204da4592ea867d16463929e86c13c3ac39a07a6c9a64a40b9cc47464ea",
+    "baselineSize": 17828,
+    "role": "public asset",
+    "sha256": "5fbee204da4592ea867d16463929e86c13c3ac39a07a6c9a64a40b9cc47464ea",
+    "size": 17828,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/download.html": {
+    "baselineSha256": "cc59e43cae1efb7ac72674a1e2ad2b7024d732e4cebed43dfe9c0ddd81081868",
+    "baselineSize": 9724,
+    "role": "public asset",
+    "sha256": "cc59e43cae1efb7ac72674a1e2ad2b7024d732e4cebed43dfe9c0ddd81081868",
+    "size": 9724,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/faq.html": {
+    "baselineSha256": "5ad18a7ed99784a547729724581aeff86787215d3454c2fdde9fe57d7b1f66eb",
+    "baselineSize": 13786,
+    "role": "public asset",
+    "sha256": "5ad18a7ed99784a547729724581aeff86787215d3454c2fdde9fe57d7b1f66eb",
+    "size": 13786,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/favicon-16.png": {
+    "baselineSha256": "600a0d2a2c6090d457da246e4f38b53dd28cee75bcb4ada3a69678c1938d1447",
+    "baselineSize": 923,
+    "role": "public asset",
+    "sha256": "600a0d2a2c6090d457da246e4f38b53dd28cee75bcb4ada3a69678c1938d1447",
+    "size": 923,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/favicon-32.png": {
+    "baselineSha256": "baefe71a9113f5453c45fb4ae43ccb6901d37c80d1cbc19aba30b190ce2a20de",
+    "baselineSize": 3129,
+    "role": "public asset",
+    "sha256": "baefe71a9113f5453c45fb4ae43ccb6901d37c80d1cbc19aba30b190ce2a20de",
+    "size": 3129,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/favicon.svg": {
+    "baselineSha256": "f063a5c024c1ad854797d4d3701e34911ea07f79e41c02cd5328788336da917a",
+    "baselineSize": 15387,
+    "role": "public asset",
+    "sha256": "f063a5c024c1ad854797d4d3701e34911ea07f79e41c02cd5328788336da917a",
+    "size": 15387,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/features.html": {
+    "baselineSha256": "c5e744152c52dbae378c218ded5b6055839b2b186a4c24e81d6f453415775579",
+    "baselineSize": 12625,
+    "role": "public asset",
+    "sha256": "c5e744152c52dbae378c218ded5b6055839b2b186a4c24e81d6f453415775579",
+    "size": 12625,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/fonts/bricolage-grotesque-latin.woff2": {
+    "baselineSha256": "a97804dc9fbe5fc972a08018c5eda4dab7ef2346f64c57e61419d05e6de4ea1c",
+    "baselineSize": 41344,
+    "role": "public asset",
+    "sha256": "a97804dc9fbe5fc972a08018c5eda4dab7ef2346f64c57e61419d05e6de4ea1c",
+    "size": 41344,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/gradient.js": {
+    "baselineSha256": "b7dbf0b51c4fefaf4759fd51f0e86d6159f61b43ea3102eeef15f887e992997c",
+    "baselineSize": 9782,
+    "role": "public asset",
+    "sha256": "b7dbf0b51c4fefaf4759fd51f0e86d6159f61b43ea3102eeef15f887e992997c",
+    "size": 9782,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/help.html": {
+    "baselineSha256": "a373242191c7230c4294f434a13e27ce829b60d00319ec87e99d13b02d6e644e",
+    "baselineSize": 4986,
+    "role": "public asset",
+    "sha256": "a373242191c7230c4294f434a13e27ce829b60d00319ec87e99d13b02d6e644e",
+    "size": 4986,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/how-it-works.html": {
+    "baselineSha256": "8f24e29d7c41d648c9691ff209b2a06768bd19e1b15fecc9b68b87b2ead51393",
+    "baselineSize": 11781,
+    "role": "public asset",
+    "sha256": "8f24e29d7c41d648c9691ff209b2a06768bd19e1b15fecc9b68b87b2ead51393",
+    "size": 11781,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n.js": {
+    "baselineSha256": "985c24da464ca641889025fe3edcb098dff668b7c880523fae419fdb89b964ad",
+    "baselineSize": 4438,
+    "role": "public asset",
+    "sha256": "985c24da464ca641889025fe3edcb098dff668b7c880523fae419fdb89b964ad",
+    "size": 4438,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/ar.json": {
+    "baselineSha256": "79dd55076bc5062d29f77d9718902a3bee6f563a9d993f2e04e687a855196875",
+    "baselineSize": 34211,
+    "role": "public asset",
+    "sha256": "79dd55076bc5062d29f77d9718902a3bee6f563a9d993f2e04e687a855196875",
+    "size": 34211,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/bn.json": {
+    "baselineSha256": "1704e89ab30e56414fc16ef5358fece57c004fd8817b0aa471d5dd4244b368a1",
+    "baselineSize": 51298,
+    "role": "public asset",
+    "sha256": "1704e89ab30e56414fc16ef5358fece57c004fd8817b0aa471d5dd4244b368a1",
+    "size": 51298,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/ar.json": {
+    "baselineSha256": "618015b07c2607cd4dba69bfb37baaf3ff9cd5eb38813ed147671736dd9e8e57",
+    "baselineSize": 5907,
+    "role": "public asset",
+    "sha256": "618015b07c2607cd4dba69bfb37baaf3ff9cd5eb38813ed147671736dd9e8e57",
+    "size": 5907,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/bn.json": {
+    "baselineSha256": "1e416631bd47f60184142e1ef9097e0cd83c53bc2bbc7d9d80b228f70619caf3",
+    "baselineSize": 8646,
+    "role": "public asset",
+    "sha256": "1e416631bd47f60184142e1ef9097e0cd83c53bc2bbc7d9d80b228f70619caf3",
+    "size": 8646,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/en.json": {
+    "baselineSha256": "a3e0ad42fcf2082b810e052b828ff289f8ea8322f3222ead2792d432c5ca6b93",
+    "baselineSize": 3691,
+    "role": "public asset",
+    "sha256": "a3e0ad42fcf2082b810e052b828ff289f8ea8322f3222ead2792d432c5ca6b93",
+    "size": 3691,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/es.json": {
+    "baselineSha256": "7f46fc6e2c8e5e1117c2e3c14a996c10b8e5ffe1740103d7793c23c905eabf2c",
+    "baselineSize": 4262,
+    "role": "public asset",
+    "sha256": "7f46fc6e2c8e5e1117c2e3c14a996c10b8e5ffe1740103d7793c23c905eabf2c",
+    "size": 4262,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/fr.json": {
+    "baselineSha256": "32d5a31f9baf601e47423621b9f2c95226eddc3283f2db5e94935bddb43771f2",
+    "baselineSize": 4719,
+    "role": "public asset",
+    "sha256": "32d5a31f9baf601e47423621b9f2c95226eddc3283f2db5e94935bddb43771f2",
+    "size": 4719,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/hi.json": {
+    "baselineSha256": "b0d18fdba2a3cf42c66d5aea2834bbeb4fc31f4488d2399190856cd692b891fd",
+    "baselineSize": 8764,
+    "role": "public asset",
+    "sha256": "b0d18fdba2a3cf42c66d5aea2834bbeb4fc31f4488d2399190856cd692b891fd",
+    "size": 8764,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/id.json": {
+    "baselineSha256": "d6d543a023bdca4ede15fa49669ec38952899b071fcf4422ba0c5106a2be2649",
+    "baselineSize": 4326,
+    "role": "public asset",
+    "sha256": "d6d543a023bdca4ede15fa49669ec38952899b071fcf4422ba0c5106a2be2649",
+    "size": 4326,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/ja.json": {
+    "baselineSha256": "fcecb9748bcab14668d0bc9c3adfa879cc1d3835094b3ae25c2fce4d94715407",
+    "baselineSize": 5319,
+    "role": "public asset",
+    "sha256": "fcecb9748bcab14668d0bc9c3adfa879cc1d3835094b3ae25c2fce4d94715407",
+    "size": 5319,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/ko.json": {
+    "baselineSha256": "d9197272c09fcac0e936d197be6baf0890a39d9f94e5a4a9b51a67dcda0007dd",
+    "baselineSize": 4873,
+    "role": "public asset",
+    "sha256": "d9197272c09fcac0e936d197be6baf0890a39d9f94e5a4a9b51a67dcda0007dd",
+    "size": 4873,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/pt.json": {
+    "baselineSha256": "1bc22ac7686619c80af2b040870dddc8b6719c8737f257bd6af48a3d442cb16b",
+    "baselineSize": 4148,
+    "role": "public asset",
+    "sha256": "1bc22ac7686619c80af2b040870dddc8b6719c8737f257bd6af48a3d442cb16b",
+    "size": 4148,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/ru.json": {
+    "baselineSha256": "9dde85da8a497c27c18aa217d1ac567aa581d1b6b23c72aca3cc0d2ff183ea7f",
+    "baselineSize": 6984,
+    "role": "public asset",
+    "sha256": "9dde85da8a497c27c18aa217d1ac567aa581d1b6b23c72aca3cc0d2ff183ea7f",
+    "size": 6984,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/demos/zh.json": {
+    "baselineSha256": "952ca99275d6813bf45105014902a7e848d09975c8a1b826c61aad3528168c6c",
+    "baselineSize": 3983,
+    "role": "public asset",
+    "sha256": "952ca99275d6813bf45105014902a7e848d09975c8a1b826c61aad3528168c6c",
+    "size": 3983,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/en.json": {
+    "baselineSha256": "185bd5753498f417bc0606d5161face22f38b855b105dc295bbc8c5fedf0f6f6",
+    "baselineSize": 25254,
+    "role": "public asset",
+    "sha256": "185bd5753498f417bc0606d5161face22f38b855b105dc295bbc8c5fedf0f6f6",
+    "size": 25254,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/es.json": {
+    "baselineSha256": "e0704a1e273b29055de161121b67c7d0f6d5e5e7b7831de99a7d4df2146b5c0f",
+    "baselineSize": 27726,
+    "role": "public asset",
+    "sha256": "e0704a1e273b29055de161121b67c7d0f6d5e5e7b7831de99a7d4df2146b5c0f",
+    "size": 27726,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/fr.json": {
+    "baselineSha256": "3a1104353c8bdf7465f08e133a9124905f7eb955569932d49e7a57d83b21c1f6",
+    "baselineSize": 29389,
+    "role": "public asset",
+    "sha256": "3a1104353c8bdf7465f08e133a9124905f7eb955569932d49e7a57d83b21c1f6",
+    "size": 29389,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/hi.json": {
+    "baselineSha256": "55a2961f0f41416acb574922fee084ff9ad7a0dd9588afb4a0552d58316dce73",
+    "baselineSize": 50659,
+    "role": "public asset",
+    "sha256": "55a2961f0f41416acb574922fee084ff9ad7a0dd9588afb4a0552d58316dce73",
+    "size": 50659,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/id.json": {
+    "baselineSha256": "849409816131e4d19261a4900961cd3adc345e8c1c64e69ac569b8f68648df33",
+    "baselineSize": 26179,
+    "role": "public asset",
+    "sha256": "849409816131e4d19261a4900961cd3adc345e8c1c64e69ac569b8f68648df33",
+    "size": 26179,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/ja.json": {
+    "baselineSha256": "b47fedc341b515a83ee7bddfd71c0337249a896754e06deffe187473eef244dc",
+    "baselineSize": 32886,
+    "role": "public asset",
+    "sha256": "b47fedc341b515a83ee7bddfd71c0337249a896754e06deffe187473eef244dc",
+    "size": 32886,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/ko.json": {
+    "baselineSha256": "76096a02b942dabff919a82c2d547f2ae346173262803de6841f95be8be9feae",
+    "baselineSize": 29711,
+    "role": "public asset",
+    "sha256": "76096a02b942dabff919a82c2d547f2ae346173262803de6841f95be8be9feae",
+    "size": 29711,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/pt.json": {
+    "baselineSha256": "d77b74b905f35b627b55ce87b7d5819f52edc0654cb2a1e1b051b3b529553695",
+    "baselineSize": 26940,
+    "role": "public asset",
+    "sha256": "d77b74b905f35b627b55ce87b7d5819f52edc0654cb2a1e1b051b3b529553695",
+    "size": 26940,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/ru.json": {
+    "baselineSha256": "f9ea3d01116100a0ee72c5608dd1950e43fa3bd5d5ac4be702ea8e25e9890d78",
+    "baselineSize": 42136,
+    "role": "public asset",
+    "sha256": "f9ea3d01116100a0ee72c5608dd1950e43fa3bd5d5ac4be702ea8e25e9890d78",
+    "size": 42136,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/i18n/zh.json": {
+    "baselineSha256": "ce33962c6d3dc14e8111fd2aa037a7a8f5825b76c4f0065421416439e210c2cd",
+    "baselineSize": 23931,
+    "role": "public asset",
+    "sha256": "ce33962c6d3dc14e8111fd2aa037a7a8f5825b76c4f0065421416439e210c2cd",
+    "size": 23931,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icon-192.png": {
+    "baselineSha256": "a4e6660a01d7ee940ebb9bed50973ee4cb60d0a3f62c602afd09451e1f478fb5",
+    "baselineSize": 77647,
+    "role": "public asset",
+    "sha256": "a4e6660a01d7ee940ebb9bed50973ee4cb60d0a3f62c602afd09451e1f478fb5",
+    "size": 77647,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icon-512.png": {
+    "baselineSha256": "f51a92b66a363601ba0289a66ad6e74e81e7687b29bb656fefaf2ea9b2f7a9e6",
+    "baselineSize": 511806,
+    "role": "public asset",
+    "sha256": "f51a92b66a363601ba0289a66ad6e74e81e7687b29bb656fefaf2ea9b2f7a9e6",
+    "size": 511806,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/android.svg": {
+    "baselineSha256": "7901b74e44a777ae89ec6db525bb5f88656a475cd1b8727423d3af8e39fe8733",
+    "baselineSize": 272,
+    "role": "public asset",
+    "sha256": "7901b74e44a777ae89ec6db525bb5f88656a475cd1b8727423d3af8e39fe8733",
+    "size": 272,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/beam.svg": {
+    "baselineSha256": "11e6ef9919c792f44072f1ce6018007efe77569d289c37ba325a6e093f05e0dc",
+    "baselineSize": 386,
+    "role": "public asset",
+    "sha256": "11e6ef9919c792f44072f1ce6018007efe77569d289c37ba325a6e093f05e0dc",
+    "size": 386,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/bonsai.svg": {
+    "baselineSha256": "ac05651aa2116b8d98968a4f9f0fd007aa1ae6b611cdd2183f78ee3a73a5e955",
+    "baselineSize": 749,
+    "role": "public asset",
+    "sha256": "ac05651aa2116b8d98968a4f9f0fd007aa1ae6b611cdd2183f78ee3a73a5e955",
+    "size": 749,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/deepseek.svg": {
+    "baselineSha256": "7a55a0a7391d116eba7d32807d6838478f9209f6034612941e74fbb14934e2ef",
+    "baselineSize": 2086,
+    "role": "public asset",
+    "sha256": "7a55a0a7391d116eba7d32807d6838478f9209f6034612941e74fbb14934e2ef",
+    "size": 2086,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/gemma.svg": {
+    "baselineSha256": "d8cf9fb2d5e234e03254f1d6400d8cc8160c309b010d031a64f37084b5a21d01",
+    "baselineSize": 457,
+    "role": "public asset",
+    "sha256": "d8cf9fb2d5e234e03254f1d6400d8cc8160c309b010d031a64f37084b5a21d01",
+    "size": 457,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/iphone.svg": {
+    "baselineSha256": "3005768c3563f6670e1fc2ae3ef186279cbc5e4ad9e934c1f3e7b5a3c89ec6ed",
+    "baselineSize": 238,
+    "role": "public asset",
+    "sha256": "3005768c3563f6670e1fc2ae3ef186279cbc5e4ad9e934c1f3e7b5a3c89ec6ed",
+    "size": 238,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/jais.svg": {
+    "baselineSha256": "180701e033278234636ad13f87bedea9f8e3fa3213aa976dd5fa8dffc3ab0117",
+    "baselineSize": 10743,
+    "role": "public asset",
+    "sha256": "180701e033278234636ad13f87bedea9f8e3fa3213aa976dd5fa8dffc3ab0117",
+    "size": 10743,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/lfm.svg": {
+    "baselineSha256": "06abfcc10eaf0ad150584076f366a6d00ded9db6a6ddf120ce2ecc96a2345e1a",
+    "baselineSize": 916,
+    "role": "public asset",
+    "sha256": "06abfcc10eaf0ad150584076f366a6d00ded9db6a6ddf120ce2ecc96a2345e1a",
+    "size": 916,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/linux.svg": {
+    "baselineSha256": "a0eed2a1477c5d9359aad010c23d22b3e62a9fe315c872e31fa15c12ecc1efba",
+    "baselineSize": 211,
+    "role": "public asset",
+    "sha256": "a0eed2a1477c5d9359aad010c23d22b3e62a9fe315c872e31fa15c12ecc1efba",
+    "size": 211,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/llama.svg": {
+    "baselineSha256": "e3e9db62f59dc477e5917687349b8aa9685b841d40300c1afad60ad85075cd2e",
+    "baselineSize": 1324,
+    "role": "public asset",
+    "sha256": "e3e9db62f59dc477e5917687349b8aa9685b841d40300c1afad60ad85075cd2e",
+    "size": 1324,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/mac.svg": {
+    "baselineSha256": "eeaed91e78689b61265bc6a40ddc264bbbf494706efc67ee90054627fde46706",
+    "baselineSize": 238,
+    "role": "public asset",
+    "sha256": "eeaed91e78689b61265bc6a40ddc264bbbf494706efc67ee90054627fde46706",
+    "size": 238,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/minicpm.svg": {
+    "baselineSha256": "f39ef3ebaf7866756327a8e4606667cd1c53a9d7339b5c4d2bfa6c8bc5e4cddb",
+    "baselineSize": 2639,
+    "role": "public asset",
+    "sha256": "f39ef3ebaf7866756327a8e4606667cd1c53a9d7339b5c4d2bfa6c8bc5e4cddb",
+    "size": 2639,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/mistral.svg": {
+    "baselineSha256": "88f00cf2e82e4d36bb4fdd0e913df200c6e7d6162ec627cc58cfdd6a4eb17d18",
+    "baselineSize": 290,
+    "role": "public asset",
+    "sha256": "88f00cf2e82e4d36bb4fdd0e913df200c6e7d6162ec627cc58cfdd6a4eb17d18",
+    "size": 290,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/nemotron.svg": {
+    "baselineSha256": "77f55ec1a24a821d6ed54cfc4b8c852122f4fd4668b2d1dac6855b807b03bf27",
+    "baselineSize": 1198,
+    "role": "public asset",
+    "sha256": "77f55ec1a24a821d6ed54cfc4b8c852122f4fd4668b2d1dac6855b807b03bf27",
+    "size": 1198,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/phi.svg": {
+    "baselineSha256": "f0fdaef83e59660c4da6e3988ca41fbe907e420cb86b48a94746caefec015bf9",
+    "baselineSize": 206,
+    "role": "public asset",
+    "sha256": "f0fdaef83e59660c4da6e3988ca41fbe907e420cb86b48a94746caefec015bf9",
+    "size": 206,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/qwen.svg": {
+    "baselineSha256": "36854c60b26bfa5a0cc0d4123727c0ef559efba6f129c0dfa623f3c443fe3e5b",
+    "baselineSize": 805,
+    "role": "public asset",
+    "sha256": "36854c60b26bfa5a0cc0d4123727c0ef559efba6f129c0dfa623f3c443fe3e5b",
+    "size": 805,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/icons/windows.svg": {
+    "baselineSha256": "621e01082680799d17c6396c4a69ce4702917bf919dc488c5e3cdecae54973ea",
+    "baselineSize": 232,
+    "role": "public asset",
+    "sha256": "621e01082680799d17c6396c4a69ce4702917bf919dc488c5e3cdecae54973ea",
+    "size": 232,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/index.html": {
+    "baselineSha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+    "baselineSize": 9745,
+    "role": "public asset",
+    "sha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+    "size": 9745,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/legal.html": {
+    "baselineSha256": "a733330f9cbc2ce406290c8a2c94e5108475c758dacccb7c21be1b6d4a4e3516",
+    "baselineSize": 3707,
+    "role": "public asset",
+    "sha256": "a733330f9cbc2ce406290c8a2c94e5108475c758dacccb7c21be1b6d4a4e3516",
+    "size": 3707,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/main.js": {
+    "baselineSha256": "12f096f196167d9efaebcdc9a307719570d00bbf71d10e16a430fe9b19dea59e",
+    "baselineSize": 9074,
+    "role": "public asset",
+    "sha256": "12f096f196167d9efaebcdc9a307719570d00bbf71d10e16a430fe9b19dea59e",
+    "size": 9074,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/model-catalog.js": {
+    "baselineSha256": "af042b1f93adc2c7f8067931845396d97a9eda234aa5445ed883a131c07f7d9b",
+    "baselineSize": 6309,
+    "role": "public asset",
+    "sha256": "af042b1f93adc2c7f8067931845396d97a9eda234aa5445ed883a131c07f7d9b",
+    "size": 6309,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/models.html": {
+    "baselineSha256": "bfa1e6da8ac74eb5ca91b4cd98f481649481b42defbdc68b2779570a88740f85",
+    "baselineSize": 29223,
+    "role": "public asset",
+    "sha256": "bfa1e6da8ac74eb5ca91b4cd98f481649481b42defbdc68b2779570a88740f85",
+    "size": 29223,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/og-image.png": {
+    "baselineSha256": "20c5d85463f17fcb72d0db468babf628e94ba274e3a1a3ba00ab70e71ed52e1b",
+    "baselineSize": 192061,
+    "role": "public asset",
+    "sha256": "20c5d85463f17fcb72d0db468babf628e94ba274e3a1a3ba00ab70e71ed52e1b",
+    "size": 192061,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/og-image.svg": {
+    "baselineSha256": "5e561c6a2b20c42ee1a6141abdd75fa79b3f4a165edf718531d982dd014cc117",
+    "baselineSize": 2615284,
+    "role": "public asset",
+    "sha256": "5e561c6a2b20c42ee1a6141abdd75fa79b3f4a165edf718531d982dd014cc117",
+    "size": 2615284,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/post.js": {
+    "baselineSha256": "747ff958e21790d471d47fcaf29f03cf32c8d301d893eff1e15e96c4f24a1f50",
+    "baselineSize": 2878,
+    "role": "public asset",
+    "sha256": "747ff958e21790d471d47fcaf29f03cf32c8d301d893eff1e15e96c4f24a1f50",
+    "size": 2878,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/privacy.html": {
+    "baselineSha256": "c5aba35c8210c2f5447f3914a678f9d2d9e0087ce481780634fb7b35bc7f6756",
+    "baselineSize": 16202,
+    "role": "public asset",
+    "sha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+    "size": 17684,
+    "sourceRevision": "android-native-next-20261028 worktree pending content review"
+  },
+  "/reality.html": {
+    "baselineSha256": "49970549d7dc03e0ee31c58912f82aa687e4b16f1af7639e5b737aa054bd986e",
+    "baselineSize": 13106,
+    "role": "public asset",
+    "sha256": "49970549d7dc03e0ee31c58912f82aa687e4b16f1af7639e5b737aa054bd986e",
+    "size": 13106,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/research.html": {
+    "baselineSha256": "af255e8e93bfae54baa1b5cf4aeb022d1c721381a76c3df0953fa8fa261726b3",
+    "baselineSize": 7698,
+    "role": "public asset",
+    "sha256": "af255e8e93bfae54baa1b5cf4aeb022d1c721381a76c3df0953fa8fa261726b3",
+    "size": 7698,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/roadmap.html": {
+    "baselineSha256": "6360b4fd8c184049727de85d346789f4b632edf2f7016d2878ad5c686de74f10",
+    "baselineSize": 8071,
+    "role": "public asset",
+    "sha256": "6360b4fd8c184049727de85d346789f4b632edf2f7016d2878ad5c686de74f10",
+    "size": 8071,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/robots.txt": {
+    "baselineSha256": "88ae716223ab5e5b91e935a79aefcc413bf8663cbf35b2359735d2129900951b",
+    "baselineSize": 67,
+    "role": "public asset",
+    "sha256": "88ae716223ab5e5b91e935a79aefcc413bf8663cbf35b2359735d2129900951b",
+    "size": 67,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/simple-home.css": {
+    "baselineSha256": "0eef269b61d098f7844019f1b241c8ab6237c5c358dae4559f23d4d0ea51e4e1",
+    "baselineSize": 6265,
+    "role": "public asset",
+    "sha256": "0eef269b61d098f7844019f1b241c8ab6237c5c358dae4559f23d4d0ea51e4e1",
+    "size": 6265,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/site.webmanifest": {
+    "baselineSha256": "496146e29a11d192453541d1d0b18b9a90e46eb6e53c9008892a2c71ef7fc76a",
+    "baselineSize": 898,
+    "role": "public asset",
+    "sha256": "496146e29a11d192453541d1d0b18b9a90e46eb6e53c9008892a2c71ef7fc76a",
+    "size": 898,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/sitemap.xml": {
+    "baselineSha256": "cbd347954c77c2d7b86a347fcde817f17b29152bfbb70f1960588c9a36878957",
+    "baselineSize": 3302,
+    "role": "public asset",
+    "sha256": "cbd347954c77c2d7b86a347fcde817f17b29152bfbb70f1960588c9a36878957",
+    "size": 3302,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/styles.css": {
+    "baselineSha256": "678d5ef1070ad53c7f2b5608e4ee4f29debe45d80a5e5ef7cab11b56736e1b91",
+    "baselineSize": 67377,
+    "role": "public asset",
+    "sha256": "678d5ef1070ad53c7f2b5608e4ee4f29debe45d80a5e5ef7cab11b56736e1b91",
+    "size": 67377,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/sw.js": {
+    "baselineSha256": "2ee89258e00bac64ebfb33a35d3f413ee1dd4b9de5a1641d0edbaac39995b50f",
+    "baselineSize": 1648,
+    "role": "public asset",
+    "sha256": "2ee89258e00bac64ebfb33a35d3f413ee1dd4b9de5a1641d0edbaac39995b50f",
+    "size": 1648,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/tell-me-more.html": {
+    "baselineSha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+    "baselineSize": 67348,
+    "role": "public asset",
+    "sha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+    "size": 67348,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/terms.html": {
+    "baselineSha256": "5b16bd84effdcaec60db34d6917be98bf4eabcb4831b104728c9ccc4857a30e5",
+    "baselineSize": 4370,
+    "role": "public asset",
+    "sha256": "5b16bd84effdcaec60db34d6917be98bf4eabcb4831b104728c9ccc4857a30e5",
+    "size": 4370,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  },
+  "/why-local-agent.html": {
+    "baselineSha256": "245709029735a18e614054693965b1b01fb1c747f0613b99ed195b203182c141",
+    "baselineSize": 5749,
+    "role": "public asset",
+    "sha256": "245709029735a18e614054693965b1b01fb1c747f0613b99ed195b203182c141",
+    "size": 5749,
+    "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+  }
+}

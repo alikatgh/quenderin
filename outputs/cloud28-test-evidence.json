@@ -1,0 +1,38 @@
+{
+  "build": 28,
+  "revision": "1761d8430ff51212c4bdca3a8bd45eb071471dca",
+  "ios_result_zip_sha256": "6a798b82cedb28028a7ccd11014ea9d575ec5c2fefb5574e7ba5039402487b22",
+  "ios_result_zip_bytes": 65087761,
+  "failure": "CloudJourneyTests.swift:86 Connect remained disabled after consent tap",
+  "recorded_consent_tap_logical_point": [
+    201.0,
+    211.8333
+  ],
+  "logical_screen": [
+    402,
+    874
+  ],
+  "visible_switch_approximate_point": [
+    340,
+    212
+  ],
+  "recording_final_frame": "cloud28-ios-deepseek-failure.png",
+  "ui_snapshot_limitation": "Final exported snapshot contains app root but no child hierarchy; switch off verified in video frame",
+  "mac_log_zip_bytes": 3971,
+  "mac_log_zip_sha256": "bde604c7a2fe591ce318565bcc7c7764c43ddcc26e74667654ef0aca94b5ac7d",
+  "mac_failure": "First app.launch timed out with Running Background before journey assertions; cause unconfirmed",
+  "test_counts": {
+    "ios_passed": 3,
+    "ios_failed": 1,
+    "mac_passed": 5,
+    "mac_failed": 1
+  },
+  "signed_archives": "iOS and macOS passed; not submitted",
+  "mac_result_zip_bytes": 218599930,
+  "mac_result_zip_sha256": "a2ec174ce5a1146a3fb928f3834805a22335125c7612478843819f13c3a844dd",
+  "mac_video_finding": "Cloud host displays macOS lock screen at first and final selected recording frames; test app never reaches foreground. App cause not demonstrated.",
+  "mac_selected_frames": [
+    "cloud28-mac-launch-first.png",
+    "cloud28-mac-launch-failure.png"
+  ]
+}

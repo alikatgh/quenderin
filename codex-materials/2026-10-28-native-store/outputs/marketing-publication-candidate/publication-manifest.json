@@ -1,0 +1,458 @@
+{
+  "/404.html": {
+    "sha256": "ecdb9a09473b564efc43331acd026482c9c1aaf2552533de4aa54bae454e0f0a",
+    "size": 1610
+  },
+  "/_headers": {
+    "sha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+    "size": 613
+  },
+  "/accessibility.html": {
+    "sha256": "27641e80e6adf03ff5421901ae5adc764fc405d150d9a7e26cdfb915e96f0b57",
+    "size": 3768
+  },
+  "/apple-touch-icon.png": {
+    "sha256": "968f31dc1582e173d28ddd0170cd4fe6ca5cf1e64a48f5d8ba22159f7f3a19de",
+    "size": 68807
+  },
+  "/assets/app-store-badge.svg": {
+    "sha256": "a26fc5b38380272c92e9019a2eb8b45542a66814b3e2b203772db8904b9fb99f",
+    "size": 10804
+  },
+  "/assets/app/agent.png": {
+    "sha256": "10fcd106231be743dab70843e3d6fdf5523f17a4df21fb2250654fc8f9879970",
+    "size": 104207
+  },
+  "/assets/app/chat.png": {
+    "sha256": "1d12cd905cb6b2b704546373b2b9cbf4a82f1d63a6e64ece9ddf8427a4c1fed6",
+    "size": 147911
+  },
+  "/assets/app/icon-ios.png": {
+    "sha256": "00c2da04879cb71dcafdf3f063dba957c8dfe848c3e138dbbe1ddd16e687e347",
+    "size": 284494
+  },
+  "/assets/app/icon-mac.png": {
+    "sha256": "168bd5b3e7acc5188c1067511472f98068b2e798794e9e7cccd941ec3533c59e",
+    "size": 202718
+  },
+  "/assets/app/phone-chat.png": {
+    "sha256": "1ed404e203846d60318213a4570387c77c4f0d49a8af69c6d1d7b8599a31e6e2",
+    "size": 108733
+  },
+  "/assets/app/phone-chat.webp": {
+    "sha256": "28ee8b8c95a62d2ef2c9acbec4dae3455498a9a7532f1b7461636d332be67086",
+    "size": 62684
+  },
+  "/assets/app/picker.png": {
+    "sha256": "096eac9c48673c41c6ea21ac1834bf2880efe8698b22de8565c66d0b3de32658",
+    "size": 316271
+  },
+  "/assets/app/profile.png": {
+    "sha256": "0822931592bbc6d04c53ffe892ccafe983b656563fb315b447aa3488af202299",
+    "size": 164723
+  },
+  "/assets/app/welcome.png": {
+    "sha256": "2243b3073072af0bc84b5a816742885e2ce383fe592c47c7d9ce7aaddfa28e05",
+    "size": 192417
+  },
+  "/assets/blog/open-model-library-20261018.jpg": {
+    "sha256": "37e2ac72bc5068d8991e6816156a6528f3aa09d91b8382a92f695525aa11a334",
+    "size": 507729
+  },
+  "/assets/blog/website-update-20261019.jpg": {
+    "sha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432",
+    "size": 91780
+  },
+  "/assets/social/feature-graphic-1024x500.png": {
+    "sha256": "da48e016aa4a3a30c4a66ba9636912e5ea31040b8b3717b5dbfa9fb9c549ef18",
+    "size": 442227
+  },
+  "/blog-agent-hands.html": {
+    "sha256": "1bd2a521b2d1942171cb7516e22cd35f9c06e1beb71ad42a827305176bf6543e",
+    "size": 5665
+  },
+  "/blog-android-beta.html": {
+    "sha256": "ec669cecaebf80917823b2a57632724a82dc62e3d18f49090b086827d3d82041",
+    "size": 7154
+  },
+  "/blog-apple-launch.html": {
+    "sha256": "7dfb142d78c341dd8ecd1b705076085ae24bbd7a0cce9ba2a1036004f15096cf",
+    "size": 6488
+  },
+  "/blog-bonsai-2.html": {
+    "sha256": "2fb35e0c6861deb808853ee17f1b849fc426a95464e63bf547f6caccf9382fac",
+    "size": 6527
+  },
+  "/blog-bonsai-small-muse-spark.html": {
+    "sha256": "1a43cbc60ff292720ddf785db40cdb4e31eb26080a28591d35ddf805a66e337e",
+    "size": 6582
+  },
+  "/blog-clearer-language.html": {
+    "sha256": "d8068c12f52018fe7b99dc1f1cb492192bb7d6f065965afd8e01056f26d3a543",
+    "size": 5175
+  },
+  "/blog-cli.html": {
+    "sha256": "a4ef14c2bef548f0cb2800dbea52679b13856b35e6e5eadac174d772c4b5cfe2",
+    "size": 4644
+  },
+  "/blog-computer-use.html": {
+    "sha256": "b1da53bcf9abd0dd0f18e9451eed360ac4e05800e629f1342dc3e3b096af630b",
+    "size": 6514
+  },
+  "/blog-ggml-abort.html": {
+    "sha256": "dbc19cc18db110a60fe3c3010eb0828684e931490dfe7de4818f32c77dcd95ad",
+    "size": 8513
+  },
+  "/blog-model-integrity.html": {
+    "sha256": "8022c36e5b55cfd8c3d3cb45fb4ea28b6df75ade85b561d4ac9088577d24b1fd",
+    "size": 8969
+  },
+  "/blog-muse-engineering.html": {
+    "sha256": "2762c4891f26de97e9f50f93d98022718809b7aacde8880510eae38af6ec7d95",
+    "size": 12335
+  },
+  "/blog-open-models-october-2026.html": {
+    "sha256": "26d67cf564253aa94ef905f59a2bcbad278a80488c582cf0f4dc96b8f2ebf547",
+    "size": 13260
+  },
+  "/blog-setup.html": {
+    "sha256": "d75b2c79b155a3d547195069cb30e4d9aa6fe6f880dfca1a1ce26fcfd5ee83da",
+    "size": 7088
+  },
+  "/blog-website-update-october-2026.html": {
+    "sha256": "eea8cd9cc3b06f88ba6cb69489bb2a1be68d9b26fd001bac308f787d0b7d3ae5",
+    "size": 6029
+  },
+  "/blog.html": {
+    "sha256": "3cfc9360d201b21abbd603fe72ed75f14307392d1ee561dc4960394695381ea2",
+    "size": 8947
+  },
+  "/changelog.html": {
+    "sha256": "08700aad4730cc6aa30d0a0f89a6dffd728fc42538956358b11147a3efaf07c0",
+    "size": 18040
+  },
+  "/data/image-model-catalog.json": {
+    "sha256": "51db4c4614c396e810cc3767573df5d1ec2aa070df5e731c7a42440592654f0a",
+    "size": 6287
+  },
+  "/data/model-catalog.json": {
+    "sha256": "391bfe938d841ebb96e18e2c42f3fb12e5de94785b41f06a496b713518064123",
+    "size": 27070
+  },
+  "/data/model-releases.json": {
+    "sha256": "5ac15e2003691c7aac24d150acbb9740f704c505e2ed67b1c4d580271356b8a1",
+    "size": 11679
+  },
+  "/detail-page.css": {
+    "sha256": "7cfff85e1e32ffebc026d0efd88ef59ef64e69f1f32ffa073443e7e8f5f7afd4",
+    "size": 19022
+  },
+  "/download.html": {
+    "sha256": "bcdc29c4e6b7c13eb903a539263be47fffd02131dbac111345cf7e8154e566dc",
+    "size": 9526
+  },
+  "/faq.html": {
+    "sha256": "20deee90fea6004f054eb6ae7b460619b497116b835745d5ccca11c2f8e1a8d8",
+    "size": 13588
+  },
+  "/favicon-16.png": {
+    "sha256": "600a0d2a2c6090d457da246e4f38b53dd28cee75bcb4ada3a69678c1938d1447",
+    "size": 923
+  },
+  "/favicon-32.png": {
+    "sha256": "baefe71a9113f5453c45fb4ae43ccb6901d37c80d1cbc19aba30b190ce2a20de",
+    "size": 3129
+  },
+  "/favicon.svg": {
+    "sha256": "f063a5c024c1ad854797d4d3701e34911ea07f79e41c02cd5328788336da917a",
+    "size": 15387
+  },
+  "/features.html": {
+    "sha256": "b955ba2ae07131526c5a761ac684702462a7ad1dc16bb798931a66a30b759dfa",
+    "size": 12427
+  },
+  "/fonts/bricolage-grotesque-latin.woff2": {
+    "sha256": "a97804dc9fbe5fc972a08018c5eda4dab7ef2346f64c57e61419d05e6de4ea1c",
+    "size": 41344
+  },
+  "/gradient.js": {
+    "sha256": "b7dbf0b51c4fefaf4759fd51f0e86d6159f61b43ea3102eeef15f887e992997c",
+    "size": 9782
+  },
+  "/help.html": {
+    "sha256": "3ad2e2048185532b3f69da11baacd577b9b34f13f3b2d0fc22291b185774f42e",
+    "size": 4788
+  },
+  "/how-it-works.html": {
+    "sha256": "f0b47b30de5b22b62927a4f58fc519a086028ab6261de7216701e8fca5c7b54c",
+    "size": 11583
+  },
+  "/i18n.js": {
+    "sha256": "985c24da464ca641889025fe3edcb098dff668b7c880523fae419fdb89b964ad",
+    "size": 4438
+  },
+  "/i18n/ar.json": {
+    "sha256": "79dd55076bc5062d29f77d9718902a3bee6f563a9d993f2e04e687a855196875",
+    "size": 34211
+  },
+  "/i18n/bn.json": {
+    "sha256": "1704e89ab30e56414fc16ef5358fece57c004fd8817b0aa471d5dd4244b368a1",
+    "size": 51298
+  },
+  "/i18n/demos/ar.json": {
+    "sha256": "618015b07c2607cd4dba69bfb37baaf3ff9cd5eb38813ed147671736dd9e8e57",
+    "size": 5907
+  },
+  "/i18n/demos/bn.json": {
+    "sha256": "1e416631bd47f60184142e1ef9097e0cd83c53bc2bbc7d9d80b228f70619caf3",
+    "size": 8646
+  },
+  "/i18n/demos/en.json": {
+    "sha256": "a3e0ad42fcf2082b810e052b828ff289f8ea8322f3222ead2792d432c5ca6b93",
+    "size": 3691
+  },
+  "/i18n/demos/es.json": {
+    "sha256": "7f46fc6e2c8e5e1117c2e3c14a996c10b8e5ffe1740103d7793c23c905eabf2c",
+    "size": 4262
+  },
+  "/i18n/demos/fr.json": {
+    "sha256": "32d5a31f9baf601e47423621b9f2c95226eddc3283f2db5e94935bddb43771f2",
+    "size": 4719
+  },
+  "/i18n/demos/hi.json": {
+    "sha256": "b0d18fdba2a3cf42c66d5aea2834bbeb4fc31f4488d2399190856cd692b891fd",
+    "size": 8764
+  },
+  "/i18n/demos/id.json": {
+    "sha256": "d6d543a023bdca4ede15fa49669ec38952899b071fcf4422ba0c5106a2be2649",
+    "size": 4326
+  },
+  "/i18n/demos/ja.json": {
+    "sha256": "fcecb9748bcab14668d0bc9c3adfa879cc1d3835094b3ae25c2fce4d94715407",
+    "size": 5319
+  },
+  "/i18n/demos/ko.json": {
+    "sha256": "d9197272c09fcac0e936d197be6baf0890a39d9f94e5a4a9b51a67dcda0007dd",
+    "size": 4873
+  },
+  "/i18n/demos/pt.json": {
+    "sha256": "1bc22ac7686619c80af2b040870dddc8b6719c8737f257bd6af48a3d442cb16b",
+    "size": 4148
+  },
+  "/i18n/demos/ru.json": {
+    "sha256": "9dde85da8a497c27c18aa217d1ac567aa581d1b6b23c72aca3cc0d2ff183ea7f",
+    "size": 6984
+  },
+  "/i18n/demos/zh.json": {
+    "sha256": "952ca99275d6813bf45105014902a7e848d09975c8a1b826c61aad3528168c6c",
+    "size": 3983
+  },
+  "/i18n/en.json": {
+    "sha256": "dee79dcf71462b0fd8f3c41832e8cc982008814612409c698752f63c40934985",
+    "size": 27106
+  },
+  "/i18n/es.json": {
+    "sha256": "e0704a1e273b29055de161121b67c7d0f6d5e5e7b7831de99a7d4df2146b5c0f",
+    "size": 27726
+  },
+  "/i18n/fr.json": {
+    "sha256": "3a1104353c8bdf7465f08e133a9124905f7eb955569932d49e7a57d83b21c1f6",
+    "size": 29389
+  },
+  "/i18n/hi.json": {
+    "sha256": "55a2961f0f41416acb574922fee084ff9ad7a0dd9588afb4a0552d58316dce73",
+    "size": 50659
+  },
+  "/i18n/id.json": {
+    "sha256": "849409816131e4d19261a4900961cd3adc345e8c1c64e69ac569b8f68648df33",
+    "size": 26179
+  },
+  "/i18n/ja.json": {
+    "sha256": "b47fedc341b515a83ee7bddfd71c0337249a896754e06deffe187473eef244dc",
+    "size": 32886
+  },
+  "/i18n/ko.json": {
+    "sha256": "76096a02b942dabff919a82c2d547f2ae346173262803de6841f95be8be9feae",
+    "size": 29711
+  },
+  "/i18n/pt.json": {
+    "sha256": "d77b74b905f35b627b55ce87b7d5819f52edc0654cb2a1e1b051b3b529553695",
+    "size": 26940
+  },
+  "/i18n/ru.json": {
+    "sha256": "f9ea3d01116100a0ee72c5608dd1950e43fa3bd5d5ac4be702ea8e25e9890d78",
+    "size": 42136
+  },
+  "/i18n/zh.json": {
+    "sha256": "ce33962c6d3dc14e8111fd2aa037a7a8f5825b76c4f0065421416439e210c2cd",
+    "size": 23931
+  },
+  "/icon-192.png": {
+    "sha256": "a4e6660a01d7ee940ebb9bed50973ee4cb60d0a3f62c602afd09451e1f478fb5",
+    "size": 77647
+  },
+  "/icon-512.png": {
+    "sha256": "f51a92b66a363601ba0289a66ad6e74e81e7687b29bb656fefaf2ea9b2f7a9e6",
+    "size": 511806
+  },
+  "/icons/android.svg": {
+    "sha256": "7901b74e44a777ae89ec6db525bb5f88656a475cd1b8727423d3af8e39fe8733",
+    "size": 272
+  },
+  "/icons/beam.svg": {
+    "sha256": "11e6ef9919c792f44072f1ce6018007efe77569d289c37ba325a6e093f05e0dc",
+    "size": 386
+  },
+  "/icons/bonsai.svg": {
+    "sha256": "ac05651aa2116b8d98968a4f9f0fd007aa1ae6b611cdd2183f78ee3a73a5e955",
+    "size": 749
+  },
+  "/icons/deepseek.svg": {
+    "sha256": "7a55a0a7391d116eba7d32807d6838478f9209f6034612941e74fbb14934e2ef",
+    "size": 2086
+  },
+  "/icons/gemma.svg": {
+    "sha256": "d8cf9fb2d5e234e03254f1d6400d8cc8160c309b010d031a64f37084b5a21d01",
+    "size": 457
+  },
+  "/icons/iphone.svg": {
+    "sha256": "3005768c3563f6670e1fc2ae3ef186279cbc5e4ad9e934c1f3e7b5a3c89ec6ed",
+    "size": 238
+  },
+  "/icons/jais.svg": {
+    "sha256": "180701e033278234636ad13f87bedea9f8e3fa3213aa976dd5fa8dffc3ab0117",
+    "size": 10743
+  },
+  "/icons/lfm.svg": {
+    "sha256": "06abfcc10eaf0ad150584076f366a6d00ded9db6a6ddf120ce2ecc96a2345e1a",
+    "size": 916
+  },
+  "/icons/linux.svg": {
+    "sha256": "a0eed2a1477c5d9359aad010c23d22b3e62a9fe315c872e31fa15c12ecc1efba",
+    "size": 211
+  },
+  "/icons/llama.svg": {
+    "sha256": "e3e9db62f59dc477e5917687349b8aa9685b841d40300c1afad60ad85075cd2e",
+    "size": 1324
+  },
+  "/icons/mac.svg": {
+    "sha256": "eeaed91e78689b61265bc6a40ddc264bbbf494706efc67ee90054627fde46706",
+    "size": 238
+  },
+  "/icons/minicpm.svg": {
+    "sha256": "f39ef3ebaf7866756327a8e4606667cd1c53a9d7339b5c4d2bfa6c8bc5e4cddb",
+    "size": 2639
+  },
+  "/icons/mistral.svg": {
+    "sha256": "88f00cf2e82e4d36bb4fdd0e913df200c6e7d6162ec627cc58cfdd6a4eb17d18",
+    "size": 290
+  },
+  "/icons/nemotron.svg": {
+    "sha256": "77f55ec1a24a821d6ed54cfc4b8c852122f4fd4668b2d1dac6855b807b03bf27",
+    "size": 1198
+  },
+  "/icons/phi.svg": {
+    "sha256": "f0fdaef83e59660c4da6e3988ca41fbe907e420cb86b48a94746caefec015bf9",
+    "size": 206
+  },
+  "/icons/qwen.svg": {
+    "sha256": "36854c60b26bfa5a0cc0d4123727c0ef559efba6f129c0dfa623f3c443fe3e5b",
+    "size": 805
+  },
+  "/icons/windows.svg": {
+    "sha256": "621e01082680799d17c6396c4a69ce4702917bf919dc488c5e3cdecae54973ea",
+    "size": 232
+  },
+  "/index.html": {
+    "sha256": "cec57be583e633b5a20e19762f7da4fc3b62c06178d67746513bc489a157f331",
+    "size": 9617
+  },
+  "/legal.html": {
+    "sha256": "42a534fa6d2a8bd26e95cf5bd8db8e02783930cf1cf53e7a8ad9fc796e329288",
+    "size": 3509
+  },
+  "/main.js": {
+    "sha256": "858b7afb07da707b76d345d32bc866ff0edc886314247e67a2366d4539968f69",
+    "size": 7837
+  },
+  "/model-catalog.js": {
+    "sha256": "2fb7d354cc057b1b6004de68a30dac5b8b2460ac55c22dbdb5a553d58165ffc9",
+    "size": 7672
+  },
+  "/models.html": {
+    "sha256": "1b871b16f3ad50a9d83ed1e69d06f8857d1629901781954d653d6e5882367637",
+    "size": 29492
+  },
+  "/og-image.png": {
+    "sha256": "20c5d85463f17fcb72d0db468babf628e94ba274e3a1a3ba00ab70e71ed52e1b",
+    "size": 192061
+  },
+  "/og-image.svg": {
+    "sha256": "5e561c6a2b20c42ee1a6141abdd75fa79b3f4a165edf718531d982dd014cc117",
+    "size": 2615284
+  },
+  "/post.js": {
+    "sha256": "747ff958e21790d471d47fcaf29f03cf32c8d301d893eff1e15e96c4f24a1f50",
+    "size": 2878
+  },
+  "/privacy.html": {
+    "sha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+    "size": 17684
+  },
+  "/reality.html": {
+    "sha256": "859851a3f524815aae9a3150f8275f55ebf59de56165020662d5593c79e33048",
+    "size": 12908
+  },
+  "/research.html": {
+    "sha256": "a1eaec824f23ff0debf26b5eae4089544e28782ef3e3f3cb51b6584a2ee05c8a",
+    "size": 7500
+  },
+  "/roadmap.html": {
+    "sha256": "53a46f8c715083a2505c9824d73a7db1e8c8527a2a33966abf00eb3e5817e97a",
+    "size": 7873
+  },
+  "/robots.txt": {
+    "sha256": "88ae716223ab5e5b91e935a79aefcc413bf8663cbf35b2359735d2129900951b",
+    "size": 67
+  },
+  "/simple-home.css": {
+    "sha256": "ca042df9c45eefc5d5ec425f526af1473e9455bd84abbb7e8eb035c18c6bf8d7",
+    "size": 6338
+  },
+  "/site.webmanifest": {
+    "sha256": "2ff7124c6612ccb017d76b0d41dd97331042cc18039a887afe376cf00f24c8f4",
+    "size": 898
+  },
+  "/sitemap.xml": {
+    "sha256": "fbb25a76b1ac01e389097c2a64f564ab511c7199286f7a32c45ebd3313948e0e",
+    "size": 3407
+  },
+  "/styles.css": {
+    "sha256": "5c263351fa586cac7ef3e90202e4437f2e41ea998fa3aa9985477442284e2780",
+    "size": 68228
+  },
+  "/sw.js": {
+    "sha256": "2ee89258e00bac64ebfb33a35d3f413ee1dd4b9de5a1641d0edbaac39995b50f",
+    "size": 1648
+  },
+  "/tell-me-more.html": {
+    "sha256": "5b330b65fa26dc7b3762ec6a7aed60fad48185beb704767dee0bc1eb9f0ad76d",
+    "size": 70844
+  },
+  "/terms.html": {
+    "sha256": "f4e96142ec55922745b7cc190b564bee6110f45f49fde31517a6faaf9491d1fb",
+    "size": 4172
+  },
+  "/why-local-agent.html": {
+    "sha256": "accecae1261114a1a765b4fc54dbcdba0c6e6f94d990768fbf4dbffbbe5de1bd",
+    "size": 5551
+  },
+  "/theme.js": {
+    "sha256": "306882cc97f34f8aa1eee6932ba9fc7af186fbaaed4a1a589f1029812c87c175",
+    "size": 3177
+  },
+  "/blog-development-october-2026.html": {
+    "sha256": "0774fc27984c4860210c4eef3d3e4b6c51a2d7a1c7c4003d8fb9285f3fa6a75a",
+    "size": 6819
+  }
+}

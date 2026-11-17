@@ -1,0 +1,170 @@
+[
+  {
+    "id": "6ea83934-8cbf-4903-a13f-b639eb8fa02b",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "d7d8ade7-3e23-4f73-8801-be82aebe76b2",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-12T06:10:46.196267Z"
+  },
+  {
+    "id": "75ade09c-720c-4002-ac35-12b366add57c",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish engineering blog, changelog, catalog static assets; live Worker code unchanged",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "e7fc1ef0-7b4c-45e8-b6d7-60ed21124b7b",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-16T05:00:27.740291Z"
+  },
+  {
+    "id": "52650baf-3e9f-46a2-b602-4c922943e28e",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Final static blog and changelog publication; dynamic Worker preserved",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "cfa3e413-b0a8-438d-8550-033d76b798e9",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-16T05:04:49.6417Z"
+  },
+  {
+    "id": "db715c94-608c-4c56-8848-437b03c27199",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish verified October18 model engineering article, changelog and landing pages; preserve exact live Worker code/settings",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "a493be9a-b250-483e-8d1e-b7d3323955df",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-18T07:41:36.393703Z"
+  },
+  {
+    "id": "e25b7dc1-c054-4750-bcf1-49e268836bb3",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Deploy verified website UI 874c8ed; static assets only, exact Worker code/settings preserved",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "0fff4c28-5e74-4346-8978-98e777d26cdc",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-18T20:50:17.566512Z"
+  },
+  {
+    "id": "d07af374-2900-45c6-aaf9-6129fb55f8ab",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish website blog, changelog and latest-post links at 4887e63; exact Worker code/settings preserved",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "f9e7bf5e-5273-4e1d-a792-18f1b4c20f24",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-18T23:09:50.307646Z"
+  },
+  {
+    "id": "b2128484-580c-4217-875a-9abaa72d890e",
+    "source": "cf_cli",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "84a87b78-310e-4ecf-86fe-ad259374d6cb",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-19T05:01:59.252849Z"
+  },
+  {
+    "id": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish verified privacy policy 0.6.0 asset",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-28T02:31:17.100742Z"
+  },
+  {
+    "id": "3533e634-2ca3-425c-ae2c-fa5a19ef843c",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish verified Android reporting privacy disclosure asset",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-28T03:54:54.367242Z"
+  },
+  {
+    "id": "ffb95aa2-6a71-475f-95e0-2c203565855e",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish reviewed model logos and dated October28 development updates from main21b025; retain exact Worker and current privacy",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "d79c77fe-ce49-4417-a1a5-bbb2994fe0c6",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-28T08:11:43.033918Z"
+  }
+]

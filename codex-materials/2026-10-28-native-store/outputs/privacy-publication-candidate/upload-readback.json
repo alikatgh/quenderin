@@ -1,0 +1,19 @@
+{
+  "oldVersion": "84a87b78-310e-4ecf-86fe-ad259374d6cb",
+  "newVersion": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+  "readbackRuntimeAndBindingsMatch": true,
+  "exactWorkerETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+  "assetInputCount": 112,
+  "uploaderNewAssets": [
+    "/privacy.html"
+  ],
+  "unchangedPublicAssets": 110,
+  "previewRendered": true,
+  "previewRawHttpHashCheck": "blocked-http-403",
+  "groupingTagNormalization": "explicitly approved by user",
+  "status": "live-verified-in-browser",
+  "deploymentId": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+  "deployedAt": "2026-10-28T02:31:17.100742Z",
+  "livePolicyUrl": "https://quenderin.org/privacy",
+  "livePolicyUpdated": "28 October 2026"
+}

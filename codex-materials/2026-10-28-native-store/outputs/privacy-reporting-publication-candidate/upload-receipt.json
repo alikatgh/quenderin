@@ -1,0 +1,58 @@
+{
+  "startedAt": "2026-10-28T03:36:03.764645+00:00",
+  "finishedAt": "2026-10-28T03:36:11.305231+00:00",
+  "command": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "upload",
+      "--config",
+      "wrangler.json",
+      "--no-experimental-provision",
+      "--no-experimental-auto-create",
+      "--message",
+      "Privacy policy Android reporting disclosure only; exact deployed Worker retained"
+    ]
+  },
+  "exitCode": 0,
+  "stdoutSummary": [
+    "\u26c5\ufe0f wrangler 4.151.1",
+    "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+    "\ud83c\udf00 Building list of assets...",
+    "\u2728 Read 121 files from the assets directory /private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage/website",
+    "\ud83c\udf00 Starting asset upload...",
+    "\ud83c\udf00 Found 1 new or modified static asset to upload. Proceeding with upload...",
+    "+ /privacy.html",
+    "Uploaded 1 of 1 asset",
+    "\u2728 Success! Uploaded 1 file (110 already uploaded) (1.44 sec)",
+    "",
+    "Total Upload: 7.80 KiB / gzip: 2.90 KiB",
+    "Worker Startup Time: 0 ms",
+    "Your Worker has access to the following bindings:",
+    "Binding            Resource      ",
+    "env.ASSETS         Assets        ",
+    "",
+    "Uploaded quenderin (4.76 sec)",
+    "Worker Version ID: 29ec91c0-214d-43c1-a974-84fd171dfb1d",
+    "Version Preview URL: https://29ec91c0-quenderin.wallmarketshq.workers.dev",
+    "",
+    "To deploy this version to production traffic use the command wrangler versions deploy",
+    "",
+    "Changes to non-versioned settings (config properties 'logpush' or 'tail_consumers') take effect after your next deployment using the command wrangler versions deploy",
+    "",
+    "Changes to triggers (routes, custom domains, cron schedules, etc) must be applied with the command wrangler triggers deploy"
+  ],
+  "stderrSummary": [],
+  "contentReview": "Parent confirms independent privacy/client alignment review passed with no findings",
+  "trafficActivated": false,
+  "newVersionId": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "previewUrls": [
+    "https://29ec91c0-quenderin.wallmarketshq.workers.dev"
+  ]
+}

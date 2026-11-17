@@ -1,0 +1,448 @@
+{
+  "manifest": {
+    "/404.html": {
+      "hash": "1eb8e936892be2c5b09a6a8bbf07f8a5",
+      "size": 1577
+    },
+    "/accessibility.html": {
+      "hash": "b934305c81430cd5372ca92bec68721b",
+      "size": 3966
+    },
+    "/apple-touch-icon.png": {
+      "hash": "980a48b7e5f429c5632f7f426f9ad424",
+      "size": 68807
+    },
+    "/assets/app-store-badge.svg": {
+      "hash": "e978211f6a8aa7f049a5e3cb2488032a",
+      "size": 10804
+    },
+    "/assets/app/agent.png": {
+      "hash": "0a84b41d1f215d2c78f318718e63ecbf",
+      "size": 104207
+    },
+    "/assets/app/chat.png": {
+      "hash": "6dd97f57d5a5e6568ba8527e959b361a",
+      "size": 147911
+    },
+    "/assets/app/icon-ios.png": {
+      "hash": "37d73699e381516ba538173e8278ceb8",
+      "size": 284494
+    },
+    "/assets/app/icon-mac.png": {
+      "hash": "009db86ba1cd8e3d6c4415400eaee852",
+      "size": 202718
+    },
+    "/assets/app/phone-chat.png": {
+      "hash": "157ae77a356b3de12d26a87678f66f72",
+      "size": 108733
+    },
+    "/assets/app/phone-chat.webp": {
+      "hash": "874da1419462d81167378f11c51d2997",
+      "size": 62684
+    },
+    "/assets/app/picker.png": {
+      "hash": "4ebcdea8865afa08e96fb196059a64a7",
+      "size": 316271
+    },
+    "/assets/app/profile.png": {
+      "hash": "1c8e7b53709d5cb167d5833302657b93",
+      "size": 164723
+    },
+    "/assets/app/welcome.png": {
+      "hash": "d1f21c5166933e74b045d4258678697d",
+      "size": 192417
+    },
+    "/assets/blog/open-model-library-20261018.jpg": {
+      "hash": "16a0d02cc993889f44df4d5f3882ea7d",
+      "size": 507729
+    },
+    "/assets/blog/website-update-20261019.jpg": {
+      "hash": "2e595b14b3fd2fa8c99ad7c5c4c9fa28",
+      "size": 91780
+    },
+    "/assets/social/feature-graphic-1024x500.png": {
+      "hash": "3bf6e7165a1d6b36878606137157c413",
+      "size": 442227
+    },
+    "/blog-agent-hands.html": {
+      "hash": "2e57e429f97fb2ea565e72880fc227c7",
+      "size": 5863
+    },
+    "/blog-android-beta.html": {
+      "hash": "e5c0a5bd834f6011fcb2091555b4acc6",
+      "size": 7352
+    },
+    "/blog-apple-launch.html": {
+      "hash": "33656c408d381e973788437c26a4a9c0",
+      "size": 6686
+    },
+    "/blog-bonsai-2.html": {
+      "hash": "0be90801a7425aa0e549e62851f36d3c",
+      "size": 6725
+    },
+    "/blog-bonsai-small-muse-spark.html": {
+      "hash": "565ceeec7078ae643757f89053fed92f",
+      "size": 6780
+    },
+    "/blog-clearer-language.html": {
+      "hash": "fdc27581f9364ed84300003208b9a06b",
+      "size": 5373
+    },
+    "/blog-cli.html": {
+      "hash": "db99f56e2a7ca781a7c10f4c99c8dcc9",
+      "size": 4842
+    },
+    "/blog-computer-use.html": {
+      "hash": "bd87f81b098772e929e3f818508c9025",
+      "size": 6712
+    },
+    "/blog-ggml-abort.html": {
+      "hash": "d0d13664809b69f05643436995f79805",
+      "size": 8711
+    },
+    "/blog-model-integrity.html": {
+      "hash": "8f6128b2b1e727c5c51df31a7a82ff08",
+      "size": 9167
+    },
+    "/blog-muse-engineering.html": {
+      "hash": "1859d212b9fd84b9671157bd5c0f3be7",
+      "size": 12533
+    },
+    "/blog-open-models-october-2026.html": {
+      "hash": "4854551b5337b996a7b42ab80c8befb8",
+      "size": 13458
+    },
+    "/blog-setup.html": {
+      "hash": "e158b3f95741fe0e6383dc2e63559a6d",
+      "size": 7286
+    },
+    "/blog-website-update-october-2026.html": {
+      "hash": "9ad3514667b5c1cdc481c7d19f6a16f1",
+      "size": 6227
+    },
+    "/blog.html": {
+      "hash": "5271aa2e118a3c3fa3a5a55f86679910",
+      "size": 8651
+    },
+    "/changelog.html": {
+      "hash": "c7aba16e633a66df0b4f3f6abfaa3c20",
+      "size": 17363
+    },
+    "/data/image-model-catalog.json": {
+      "hash": "1f9c2efadea19436bb1d8e3b6e5158d6",
+      "size": 6287
+    },
+    "/data/model-catalog.json": {
+      "hash": "e61eb8736a7586e9fd7d3d00a96ef5aa",
+      "size": 27070
+    },
+    "/data/model-releases.json": {
+      "hash": "ed1e42627c48b91a416a432caedc9665",
+      "size": 11679
+    },
+    "/detail-page.css": {
+      "hash": "98915208c884edb13b19c3c366bbd0c7",
+      "size": 17828
+    },
+    "/download.html": {
+      "hash": "1b7c46da90c4fe7985024006462810e2",
+      "size": 9724
+    },
+    "/faq.html": {
+      "hash": "cd66a9496ae421b1ab23536a16cd9b3c",
+      "size": 13786
+    },
+    "/favicon-16.png": {
+      "hash": "5046abfa087d051460d9cdec6dad8bc2",
+      "size": 923
+    },
+    "/favicon-32.png": {
+      "hash": "00902ea7093f426813a9e531015fd469",
+      "size": 3129
+    },
+    "/favicon.svg": {
+      "hash": "37310b98d9bc2f836768fa6a5982e5db",
+      "size": 15387
+    },
+    "/features.html": {
+      "hash": "25004d6f036196d11714a299619e00af",
+      "size": 12625
+    },
+    "/fonts/bricolage-grotesque-latin.woff2": {
+      "hash": "4c57b0fc29de0d944b087e21bc840fe7",
+      "size": 41344
+    },
+    "/gradient.js": {
+      "hash": "66a381544a5c1f7f76e93edbbe99bc51",
+      "size": 9782
+    },
+    "/help.html": {
+      "hash": "ab441bde724c1b2ec88320b6f63589f3",
+      "size": 4986
+    },
+    "/how-it-works.html": {
+      "hash": "736710769e7a1bb393eb7c3c1af152e4",
+      "size": 11781
+    },
+    "/i18n.js": {
+      "hash": "f510db50ac9a5ad4e20bf9a52c66bed1",
+      "size": 4438
+    },
+    "/i18n/ar.json": {
+      "hash": "f799b88b2531f133c63f20c29f9277f2",
+      "size": 34211
+    },
+    "/i18n/bn.json": {
+      "hash": "069ba628493fc618d72cfce26c26dac4",
+      "size": 51298
+    },
+    "/i18n/demos/ar.json": {
+      "hash": "32756826e604e0a2979b0ec03df8f595",
+      "size": 5907
+    },
+    "/i18n/demos/bn.json": {
+      "hash": "98add64546b7aba7a07bfd5d1ac323e3",
+      "size": 8646
+    },
+    "/i18n/demos/en.json": {
+      "hash": "79f5dea25777c1d2ab6da2bd02771ade",
+      "size": 3691
+    },
+    "/i18n/demos/es.json": {
+      "hash": "050fb6cd17410942bcb0b92c658e1888",
+      "size": 4262
+    },
+    "/i18n/demos/fr.json": {
+      "hash": "e8816caf0d43f126865f18b7b7d8fa4c",
+      "size": 4719
+    },
+    "/i18n/demos/hi.json": {
+      "hash": "86e8830cc764d62eede2b01f05bdfc1d",
+      "size": 8764
+    },
+    "/i18n/demos/id.json": {
+      "hash": "ab92a16b483d4198f63e79eb5934a39f",
+      "size": 4326
+    },
+    "/i18n/demos/ja.json": {
+      "hash": "a0c4d6cc20d928ba21a415a8a696643f",
+      "size": 5319
+    },
+    "/i18n/demos/ko.json": {
+      "hash": "9db30a21c94b44afb3b7fc25632a7820",
+      "size": 4873
+    },
+    "/i18n/demos/pt.json": {
+      "hash": "98af4e06481af8551877d1f5c0d0e125",
+      "size": 4148
+    },
+    "/i18n/demos/ru.json": {
+      "hash": "e91884f58bb8359ccc0d3c52616d9241",
+      "size": 6984
+    },
+    "/i18n/demos/zh.json": {
+      "hash": "a564f5dbdc014f29882d050e56ee7f19",
+      "size": 3983
+    },
+    "/i18n/en.json": {
+      "hash": "c03022f91ee0d2965be14c9d4105a12b",
+      "size": 25254
+    },
+    "/i18n/es.json": {
+      "hash": "ff5af31defd531b733ac2e7d2cf08b7f",
+      "size": 27726
+    },
+    "/i18n/fr.json": {
+      "hash": "0b394fe50953170364f31abc594b8f7c",
+      "size": 29389
+    },
+    "/i18n/hi.json": {
+      "hash": "35c836d77f66827b38a56b38292b35c1",
+      "size": 50659
+    },
+    "/i18n/id.json": {
+      "hash": "e254ed18de786bf2bc9e0bbf39719ab9",
+      "size": 26179
+    },
+    "/i18n/ja.json": {
+      "hash": "c2e875ddc48e7325f4f6e3d5ed9cd254",
+      "size": 32886
+    },
+    "/i18n/ko.json": {
+      "hash": "0741f8eb86214374cfb51b5062956cc6",
+      "size": 29711
+    },
+    "/i18n/pt.json": {
+      "hash": "3c16909466bcd4015119fc37ba4cb856",
+      "size": 26940
+    },
+    "/i18n/ru.json": {
+      "hash": "ad89cc6947ce17d3d5c18820b3c2e303",
+      "size": 42136
+    },
+    "/i18n/zh.json": {
+      "hash": "e2c1796e2aed791ce38ca3033969499b",
+      "size": 23931
+    },
+    "/icon-192.png": {
+      "hash": "c2b6e2523b11f47eadac73e9ae1a2728",
+      "size": 77647
+    },
+    "/icon-512.png": {
+      "hash": "f740d583f8ff702cfed0fd735c249b47",
+      "size": 511806
+    },
+    "/icons/android.svg": {
+      "hash": "f78d3c6f10900517b08400de966c33cc",
+      "size": 272
+    },
+    "/icons/beam.svg": {
+      "hash": "5661c58860651217c49811b9e6d1e7d3",
+      "size": 386
+    },
+    "/icons/bonsai.svg": {
+      "hash": "7b76b3690f392a244791f4f33b0b3bf0",
+      "size": 749
+    },
+    "/icons/deepseek.svg": {
+      "hash": "51cfae6f0ae5aab8744967da496ba340",
+      "size": 2086
+    },
+    "/icons/gemma.svg": {
+      "hash": "0757a1fad0feacbab6074500c6b10c92",
+      "size": 457
+    },
+    "/icons/iphone.svg": {
+      "hash": "86c4687bbfa0acabc4eab667f9b76752",
+      "size": 238
+    },
+    "/icons/jais.svg": {
+      "hash": "ea60c3a1f1ccefce9bcf203f61d7aed1",
+      "size": 10743
+    },
+    "/icons/lfm.svg": {
+      "hash": "4624772622f4451d7f9b494af9c8939e",
+      "size": 916
+    },
+    "/icons/linux.svg": {
+      "hash": "8626fc3fedf90477645f1c025834447e",
+      "size": 211
+    },
+    "/icons/llama.svg": {
+      "hash": "019fdbc816288fc95cbb9fdd98f1a17b",
+      "size": 1324
+    },
+    "/icons/mac.svg": {
+      "hash": "fb9347f6bdc5a47f8fb2246de0092595",
+      "size": 238
+    },
+    "/icons/minicpm.svg": {
+      "hash": "d42162602560ff1cc581ddb2fa546f8b",
+      "size": 2639
+    },
+    "/icons/mistral.svg": {
+      "hash": "0995f9c971939e416fb83feff62d4e01",
+      "size": 290
+    },
+    "/icons/nemotron.svg": {
+      "hash": "8a7858fcc0c6de00e4dfb7d6c551ed69",
+      "size": 1198
+    },
+    "/icons/phi.svg": {
+      "hash": "6edc0c9be3deed9070b32a271cf0200d",
+      "size": 206
+    },
+    "/icons/qwen.svg": {
+      "hash": "a867cd517280b7e9cc54215e84b9d502",
+      "size": 805
+    },
+    "/icons/windows.svg": {
+      "hash": "f4f6e9cff6325d3b19579cea9819bf5a",
+      "size": 232
+    },
+    "/index.html": {
+      "hash": "e0c33e326b08b3d589d4e1282908758c",
+      "size": 9745
+    },
+    "/legal.html": {
+      "hash": "fd5139dc01141106a029fa51d6b937c7",
+      "size": 3707
+    },
+    "/main.js": {
+      "hash": "ed1e93ce8dc63b3c0a05aa58a5c859ce",
+      "size": 9074
+    },
+    "/model-catalog.js": {
+      "hash": "dcb6eb9da4379013b75438e83feade90",
+      "size": 6309
+    },
+    "/models.html": {
+      "hash": "f469914f17482f8dbb383613d7674f36",
+      "size": 29223
+    },
+    "/og-image.png": {
+      "hash": "0b31a27dbf3c02ef89d129277cedd575",
+      "size": 192061
+    },
+    "/og-image.svg": {
+      "hash": "f6a0f32d219f1899697b1b1b2bef71a3",
+      "size": 2615284
+    },
+    "/post.js": {
+      "hash": "24b2158b0651d1f6be7d6d082f912c7b",
+      "size": 2878
+    },
+    "/privacy.html": {
+      "hash": "44e2e0e4f5dceb9a85f3744328e26a0c",
+      "size": 16202
+    },
+    "/reality.html": {
+      "hash": "67edd24b18ad82215bba6dc9625eeb2c",
+      "size": 13106
+    },
+    "/research.html": {
+      "hash": "75ca33e159fec2bf2bc32fec4f78944d",
+      "size": 7698
+    },
+    "/roadmap.html": {
+      "hash": "a661f62aa8e675954dd5b10c5d5a26ae",
+      "size": 8071
+    },
+    "/robots.txt": {
+      "hash": "439cee870676758b97f8b6af650096db",
+      "size": 67
+    },
+    "/simple-home.css": {
+      "hash": "51a9fa9f4c8dc87380f877f977969de6",
+      "size": 6265
+    },
+    "/site.webmanifest": {
+      "hash": "fe86c464fa8c8ca75e8127ffb1934fbe",
+      "size": 898
+    },
+    "/sitemap.xml": {
+      "hash": "1b0c8290ce65c3b7149ee51046661dd3",
+      "size": 3302
+    },
+    "/styles.css": {
+      "hash": "86501ccf717692e8095aa4d4c015adcc",
+      "size": 67377
+    },
+    "/sw.js": {
+      "hash": "242e44f550db5cc9a1fa20742379b124",
+      "size": 1648
+    },
+    "/tell-me-more.html": {
+      "hash": "2807f33b03dadb017a890495ea412323",
+      "size": 67348
+    },
+    "/terms.html": {
+      "hash": "8613afe3f16fee7798b33e969b1ff10e",
+      "size": 4370
+    },
+    "/why-local-agent.html": {
+      "hash": "8042e8f77f22d86cba189ae8de2e4071",
+      "size": 5749
+    }
+  }
+}

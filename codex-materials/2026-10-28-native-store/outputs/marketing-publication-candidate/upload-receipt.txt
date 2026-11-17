@@ -1,0 +1,39 @@
+
+ ⛅️ wrangler 4.151.1
+────────────────────
+🌀 Building list of assets...
+✨ Read 123 files from the assets directory /private/tmp/codex-session-storage/7199f0b461f883fefcf87082/8df1636d0cf84226b506c435dba30c56/stage/website
+🌀 Starting asset upload...
+🌀 Found 11 new or modified static assets to upload. Proceeding with upload...
++ /sitemap.xml
++ /blog.html
++ /detail-page.css
++ /styles.css
++ /blog-development-october-2026.html
++ /index.html
++ /i18n/en.json
++ /tell-me-more.html
++ /model-catalog.js
++ /changelog.html
++ /models.html
+Uploaded 3 of 11 assets
+Uploaded 7 of 11 assets
+Uploaded 11 of 11 assets
+✨ Success! Uploaded 11 files (102 already uploaded) (1.68 sec)
+
+Total Upload: 7.80 KiB / gzip: 2.90 KiB
+Worker Startup Time: 0 ms
+Your Worker has access to the following bindings:
+Binding            Resource      
+env.ASSETS         Assets        
+
+Uploaded quenderin (4.97 sec)
+Worker Version ID: d79c77fe-ce49-4417-a1a5-bbb2994fe0c6
+Version Preview URL: https://d79c77fe-quenderin.wallmarketshq.workers.dev
+
+To deploy this version to production traffic use the command wrangler versions deploy
+
+Changes to non-versioned settings (config properties 'logpush' or 'tail_consumers') take effect after your next deployment using the command wrangler versions deploy
+
+Changes to triggers (routes, custom domains, cron schedules, etc) must be applied with the command wrangler triggers deploy
+

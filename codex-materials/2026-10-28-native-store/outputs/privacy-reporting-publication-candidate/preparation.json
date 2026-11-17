@@ -1,0 +1,92 @@
+{
+  "preparedAt": "2026-10-28T03:21:21.545170+00:00",
+  "stage": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+  "storageAssetId": "1bd1fe914a8b49db84e9e119a436fec8",
+  "storageSession": "01a17d85-25ea-7803-b7f7-a8b0f3e13457",
+  "baselineWebsiteRevision": "53994b799eb021bed10e2b58a727539283f02559",
+  "activeVersionExpected": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+  "activeDeploymentExpected": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+  "activeScriptETagExpected": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+  "worker": {
+    "bytes": 7992,
+    "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+  },
+  "assetInputCount": 112,
+  "publicAssetCount": 111,
+  "unchangedPublicAssets": 110,
+  "changedPaths": [
+    "/privacy.html"
+  ],
+  "preservedPaths": {
+    "/index.html": {
+      "baselineSha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+      "baselineSize": 9745,
+      "role": "public asset",
+      "sha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+      "size": 9745,
+      "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+    },
+    "/tell-me-more.html": {
+      "baselineSha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+      "baselineSize": 67348,
+      "role": "public asset",
+      "sha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+      "size": 67348,
+      "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+    },
+    "/_headers": {
+      "baselineSha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+      "baselineSize": 613,
+      "role": "headers configuration",
+      "sha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+      "size": 613,
+      "sourceRevision": "53994b799eb021bed10e2b58a727539283f02559"
+    }
+  },
+  "privacySource": {
+    "path": "/Users/s_avelova/Documents/projects/quenderin/.worktrees/android-native-next-20261028/website/privacy.html",
+    "head": "bfd45953fc89416e0aba5c43adebb050b4297168",
+    "bytes": 17684,
+    "sha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+    "state": "Frozen candidate reviewed by parent and independent privacy/client alignment reviewer; hash verified immediately before inactive upload"
+  },
+  "activePrivacy": {
+    "revision": "93f3838",
+    "bytes": 16202,
+    "sha256": "c5aba35c8210c2f5447f3914a678f9d2d9e0087ce481780634fb7b35bc7f6756"
+  },
+  "privacyInlineScriptsUnchanged": true,
+  "privacyThemeJsDependency": false,
+  "firstPublicationPackPreserved": true,
+  "reviewStatus": "passed: parent independent privacy/client alignment review, no findings",
+  "uploaded": true,
+  "activated": true,
+  "officialWrangler": {
+    "version": "4.151.1",
+    "resolved": "https://registry.npmjs.org/wrangler/-/wrangler-4.151.1.tgz",
+    "integrity": "sha512-OAsa9UAHZshM6mq2PXcVoyxXgWThAanZMBc/IirtqEWd/BauRtmUKzAniOu/pU0pd3pxKuMZ2vsbF4eo6RiNDA=="
+  },
+  "controlReadback": "passed",
+  "cloudflareManifestChangedPaths": [
+    "/privacy.html"
+  ],
+  "secretPatternScan": "passed:114 explicit publication files",
+  "stageFiles": 112,
+  "stageDirectories": 9,
+  "wranglerReadLog": "121 entries = 112 files + 9 directories, not 121 publication files",
+  "releaseRiskClassification": {
+    "change": "Static privacy text disclosure only; inline scripts unchanged; exact active Worker preserved.",
+    "runawayWorkRetriesConcurrency": "No executable behavior or background work added or modified.",
+    "resourceExhaustion": "Finite manifest of 111 public assets plus one headers input; 7,186,408 total input bytes; only privacy delta.",
+    "dataSecurityPrivacy": "No collection behavior activated by this publication; reporting disclosure correctness remains parent independent-review gate. Existing headers byte-exact.",
+    "externalEffects": "No upload/activation executed; future action targets same existing Worker/account without provisioning or new binding.",
+    "financialExposure": "Reuses parent verified free static asset delivery/storage classification. API Worker bytes/settings unchanged; no new variable-charge path.",
+    "recovery": "Current active version retained; commands.json rollback targets 1c0320c7-15a4-42e0-9560-819dcc1edb42 at100%."
+  },
+  "uploadedVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "immutablePreviewUrl": "https://29ec91c0-quenderin.wallmarketshq.workers.dev",
+  "uploadReadback": "passed: full resources identical; current traffic stays on prior version",
+  "activeVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "activeDeployment": "3533e634-2ca3-425c-ae2c-fa5a19ef843c",
+  "temporaryStageRemoved": true
+}

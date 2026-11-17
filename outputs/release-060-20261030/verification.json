@@ -1,0 +1,664 @@
+{
+  "recordedAt": "2026-10-30T10:24:23.506545+00:00",
+  "session": "01a18b70-3917-70a3-ae30-648d3c3345fa",
+  "revision": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+  "productionReportTransport": {
+    "scope": "Exact production Kotlin protocol and OkHttp transport on the host JVM; not Android device or rendered UI validation",
+    "sourceSha256": {
+      "protocol": "ed28f9bf83317a3f1b4072563d071b8cf0b053a530ecec8ceff459627d97802a",
+      "transport": "00be92d241957c45174c970c74fe29b277aa7de0634ad497ff469ad3a3ce5281"
+    },
+    "payloadSha256": "eb80aa9100d330b2702ab9121d41966b79b2f9c17fda3ff9f557e953e895da96",
+    "requests": {
+      "post": 1,
+      "automaticPostRetries": 0,
+      "aggregateDeadlineSeconds": 20,
+      "maximumReceiptGetRedirects": 2
+    },
+    "fixture": {
+      "reportId": "7bd52154-3ce5-4ae8-b2c4-66a26ba3ce08",
+      "schema": 1,
+      "appVersion": "0.6.0",
+      "platform": "android",
+      "source": "local-chat",
+      "reason": "other",
+      "content": "Quenderin 0.6.0 synthetic production transport verification. No personal data.",
+      "note": "Controlled synthetic release verification only."
+    },
+    "receipt": {
+      "status": "received",
+      "receiptId": "32967c69-fdc4-488a-9eed-bfd28b23784a",
+      "receivedAt": "2026-10-30T10:18:45.226Z"
+    },
+    "receiverReadback": {
+      "verified": true,
+      "storedReportCount": 2,
+      "intakeEnabled": true,
+      "defaultGcpProject": true,
+      "exactSyntheticRecordMatched": true
+    },
+    "result": "passed"
+  },
+  "appleCloud": {
+    "build": 32,
+    "buildId": "53406f4f-96f6-4a35-94dc-069fd525a32d",
+    "iosTest": "passed",
+    "iosArchive": "passed",
+    "macosArchive": "passed",
+    "macosHostedTests": {
+      "passed": 5,
+      "scope": "Credential and window tests"
+    },
+    "macosUiJourney": {
+      "result": "failed",
+      "location": "CloudJourneyTests.swift:21 app.launch()",
+      "symptom": "Failed to activate application; state Running Background",
+      "cause": "Unconfirmed; no startup code defect established"
+    },
+    "diagnosticZip": {
+      "bytes": 3942,
+      "sha256": "23ca775cf9ee51b1109d2d83ddfbef31da1a51ccdaff8fd247539c3e1203a942",
+      "entries": [
+        {
+          "name": "Quenderin Build 32 Logs for Quenderin-macOS-Cloud test-without-building on macOS Golden Gate 27.0.1 (26A434)/ci_pre_xcodebuild.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "Quenderin Build 32 Logs for Quenderin-macOS-Cloud test-without-building on macOS Golden Gate 27.0.1 (26A434)/xcodebuild-test-without-building.log",
+          "bytes": 12640,
+          "sha256": "22d62c857e7bcfed8d17bec1ac401f2f33790b34c7019684a6be78b03b8b6a2f"
+        },
+        {
+          "name": "Quenderin Build 32 Logs for Quenderin-macOS-Cloud test-without-building on macOS Golden Gate 27.0.1 (26A434)/ci_post_xcodebuild.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "retention": "Disposable original download removed after selected evidence recorded"
+    },
+    "boundedRetry": {
+      "requestedViaGithub": true,
+      "newRunConfirmed": true,
+      "requestedViaAppStoreConnect": true,
+      "build": 33,
+      "buildId": "9fc6c34a-d877-4359-889d-e7b49309d6ac",
+      "revision": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+      "status": "Completed: iOS tests and both archives passed; Mac UI activation action required",
+      "startedLocal": "2026-11-01T15:19:00+08:00",
+      "url": "https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/9fc6c34a-d877-4359-889d-e7b49309d6ac/summary",
+      "macosUiJourney": {
+        "result": "failed",
+        "failureRepeated": true,
+        "checkId": 124785218689,
+        "completedAt": "2026-11-01T07:33:37Z",
+        "location": "CloudJourneyTests.swift:21 app.launch()",
+        "symptom": "Failed to activate application; state Running Background",
+        "cause": "Confirmed managed-host lock screen in exact Cloud33 recording at 1s and 60s; foreground activation blocked before app journey assertions"
+      },
+      "macosArchive": {
+        "result": "passed",
+        "checkId": 124785255723,
+        "completedAt": "2026-11-01T07:33:58Z"
+      },
+      "iosArchive": {
+        "result": "passed",
+        "checkId": 124787213556,
+        "completedAt": "2026-11-01T07:44:08Z"
+      },
+      "macosInvestigation": {
+        "sourceFixApplied": false,
+        "startupRegressionEstablished": false,
+        "comparison": "Startup, generated project, Mac scheme, test plan and XcodeGen specification are unchanged from Cloud30 source a366f137 which reached an in-app assertion",
+        "olderCloud28HostScreen": "Primary inspected outputs/cloud28-mac-launch-first.png and confirmed password lock screen; investigator also inspected failure screenshot. This does not establish Cloud32/33 host state.",
+        "nextStep": "Send prepared Apple Feedback report after explicit support-message authorization; obtain supported host recovery before another Mac run",
+        "officialReference": "https://developer.apple.com/forums/thread/840965",
+        "currentCloud33HostScreen": "Primary inspected exact Cloud33 recording frames at 1s and 60s; both show local-user password lock screen",
+        "feedbackDraft": "outputs/release-060-20261030/cloud33-macos/apple-feedback-draft.txt",
+        "feedbackSubmitted": false,
+        "olderCloud30Platform": "Retained screenshot visually confirms Mac app reached HTTPS validation sheet; original Cloud30 result metadata not re-fetched",
+        "feedbackSaveApprovalReview": "Rejected pending explicit user authorization to transmit project/build/source/failure details to Apple Feedback Assistant; no bypass attempted",
+        "feedbackDescriptionTransmissionVerified": false,
+        "feedbackDescriptionFieldLengthAfterRejection": 0,
+        "feedbackWebDraftUrl": "https://feedbackassistant.apple.com/draft/128209149"
+      },
+      "iosTest": {
+        "result": "passed",
+        "checkId": 124788368251,
+        "completedAt": "2026-11-01T07:49:59Z"
+      },
+      "finalCheckStatesIndependentlyVerifiedAt": "2026-11-01T07:55:34.632064+00:00",
+      "iosRenderedReview": {
+        "result": "passed",
+        "screenshotsReviewed": 14,
+        "primaryReviewedStages": [
+          "01-fresh-welcome",
+          "04-deepseek-consent-default-off",
+          "10-local-canned-reply",
+          "13-iphone-history-after-relaunch"
+        ],
+        "independentReviewerReviewedAll14": true,
+        "evidenceDirectory": "/Users/s_avelova/Documents/projects/quenderin/outputs/release-060-20261030/cloud33-ios",
+        "scope": "Hosted iPhone17/iOS27 Debug UI fixture plus app-hosted Keychain integration; not full-weight inference or physical-device performance",
+        "releaseEngineSourceCheck": "QUENDERIN_MOCK_UI honored only under DEBUG; Release uses real Prism engine and packaging gate"
+      },
+      "iosResultArtifact": {
+        "bytes": 54813529,
+        "sha256": "decc2ae38ba6852f736ed10e875526517a4b9b70d570f8f16368ece828b86cd8",
+        "retention": "Raw ZIP and extracted xcresult removed; 14 screenshots and summaries retained"
+      },
+      "macosResultArtifact": {
+        "bytes": 217950248,
+        "sha256": "99c92168c543bd881a9403bf41b2d371139203d5139fed94ae087f576e6de97c",
+        "recordingSeconds": 62.65,
+        "recordingPixels": [
+          2560,
+          1600
+        ],
+        "evidenceDirectory": "outputs/release-060-20261030/cloud33-macos",
+        "retention": "Two matching session-created ZIPs, extracted result and full recording removed; two selected frames, summary and report draft retained",
+        "apparentBytesRemoved": 878845583
+      }
+    },
+    "includedQuotaBeforeRetry": {
+      "planHours": 25,
+      "used": "4h13m",
+      "available": "20h47m",
+      "reset": "2026-11-28 16:02 local",
+      "verifiedOn": "2026-11-01",
+      "paidPlanChanged": false
+    },
+    "macosRecovery20261102": {
+      "workflowId": "53607d3e-f5cb-4369-bf71-9d471b651855",
+      "workflowName": "Quenderin macOS 0.6 recovery",
+      "sourceRevision": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+      "status": "Completed: signedMacarchive passed;5hostedtestspassed;requiredUIlaunchfailed",
+      "xcode": "27.1 (27A9275)",
+      "hostMacOS": "27.2 RC (26B118)",
+      "clean": true,
+      "actions": [
+        "Required macOS Quenderin-macOS-Cloud test plan, one Mac destination matching host",
+        "Archive macOS QuenderinMac Any Mac for App Store Connect"
+      ],
+      "startConditions": "Manual main branch only; no PR/tag triggers",
+      "postActions": [],
+      "includedQuota": {
+        "planHours": 25,
+        "used": "11h37m",
+        "available": "13h23m",
+        "resetLocal": "2026-11-28T16:02:00+08:00",
+        "verifiedOn": "2026-11-02",
+        "paidPlanChanged": false
+      },
+      "independentReview": "Fresh Sol6.1 xhigh read-only review: no defects; require live persisted settings, incremented build number and bounded test execution",
+      "nextBuildNumberVerified": 34,
+      "knownFixEstablished": false,
+      "originalWorkflowUnchanged": true,
+      "build": 34,
+      "buildId": "226b233c-c28d-492e-b6ef-83b124b1a3d2",
+      "startedAt": "2026-11-02T06:59:02Z",
+      "url": "https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/226b233c-c28d-492e-b6ef-83b124b1a3d2/summary",
+      "macosTestCheckId": 125139790717,
+      "macosArchiveCheckId": 125139784728,
+      "manualStartsRequested": 1,
+      "configuredTestRetries": 0,
+      "configuredDestinations": 1,
+      "testTargetsParallelizable": false,
+      "perTestTimeoutSeconds": 300,
+      "matchingSourceConfirmedViaConsoleAndGithub": true,
+      "selectedEvidence": [
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/apple-feedback-draft.txt",
+          "bytes": 2848,
+          "sha256": "eeadbd1dd729925d705b2546404889c8d6a980c723bcff4d396fa709b618da25"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/build-started.jpg",
+          "bytes": 64184,
+          "sha256": "8b098017cde3f86e0a101788ae9a2652d029a141027ff5e2277634144d28d384"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/evidence.json",
+          "bytes": 2287,
+          "sha256": "cae635137c021db5d116c6d5446f6f373fc0318c45b7fd6ce1fd13cfab72eada"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/france-excluded.jpg",
+          "bytes": 80311,
+          "sha256": "227bb82e891da0273c5a5bd1d5dcfe60330e667c7b8b565a30c7860a656073a9"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/mac-launch-failure.png",
+          "bytes": 3473223,
+          "sha256": "5190b7d0de795f0cfe0f96723c5cdf8a135692eff492450e80efab95b56ac3b1"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/mac-launch-first.png",
+          "bytes": 3490200,
+          "sha256": "40a4a96598de09d9d6b2b6dbe942c714294508f170c237145016e72fc13b0a31"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/nov03-submission-target.jpg",
+          "bytes": 34675,
+          "sha256": "9d347415e74b759466bb322e03f8c65c3a4b0395081db65558ef029d9ec7621f"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/recovery-workflow.jpg",
+          "bytes": 178848,
+          "sha256": "210d340ec682a3ca9d9cee6dcc5023764277a1306bf4b093cb53e5471a6f56df"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/saved-draft-build34.jpg",
+          "bytes": 34675,
+          "sha256": "9d347415e74b759466bb322e03f8c65c3a4b0395081db65558ef029d9ec7621f"
+        },
+        {
+          "path": "outputs/release-060-20261030/cloud34-macos/test-failure.jpg",
+          "bytes": 100341,
+          "sha256": "23a3e45f93e432fe8a733d73eef379182ac52247d544ea3b8660bd4552be924d"
+        }
+      ],
+      "macosTest": "Failed before UI journey: Running Background activation",
+      "macosHostedTestsPassed": 5,
+      "macosUiTestsFailed": 1,
+      "macosArchive": "Passed in live AppStoreConnect",
+      "newImageResolvedHostLock": false,
+      "primaryInspectedExactRecordingFrames": [
+        1,
+        60
+      ],
+      "managedHostLockScreenConfirmed": true,
+      "evidenceDirectory": "outputs/release-060-20261030/cloud34-macos",
+      "feedbackDraft": "outputs/release-060-20261030/cloud34-macos/apple-feedback-draft.txt",
+      "feedbackSubmitted": false,
+      "localFallback": {
+        "explicitChoiceRequested": true,
+        "userAnswerReceived": false,
+        "nativeBuildRun": false,
+        "testsRun": false,
+        "toolchain": "Xcode26.3(17C529)",
+        "host": "macOS15.6(24G84)",
+        "compatibilityWithCloudProducts": "Not yet verified; no test products downloaded",
+        "scope": "Check compatibility and validate Cloud-built products without local compilation, simulator, phone or model weights"
+      },
+      "scratchCleanup": {
+        "complete": true,
+        "apparentBytesRemoved": 656023818,
+        "downloadAbsent": true,
+        "extractedResultAndRecordingAbsent": true
+      },
+      "githubCheckMirror": "Completed archive success and Mac Test action_required independently verified2026-11-03",
+      "draftReplacement": {
+        "complete": true,
+        "selectedBuild": 34,
+        "previousBuild33StillInAccount": true,
+        "reloadVerified": true,
+        "initialAutomaticReviewRejection": "Concern that Delete would irreversibly remove uploaded build33",
+        "resolution": "Verified Apple official procedure expressly says removal from version retains uploaded build in account; build chooser confirmed33 remains selectable. Used same documented UI after this additional evidence.",
+        "officialProcedure": "https://developer.apple.com/help/app-store-connect/manage-builds/choose-a-build-to-submit/"
+      },
+      "selectedEvidenceRetention": "Retain small release/draft and host-lock proof until Mac release validation and Apple support follow-up are resolved; raw ZIP, result and recording removed.",
+      "retainedBytes": 7461592
+    },
+    "macosUiIsolation20261103": {
+      "updatedAt": "2026-11-03T04:49:17.154791+00:00",
+      "branch": "codex/mac-cloud-ui-isolation-20261103",
+      "revision": "37598755cdb01fa7c77afbf2a941340a54995577",
+      "baseline": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+      "branchUrl": "https://github.com/alikatgh/quenderin/tree/codex/mac-cloud-ui-isolation-20261103",
+      "files": [
+        {
+          "path": "apple/QuenderinApp/TestPlans/Quenderin-macOS-UI-Cloud.xctestplan",
+          "bytes": 714,
+          "sha256": "28ea8544754b300fe30f975625bd7f231a0798dee1fdfeafe1e0ba7ca58355bb"
+        },
+        {
+          "path": "apple/QuenderinApp/project.yml",
+          "bytes": 10153,
+          "sha256": "246d9a14cfaf7b33299ab862bc2fb1c91c4c1341fb2cfbbb88693d01e1c9f5de"
+        },
+        {
+          "path": "apple/QuenderinApp/Quenderin.xcodeproj/project.pbxproj",
+          "bytes": 38318,
+          "sha256": "8ef7623a0f7f73fb85e066b4973334ae91128585fb378003406c91f1bfb7ecd6"
+        },
+        {
+          "path": "apple/QuenderinApp/Quenderin.xcodeproj/xcshareddata/xcschemes/QuenderinMac.xcscheme",
+          "bytes": 5979,
+          "sha256": "87bf06b159d1cab6853e7ec2331184ed0ce5d722c11527c6268edc551d3d5582"
+        }
+      ],
+      "purpose": "Isolate unchanged Mac UI journey from previously passing hosted tests; session-interference hypothesis not established cause",
+      "originalCombinedPlanUnchanged": true,
+      "appCodeAndUiAssertionsUnchanged": true,
+      "releaseBuildSettingsAndSigningUnchanged": true,
+      "uiPlan": "Quenderin-macOS-UI-Cloud",
+      "uiTarget": "QuenderinMacCloudUITests",
+      "uiTargetCount": 1,
+      "timeoutSeconds": 300,
+      "parallelizable": false,
+      "independentReview": "Fresh Sol6.1xhigh read-only review: no High/Medium/Low findings; JSON/XML/PBX/spec/source comparisons passed",
+      "generatorVersion": "2.45.4",
+      "generationByteReproducible": true,
+      "stagedSecretScan": "passed4files",
+      "localNativeBuildsRun": false,
+      "localTestsRun": false,
+      "remoteBranchPushed": true,
+      "cloudWorkflowConfigured": false,
+      "cloudRunStarted": false,
+      "runtimeUiVerified": false,
+      "quotaLiveObserved": {
+        "date": "2026-11-03",
+        "planHours": 25,
+        "used": "24h39m",
+        "available": "21m",
+        "resetLocal": "2026-11-28T16:02:00+08:00",
+        "method": "Native AppleDeveloper AppStoreConnect teamusage AXstate",
+        "quotaScreenshotValid": false,
+        "paidPlanChanged": false
+      },
+      "requiredNextCloudConfiguration": {
+        "sourceBranch": "codex/mac-cloud-ui-isolation-20261103",
+        "sourceRevision": "37598755cdb01fa7c77afbf2a941340a54995577",
+        "manualStartOnly": true,
+        "testPlan": "Quenderin-macOS-UI-Cloud",
+        "testPlanSelection": "Only this new UI-only plan, not All Test Plans",
+        "scheme": "QuenderinMac",
+        "requirement": "Required to Pass",
+        "destinations": 1,
+        "testWorkerCount": 1,
+        "repeats": 0,
+        "automaticRetries": 0,
+        "clean": true,
+        "environment": "Match archived build34 Xcode27.1/macOS27.2RC when supported",
+        "actions": [
+          "Mac Test only; no Archive repeat"
+        ],
+        "postActions": []
+      },
+      "currentBlocker": "Codex browser access host unavailable even after user reconnection and REPL reset; foreground Chrome changed window and native input stopped/released",
+      "foregroundInterruption": {
+        "accidentalPdfTabClosed": true,
+        "undoRejectedByAutomaticReview": true,
+        "userInstructedManualCmdShiftT": true,
+        "originalPdfFilesMetadataStillPresent": true,
+        "invalidSessionScreenshotRemoved": true
+      },
+      "sessionScratchRemovedBytes": 1915,
+      "retention": "Retain source branch/worktree and concise evidence until the Cloud isolation run and Mac release are resolved; no compiler/model/download scratch retained",
+      "invalidScreenshotCleanupBytes": 792174,
+      "temporaryQuotaTabMayRemainOpen": true,
+      "foregroundInputReleased": true,
+      "sourceWorktreeClean": true,
+      "sourceWorktreeAllocatedKiB": 76932
+    }
+  },
+  "storeState": {
+    "iosPublic": "0.6.0 (Ready for Distribution in App Store Connect; storefront download not separately checked)",
+    "macosPublic": "0.5.0",
+    "androidClosedAlphaAvailable": "0.2.0 (2)",
+    "newVersion": "iOS0.6.0(33) ReadyforDistribution;macOS0.6.0 notsubmitted:Cloud34 newerhost also locked;Android0.6.0 notuploaded.",
+    "googleDataSafety": {
+      "status": "Published",
+      "scope": "Data safety questionnaire only; no Android bundle included",
+      "submissionId": 3,
+      "submittedConsoleTime": "Oct31 2026 08:48AM",
+      "publishedConsoleTime": "Oct31 2026 09:03AM",
+      "liveVerifiedOn": "2026-11-01",
+      "url": "https://play.google.com/console/u/0/developers/6289191549337108258/app/4976280765138921912/publishing/submission-activity/3/details"
+    },
+    "androidUploadCertificateSha256": "8b38f4e585883ab737f2918f4990ba401767a03937eb2a687288bde3e949cf3d",
+    "originalSigningKey": "Location/password unresolved; not demonstrated lost or deleted",
+    "appleRemaining": [
+      "Apple managed Mac test-host recovery and successful required Mac journey verification",
+      "Submit macOS0.6.0 after required Mac journey evidence passes",
+      "France follow-up issue217 remains open; restoration requires compliance resolution"
+    ],
+    "androidRemaining": [
+      "Human uploads approved public certificate and submits already-authorized Google upload-key reset; verify receipt and activation",
+      "Sign and upload exact hosted candidate after Google activation and signer validation",
+      "Create, restore-verify and preserve encrypted signing backup off this Mac"
+    ],
+    "googleUploadKeyResetAuthorization": "Explicitly approved by user on 2026-11-02 with message reset; selected replacement880aca180c193bcbd670f1afddc2b0e15e95f755771805e470aa5e75384f8b6f.",
+    "franceExclusion": {
+      "authorizedByUser": true,
+      "authorizedOn": "2026-10-31",
+      "applied": true,
+      "lastLiveObservedStatus": "Not Available",
+      "lastLiveObservedAvailableCountryCount": 174,
+      "editInterruptedBySharedBrowserControl": false,
+      "followUpIssue": {
+        "number": 217,
+        "url": "https://github.com/alikatgh/quenderin/issues/217",
+        "state": "open"
+      },
+      "appliedOn": "2026-11-01",
+      "storefrontRemovalVerified": false,
+      "propagationNotice": "Changes take effect within 24 hours",
+      "lastLiveObservedUnavailableCountries": [
+        "France"
+      ],
+      "liveConsoleVerifiedOn": "2026-11-02"
+    },
+    "androidUploadCertificateLiveReverified": {
+      "verifiedOn": "2026-11-01",
+      "method": "Public upload certificate downloaded from the authenticated Google Play App signing page; openssl x509 DER fingerprint",
+      "sha256": "8b38f4e585883ab737f2918f4990ba401767a03937eb2a687288bde3e949cf3d",
+      "bytes": 818,
+      "certificateNotBefore": "2026-07-11T11:59:36Z",
+      "certificateNotAfter": "2053-11-26T11:59:36Z",
+      "downloadRetention": "Session-created duplicate public certificate removed after fingerprint recorded"
+    },
+    "androidReplacementSignerVerification": {
+      "verifiedOn": "2026-11-01",
+      "publicCertificateSha256": "880aca180c193bcbd670f1afddc2b0e15e95f755771805e470aa5e75384f8b6f",
+      "credentialRoute": "Existing encrypted Varlock loader, noninteractive; no credential change",
+      "keystoreAuthenticated": true,
+      "syntheticJarSigned": true,
+      "signatureVerified": true,
+      "actualSignerMatchesReplacement": true,
+      "actualSignerMatchesRegisteredUploadCertificate": false,
+      "payloadPreserved": true,
+      "signExitCode": 0,
+      "verifyExitCode": 0,
+      "certificateExitCode": 0,
+      "productionArtifactSigned": false,
+      "resetRequested": false,
+      "acceptedPinChanged": false,
+      "fixtureAllocatedBytes": 8192,
+      "fixtureAndScratchRemoved": true,
+      "evidenceScope": "Delegate executed status-only verification. Primary reviewed exact nonsecret Varlock invocation, official JDK21 keytool/jarsigner commands, exitcodes, actual signed certificate digest and payload-preservation result. No successful checks rerun.",
+      "varlockVersion": "1.23.0",
+      "signingAlgorithm": "SHA256withRSA",
+      "digestAlgorithm": "SHA-256",
+      "publicCertificatePath": "/Users/s_avelova/QuenderinSigning/upload_certificate.pem",
+      "publicCertificateReverifiedOn": "2026-11-02"
+    },
+    "pendingUserDecisions": [
+      "Cloud route remains requested; restore scoped browser-service capability or provide a safe foreground handoff. No local fallback or Mac UI waiver approved.",
+      "After Mac: finish human Google upload-key reset steps and choose off-Mac encrypted backup destination."
+    ],
+    "iosSubmission": {
+      "version": "0.6.0",
+      "build": 33,
+      "buildId": "9ff937cd-4646-47ae-9a4f-4a63533b1e39",
+      "status": "Ready for Distribution",
+      "submittedAtLocal": "2026-11-01T17:42:00+08:00",
+      "submissionId": "93b2adc4-81bc-426e-9e26-3a4d2cdb47d2",
+      "url": "https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/93b2adc4-81bc-426e-9e26-3a4d2cdb47d2",
+      "automaticallyReleaseAfterApproval": true,
+      "immediateReleaseToAllUsers": true,
+      "confirmedBy": "Live App Store Connect submission receipt and version page",
+      "encryptionQuestionnaire": {
+        "algorithmChoice": "Standard encryption algorithms instead of, or in addition to, Apple operating-system encryption",
+        "availableForDistributionInFrance": false,
+        "saved": true
+      },
+      "liveVerifiedOn": "2026-11-02"
+    },
+    "appleDeveloperConnection": {
+      "available": true,
+      "verifiedOn": "2026-11-02",
+      "profile": "Apple Developer",
+      "scopedTabControlWorking": true,
+      "foregroundControlNoLongerRequired": true,
+      "lastObservedReleaseTab": "Mac0.6.0 draft successfully resumed; build34 and saved release settings reload-verified",
+      "lastObservedOn": "2026-11-02"
+    },
+    "macosDraft": {
+      "version": "0.6.0",
+      "build": 34,
+      "buildId": "f5f2e511-c2dc-4fe5-a04b-03763a655a81",
+      "status": "Prepare for Submission",
+      "buildSelectionSavedAndReloadVerified": true,
+      "automaticallyReleaseAfterApproval": true,
+      "immediateReleaseToAllUsers": true,
+      "encryptionQuestionnaire": {
+        "algorithmChoice": "Standard encryption algorithms instead of, or in addition to, Apple operating-system encryption",
+        "availableForDistributionInFrance": false,
+        "saved": true,
+        "missingComplianceCleared": true
+      },
+      "submitted": false,
+      "remainingGate": "Required Mac UI journey blocked by confirmed locked managed Cloud host; explicit local fallback choice pending",
+      "liveVerifiedOn": "2026-11-02"
+    },
+    "originalKeyRecovery20261101": {
+      "authorizedByUser": true,
+      "originalKeyFound": false,
+      "originalKeyLostOrDeleted": false,
+      "julyProvenance": "July11 signing config loads machine-local gitignored android/keystore.properties; exact original store path and alias not recovered. June/July Codex session records unavailable in checked paths.",
+      "fileMetadataChecks": "Likely home signing paths, project signing-store filenames, Documents/Downloads/Desktop, Android signing dirs, two exposed iCloud roots, Trash, Android Studio noncredential signing-path settings; no new verified original key locator.",
+      "backupMetadata": "No mounted external backup; no Time Machine destinations/backups/local snapshots reported.",
+      "globalNote": "Persistent note records original unresolved and the existing routes_mappster/apks/my-release-key.keystore candidate, not a verified original-key location.",
+      "unresolvedCandidate": "/Users/s_avelova/Documents/projects/routes_mappster/apks/my-release-key.keystore",
+      "passwordsAppOpening": "Automatic approval review rejected broad Passwords access; no retry or secret reveal.",
+      "varlockKeychainMetadata": "Existing file-encryption-fallback launcher has no usable native Keychain daemon; metadata command failed ENOENT. No helper installation or security change.",
+      "saferKeychainInspection": "User opened Keychain Access with Quenderin filter; scoped metadata inspection succeeded. Relevant searches did not identify an original signing-password entry; all passwords remained hidden.",
+      "userShownKeychainEntry": {
+        "service": "ai.quenderin.play-upload.20261029",
+        "account": "quenderin-upload",
+        "kind": "application password",
+        "mappedKeystoreDirectory": "/Users/s_avelova/Library/Application Support/Quenderin-Upload-Key-20261029",
+        "mappingEvidence": [
+          "codex-materials/2026-10-29-android-play/keychain_sign_candidate.py:14-22",
+          "codex-materials/2026-10-29-android-play/preparation.json:uploadKey"
+        ],
+        "publicCertificateSha256": "8f45bb0c428be051ee77b6c876e133af8b282347ea8e422ab17d2d206c863d1b",
+        "publicCertificateNotBefore": "2026-10-29T01:45:33Z",
+        "publicCertificateIndependentlyVerified": true,
+        "matchesOriginalRegisteredUploadCertificate": false,
+        "purposeFromReceipt": "upload-key-reset",
+        "resetRequested": false,
+        "registeredForPlay": false,
+        "secretFetched": false
+      },
+      "newKeysGenerated": false,
+      "resetRequested": false,
+      "temporaryFilesCreated": false
+    },
+    "androidSigningPreservation": {
+      "canonicalDirectory": "/Users/s_avelova/QuenderinSigning",
+      "keystoreFile": "upload-keystore.p12",
+      "publicCertificateFile": "upload_certificate.pem",
+      "certificateSha256": "880aca180c193bcbd670f1afddc2b0e15e95f755771805e470aa5e75384f8b6f",
+      "credentialRoute": "/Users/s_avelova/QuenderinSigningCredentials/signing.schema",
+      "deviceBoundCredentialProtection": true,
+      "privateDirectoryMode": "0700",
+      "privateFileModes": "0600",
+      "nonsecretLocatorReadme": "/Users/s_avelova/QuenderinSigning/README.txt",
+      "independentBackupCompleted": false,
+      "backupDestinationDecision": "Asked user: connected private Google Drive or external drive",
+      "recoveryPasswordIndependentlyPreserved": false,
+      "portableBackupTool": {
+        "files": [
+          {
+            "path": "/Users/s_avelova/Documents/projects/quenderin/.worktrees/native-final-integration-20261029/tools/android-release/backup_upload_key.py",
+            "bytes": 32010,
+            "sha256": "1a49dcbb4092fe3f487814e5ac25c31a31b146831741b749cf8aa55e4e708485"
+          },
+          {
+            "path": "/Users/s_avelova/Documents/projects/quenderin/.worktrees/native-final-integration-20261029/tools/android-release/backup-with-prompts.zsh",
+            "bytes": 331,
+            "sha256": "2907ccf542b9c625742308145a2048a8b18d8e96d34d3aaaabdf0672c71c8994"
+          },
+          {
+            "path": "/Users/s_avelova/Documents/projects/quenderin/.worktrees/native-final-integration-20261029/tools/android-release/test_backup_upload_key.py",
+            "bytes": 29214,
+            "sha256": "66c483fc1dbfb43735bbd0aa5d831fff294b064524ad3f10c3fb14c859e6e919"
+          }
+        ],
+        "tests": {
+          "passed": 22,
+          "failed": 0,
+          "durationSeconds": 6.954,
+          "scope": "Synthetic-only archive checks, actual age passphrase encryption/authentication, JDK signing/verification, wrong credentials, actual pinned Varlock/helper/age process-tree cleanup after SIGTERM and SIGKILL"
+        },
+        "shellSyntax": "passed",
+        "installedToolsPreflight": "passed",
+        "nonInteractiveEntry": "Rejected before credential loading with expected exit2",
+        "independentSecurityReview": "Passed after cancellation/orphan/pipe-drain fixes and actual process-tree integration evidence",
+        "productionKeyOrCredentialsLoadedByTests": false,
+        "productionBackupRunConfirmed": false,
+        "humanPrivateTerminalCommand": "zsh /Users/s_avelova/Documents/projects/quenderin/.worktrees/native-final-integration-20261029/tools/android-release/backup-with-prompts.zsh",
+        "outputDirectory": "/Users/s_avelova/QuenderinSigningBackups",
+        "offMacCopyVerified": false,
+        "syntheticScratchCleanup": {
+          "complete": true,
+          "bytesRemoved": 66051,
+          "assetAbsent": true,
+          "priorInterruptedSyntheticProcessExited": true
+        },
+        "latestObservedProductionBackupCount": 0,
+        "googleResetFinalUserActionStillPending": true
+      }
+    },
+    "androidResetPreparation": {
+      "userApproved": true,
+      "requested": false,
+      "selectedReason": "Other",
+      "reasonScope": "Original signing setup unavailable; original key loss/deletion not established",
+      "newCertificateUploaded": false,
+      "finalCredentialChangeRequiresHumanHandoff": true
+    },
+    "macosSubmissionAttempt20261103": {
+      "targetVersion": "0.6.0",
+      "targetBuild": 34,
+      "sourceMainStillMatchesArchivedRevision": true,
+      "liveDraftStatus": "Prepare for Submission",
+      "complianceCleared": true,
+      "automaticReleaseAfterApproval": true,
+      "immediateRollout": true,
+      "attemptedAction": "Add for Review",
+      "actionExecuted": false,
+      "automaticApprovalReviewRejected": true,
+      "rejectionReason": "Required Mac UI journey remains blocked; successful check or explicit user waiver required",
+      "specificExceptionQuestionAsked": true,
+      "userAnswerReceived": false,
+      "submitted": false,
+      "localFallbackApproved": false,
+      "localTestsRun": false,
+      "localAllocationStarted": false,
+      "availableBytesBeforeScreenshots": 765571072,
+      "swapAllocatedBytes": 13958643712
+    }
+  },
+  "retention": {
+    "purpose": "Selected release verification evidence",
+    "cleanupCondition": "Review after 0.6.0 release is completed or explicitly abandoned"
+  },
+  "sourceChanges": "No product-code changes by this session. docs/RELEASE.md now records current verified release state.",
+  "updatedAt": "2026-11-03T04:49:17.157439+00:00",
+  "androidLocalStaging": {
+    "status": "Blocked after No space left on device",
+    "completeBundleDownloaded": false,
+    "signed": false,
+    "uploadedToPlay": false,
+    "cleanup": {
+      "removedOnlySessionOwnedIncompleteDownloadStaging": true,
+      "apparentBytesRemoved": 34214830,
+      "directory": "/Users/s_avelova/Documents/projects/quenderin/codex-materials/2026-10-31-android-play",
+      "directoryRemoved": true
+    }
+  }
+}

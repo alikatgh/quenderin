@@ -1,0 +1,87 @@
+CODEX FOR OPEN SOURCE — APPLICATION DRAFT
+Checked: 21 October 2026
+Status: Submitted on 21 October 2026 after the user approved submission and Program Terms. The page visibly confirmed receipt. Selection/acceptance has not been granted.
+
+RECOMMENDATION
+Use Quenderin: https://github.com/alikatgh/quenderin
+Role: Primary maintainer
+GitHub username: alikatgh
+Name observed in App Store Connect: Albert Nikanorov
+ChatGPT account email: wallmarkets@gmail.com (verified in ChatGPT Account settings).
+OpenAI organization ID: org-dUPGkYG8Idq3hpnB477pD2aJ (verified in the Personal organization settings after authorized sign-in).
+Suggested additional interests: Codex Security and API credits, if desired.
+
+WHY QUENDERIN
+It combines a public MIT codebase, an actual iPhone/Mac App Store listing,
+recent merged maintenance and verifiable early acquisition. App Store Connect
+reports 69 first-time downloads for 22 July–19 October 2026 (UTC). Summing
+the daily rows gives 37 for 20 September–19 October.
+These are downloads, not active users. Current public stars/forks are 0/0.
+The Windows/Linux public preview releases show 23 cumulative binary-asset
+requests; this is neither unique-user nor monthly-download evidence.
+
+COMPARISON
+SafeHeaders-Go: 5 stars/1 fork; reusable Go parsers/codecs and a course.
+One external research citation was verified. No demonstrated broad adoption.
+Latest main activity is July; latest reported CI has failed security-scan jobs.
+le-cli: 1 star, 26 published releases, 61 cumulative binary-asset requests.
+BenchmarkWatcher: 4 stars/1 fork; useful public data app. Cloudflare's
+last-30-days Visits view returned No data. Its 24-hour site card showed one
+visit. These do not establish an active-user count or prove zero users.
+Famemu and Euclid: public MIT projects; public usage evidence is limited.
+Do not conflate the separate Famemu store app with this public decoder repo.
+
+FORM ANSWERS
+Each answer below is within the 500-character maximum. The Codex Security
+question appears after selecting that interest in the live form.
+
+Why does this repository qualify? (422 characters)
+Quenderin is an MIT-licensed app for running open language models on-device, available on iPhone and Mac with Windows/Linux previews. App Store Connect records 69 first-time downloads for Jul 22-Oct 19, 2026, including 37 for Sep 20-Oct 19. I maintain model integrations, download integrity, cross-platform behavior and releases. Codex would support ongoing review and security work in a privacy-focused open-model client.
+
+Why does your project need Codex Security? (410 characters)
+Quenderin loads downloaded and user-imported model files and includes local services and an experimental computer-use agent. I would use Codex Security to examine untrusted-input parsing, download integrity, localhost access controls, filesystem and command boundaries, and permission checks across Swift, Kotlin and TypeScript. I would reproduce findings, add regression tests and review fixes before release.
+
+How will you use API credits for your project? (357 characters)
+I would use credits to review pull requests and dependency updates, triage reproducible issues, generate regression tests for model installation and parsers, and check release artifacts and cross-platform parity. Work would be limited to this public repository, with bounded jobs and human review before changes merge. Credits would support OSS maintenance.
+
+Anything else we should know? (462 characters)
+I am the primary maintainer. Recent merged work covers native model integrations, integrity-checked multi-part downloads, memory admission checks, privacy disclosures and Android release provenance. Code, changes and release notes are public: github.com/alikatgh/quenderin. Adoption is early; download counts are acquisition evidence, not active-user counts. I would welcome Codex Security review of model files, local services and experimental agent boundaries.
+
+REVIEW NOTES
+Lead with the project's usefulness and concrete maintenance responsibilities.
+Do not call it widely adopted, critical infrastructure, or a project with 153
+users based on GitHub clone analytics. No published fixed star minimum was
+found in the official program criteria. Selection remains discretionary.
+
+Quenderin SECURITY.md needs a focused documentation refresh: its supported
+version table says 0.0.x and it says no Dependabot configuration, despite
+current native versions and observed Dependabot PRs. No correction was made
+during this research task. This is a documentation discrepancy, not proof of
+an exploitable vulnerability or an eligibility bar.
+
+GitHub traffic periods are Oct 6–19 for five candidates and Oct 7–20 for
+BenchmarkWatcher. Clone traffic may include automated builds and maintainers.
+Raw measured comparisons and source links are in codex-oss-evidence.json.
+
+SOURCES
+Program and form: https://openai.com/form/codex-for-oss/
+Program criteria: https://developers.openai.com/community/codex-for-oss
+Terms linked in the current live form:
+https://developers.openai.com/codex/codex-for-oss-terms
+Public app: https://apps.apple.com/us/app/quenderin-offline-ai-chat/id6789854363
+Download report:
+https://appstoreconnect.apple.com/apps/6789854363/analytics/metrics?dateSpec=d90&frequency=day&measureKey=units
+Recent maintainer work:
+https://github.com/alikatgh/quenderin/pull/163
+https://github.com/alikatgh/quenderin/pull/164
+https://github.com/alikatgh/quenderin/pull/167
+Security policy: https://github.com/alikatgh/quenderin/blob/main/SECURITY.md
+External course citation:
+https://github.com/yourfriendaaron/meat-mode/blob/f1d40a7b9b9d78a271a09d997f03a3616f5b7c1b/docs/research/0006-rich-todos/export.md#L50
+
+SUBMISSION RECEIPT
+Submitted after the user said: "yes, aply!"
+Visible confirmation: "Thanks for your submission! We’ll be reviewing entries and will reach out if you’re selected. We appreciate your interest."
+Screenshot: codex-oss-submission-confirmation.png
+Status: Submitted and receipt confirmed; selection remains pending.
+Next step: Await OpenAI's email to wallmarkets@gmail.com. No duplicate application or automated monitoring has been started.

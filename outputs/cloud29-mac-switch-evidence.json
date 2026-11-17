@@ -1,0 +1,15 @@
+{
+  "build": 29,
+  "source": "32bcb0cd3c26ad217abb339c389f9857596eaedb",
+  "platform": "macOS 27.0.1 (26A434)",
+  "control": "deepseek-validation-consent",
+  "observationTimeUTC": "2026-10-28T06:22:49.836Z",
+  "runnerObservation": "Exact queried Switch has value: 0 at 23:22:49.836 -0700; String-only assertion returns nil at 23:22:49.837 -0700.",
+  "typeEvidence": "Value is present and is not String. Exact Objective-C class is not serialized in exported snapshots or runner text; numeric accessibility zero is supported through NSNumber.stringValue.",
+  "snapshotLimitation": "Exported NSKeyedArchive snapshots precede the DeepSeek form and contain no consent element or raw value type.",
+  "sourceRunnerLog": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/df17853d1d234ef58d8548eafe3b2820/mac-diagnostics/QuenderinMacCloudUITests-29C82866-1551-4BA5-9538-53B088D6567A-Configuration-Offline UI and app-hosted Keychain-Iteration-1/QuenderinMacCloudUITests-4CE5980E-AC1B-44A9-9C64-B60B2506614A/Session-QuenderinMacCloudUITests-2026-10-27_232230-DTLjZN.log",
+  "retainedSnippet": "cloud29-mac-switch-evidence.txt",
+  "macResultZipSha256": "5870bee6531bdd1df02989d5f5c38f29d3308c17b37ee06c35877740c8750dbb",
+  "fix": "Normalize String or NSNumber once for all five consent state assertions; nil and unknown types still fail; exact off/on expectations and all journey gates preserved.",
+  "verification": "git diff --check passed. Cloud native execution of this fix is pending. No production change or local native run."
+}

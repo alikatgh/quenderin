@@ -1,0 +1,17 @@
+{
+  "build": 27,
+  "source": "3030bf175f1e94b6be9c2d742eeecf1e86c4ae4b",
+  "action": "65d1c02d-7c7e-40dd-bd5f-86c5e9d98668",
+  "testsPassed": 4,
+  "testsTotal": 6,
+  "archiveSha256": "915d4b3a64af2d1c25daa98e2199e42f00e3429f7908ae4c8488ecde8c424687",
+  "failures": [
+    "Consent queried as CheckBox; actual Switch lacked label and identifier",
+    "Legacy macOS Keychain does not report iOS accessibility attribute"
+  ],
+  "retained": [
+    "cloud27-mac-consent-hierarchy.txt",
+    "cloud27-mac-deepseek-failure.png"
+  ],
+  "nativeExecution": "Xcode Cloud; synthetic fixtures; no local build or device"
+}

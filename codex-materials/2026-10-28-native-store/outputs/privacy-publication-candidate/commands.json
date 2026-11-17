@@ -1,0 +1,70 @@
+{
+  "upload": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/privacy-publish-stage",
+    "env": {
+      "WRANGLER_WRITE_LOGS": "false",
+      "WRANGLER_SEND_METRICS": "false"
+    },
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "upload",
+      "--config",
+      "wrangler.json",
+      "--no-experimental-provision",
+      "--no-experimental-auto-create",
+      "--message",
+      "Privacy policy 0.6.0 only; exact deployed Worker retained"
+    ]
+  },
+  "inspectUploadedVersion": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/privacy-publish-stage",
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "view",
+      "<NEW_VERSION_ID>",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--json"
+    ]
+  },
+  "activateAfterReadbackAndRenderedChecks": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/privacy-publish-stage",
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "deploy",
+      "<NEW_VERSION_ID>@100%",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--yes",
+      "--message",
+      "Publish verified privacy policy 0.6.0 asset"
+    ]
+  },
+  "rollback": {
+    "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/privacy-publish-stage",
+    "argv": [
+      "node",
+      "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/478452ece0a340f7ad26be7e634ad6e3/node_modules/wrangler/bin/wrangler.js",
+      "versions",
+      "deploy",
+      "84a87b78-310e-4ecf-86fe-ad259374d6cb@100%",
+      "--config",
+      "wrangler.json",
+      "--name",
+      "quenderin",
+      "--yes",
+      "--message",
+      "Restore pre-privacy-update assets"
+    ]
+  }
+}

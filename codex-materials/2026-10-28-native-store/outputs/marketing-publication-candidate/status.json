@@ -1,0 +1,31 @@
+{
+  "verifiedAt": "2026-10-28T08:14:32.263101+00:00",
+  "main": "21b025d8dbed42e3c5d1237ed1e8fd2939bf300d",
+  "version": "d79c77fe-ce49-4417-a1a5-bbb2994fe0c6",
+  "deployment": "ffb95aa2-6a71-475f-95e0-2c203565855e",
+  "percentage": 100,
+  "activeWorkerRuntimeBindingsHeaders": "byte-exact resource match before and after upload",
+  "privacySha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+  "independentReview": "passed: no findings",
+  "sourceChecks": "23/23 catalog/theme tests passed",
+  "rendered": "primary quenderin.org release grid light; preview dark; live six cards show Microsoft/LiquidAI/OpenBMB/NVIDIA local marks",
+  "proof": "outputs/marketing-model-logos-live-light.png",
+  "directPublicByteHash": "blocked: CLI HTTP403; no retry/bypass; Cloudflare control readback and actual browser render verified",
+  "recoveryVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "releaseRisk": "Static same-origin HTML/CSS/JS/icons only. Existing metadata request bounds unchanged; no new worker, bindings, provisioning, routes, collection, or variable-charge path. Finite113publicassets7.2MB; existing free static delivery classification reused.",
+  "cleanup": "completed: temporary official CLI/dependencies and stage removed; selected31523B evidence plus92282B live screenshot preserved",
+  "retention": {
+    "evidencePath": "/Users/s_avelova/Documents/projects/quenderin/codex-materials/2026-10-28-native-store/outputs/marketing-publication-candidate",
+    "evidenceBytesBeforeThisStatusUpdate": 32089,
+    "screenshotPath": "/Users/s_avelova/Documents/projects/quenderin/outputs/marketing-model-logos-live-light.png",
+    "screenshotBytes": 92282,
+    "purpose": "Selected live publication and rollback evidence",
+    "cleanupCondition": "After the next website publication or completion of this release review; keep source and active release records"
+  },
+  "androidContinuation": {
+    "head": "69c83a157494ae2a16d4eaf6dbda66ca12a7a19c",
+    "run": 40655862801,
+    "status": "in_progress",
+    "url": "https://github.com/alikatgh/quenderin/actions/runs/40655862801"
+  }
+}

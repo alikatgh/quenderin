@@ -1,0 +1,79 @@
+{
+  "command": [
+    "node",
+    "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules/wrangler/bin/wrangler.js",
+    "deploy",
+    "--config",
+    "wrangler.json",
+    "--dry-run",
+    "--outdir",
+    "dryrun",
+    "--outfile",
+    "dryrun.multipart",
+    "--no-experimental-provision",
+    "--no-experimental-auto-create"
+  ],
+  "cwd": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage",
+  "exitCode": 0,
+  "stderrBytes": 0,
+  "dryRunExitSeen": true,
+  "stdoutSummary": [
+    "\u26c5\ufe0f wrangler 4.151.1 (update available 4.154.0)",
+    "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+    "\u2728 Read 121 files from the assets directory /private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage/website",
+    "Total Upload: 7.80 KiB / gzip: 2.90 KiB",
+    "Your Worker has access to the following bindings:",
+    "Binding            Resource      ",
+    "env.ASSETS         Assets        ",
+    "",
+    "--dry-run: exiting now."
+  ],
+  "notes": [
+    "Real asset attachment is skipped by Wrangler dry-run; upload metadata and browser preview still require separate checks."
+  ],
+  "files": [
+    {
+      "path": "dryrun/README.md",
+      "bytes": 110,
+      "sha256": "7ed9149a9b73fc784709ca568e604fc911940f9f6c5c166197206067d9f82b42"
+    },
+    {
+      "path": "dryrun/site.js",
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    }
+  ],
+  "emittedWorkerExact": true,
+  "multipartParts": [
+    {
+      "name": "metadata",
+      "contentType": "text/plain",
+      "bytes": 196,
+      "sha256": "9179d984683a42a3c95913a15e5f6e7353eaded2e4e6e03377ae3f6761010139"
+    },
+    {
+      "name": "site.js",
+      "contentType": "application/javascript+module",
+      "bytes": 7992,
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    }
+  ],
+  "dryrunMetadata": {
+    "main_module": "site.js",
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      }
+    ],
+    "compatibility_date": "2026-07-04",
+    "compatibility_flags": [],
+    "keep_bindings": [
+      "plain_text",
+      "json",
+      "secret_text",
+      "secret_key"
+    ]
+  },
+  "multipartWorkerExact": true
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://quenderin.org/",
+    "expectedBytes": 9745,
+    "actualBytes": 10112,
+    "deltaBytes": 367,
+    "changes": [
+      {
+        "kind": "insert",
+        "expectedRange": [
+          9730,
+          9730
+        ],
+        "actualRange": [
+          9730,
+          10097
+        ],
+        "expectedBytes": 0,
+        "actualBytes": 367,
+        "insertedSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084",
+        "tagNames": [
+          "script"
+        ],
+        "externalScriptSources": [],
+        "containsCloudflareEmailDecoder": false,
+        "containsCloudflareChallenge": false,
+        "containsCloudflareBeacon": true,
+        "containsSpeculationRules": false
+      }
+    ]
+  },
+  {
+    "url": "https://quenderin.org/tell-me-more.html",
+    "expectedBytes": 67348,
+    "actualBytes": 67715,
+    "deltaBytes": 367,
+    "changes": [
+      {
+        "kind": "insert",
+        "expectedRange": [
+          67333,
+          67333
+        ],
+        "actualRange": [
+          67333,
+          67700
+        ],
+        "expectedBytes": 0,
+        "actualBytes": 367,
+        "insertedSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084",
+        "tagNames": [
+          "script"
+        ],
+        "externalScriptSources": [],
+        "containsCloudflareEmailDecoder": false,
+        "containsCloudflareChallenge": false,
+        "containsCloudflareBeacon": true,
+        "containsSpeculationRules": false
+      }
+    ]
+  },
+  {
+    "url": "https://quenderin.org/privacy",
+    "expectedBytes": 17684,
+    "actualBytes": 18051,
+    "deltaBytes": 367,
+    "changes": [
+      {
+        "kind": "insert",
+        "expectedRange": [
+          17669,
+          17669
+        ],
+        "actualRange": [
+          17669,
+          18036
+        ],
+        "expectedBytes": 0,
+        "actualBytes": 367,
+        "insertedSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084",
+        "tagNames": [
+          "script"
+        ],
+        "externalScriptSources": [],
+        "containsCloudflareEmailDecoder": false,
+        "containsCloudflareChallenge": false,
+        "containsCloudflareBeacon": true,
+        "containsSpeculationRules": false
+      }
+    ]
+  }
+]

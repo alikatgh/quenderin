@@ -1,0 +1,10 @@
+{
+  "removedAt": "2026-10-28T08:15:07.035333+00:00",
+  "session": "01a17d85-25ea-7803-b7f7-a8b0f3e13457",
+  "asset": "8df1636d0cf84226b506c435dba30c56",
+  "path": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/8df1636d0cf84226b506c435dba30c56",
+  "apparentBytes": 215022803,
+  "allocatedBytes": 220102656,
+  "reason": "Session-created official CLI, installed dependencies, full temporary publication copies and duplicate receipts; final deployment verified and selected evidence preserved.",
+  "removed": true
+}

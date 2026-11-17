@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-10-28T03:54:48.832388+00:00",
+  "activeDeployment": {
+    "id": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish verified privacy policy 0.6.0 asset",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-28T02:31:17.100742Z"
+  },
+  "candidateVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "candidateResourcesMatchCurrentActive": true,
+  "parentPreviewEvidence": "Parent confirms actual immutable preview DOM and screenshot passed: three reporting paragraphs readable, no overflow, dark layout preserved."
+}

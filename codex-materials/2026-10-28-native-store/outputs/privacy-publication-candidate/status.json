@@ -1,0 +1,8 @@
+{
+  "status": "published",
+  "userApprovedSpecificTagRisk": true,
+  "deploymentId": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+  "versionId": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+  "trafficPercent": 100,
+  "liveBrowserVerified": true
+}

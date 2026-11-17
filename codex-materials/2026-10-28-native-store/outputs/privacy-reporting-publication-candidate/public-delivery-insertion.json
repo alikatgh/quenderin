@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-28T03:57:30.898280+00:00",
+  "insertionBytes": 367,
+  "insertionSha256": "0d021729632e808916a17c7b917cb7f2cdbc4be4a9e377d45c91c0b8776e0084",
+  "insertionHints": {
+    "cloudflareInsights": true,
+    "beacon": true,
+    "scriptTag": false,
+    "dataCfBeacon": true,
+    "urls": [
+      {
+        "host": "static.cloudflareinsights.com",
+        "path": "/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+      }
+    ]
+  },
+  "privacyReconstructedSha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+  "privacyExactSourcePreserved": true,
+  "scriptContentsRetained": false
+}

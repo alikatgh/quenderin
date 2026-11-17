@@ -1,0 +1,101 @@
+{
+  "status": "submitted_confirmed",
+  "date": "2026-10-21",
+  "applicant": {
+    "firstName": "Albert",
+    "lastName": "Nikanorov",
+    "email": "wallmarkets@gmail.com",
+    "github": "alikatgh"
+  },
+  "repository": "https://github.com/alikatgh/quenderin",
+  "requestedTrack": "Discretionary Ecosystem Impact Track",
+  "source": "https://claude.com/contact-sales/claude-for-oss",
+  "terms": "https://www.anthropic.com/claude-for-oss-terms",
+  "fields": {
+    "impact": "I am the creator and primary maintainer of Quenderin, an MIT-licensed app for running open language models on users' own devices. It is available on iPhone and Mac, with Android source and downloadable Windows/Linux previews. It combines model selection, integrity-checked installation and cross-platform parity checks in a public codebase that other developers can inspect and adapt.\n\nI am requesting discretionary Ecosystem Impact Track consideration. Adoption is early: App Store Connect reports 69 first-time downloads for July 22-October 19, 2026, including 37 for September 20-October 19. These are app acquisitions, not active-user counts or package-registry downloads. I am not claiming large downstream dependency counts.\n\nI maintain native model and engine integrations, verified multipart downloads, memory admission checks, privacy disclosures, tests and release provenance. Recent public work includes:\nhttps://github.com/alikatgh/quenderin/pull/163\nhttps://github.com/alikatgh/quenderin/pull/164\nhttps://github.com/alikatgh/quenderin/pull/167\n\nThe gap it addresses is practical access to open models on personal hardware, including the installation, compatibility and correctness work needed across different platforms. I would welcome consideration based on this useful, auditable implementation and its ongoing maintenance.",
+    "use": "I would use Claude Code and Claude Max for maintaining the public repository: reviewing model-loader and parser changes, reasoning through memory and cancellation boundaries, creating regression tests for partial or corrupt model downloads, checking Swift/Kotlin/TypeScript behavior against shared test vectors, triaging reproducible issues and reviewing dependency updates.\n\nI would also improve contributor setup and architecture documentation so others can build and understand the project. I would reproduce findings, inspect proposed diffs, run targeted tests and check affected user journeys before merging or releasing. My priority is sustained correctness and cross-platform support as new open-model architectures arrive. I would keep work within the subscription's included usage.",
+    "other": "I also authored six published Flask utilities: flask-supercache, flask-i18n-pro, flask-querymonitor, flask-ratelimit-simple, flask-security-headers and flask-imagekit. PyPIStats records 400 combined downloads excluding mirrors for Sep 21-Oct 20, 2026; these are not unique-user counts. Their PyPI pages link to public wallmarkets repositories. Related Go work: https://github.com/alikatgh/safeheaders-go"
+  },
+  "eligibilityEvidence": {
+    "externalMergedPRsLast12Months": 0,
+    "period": {
+      "from": "2025-10-21",
+      "to": "2026-10-21"
+    },
+    "query": "is:pr is:merged author:alikatgh merged:2025-10-21..2026-10-21 -user:alikatgh is:public",
+    "incompleteResults": false,
+    "standardThresholdEstablished": false
+  },
+  "notes": [
+    "GitHub verified identity and repository in the live form; this is not acceptance or threshold qualification.",
+    "App Store acquisition evidence is not package-registry downloads or active-user counts.",
+    "No API usage, paid plan, subscription activation or overages have been enabled."
+  ],
+  "additionalPackageEvidence": {
+    "period": {
+      "from": "2026-09-21",
+      "to": "2026-10-20"
+    },
+    "category": "without_mirrors",
+    "method": "Sum returned daily download records in the inclusive period; downloads are not unique users.",
+    "packages": [
+      {
+        "name": "flask-supercache",
+        "downloads": 15,
+        "source": "https://pypistats.org/api/packages/flask-supercache/overall",
+        "packagePage": "https://pypi.org/project/flask-supercache/"
+      },
+      {
+        "name": "flask-i18n-pro",
+        "downloads": 64,
+        "source": "https://pypistats.org/api/packages/flask-i18n-pro/overall",
+        "packagePage": "https://pypi.org/project/flask-i18n-pro/"
+      },
+      {
+        "name": "flask-querymonitor",
+        "downloads": 78,
+        "source": "https://pypistats.org/api/packages/flask-querymonitor/overall",
+        "packagePage": "https://pypi.org/project/flask-querymonitor/"
+      },
+      {
+        "name": "flask-ratelimit-simple",
+        "downloads": 75,
+        "source": "https://pypistats.org/api/packages/flask-ratelimit-simple/overall",
+        "packagePage": "https://pypi.org/project/flask-ratelimit-simple/"
+      },
+      {
+        "name": "flask-security-headers",
+        "downloads": 87,
+        "source": "https://pypistats.org/api/packages/flask-security-headers/overall",
+        "packagePage": "https://pypi.org/project/flask-security-headers/"
+      },
+      {
+        "name": "flask-imagekit",
+        "downloads": 81,
+        "source": "https://pypistats.org/api/packages/flask-imagekit/overall",
+        "packagePage": "https://pypi.org/project/flask-imagekit/"
+      }
+    ],
+    "combinedDownloads": 400
+  },
+  "verification": {
+    "githubIdentity": "alikatgh",
+    "selectedRepository": "alikatgh/quenderin",
+    "allVisibleRequiredFieldsValid": true,
+    "reachImpactWords": 167,
+    "subscriptionUseWords": 105
+  },
+  "submission": {
+    "checkedAt": "2026-10-21T14:37:08.930730+08:00",
+    "userApprovedSubmissionAndTerms": true,
+    "action": "Clicked the application Submit control. A second semantic click produced a duplicate-submit prevention log; no further submit attempts or reloads were made.",
+    "formServiceLog": "Submit already requested or completed. Preventing duplicate submit",
+    "receiptConfirmed": true,
+    "observedState": "Application form replaced by visible success receipt.",
+    "evidenceImage": "claude-oss-submission-confirmation.png",
+    "browserTabRetained": true,
+    "selectionStatus": "pending_not_yet_approved",
+    "receiptText": "Thank you for applying to the Claude for Open Source program. If approved, you'll get a link to activate Claude Max on your account for the subscription period.",
+    "subscriptionActivated": false
+  }
+}

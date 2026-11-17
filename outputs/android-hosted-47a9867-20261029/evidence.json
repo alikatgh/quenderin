@@ -1,0 +1,62 @@
+{
+  "runId": 40809493269,
+  "jobId": 123236184657,
+  "sourceCommit": "47a9867638e821c077139683ced51c1b2ad3518c",
+  "instrumentation": "5 passed",
+  "syntheticFixtures": true,
+  "realHostOrInference": "not verified",
+  "parentInspected": [
+    "01-welcome-light.png",
+    "02-setup-light.png",
+    "03-chat-light.png",
+    "04-report-light.png",
+    "05-chat-dark-keyboard.png",
+    "06-setup-large-text.png",
+    "07-settings-short-window.png",
+    "09-bot-roster.png",
+    "10-bot-history.png"
+  ],
+  "visualNotes": [
+    "Bot roster/history readable, matching synthetic session; composer/model absent on Bot history.",
+    "Draft keyboard, reporting error, large text and short-window layouts inspected.",
+    "Large-text setup frame06 retains low-contrast white SystemUI icons immediately after theme transition; persistent product defect remains unproven; frame07 has dark icons."
+  ],
+  "files": {
+    "01-welcome-light.png": {
+      "bytes": 93771,
+      "sha256": "f00309df651bf44b14770cebda57d46ff80910230fa51a9ac218ee8200ce7c3d"
+    },
+    "02-setup-light.png": {
+      "bytes": 138459,
+      "sha256": "2ede3308037634aa00e9dd7d859c2194afa173a2f94924dfdec20b53c61a2ac4"
+    },
+    "03-chat-light.png": {
+      "bytes": 136582,
+      "sha256": "aa724bbab981528e902a70bbc05999b74f84c079c1cc4422deff6617f833f7e7"
+    },
+    "04-report-light.png": {
+      "bytes": 102589,
+      "sha256": "c7e6902f48a04e55ae7ae36c48f5975dad64004f3c21b06763eeef78aa6a4311"
+    },
+    "05-chat-dark-keyboard.png": {
+      "bytes": 176421,
+      "sha256": "1e10cdbae1bd7638c2bf8a2b23d45e98dc948c872a8decc1d6cfe9bfe4ffe9ef"
+    },
+    "06-setup-large-text.png": {
+      "bytes": 134253,
+      "sha256": "641c0f2e5ff9f265ab805fc183702eb42b23b40496842857dec45864d2caaef4"
+    },
+    "07-settings-short-window.png": {
+      "bytes": 86255,
+      "sha256": "27f44bcb3e3cb3405d5ffa7b4ee54ff7cb6404181016e67e2e4f0749a53ea894"
+    },
+    "09-bot-roster.png": {
+      "bytes": 99901,
+      "sha256": "a0eecef56bcae9af9a10d147bec11d4504111f842bff8ff301ed5482fe8fb445"
+    },
+    "10-bot-history.png": {
+      "bytes": 98635,
+      "sha256": "640413a0d0c6c6dbe1343ec8249dae5f932869377c475dd523570654367c1076"
+    }
+  }
+}

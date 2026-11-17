@@ -1,0 +1,32 @@
+Title: Xcode Cloud managed macOS GUI session remains locked; XCUITest cannot activate app
+
+Product: Quenderin (App Store app 6789854363; bundle ai.quenderin.Quenderin)
+Workflow: Bonsai 2 App Store
+Build: 33
+Build ID: 9fc6c34a-d877-4359-889d-e7b49309d6ac
+Mac Test action: 7368d23c-cadf-44c9-830d-7e5ba1baebcd
+Source: a6f6454fef670edac1f4500b9d60d7a5d6b74723
+Environment: macOS 27.0.1 (26A434), arm64e Virtual Machine; Xcode 27A266a
+
+Expected: The managed Mac test session permits XCUITest to activate the app and execute its UI journey.
+
+Actual: The Mac test result has 5 passing hosted tests and 1 failing UI test. CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery() fails at app.launch(), before journey assertions:
+Failed to activate application 'ai.quenderin.Quenderin' (current state: Running Background).
+
+The result contains a 62.65-second screen recording. Frames at 1 and 60 seconds both show the managed host's local-user password lock screen. The failure repeated after one bounded same-source retry (build 32 -> 33). Both distribution archives and iOS tests pass. We have not established an app startup defect.
+
+Please investigate managed GUI-session provisioning and provide a repaired environment or supported recovery procedure. We are not attempting to unlock the managed host or weaken its security.
+
+Build:
+https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/9fc6c34a-d877-4359-889d-e7b49309d6ac/summary
+
+The exact test result remains available in the build's Mac Test artifacts. Selected attachments for this report: mac-launch-first.png, mac-launch-failure.png, and evidence.json. Do not include unrelated account data, credentials or unreviewed logs.
+
+
+Follow-up recovery experiment - November2,2026:
+A single manual Mac-only duplicate workflow (53607d3e-f5cb-4369-bf71-9d471b651855) used stableXcode27.1(27A9275) and offeredmacOS27.2RC(26B118), cleanbuild, oneMac destination, same sourceSHA, requiredMac test and signedarchive. Build34 /226b233c-c28d-492e-b6ef-83b124b1a3d2. MacTest action3d1f79db-acb5-46ce-90d8-f0fb8011aa61; Archive action46602d4a-815a-45d4-973e-13c63af3aa53. The archive passed. Fivehostedtests passed, oneUItest failed at the sameapp.launch. The exact62.633333s recording again shows the managedhost's passwordlockscreen at1s and60s. Result metadata confirmsmacOS27.2/26B118 virtualmachine, so the newerhostimage did notresolve the issue.
+
+Build34:
+https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/226b233c-c28d-492e-b6ef-83b124b1a3d2/summary
+
+No report has been submitted. Use only the reviewed diagnostic description and two lockscreenframes; no source code, credentials, private keys or unrelated logs.

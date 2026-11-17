@@ -1,0 +1,50 @@
+{
+  "verifiedAt": "2026-11-05T12:36:07.585232+00:00",
+  "applicationId": "ai.quenderin.app",
+  "versionName": "0.6.0",
+  "versionCode": 6,
+  "applicationRevision": "0ad249dfd6cf09a2f2e437b2ee7576ee990b4485",
+  "workflowRevision": "4af2b97eedd281850103ad917b4ee22b51433b37",
+  "latestAppleRevision": "a6f6454fef670edac1f4500b9d60d7a5d6b74723",
+  "androidTreeAtBothApplicationRevisions": "689ad9815d366a0379569a845b7baa7f4acedc48",
+  "hostedRun": 40812571419,
+  "draftRelease": 427433884,
+  "aabAsset": 687261264,
+  "assets": [
+    {
+      "path": "quenderin-android-0.6.0-6-0ad249d-unsigned.aab",
+      "bytes": 36395913,
+      "sha256": "dcaebfa878bab1e45405489766faf4b3dcc2a824fa200fe0d92c28c2645b9519"
+    },
+    {
+      "path": "android-export-receipt.json",
+      "bytes": 4925,
+      "sha256": "0f75e1759e8506564a6912030cdfca3408ddb04834bf19a1860923380176cf79"
+    },
+    {
+      "path": "SHA256SUMS",
+      "bytes": 113,
+      "sha256": "34e1723de68bf940075c010ce95a1601de5828f7d5114bbc370d06b0489975b6"
+    }
+  ],
+  "checks": {
+    "assetSizesAndHashes": "passed",
+    "existingUnsignedProvenanceChecker": "passed",
+    "zipStructureAndUnsignedStatus": "passed",
+    "runtimeAndNoiseJnaReceiptChecks": "passed",
+    "packagedManifestUsingPinnedGoogleBundletool": "passed",
+    "androidSourceTreeEquivalence": "passed"
+  },
+  "googleBundletool": {
+    "version": "1.18.3",
+    "downloadHashVerified": true,
+    "temporaryJarRemovedBytes": 32520401
+  },
+  "signingCredentialsLoaded": false,
+  "signed": false,
+  "playUploadReady": false,
+  "uploadedToPlay": false,
+  "googleUploadKeyResetActivationVerified": false,
+  "newCloudBuildsOrTestsStarted": false,
+  "retention": "Single current unsigned release candidate retained for signing/upload after verified Google key activation. Remove this local unsigned copy when superseded or after Play acceptance and final signed-artifact provenance is retained."
+}

@@ -1,0 +1,46 @@
+{
+  "measuredAt": "2026-10-28T03:25:33.774040+00:00",
+  "session": "01a17d85-25ea-7803-b7f7-a8b0f3e13457",
+  "assetId": "1bd1fe914a8b49db84e9e119a436fec8",
+  "storageState": "/private/tmp/quenderin-storage-01a17d85",
+  "baselineAvailableBytes": 5814386688,
+  "baselineSwapAllocatedBytes": 5368709120,
+  "temporary": {
+    "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/node_modules": {
+      "files": 1658,
+      "apparentBytes": 207736194,
+      "allocatedBytes": 212520960
+    },
+    "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8/privacy-reporting-publish-stage": {
+      "files": 114,
+      "apparentBytes": 7194965,
+      "allocatedBytes": 7467008
+    },
+    "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8": {
+      "files": 1774,
+      "apparentBytes": 214978872,
+      "allocatedBytes": 220041216
+    }
+  },
+  "retainedEvidence": {
+    "path": "/Users/s_avelova/Documents/projects/quenderin/codex-materials/2026-10-28-native-store/outputs/privacy-reporting-publication-candidate",
+    "files": 15,
+    "apparentBytes": 101365,
+    "allocatedBytes": 135168
+  },
+  "cleaned": [
+    "npm-cache",
+    "privacy-reporting-publish-stage/dryrun",
+    "privacy-reporting-publish-stage/dryrun.multipart",
+    "exact newly created tools/__pycache__/secret_scan.cpython-314.pyc"
+  ],
+  "ongoingUse": "none; publication complete and parent live browser passed",
+  "cleanupCondition": "completed: exact registered CLI/stage asset removed",
+  "sharedLedgerNote": "Session ledger is shared with parent and other agents; do not run unscoped cleanup during concurrent active work.",
+  "phaseCompletedAt": "2026-10-28T04:00:25.644740+00:00",
+  "removedAssetPath": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8",
+  "removedAllocatedBytes": 220041216,
+  "finalAvailableBytes": 1332924416,
+  "finalSwapAllocatedBytes": 8589934592,
+  "volumeNote": "Swap increased by3,221,225,472B since first staging snapshot. Volume change is concurrent/swap-wide; exact220,041,216B task scratch was removed."
+}

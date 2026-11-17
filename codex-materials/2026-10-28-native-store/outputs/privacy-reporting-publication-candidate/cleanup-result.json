@@ -1,0 +1,29 @@
+{
+  "cleanedAt": "2026-10-28T03:58:57.317540+00:00",
+  "assetId": "1bd1fe914a8b49db84e9e119a436fec8",
+  "removedPath": "/private/tmp/codex-session-storage/7199f0b461f883fefcf87082/1bd1fe914a8b49db84e9e119a436fec8",
+  "before": {
+    "files": 1774,
+    "apparentBytes": 214978872,
+    "allocatedBytes": 220041216,
+    "device": 16777232,
+    "inode": 295790638
+  },
+  "afterExists": false,
+  "volumeFreeBeforeBytes": 1115467776,
+  "volumeFreeAfterBytes": 1336496128,
+  "volumeAttribution": "Volume-wide values include concurrent sessions, APFS sharing and swap; task-owned allocation is measured above.",
+  "preservedEvidence": "/Users/s_avelova/Documents/projects/quenderin/codex-materials/2026-10-28-native-store/outputs/privacy-reporting-publication-candidate",
+  "firstPublicationPackUnchanged": true,
+  "sourcePrivacyPreserved": true,
+  "rollback": {
+    "versionId": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+    "worker": "quenderin",
+    "accountId": "4c1e57b6972105286a7aeb46b2b89c78",
+    "trafficPercent": 100,
+    "recoveryTool": "Restore pinned official Wrangler4.151.1 in a new registered scratch asset if rollback becomes necessary; historical exact argv/config retained in commands.json."
+  },
+  "postCleanupSourcePrivacyHashVerified": true,
+  "ledgerRetentionReleased": true,
+  "ledgerReportNote": "Helper report retains registration status present after foreground removal; direct filesystem check confirms owned path absent. Parent may reconcile shared ledger after concurrent tasks end."
+}

@@ -1,0 +1,652 @@
+{
+  "actualGateReproduction": "App executable omits the verified remote crypto payload",
+  "archiveLinkAndStrip": {
+    "classification": "required roots reached linker; default executable stripping removed public export proof",
+    "finalLinks": [
+      {
+        "exactRequiredRootsMatch": true,
+        "exportDynamic": true,
+        "exportFilterPresent": false,
+        "forcedRootCount": 9,
+        "target": "x86_64-apple-macos13.3"
+      },
+      {
+        "exactRequiredRootsMatch": true,
+        "exportDynamic": true,
+        "exportFilterPresent": false,
+        "forcedRootCount": 9,
+        "target": "arm64-apple-macos13.3"
+      }
+    ],
+    "finalStrips": [
+      {
+        "flags": [
+          "-D"
+        ],
+        "image": "Contents/MacOS/Quenderin",
+        "tool": "strip"
+      }
+    ]
+  },
+  "images": {
+    "Contents/Frameworks/QuenderinDiffusion.framework/Versions/A/QuenderinDiffusion": {
+      "architectures": {
+        "arm64": {
+          "loads": [
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libSystem.B.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libc++.1.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libobjc.A.dylib"
+            }
+          ],
+          "remotePrefixExports": 0,
+          "requiredDefinitions": {},
+          "requiredMissing": [
+            "_uniffi_quenderin_remote_crypto_fn_func_derive_public_key",
+            "_uniffi_quenderin_remote_crypto_fn_constructor_noiseiksession_create",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_initiate",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_read_handshake",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_encrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_decrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_counters",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_shutdown",
+            "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75"
+          ],
+          "requiredPresent": [],
+          "rpaths": [],
+          "totalExports": 7
+        },
+        "x86_64": {
+          "loads": [
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libSystem.B.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libc++.1.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libobjc.A.dylib"
+            }
+          ],
+          "remotePrefixExports": 0,
+          "requiredDefinitions": {},
+          "requiredMissing": [
+            "_uniffi_quenderin_remote_crypto_fn_func_derive_public_key",
+            "_uniffi_quenderin_remote_crypto_fn_constructor_noiseiksession_create",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_initiate",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_read_handshake",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_encrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_decrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_counters",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_shutdown",
+            "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75"
+          ],
+          "requiredPresent": [],
+          "rpaths": [],
+          "totalExports": 7
+        }
+      },
+      "bytes": 88979024,
+      "sha256": "6b6746321ce528831dd569d5287ce7d0451a571ff2bab5c384ce1501dac28591"
+    },
+    "Contents/Frameworks/llama.framework/Versions/A/llama": {
+      "architectures": {
+        "arm64": {
+          "loads": [
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libc++.1.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libSystem.B.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libobjc.A.dylib"
+            }
+          ],
+          "remotePrefixExports": 0,
+          "requiredDefinitions": {},
+          "requiredMissing": [
+            "_uniffi_quenderin_remote_crypto_fn_func_derive_public_key",
+            "_uniffi_quenderin_remote_crypto_fn_constructor_noiseiksession_create",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_initiate",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_read_handshake",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_encrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_decrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_counters",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_shutdown",
+            "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75"
+          ],
+          "requiredPresent": [],
+          "rpaths": [],
+          "totalExports": 4789
+        },
+        "x86_64": {
+          "loads": [
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libc++.1.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libSystem.B.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libobjc.A.dylib"
+            }
+          ],
+          "remotePrefixExports": 0,
+          "requiredDefinitions": {},
+          "requiredMissing": [
+            "_uniffi_quenderin_remote_crypto_fn_func_derive_public_key",
+            "_uniffi_quenderin_remote_crypto_fn_constructor_noiseiksession_create",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_initiate",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_read_handshake",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_encrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_decrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_counters",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_shutdown",
+            "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75"
+          ],
+          "requiredPresent": [],
+          "rpaths": [],
+          "totalExports": 5333
+        }
+      },
+      "bytes": 17473888,
+      "sha256": "7e879059b974872e291f11774f6fb736b5d6f9d9aa1f75d0c935e0c696eb8bd4"
+    },
+    "Contents/MacOS/Quenderin": {
+      "architectures": {
+        "arm64": {
+          "loads": [
+            {
+              "command": "0xc",
+              "path": "@rpath/QuenderinDiffusion.framework/Versions/A/QuenderinDiffusion"
+            },
+            {
+              "command": "0xc",
+              "path": "@rpath/llama.framework/Versions/Current/llama"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libobjc.A.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libSystem.B.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Combine.framework/Versions/A/Combine"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/EventKit.framework/Versions/A/EventKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/PDFKit.framework/Versions/A/PDFKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Security.framework/Versions/A/Security"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/SwiftUI.framework/Versions/A/SwiftUI"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftCore.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftCoreAudio.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftCoreFoundation.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftCoreImage.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftCoreLocation.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftDarwin.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftDispatch.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftIOKit.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftMetal.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftOSLog.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftObjectiveC.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftQuartzCore.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftSpatial.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftXPC.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswift_Concurrency.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftos.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftsimd.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftNetwork.dylib"
+            }
+          ],
+          "remotePrefixExports": 0,
+          "requiredDefinitions": {},
+          "requiredMissing": [
+            "_uniffi_quenderin_remote_crypto_fn_func_derive_public_key",
+            "_uniffi_quenderin_remote_crypto_fn_constructor_noiseiksession_create",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_initiate",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_read_handshake",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_encrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_decrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_counters",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_shutdown",
+            "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75"
+          ],
+          "requiredPresent": [],
+          "rpaths": [
+            "/usr/lib/swift",
+            "@executable_path/../Frameworks"
+          ],
+          "totalExports": 1
+        },
+        "x86_64": {
+          "loads": [
+            {
+              "command": "0xc",
+              "path": "@rpath/QuenderinDiffusion.framework/Versions/A/QuenderinDiffusion"
+            },
+            {
+              "command": "0xc",
+              "path": "@rpath/llama.framework/Versions/Current/llama"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libobjc.A.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/libSystem.B.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Combine.framework/Versions/A/Combine"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/EventKit.framework/Versions/A/EventKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/PDFKit.framework/Versions/A/PDFKit"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/Security.framework/Versions/A/Security"
+            },
+            {
+              "command": "0xc",
+              "path": "/System/Library/Frameworks/SwiftUI.framework/Versions/A/SwiftUI"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftCore.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftCoreAudio.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftCoreFoundation.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftCoreImage.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftCoreLocation.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftDarwin.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftDispatch.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftIOKit.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftMetal.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftOSLog.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftObjectiveC.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftQuartzCore.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftSpatial.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftXPC.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswift_Concurrency.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftos.dylib"
+            },
+            {
+              "command": "0x80000018",
+              "path": "/usr/lib/swift/libswiftsimd.dylib"
+            },
+            {
+              "command": "0xc",
+              "path": "/usr/lib/swift/libswiftNetwork.dylib"
+            }
+          ],
+          "remotePrefixExports": 0,
+          "requiredDefinitions": {},
+          "requiredMissing": [
+            "_uniffi_quenderin_remote_crypto_fn_func_derive_public_key",
+            "_uniffi_quenderin_remote_crypto_fn_constructor_noiseiksession_create",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_initiate",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_read_handshake",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_encrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_decrypt",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_counters",
+            "_uniffi_quenderin_remote_crypto_fn_method_noiseiksession_shutdown",
+            "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75"
+          ],
+          "requiredPresent": [],
+          "rpaths": [
+            "/usr/lib/swift",
+            "@executable_path/../Frameworks"
+          ],
+          "totalExports": 1
+        }
+      },
+      "bytes": 15920192,
+      "sha256": "53e88633ab1749bd0df8b1346711d24c48c6cae8a9cda9f3a0d62d0d90eb78ce"
+    }
+  },
+  "mainNlist": {
+    "arm64": {
+      "nlistLineCount": 2277,
+      "proofNameBytesPresent": false,
+      "remotePrefixNlistCount": 0,
+      "requiredInNlist": [],
+      "status": 0
+    },
+    "x86_64": {
+      "nlistLineCount": 2278,
+      "proofNameBytesPresent": false,
+      "remotePrefixNlistCount": 0,
+      "requiredInNlist": [],
+      "status": 0
+    }
+  },
+  "mainPublicCryptoStringCounts": {
+    "arm64": {
+      "noiseiksession": 6,
+      "quenderin_remote_crypto": 36,
+      "snow::": 0,
+      "uniffi": 31
+    },
+    "x86_64": {
+      "noiseiksession": 6,
+      "quenderin_remote_crypto": 36,
+      "snow::": 0,
+      "uniffi": 31
+    }
+  },
+  "proofSymbol": "_quenderin_remote_sdk_04ac987f65ca5620bae548669410fb73f69e5e51c1cf0c69a275f7628bbe6f75",
+  "receiptSha256": "6c9d23b51cd08c5546b9c7a269d5f1ee3e31caf4aa0c9b846fd71d41c74e5b49",
+  "recommendation": {
+    "archiveDownloadRequired": false,
+    "change": "Release STRIP_STYLE=non-global on iOS and macOS application targets",
+    "gateChangeRequired": false,
+    "sources": [
+      "https://developer.apple.com/documentation/xcode/build-settings-reference",
+      "https://github.com/apple-oss-distributions/cctools/blob/main/misc/strip.c"
+    ]
+  },
+  "signatureMetadata": {
+    "app": {
+      "expectedTeam": true,
+      "nonAdhoc": true,
+      "status": 0
+    },
+    "diffusion": {
+      "expectedTeam": true,
+      "nonAdhoc": true,
+      "status": 0
+    },
+    "llama": {
+      "expectedTeam": true,
+      "nonAdhoc": true,
+      "status": 0
+    },
+    "main": {
+      "expectedTeam": true,
+      "nonAdhoc": true,
+      "status": 0
+    }
+  },
+  "signatureVerify": {
+    "categories": [],
+    "classification": "blocked_local_certificate_trust",
+    "emptyDiagnostic": false,
+    "errorCodes": [
+      "CSSMERR_TP_NOT_TRUSTED"
+    ],
+    "status": 1,
+    "stderrBytes": 198
+  },
+  "sourceDigestsMatch": true,
+  "sourceRevisionMatches": true
+}

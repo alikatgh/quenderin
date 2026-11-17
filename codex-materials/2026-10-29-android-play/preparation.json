@@ -1,0 +1,107 @@
+{
+  "observedAt": "2026-10-29T06:44:10.268313+00:00",
+  "package": "ai.quenderin.app",
+  "versionName": "0.6.0",
+  "versionCode": 6,
+  "sourceCommit": "a1d9c9eff3c1a244f55f23f697af63e7ef98308d",
+  "mergeCommit": "0e9b1d9b3d325257fb6e8e221b3ad92eae089988",
+  "pullRequest": "https://github.com/alikatgh/quenderin/pull/212",
+  "independentReview": "PASS for merge and unsigned candidate export",
+  "priorChecks": {
+    "integratedCI": 40792612527,
+    "androidUI": 40788876323,
+    "androidUITestsPassed": 4
+  },
+  "candidateRun": 40799695814,
+  "candidateStatus": "success",
+  "draftReleaseId": 427362598,
+  "draftTag": "android-beta-0.6.0-candidate-a1d9c9e",
+  "playObserved": {
+    "developer": "6289191549337108258",
+    "app": "4976280765138921912",
+    "track": "4700414835984777148",
+    "trackName": "Closed testing - Alpha",
+    "activeVersion": "0.2.0 (2)",
+    "draftName": "6 (0.6.0)",
+    "newBundleUploaded": false
+  },
+  "signingStatus": "Original registered upload-key setup being located; replacement key preserved unused; reset form discarded without submission",
+  "runtimeScope": "No local native build, model-weight download or physical-device test",
+  "storage": "Selected release artifacts and receipts retained; temporary download staging and key-preparation script/screenshot scratch removed after use; all private signing keys preserved.",
+  "freeHostedBuildEvidence": "Public repository, existing standard ubuntu-latest runner, manual concurrency group, 40-minute deadline; https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+  "downloadVerified": true,
+  "assets": [
+    {
+      "name": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab",
+      "bytes": 36394728,
+      "sha256": "c9718cd9a64c6c45f9be4de731f95ba8e1dc9ba861e3b472435b5cfaf0a2ffe5",
+      "id": 686965447
+    },
+    {
+      "name": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab.receipt.json",
+      "bytes": 4925,
+      "sha256": "72c0707122c206460a80990dbc91dd14cff600879dccea38a267d540c5c08077",
+      "id": 686965617
+    },
+    {
+      "name": "quenderin-android-0.6.0-6-a1d9c9e-unsigned.aab.sha256",
+      "bytes": 113,
+      "sha256": "8d72b5d6c4d131b54640e116a3bdcdc1db6fd4f8b372503139e2b3ba3edf7753",
+      "id": 686965551
+    }
+  ],
+  "retainedArtifactBytes": 36399766,
+  "retentionReason": "Exact hosted candidate required for private signing and Google Play upload",
+  "cleanupCondition": "Remove disposable unsigned local candidate after signed upload is verified and its receipt remains retained; preserve any private key and source",
+  "nextStep": "Await original signing-configuration location, or explicit authorization for Google upload-key reset with an existing prepared replacement. No reset has been submitted. Latest candidate also needs local byte/provenance verification before signing when disk headroom permits.",
+  "uploadKey": {
+    "certificateSha256": "8f45bb0c428be051ee77b6c876e133af8b282347ea8e422ab17d2d206c863d1b",
+    "publicCertificatePath": "/Users/s_avelova/Library/Application Support/Quenderin-Upload-Key-20261029/upload_certificate.pem",
+    "keychainService": "ai.quenderin.play-upload.20261029",
+    "keychainAccount": "quenderin-upload",
+    "passwordSavedAndReadbackVerified": true,
+    "registeredForPlay": false,
+    "privateOutputPermissionsVerified": true,
+    "resetRequested": false,
+    "usedForSigning": false,
+    "status": "Unused replacement; original-key investigation in progress"
+  },
+  "resetFormEvidence": "play-upload-key-reset.jpg is historical preparation evidence only; form was subsequently discarded without submission.",
+  "originalKeyInvestigation": {
+    "registeredCertificateSha256": "8b38f4e585883ab737f2918f4990ba401767a03937eb2a687288bde3e949cf3d",
+    "unresolvedStorePath": "/Users/s_avelova/Documents/projects/routes_mappster/apks/my-release-key.keystore",
+    "unresolvedStoreBytes": 2720,
+    "historicalEvidence": "October 20 Quenderin session 01a157b4-f7c7-7a82-bbc7-1b0374417ab7 structured record 333 identifies no established credential source for this exact path.",
+    "publicCertificateCheck": "Password-free keytool listing returned no certificate fingerprints; matching and mismatching both remain unverified.",
+    "passwordManager": "Unlocked UI searches completed: Quenderin/offgrid yielded one Bitso-labelled result with no visible signing-file references; alias_name returned no result. No passwords revealed or copied.",
+    "originalKeyLostOrDeleted": "Not established; unresolved generic encrypted store remains neither matched nor excluded.",
+    "resetSubmitted": false,
+    "keychainUi": "Keychain Access opened: quenderin found only the generated Oct29 replacement password item; offgrid found an Apple identityservices item; alias_name found no result. No matching original signing identity established."
+  },
+  "latestSelectedCandidate": {
+    "sourceCommit": "0ad249dfd6cf09a2f2e437b2ee7576ee990b4485",
+    "mergeCommit": "4af2b97eedd281850103ad917b4ee22b51433b37",
+    "androidTree": "689ad9815d366a0379569a845b7baa7f4acedc48",
+    "candidateRun": 40812571419,
+    "candidateRunLiveVerified": "All 22 steps successful via GitHub connector",
+    "draftReleaseId": 427433884,
+    "draftTag": "android-beta-0.6.0-candidate-0ad249d",
+    "assetId": 687261264,
+    "aabName": "quenderin-android-0.6.0-6-0ad249d-unsigned.aab",
+    "bytes": 36395913,
+    "githubSha256": "dcaebfa878bab1e45405489766faf4b3dcc2a824fa200fe0d92c28c2645b9519",
+    "downloadedLocally": false,
+    "signed": false,
+    "uploadedToPlay": false,
+    "botScope": "Roster and current history via paired computer; existing approvals and Stop remain; new Bot prompts and model changes are disabled. Direct DeepSeek API text chat is separate.",
+    "checks": "Five synthetic UI tests reported by current integration record, including Bot history; live Host and provider execution unverified.",
+    "independentReview": {
+      "reviewer": "Fresh read-only Sol 6.1 xhigh",
+      "comparison": "a1d9c9eff3c1a244f55f23f697af63e7ef98308d..0ad249dfd6cf09a2f2e437b2ee7576ee990b4485 (Android only)",
+      "result": "No high, medium, or low findings; git diff --check passed",
+      "scope": "Four instrumentation files and one production controller factory refactor; source review only, not a signed-release or live Host test"
+    }
+  },
+  "localArtifactStatus": "Top-level sourceCommit/assets describe the older a1d9c9e local candidate. Use latestSelectedCandidate for the next release; do not upload the older local candidate as newest.",
+  "playRefresh": "Native Chrome was on an unrelated YouTube page; no navigation or mutation attempted. No new Play status inferred from it."
+}

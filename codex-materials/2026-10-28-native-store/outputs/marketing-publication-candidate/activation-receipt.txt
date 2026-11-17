@@ -1,0 +1,35 @@
+
+ ⛅️ wrangler 4.151.1 (update available 4.154.0)
+───────────────────────────────────────────────
+╭ Deploy Worker Versions by splitting traffic between multiple versions
+│
+├ Fetching latest deployment
+│
+├ Your current deployment has 1 version(s):
+│
+│ (100%) 29ec91c0-214d-43c1-a974-84fd171dfb1d
+│       Created:  2026-10-28T03:36:10.001742Z
+│           Tag:  -
+│       Message:  Privacy policy Android reporting disclosure only; exact deployed Worker retained
+│
+├ Fetching versions
+│
+├ Which version(s) do you want to deploy?
+├ 1 Worker Version(s) selected
+│
+├     Worker Version 1:  d79c77fe-ce49-4417-a1a5-bbb2994fe0c6
+│              Created:  2026-10-28T08:09:28.411778Z
+│                  Tag:  -
+│              Message:  Reviewed model logos and October28 development updates; exact active Worker and privacy retained
+│
+├ What percentage of traffic should Worker Version 1 receive?
+├ 100% of traffic
+├
+├ Add a deployment message
+│ Deployment message Publish reviewed model logos and dated October28 development updates from main21b025; retain exact Worker and current privacy
+│
+├ Deploying 1 version(s)
+│
+│ No non-versioned settings to sync. Skipping...
+│
+╰  SUCCESS  Deployed quenderin version d79c77fe-ce49-4417-a1a5-bbb2994fe0c6 at 100% (1.29 sec)

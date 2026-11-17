@@ -1,0 +1,47 @@
+Application, 0x790aa00500, pid: 2683, title: 'Quenderin', Disabled <App element pid: 2683>
+  Window (Main), 0x790aa00c80, {{160.0, 30.0}, {960.0, 692.0}}, identifier: 'main-AppWindow-1', title: 'Quenderin', Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jKwAAAAAAAAA=>
+    Group, 0x790aa00dc0, {{160.0, 30.0}, {960.0, 692.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jLQAAAAAAAAA=>
+      Button, 0x790aa00f00, {{176.0, 70.0}, {928.0, 24.0}}, identifier: 'remote-before-download', label: 'My computer · Remote Harness' <AX element pid: 2683, token: ewoAAAAAAABvY29jVAAAAAAAAAA=>
+      Button, 0x790aa00640, {{176.0, 102.0}, {928.0, 24.0}}, identifier: 'deepseek-before-download', label: 'Chat with DeepSeek · no model download' <AX element pid: 2683, token: ewoAAAAAAABvY29jVQAAAAAAAAA=>
+      MenuButton, 0x790aa01180, {{961.0, 134.0}, {143.0, 24.0}}, identifier: 'square.stack', title: 'More models' <AX element pid: 2683, token: ewoAAAAAAABvY29jVgAAAAAAAAA=>
+      ScrollView, 0x790aa012c0, {{160.0, 174.0}, {960.0, 548.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jVwAAAAAAAAA=>
+        StaticText, 0x790aa01400, {{587.5, 202.0}, {105.0, 26.0}}, value: Quenderin <AX element pid: 2683, token: ewoAAAAAAABvY29jWAAAAAAAAAA=>
+        StaticText, 0x790aa01540, {{527.0, 240.0}, {226.0, 14.0}}, value: An AI that runs on... <AX element pid: 2683, token: ewoAAAAAAABvY29jWQAAAAAAAAA=>
+        StaticText, 0x790aa01680, {{551.0, 500.0}, {178.0, 13.0}}, label: 'RECOMMENDED FOR YOUR DEVICE' <AX element pid: 2683, token: ewoAAAAAAABvY29jWgAAAAAAAAA=>
+        StaticText, 0x790aa017c0, {{548.2, 523.0}, {183.5, 19.0}}, value: Qwen3 14B (Best Qu... <AX element pid: 2683, token: ewoAAAAAAABvY29jWwAAAAAAAAA=>
+        StaticText, 0x790aa01900, {{566.8, 552.0}, {146.5, 13.0}}, value: 64 GB RAM · 9.0 GB... <AX element pid: 2683, token: ewoAAAAAAABvY29jXAAAAAAAAAA=>
+        Button, 0x790aa01a40, {{563.5, 581.0}, {153.0, 24.0}}, label: 'Download & continue' <AX element pid: 2683, token: ewoAAAAAAABvY29jXQAAAAAAAAA=>
+        Button, 0x790aa01b80, {{575.0, 617.0}, {130.0, 13.0}}, label: 'Choose a different model…' <AX element pid: 2683, token: ewoAAAAAAABvY29jXgAAAAAAAAA=>
+    Button, 0x790aa01cc0, {{168.0, 38.0}, {16.0, 16.0}}, identifier: '_XCUI:CloseWindow', Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jLgAAAAAAAAA=>
+    Button, 0x790aa01e00, {{214.0, 38.0}, {16.0, 16.0}}, identifier: '_XCUI:ZoomWindow' <AX element pid: 2683, token: ewoAAAAAAABvY29jLwAAAAAAAAA=>
+      Group, 0x790aa01f40, {{215.0, 39.0}, {14.0, 14.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jfQAAAAAAAAA=>
+        Group, 0x790aa02080, {{215.0, 39.0}, {14.0, 14.0}}, Disabled <AX element pid: 2691, token: gwoAAHsKAABvY29jKwAAAAAAAAA=>
+    Button, 0x790aa021c0, {{191.0, 38.0}, {16.0, 16.0}}, identifier: '_XCUI:MinimizeWindow' <AX element pid: 2683, token: ewoAAAAAAABvY29jMAAAAAAAAAA=>
+    StaticText, 0x790aa02300, {{242.0, 38.0}, {72.0, 16.0}}, value: Quenderin <AX element pid: 2683, token: ewoAAAAAAABvY29jKwAAAAAAAAAEAAAAAAAAAA==>
+    Sheet, 0x790aa02440, {{405.0, 66.0}, {470.0, 620.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jZQAAAAAAAAA=>
+      Group, 0x790aa02580, {{405.0, 66.0}, {470.0, 620.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jZgAAAAAAAAA=>
+        StaticText, 0x790aa026c0, {{453.0, 82.5}, {65.5, 16.0}}, value: DeepSeek <AX element pid: 2683, token: ewoAAAAAAABvY29jZwAAAAAAAAA=>
+        ScrollView, 0x790aa02800, {{405.0, 113.5}, {470.0, 507.5}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jaAAAAAAAAAA=>
+          Group, 0x790aa02940, {{425.0, 133.5}, {430.0, 117.0}} <AX element pid: 2683, token: ewoAAAAAAABvY29jawAAAAAAAAA=>
+            StaticText, 0x790aa02a80, {{435.0, 143.6}, {286.5, 16.0}}, value: Use DeepSeek witho... <AX element pid: 2683, token: ewoAAAAAAABvY29jcQAAAAAAAAA=>
+            StaticText, 0x790aa02bc0, {{435.0, 180.6}, {406.0, 60.0}}, value: Quenderin connects... <AX element pid: 2683, token: ewoAAAAAAABvY29jcgAAAAAAAAA=>
+          StaticText, 0x790aa02d00, {{435.0, 280.6}, {103.5, 16.0}}, label: 'Connect API key' <AX element pid: 2683, token: ewoAAAAAAABvY29jbAAAAAAAAAA=>
+          Group, 0x790aa02e40, {{425.0, 306.5}, {430.0, 172.5}}, Keyboard Focused <AX element pid: 2683, token: ewoAAAAAAABvY29jbQAAAAAAAAA=>
+            StaticText, 0x790aa02f80, {{435.0, 316.6}, {110.5, 16.0}}, value: DeepSeek API key <AX element pid: 2683, token: ewoAAAAAAABvY29jdgAAAAAAAAA=>
+            SecureTextField, 0x790aa030c0, {{552.5, 315.5}, {293.5, 18.0}}, identifier: 'deepseek-api-key', Keyboard Focused <AX element pid: 2683, token: ewoAAAAAAABvY29jdwAAAAAAAAA=>
+            StaticText, 0x790aa03200, {{435.0, 353.6}, {104.0, 16.0}}, value: Model to validate <AX element pid: 2683, token: ewoAAAAAAABvY29jeAAAAAAAAAA=>
+            PopUpButton, 0x790aa03340, {{700.0, 350.0}, {145.0, 24.0}}, value: DeepSeek Flash <AX element pid: 2683, token: ewoAAAAAAABvY29jeQAAAAAAAAA=>
+            StaticText, 0x790aa03480, {{435.0, 391.9}, {317.0, 32.0}}, value: Send this key to D... <AX element pid: 2683, token: ewoAAAAAAABvY29jegAAAAAAAAA=>
+            Switch, 0x790aa035c0, {{808.0, 391.5}, {38.0, 18.0}}, value: 0 <AX element pid: 2683, token: ewoAAAAAAABvY29jewAAAAAAAAA=>
+            Button, 0x790aa03700, {{435.0, 445.0}, {201.0, 24.0}}, identifier: 'deepseek-connect', label: 'Validate and save connection', Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jfAAAAAAAAAA=>
+          Group, 0x790aa03840, {{425.0, 489.0}, {430.0, 133.0}} <AX element pid: 2683, token: ewoAAAAAAABvY29jbgAAAAAAAAA=>
+            StaticText, 0x790aa03980, {{435.0, 498.9}, {400.5, 39.0}}, value: Cloud inference us... <AX element pid: 2683, token: ewoAAAAAAABvY29jcwAAAAAAAAA=>
+            Link, 0x790aa03ac0, {{435.0, 559.0}, {224.0, 16.0}}, label: 'DeepSeek pricing and account terms' <AX element pid: 2683, token: ewoAAAAAAABvY29jdAAAAAAAAAA=>
+            StaticText, 0x790aa03c00, {{435.0, 597.4}, {191.0, 13.0}}, value: Supported model ca... <AX element pid: 2683, token: ewoAAAAAAABvY29jdQAAAAAAAAA=>
+          ScrollBar, 0x790aa03d40, {{857.0, 112.5}, {19.0, 509.5}}, value: 0 <AX element pid: 2683, token: ewoAAAAAAABvY29jbwAAAAAAAAA=>
+            ValueIndicator, 0x790aa03e80, {{866.0, 116.5}, {6.0, 483.0}}, value: 0, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jbwAAAAAAAAAAAAAAAAAAAA==>
+            IncrementArrow, 0x790ae07c00, {{858.0, 113.5}, {0.0, 0.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jbwAAAAAAAAABAAAAAAAAAA==>
+            DecrementArrow, 0x790aa0c000, {{858.0, 113.5}, {0.0, 0.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jbwAAAAAAAAACAAAAAAAAAA==>
+            Button, 0x790aa0c140, {{866.0, 600.0}, {6.0, 18.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jbwAAAAAAAAADAAAAAAAAAA==>
+            Button, 0x790aa0c280, {{866.0, 116.5}, {6.0, 0.0}}, Disabled <AX element pid: 2683, token: ewoAAAAAAABvY29jbwAAAAAAAAAEAAAAAAAAAA==>
+        Button, 0x790aa0c3c0, {{791.0, 642.0}, {64.0, 24.0}}, label: 'Done' <AX element pid: 2683, token: ewoAAAAAAABvY29jaQAAAAAAAAA=>

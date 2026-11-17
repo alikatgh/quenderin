@@ -1,0 +1,9 @@
+Cloud 29 Mac consent accessibility evidence
+Source runner log: /private/tmp/codex-session-storage/7199f0b461f883fefcf87082/df17853d1d234ef58d8548eafe3b2820/mac-diagnostics/QuenderinMacCloudUITests-29C82866-1551-4BA5-9538-53B088D6567A-Configuration-Offline UI and app-hosted Keychain-Iteration-1/QuenderinMacCloudUITests-4CE5980E-AC1B-44A9-9C64-B60B2506614A/Session-QuenderinMacCloudUITests-2026-10-27_232230-DTLjZN.log
+
+7482:     Switch, identifier: 'deepseek-validation-consent', label: 'Send this key to DeepSeek for validation and save it securely on this device.', value: 0
+7504: 23:22:49.836 QuenderinMacCloudUITests-Runner[3104:18283] Current tree:
+7514:             Switch, 0x79d06a9900, identifier: 'deepseek-validation-consent', label: 'Send this key to DeepSeek for validation and save it securely on this device.', value: 0 <AX element pid: 3108, token: JAwAAAAAAABvY29jeQAAAAAAAAA=>
+7515: 23:22:49.836 QuenderinMacCloudUITests-Runner[3104:18283] <XCTContext: 0x79d123c2d0> finished activity <XCActivityRecord: 0x79d134f2c0> 2026-10-28 06:22:49 +0000: Find the "deepseek-validation-consent" Switch (0.034789s)
+7530: /Volumes/workspace/repository/apple/QuenderinApp/Tests/UI/CloudJourneyTests.swift:77: error: -[QuenderinMacCloudUITests.CloudJourneyTests testFreshOfflineEntryConnectionsChatAndRecovery] : XCTAssertEqual failed: ("nil") is not equal to ("Optional("0")") - Provider validation consent must start off
+7531: 23:22:49.879 xcodebuild[3063:17605] _XCT_testWithIdentifier:<XCTTestIdentifier leaf, method, swift ["CloudJourneyTests", "testFreshOfflineEntryConnectionsChatAndRecovery"]> didRecordIssue:Assertion Failure at CloudJourneyTests.swift:77: XCTAssertEqual failed: ("nil") is not equal to ("Optional("0")") - Provider validation consent must start off

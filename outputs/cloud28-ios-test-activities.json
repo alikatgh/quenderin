@@ -1,0 +1,1222 @@
+{
+  "testIdentifier" : "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()",
+  "testIdentifierURL" : "test://com.apple.xcode/Quenderin/QuenderinCloudUITests/CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery",
+  "testName" : "testFreshOfflineEntryConnectionsChatAndRecovery()",
+  "testRuns" : [
+    {
+      "activities" : [
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Screen Recording 2026-10-28 at 01.10.56 PM.mp4",
+              "payloadId" : "0~AKz66cXgkNa08EwOQUIrdYC2iZscCxMN-wnJbLsdP5hZbE8i3SKKz5lwsl3wOvtxU28MmTNSAFJgOrsMAR35zA==",
+              "timestamp" : 1793164256.185,
+              "uuid" : "1117408B-8F78-48E5-814E-755DBB18C7CF"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164256.185,
+              "title" : "kXCTAttachmentScreenRecording"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164255.994,
+          "title" : "Start Test at 2026-10-27 22:10:55.994"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164256.188,
+          "title" : "Set Up"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164258.583,
+                  "title" : "Setting up automation session"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164261.618,
+                  "title" : "Wait for ai.quenderin.Quenderin to idle"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164256.196,
+              "title" : "Launch ai.quenderin.Quenderin"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164256.194,
+          "title" : "Open ai.quenderin.Quenderin"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164264.139,
+                  "title" : "Checking existence of `\"Meet Quenderin\" StaticText`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164264.139,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"Meet Quenderin\" StaticText`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164263.131,
+          "title" : "Waiting 15.0s for \"Meet Quenderin\" StaticText to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164264.181,
+          "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "keepAlways",
+              "name" : "01-fresh-welcome_0_F3FDD7A3-AC64-46E4-A19D-E79386899239.png",
+              "payloadId" : "0~d5DHyoZn4Uqzh1K-0yVsE4dMwmsWqDKB0YUI7kG7DBsHgmc2Bc3_VgwJ_FUTQkERYWNnn0EJRyx8izrkIJBvQw==",
+              "timestamp" : 1793164264.316,
+              "uuid" : "D3733F52-4E09-4A33-9106-AC20A15C5199"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164264.316,
+              "title" : "01-fresh-welcome"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164264.316,
+          "title" : "Added attachment named '01-fresh-welcome'"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164265.333,
+                  "title" : "Checking existence of `\"Continue\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164265.332,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"Continue\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164264.317,
+          "title" : "Waiting 15.0s for \"Continue\" Button to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.351,
+          "title" : "Find the \"Continue\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.431,
+          "title" : "Find the \"Continue\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.479,
+          "title" : "Find the \"Continue\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.514,
+          "title" : "Find the \"Continue\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.552,
+          "title" : "Find the \"Continue\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.593,
+          "title" : "Find the \"Continue\" Button"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.05 PM",
+              "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+              "timestamp" : 1793164265.693,
+              "uuid" : "C4C620C2-7E53-42AB-812C-BB3F6B9DDDDF"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.06 PM",
+              "payloadId" : "0~jg4KPa3NcxVNFteHXC92PbwyMN8gus7iWz5ONrGpda2uhYwpAKhhJ7iRbf_GBo1aYEz2RkQftukhM9Z9kWpyNA==",
+              "timestamp" : 1793164266.098,
+              "uuid" : "31FDB8ED-831B-4515-8E4F-1DE44D540FD7"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164265.631,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164265.639,
+              "title" : "Find the \"Continue\" Button"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164265.66,
+              "title" : "Check for interrupting elements affecting \"Continue\" Button"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.05 PM",
+                  "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+                  "timestamp" : 1793164265.693,
+                  "uuid" : "C4C620C2-7E53-42AB-812C-BB3F6B9DDDDF"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.06 PM",
+                  "payloadId" : "0~jg4KPa3NcxVNFteHXC92PbwyMN8gus7iWz5ONrGpda2uhYwpAKhhJ7iRbf_GBo1aYEz2RkQftukhM9Z9kWpyNA==",
+                  "timestamp" : 1793164266.098,
+                  "uuid" : "31FDB8ED-831B-4515-8E4F-1DE44D540FD7"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164265.693,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164266.098,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164265.689,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164266.099,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164265.631,
+          "title" : "Tap \"Continue\" Button"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164267.13,
+                  "title" : "Checking existence of `\"Use with judgement\" StaticText`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164267.129,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"Use with judgement\" StaticText`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164266.106,
+          "title" : "Waiting 15.0s for \"Use with judgement\" StaticText to exist"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164268.186,
+                  "title" : "Checking existence of `\"I understand and agree\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164268.185,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"I understand and agree\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164267.15,
+          "title" : "Waiting 15.0s for \"I understand and agree\" Button to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164268.21,
+          "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "keepAlways",
+              "name" : "02-ai-consent_0_7B734015-05A9-44D4-91B7-18F669B13B77.png",
+              "payloadId" : "0~xmRwXW1p5__EzhsDK8b7o_hZnf38i3MSjRHP9gg5jO34nTUV3PW1GnMwTlyXiuky7PIHbZqsqu1OVO17bNralQ==",
+              "timestamp" : 1793164268.363,
+              "uuid" : "D00B8855-86C2-44B4-866B-E9D3671F1D53"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164268.363,
+              "title" : "02-ai-consent"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164268.363,
+          "title" : "Added attachment named '02-ai-consent'"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164269.385,
+                  "title" : "Checking existence of `\"I understand and agree\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164269.384,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"I understand and agree\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164268.364,
+          "title" : "Waiting 15.0s for \"I understand and agree\" Button to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.402,
+          "title" : "Find the \"I understand and agree\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.439,
+          "title" : "Find the \"I understand and agree\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.475,
+          "title" : "Find the \"I understand and agree\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.512,
+          "title" : "Find the \"I understand and agree\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.553,
+          "title" : "Find the \"I understand and agree\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.591,
+          "title" : "Find the \"I understand and agree\" Button"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.09 PM",
+              "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+              "timestamp" : 1793164269.689,
+              "uuid" : "16CCB14C-6A8A-49B9-8EB6-F13A0981E4E6"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.09 PM",
+              "payloadId" : "0~jg4KPa3NcxVNFteHXC92PbwyMN8gus7iWz5ONrGpda2uhYwpAKhhJ7iRbf_GBo1aYEz2RkQftukhM9Z9kWpyNA==",
+              "timestamp" : 1793164269.994,
+              "uuid" : "A59233D9-D4D5-4B40-95BE-422D3B04A4C4"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164269.629,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164269.635,
+              "title" : "Find the \"I understand and agree\" Button"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164269.656,
+              "title" : "Check for interrupting elements affecting \"I understand and agree\" Button"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.09 PM",
+                  "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+                  "timestamp" : 1793164269.689,
+                  "uuid" : "16CCB14C-6A8A-49B9-8EB6-F13A0981E4E6"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.09 PM",
+                  "payloadId" : "0~jg4KPa3NcxVNFteHXC92PbwyMN8gus7iWz5ONrGpda2uhYwpAKhhJ7iRbf_GBo1aYEz2RkQftukhM9Z9kWpyNA==",
+                  "timestamp" : 1793164269.994,
+                  "uuid" : "A59233D9-D4D5-4B40-95BE-422D3B04A4C4"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164269.689,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164269.994,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164269.684,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164269.995,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164269.629,
+          "title" : "Tap \"I understand and agree\" Button"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164271.792,
+                  "title" : "Checking existence of `\"deepseek-before-download\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164271.792,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-before-download\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164270.762,
+          "title" : "Waiting 15.0s for \"deepseek-before-download\" Button to exist"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164272.863,
+                  "title" : "Checking existence of `\"remote-before-download\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164272.862,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"remote-before-download\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164271.826,
+          "title" : "Waiting 15.0s for \"remote-before-download\" Button to exist"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164273.928,
+                  "title" : "Checking existence of `\"RECOMMENDED FOR YOUR DEVICE\" StaticText`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164273.927,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"RECOMMENDED FOR YOUR DEVICE\" StaticText`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164272.893,
+          "title" : "Waiting 15.0s for \"RECOMMENDED FOR YOUR DEVICE\" StaticText to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164273.954,
+          "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "keepAlways",
+              "name" : "03-default-local-model-route_0_332B1A75-AA18-408C-96AE-C4C58F589D25.png",
+              "payloadId" : "0~kfyGNQbEsDtJL2RP-T_TUIKFWu1ClkchDE5oS3D1Ol99tlxAoz7L6IQB7B1fOZcE0f88lGVX1MGIHluJ3MLjsw==",
+              "timestamp" : 1793164274.096,
+              "uuid" : "15CDF834-D486-47F5-9E23-3B54D67F4C0A"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164274.096,
+              "title" : "03-default-local-model-route"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164274.096,
+          "title" : "Added attachment named '03-default-local-model-route'"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164275.121,
+                  "title" : "Checking existence of `\"deepseek-before-download\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164275.12,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-before-download\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164274.097,
+          "title" : "Waiting 15.0s for \"deepseek-before-download\" Button to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.145,
+          "title" : "Find the \"deepseek-before-download\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.212,
+          "title" : "Find the \"deepseek-before-download\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.266,
+          "title" : "Find the \"deepseek-before-download\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.335,
+          "title" : "Find the \"deepseek-before-download\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.431,
+          "title" : "Find the \"deepseek-before-download\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.493,
+          "title" : "Find the \"deepseek-before-download\" Button"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.15 PM",
+              "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+              "timestamp" : 1793164275.651,
+              "uuid" : "93752C96-AA5C-41E7-9606-0E6ECA3E1CBE"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.15 PM",
+              "payloadId" : "0~DqpK3Dd8FvEQLsLw5dFJMNr858DrszmasfHAd65xVXne3yb-rPliNNwb-Ny7tuXeG7oDLvhX0kOa4VioKo5BIQ==",
+              "timestamp" : 1793164275.957,
+              "uuid" : "5CCC7F09-D9D3-4286-BD64-E7C26941B178"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164275.56,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164275.572,
+              "title" : "Find the \"deepseek-before-download\" Button"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164275.6,
+              "title" : "Check for interrupting elements affecting \"deepseek-before-download\" Button"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.15 PM",
+                  "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+                  "timestamp" : 1793164275.651,
+                  "uuid" : "93752C96-AA5C-41E7-9606-0E6ECA3E1CBE"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.15 PM",
+                  "payloadId" : "0~DqpK3Dd8FvEQLsLw5dFJMNr858DrszmasfHAd65xVXne3yb-rPliNNwb-Ny7tuXeG7oDLvhX0kOa4VioKo5BIQ==",
+                  "timestamp" : 1793164275.957,
+                  "uuid" : "5CCC7F09-D9D3-4286-BD64-E7C26941B178"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164275.651,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164275.957,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164275.646,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164275.959,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164275.56,
+          "title" : "Tap \"deepseek-before-download\" Button"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164277.203,
+                  "title" : "Checking existence of `\"deepseek-api-key\" SecureTextField`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164277.203,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-api-key\" SecureTextField`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164276.154,
+          "title" : "Waiting 15.0s for \"deepseek-api-key\" SecureTextField to exist"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164278.628,
+                  "title" : "Checking existence of `\"deepseek-connect\" Button`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164278.627,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-connect\" Button`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164277.6,
+          "title" : "Waiting 15.0s for \"deepseek-connect\" Button to exist"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164280.166,
+                  "title" : "Checking existence of `\"deepseek-validation-consent\" Switch`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164280.164,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-validation-consent\" Switch`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164279.138,
+          "title" : "Waiting 15.0s for \"deepseek-validation-consent\" Switch to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164280.216,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164280.271,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164280.336,
+          "title" : "Find the \"deepseek-connect\" Button"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164280.389,
+          "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "keepAlways",
+              "name" : "04-deepseek-consent-default-off_0_AA3215DF-8C13-4946-ACBC-EE1D76536CB5.png",
+              "payloadId" : "0~i34kdHoa5HVuG6UESTmts1zpcdc1R872wKLgJcdqLU2A0rowAWABCm55utRaH0b8-sQKRdxLEElWZa4h_amw_A==",
+              "timestamp" : 1793164280.571,
+              "uuid" : "AAFDF55E-743A-452E-A632-ABC5AB25A5C6"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164280.571,
+              "title" : "04-deepseek-consent-default-off"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164280.571,
+          "title" : "Added attachment named '04-deepseek-consent-default-off'"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164281.635,
+                  "title" : "Checking existence of `\"deepseek-api-key\" SecureTextField`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164281.634,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-api-key\" SecureTextField`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164280.572,
+          "title" : "Waiting 15.0s for \"deepseek-api-key\" SecureTextField to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164281.719,
+          "title" : "Find the \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164281.833,
+          "title" : "Find the \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164281.954,
+          "title" : "Find the \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164282.117,
+          "title" : "Find the \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164282.201,
+          "title" : "Find the \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164282.285,
+          "title" : "Find the \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.22 PM",
+              "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+              "timestamp" : 1793164282.509,
+              "uuid" : "ECADF409-4594-425F-BCD6-EA67CFBE6D5D"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.22 PM",
+              "payloadId" : "0~Pb7Q0VEAx5DPmcm6yQCt-mLjPQM089Km5HWn3shK1qxk_ipDyVV0O4lF6Rgc9PhJ4EW5-VtfUcxKqNctrm9p1A==",
+              "timestamp" : 1793164282.812,
+              "uuid" : "ECCCA9E2-3F54-456B-9643-B4EA6FF7C554"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164282.38,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164282.389,
+              "title" : "Find the \"deepseek-api-key\" SecureTextField"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164282.445,
+              "title" : "Check for interrupting elements affecting \"deepseek-api-key\" SecureTextField"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.22 PM",
+                  "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+                  "timestamp" : 1793164282.509,
+                  "uuid" : "ECADF409-4594-425F-BCD6-EA67CFBE6D5D"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.22 PM",
+                  "payloadId" : "0~Pb7Q0VEAx5DPmcm6yQCt-mLjPQM089Km5HWn3shK1qxk_ipDyVV0O4lF6Rgc9PhJ4EW5-VtfUcxKqNctrm9p1A==",
+                  "timestamp" : 1793164282.812,
+                  "uuid" : "ECCCA9E2-3F54-456B-9643-B4EA6FF7C554"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164282.509,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164282.812,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164282.505,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164282.813,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164282.377,
+          "title" : "Tap \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.24 PM",
+              "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+              "timestamp" : 1793164284.603,
+              "uuid" : "5C419131-3C42-4B20-9BC1-AEB7543E6F26"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.25 PM",
+              "payloadId" : "0~2niad-cizbv8BQMZkMTVZ0F9Dnz33ASPH5dpJndeCRhLfNUUBpPfvncNHJw_PKkG9YgxAXBV-8NRQ2UIpJex-g==",
+              "timestamp" : 1793164285.136,
+              "uuid" : "78A461FF-2ACC-45E5-B831-E7519B9793FF"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164284.075,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164284.402,
+              "title" : "Find the \"deepseek-api-key\" SecureTextField"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164284.516,
+              "title" : "Check for interrupting elements affecting \"deepseek-api-key\" SecureTextField"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.24 PM",
+                  "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+                  "timestamp" : 1793164284.603,
+                  "uuid" : "5C419131-3C42-4B20-9BC1-AEB7543E6F26"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.25 PM",
+                  "payloadId" : "0~2niad-cizbv8BQMZkMTVZ0F9Dnz33ASPH5dpJndeCRhLfNUUBpPfvncNHJw_PKkG9YgxAXBV-8NRQ2UIpJex-g==",
+                  "timestamp" : 1793164285.136,
+                  "uuid" : "78A461FF-2ACC-45E5-B831-E7519B9793FF"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164284.603,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164285.136,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164284.596,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164285.137,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164284.075,
+          "title" : "Type '<redacted>' into \"deepseek-api-key\" SecureTextField"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164285.154,
+          "title" : "Find the \"deepseek-connect\" Button"
+        },
+        {
+          "childActivities" : [
+            {
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164286.25,
+                  "title" : "Checking existence of `\"deepseek-validation-consent\" Switch`"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164286.25,
+              "title" : "Checking `Expect predicate `existsNoRetry == 1` for object \"deepseek-validation-consent\" Switch`"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164285.227,
+          "title" : "Waiting 15.0s for \"deepseek-validation-consent\" Switch to exist"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.335,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.425,
+          "title" : "Checking existence of `CollectionView (First Match)`"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.577,
+          "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.626,
+          "title" : "Find the CollectionView (First Match)"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.815,
+          "title" : "Checking existence of `Keyboard (First Match)`"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.85,
+          "title" : "Find the Keyboard (First Match)"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164286.91,
+          "title" : "Find the Keyboard at {{0.0, 590.0}, {402.0, 226.0}}"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.27 PM",
+              "payloadId" : "0~97poLj8RTVzpPo1TOM55xZbGMv5NwVspd7f4v7dMe56iJh2JG_r2Jzj9jg94lZdCtRiQyTWfxeEMJl4an6LBkQ==",
+              "timestamp" : 1793164287.183,
+              "uuid" : "49DDF90C-6F90-4643-96D6-CE17930FC7AE"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.28 PM",
+              "payloadId" : "0~I_FsF_aI7vxCHLZsDg6jcu_oXKLqCvLVeOiqPhXEBDsj0qaJNT8Fov2eGJWcHK1vpX-9M78c9KChbloiAsEEuA==",
+              "timestamp" : 1793164288.446,
+              "uuid" : "4D7CD862-2201-499B-A732-4FB4D816A6E1"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164287.002,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164287.029,
+              "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164287.1,
+              "title" : "Check for interrupting elements affecting \"Quenderin\" Application"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.27 PM",
+                  "payloadId" : "0~97poLj8RTVzpPo1TOM55xZbGMv5NwVspd7f4v7dMe56iJh2JG_r2Jzj9jg94lZdCtRiQyTWfxeEMJl4an6LBkQ==",
+                  "timestamp" : 1793164287.183,
+                  "uuid" : "49DDF90C-6F90-4643-96D6-CE17930FC7AE"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.28 PM",
+                  "payloadId" : "0~I_FsF_aI7vxCHLZsDg6jcu_oXKLqCvLVeOiqPhXEBDsj0qaJNT8Fov2eGJWcHK1vpX-9M78c9KChbloiAsEEuA==",
+                  "timestamp" : 1793164288.446,
+                  "uuid" : "4D7CD862-2201-499B-A732-4FB4D816A6E1"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164287.183,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164287.183,
+                  "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164287.243,
+                  "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164287.299,
+                  "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164287.349,
+                  "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164287.426,
+                  "title" : "Find the Target Application 'ai.quenderin.Quenderin'"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164288.446,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164287.175,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164288.447,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164287,
+          "title" : "Press Target Application 'ai.quenderin.Quenderin'[0.00, 0.00] -> (201.0, 484.4) for 0.1 seconds, then drag to Target Application 'ai.quenderin.Quenderin'[0.00, 0.00] -> (201.0, 167.6) with velocity of 500.00 pixels per second, and then hold for 0.0 seconds "
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164289.221,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164289.361,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164289.471,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164289.622,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164289.767,
+          "title" : "Find the \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "attachments" : [
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "UI Snapshot 2026-10-28 at 01.11.30 PM",
+              "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+              "timestamp" : 1793164290.102,
+              "uuid" : "52DBFF09-7179-4A30-A79E-0AF7E6E9588B"
+            },
+            {
+              "lifetime" : "deleteOnSuccess",
+              "name" : "Synthesized Event 2026-10-28 at 01.11.30 PM",
+              "payloadId" : "0~9JfPR1MbbOFtwhuZlp9E18Zq_WPwXWOcmUxbEy58pzaehg_kPBmVVwj4ZS1L23BTPjGk1F-lLq4UksXnxv-0Xw==",
+              "timestamp" : 1793164290.426,
+              "uuid" : "8079738F-814D-4CA1-96B2-1992396A80AA"
+            }
+          ],
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164289.889,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164289.901,
+              "title" : "Find the \"deepseek-validation-consent\" Switch"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164290.001,
+              "title" : "Check for interrupting elements affecting \"deepseek-validation-consent\" Switch"
+            },
+            {
+              "attachments" : [
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "UI Snapshot 2026-10-28 at 01.11.30 PM",
+                  "payloadId" : "0~h4AQdgNhTP-hQqLH-mUDBpPT-l7qB8frTFSkoGGeSDEqfF_U5KH4naGsH8VXC7GNmDi0QlfbL3Zw79BxR5myIQ==",
+                  "timestamp" : 1793164290.102,
+                  "uuid" : "52DBFF09-7179-4A30-A79E-0AF7E6E9588B"
+                },
+                {
+                  "lifetime" : "deleteOnSuccess",
+                  "name" : "Synthesized Event 2026-10-28 at 01.11.30 PM",
+                  "payloadId" : "0~9JfPR1MbbOFtwhuZlp9E18Zq_WPwXWOcmUxbEy58pzaehg_kPBmVVwj4ZS1L23BTPjGk1F-lLq4UksXnxv-0Xw==",
+                  "timestamp" : 1793164290.426,
+                  "uuid" : "8079738F-814D-4CA1-96B2-1992396A80AA"
+                }
+              ],
+              "childActivities" : [
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164290.102,
+                  "title" : "kXCTAttachmentLegacySnapshot"
+                },
+                {
+                  "isAssociatedWithFailure" : false,
+                  "startTime" : 1793164290.426,
+                  "title" : "kXCTAttachmentLegacySynthesizedEvent"
+                }
+              ],
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164290.096,
+              "title" : "Synthesize event"
+            },
+            {
+              "isAssociatedWithFailure" : false,
+              "startTime" : 1793164290.427,
+              "title" : "Wait for ai.quenderin.Quenderin to idle"
+            }
+          ],
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164289.887,
+          "title" : "Tap \"deepseek-validation-consent\" Switch"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164290.492,
+          "title" : "Find the \"deepseek-connect\" Button"
+        },
+        {
+          "childActivities" : [
+            {
+              "isAssociatedWithFailure" : false,
+              "title" : ""
+            }
+          ],
+          "isAssociatedWithFailure" : true,
+          "startTime" : 1793164290.577,
+          "title" : "XCTAssertTrue failed"
+        },
+        {
+          "isAssociatedWithFailure" : false,
+          "startTime" : 1793164291.12,
+          "title" : "Tear Down"
+        }
+      ],
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "43841F1A-973A-46B8-9E78-DEACCEF71C41",
+        "deviceName" : "iPhone 17",
+        "modelName" : "iPhone 17",
+        "osBuildNumber" : "24A434",
+        "osVersion" : "27.0",
+        "platform" : "iOS Simulator"
+      },
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Offline UI and app-hosted Keychain"
+      }
+    }
+  ]
+}

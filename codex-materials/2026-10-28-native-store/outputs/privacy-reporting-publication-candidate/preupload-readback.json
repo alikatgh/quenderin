@@ -1,0 +1,99 @@
+{
+  "checkedAt": "2026-10-28T03:36:03.763844+00:00",
+  "activeDeployment": {
+    "id": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish verified privacy policy 0.6.0 asset",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-28T02:31:17.100742Z"
+  },
+  "activeVersion": {
+    "id": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+    "number": 68,
+    "metadata": {
+      "created_on": "2026-10-28T02:24:30.403056Z",
+      "source": "wrangler",
+      "author_id": "557d7adff7dfda6b410ede3b782fce34",
+      "author_email": "wallmarketshq@gmail.com",
+      "has_preview": true
+    },
+    "annotations": {
+      "workers/message": "Privacy policy 0.6.0 only; exact deployed Worker retained",
+      "workers/triggered_by": "version_upload"
+    },
+    "resources": {
+      "script": {
+        "etag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+        "handlers": [
+          "fetch"
+        ],
+        "named_handlers": [
+          {
+            "name": "releaseResponse",
+            "handlers": [
+              "class"
+            ]
+          }
+        ],
+        "last_deployed_from": "wrangler"
+      },
+      "script_runtime": {
+        "assets": {
+          "html_handling": "auto-trailing-slash",
+          "not_found_handling": "404-page",
+          "headers": {
+            "version": 2,
+            "rules": {
+              "/*": {
+                "set": {
+                  "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+                  "permissions-policy": "interest-cohort=()",
+                  "referrer-policy": "no-referrer",
+                  "x-content-type-options": "nosniff",
+                  "x-frame-options": "DENY"
+                },
+                "unset": []
+              },
+              "/sw.js": {
+                "set": {
+                  "cache-control": "no-cache"
+                },
+                "unset": []
+              }
+            }
+          },
+          "raw_headers": "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  X-Frame-Options: DENY\n  Permissions-Policy: interest-cohort=()\n  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests\n\n# The service worker must always be revalidated, so a new deploy's SW is never pinned to a stale\n# (possibly buggy) cached version that then controls the whole origin (audit re-sweep).\n/sw.js\n  Cache-Control: no-cache\n",
+          "static_routing": {
+            "user_worker": [
+              "/api/*"
+            ]
+          },
+          "serve_directly": true,
+          "raw_run_worker_first": [
+            "/api/*"
+          ],
+          "base_path": "/"
+        },
+        "compatibility_date": "2026-07-04",
+        "usage_model": "standard"
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        }
+      ]
+    }
+  },
+  "matchesPreparedBaseline": true
+}

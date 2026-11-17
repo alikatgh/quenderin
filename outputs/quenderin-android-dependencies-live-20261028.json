@@ -1,0 +1,19 @@
+{
+  "main_revision": "3a2c96b303c735a43eca23e7312ebca0f5a15a5d",
+  "pull_request": 208,
+  "workflow_run": 40642887035,
+  "job": 122664890950,
+  "job_conclusion": "success",
+  "snapshot_id": 115140372,
+  "submitted_dependencies": 365,
+  "live_github_sbom_maven_packages": 365,
+  "live_sbom_examples": [
+    "androidx.startup:startup-runtime",
+    "androidx.compose:compose-bom",
+    "androidx.graphics:graphics-path",
+    "androidx.lifecycle:lifecycle-viewmodel",
+    "androidx.annotation:annotation-experimental"
+  ],
+  "manifest_counter_limitation": "GraphQL dependenciesCount remains zero; current SBOM independently verifies the accepted Maven graph.",
+  "execution_bounds": "public standard Ubuntu;15min job;two workers;one30secPOST;no caches/artifacts/native compilation"
+}

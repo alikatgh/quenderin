@@ -4,6 +4,209 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## Android upload-key reset and recovery — 2 November 2026
+
+The user explicitly approved the Google Play upload-key reset to certificate
+`880aca180c193bcbd670f1afddc2b0e15e95f755771805e470aa5e75384f8b6f`.
+Its public certificate was reverified on November 2. The reset form is prepared
+with reason **Other**; no new certificate upload, Google request receipt or
+activation has yet been verified. The browser credential-change policy reserves
+the certificate entry and final Request action for the user. Do not change the
+release signer's accepted fingerprint until Google activation is confirmed.
+
+The canonical signing identity is outside Git, at
+`/Users/s_avelova/QuenderinSigning/upload-keystore.p12`. Its public certificate is
+`/Users/s_avelova/QuenderinSigning/upload_certificate.pem`; the existing encrypted
+credential loader is
+`/Users/s_avelova/QuenderinSigningCredentials/signing.schema`. Both directories
+are mode 0700 and their files mode 0600. A nonsecret `README.txt` beside the
+keystore records this identity and its status. These are retained signing
+assets, never disposable build output. Preserve their exact paths and do not
+regenerate or replace them. The separate `8f45bb0c…c863d1b` identity remains an
+unregistered historical replacement, not this approved identity or the original.
+
+The user also requested durable recovery. An encrypted off-Mac backup is being
+arranged; the destination decision is pending. **Independent recovery is not yet
+complete.** Varlock's current credential protection is device-bound, and the
+existing age SSH identity's off-Mac recovery has not been established. A copied
+schema or an archive encrypted only to a Mac-only identity does not prove that
+the keystore can be recovered after losing this Mac. Preserve an independent
+credential recovery route and verify an actual restore before marking backup
+complete. Private keys and passwords must never enter this document or Git.
+
+A portable recovery helper is now prepared at
+`.worktrees/native-final-integration-20261029/tools/android-release/backup-with-prompts.zsh`.
+It uses pinned Varlock 1.23.0 and installed age 1.3.2, encrypting the existing
+PKCS12 together with its actual alias/passwords in a memory-only archive. Its
+private Terminal prompts collect an independent archive passphrase; preserve
+that passphrase separately. Output goes to `~/QuenderinSigningBackups/` with
+exclusive 0600 files, followed by authenticated decryption and a restored-key
+signing check. The production helper has **not yet been run**. All **22
+synthetic checks passed**, including actual age/JDK operations and real
+Varlock/helper/age process cleanup after SIGTERM/SIGKILL. Independent security
+review passed after the supervision fixes. This validates the helper, not an
+actual production backup or off-Mac copy. Run it only in the human's own private
+interactive Terminal; never enter its passphrase in chat.
+
+## Live release checkpoint — 2 November 2026
+
+### November 5: Apple status refreshed; no new submission
+
+Native Chrome access briefly recovered. The live Apple Developer app grid still
+shows **iOS 0.6.0 Ready for Distribution** and **macOS 0.6.0 Prepare for
+Submission**. The Mac build association and rollout controls were not refreshed
+in this attempt; build34 remains the last verified selection. The scoped browser
+host is still unavailable. After a full fresh accessibility snapshot, Chrome
+changed to another profile during the new-tab action; native input was stopped
+and released without further navigation, a Cloud run or a submission.
+
+The user reiterated release authorization. A specific exception to submit Mac
+build34 with its UI journey unverified is pending; the earlier automatic review
+blocked Add for Review on that missing check. The separate Cloud UI plan remains
+prepared, not run by this session. Its worktree is clean at `37598755cdb01fa7c77afbf2a941340a54995577`.
+The Cloud execution spend gate is **BLOCKED**: current shared remaining usage,
+queued/in-flight work, worst-case compute and provider prevention of extra
+charges have not been verified. The November 3 quota is historical. No plan,
+billing or quota setting was changed, and no paid exception was inferred.
+
+Android's approved upload-key reset still requires the human certificate-entry
+and final Request steps, followed by Google's receipt and activation time.
+Those steps were requested again as a credential handoff, not a new reset
+permission request. No Google activation or new Android upload is established.
+
+Android preparation advanced without another build: the existing successful
+[export run 40812571419](https://github.com/alikatgh/quenderin/actions/runs/40812571419)
+provided the unsigned 0.6.0 / code6 bundle. Its 36,395,913 bytes and SHA-256
+`dcaebfa878bab1e45405489766faf4b3dcc2a824fa200fe0d92c28c2645b9519`, source
+receipt and checksum were downloaded and verified. Existing ZIP/unsigned,
+runtime/Noise/JNA receipt checks passed. Pinned official Google bundletool
+verified the actual packaged `ai.quenderin.app` / 0.6.0 / 6 manifest, and its
+temporary JAR was removed. App source `0ad249d` and latest Apple source `a6f6454`
+have identical Android tree `689ad9815d366a0379569a845b7baa7f4acedc48`.
+The selected unsigned candidate and small receipts are retained at
+`outputs/release-060-20261030/android-candidate-0ad249d/` for signing/upload after
+verified Google key activation. No signing credentials were loaded or signing
+attempted; this is not an upload-ready or published bundle. Remove its local
+unsigned copy when superseded or after Play acceptance and retained final
+signed-artifact provenance.
+
+### November 3: Cloud UI isolation prepared, not run
+
+The user reaffirmed the Cloud UI route; no local-test fallback or UI-check
+exception is approved. A separate nondefault plan, **Quenderin-macOS-UI-Cloud**,
+now contains only the existing serial `QuenderinMacCloudUITests` target, with
+all original assertions, mock options and 300-second limits. The original
+combined plan remains unchanged and default. Four configuration files were
+generated reproducibly with XcodeGen 2.45.4, independently reviewed with no
+findings, secret-scanned and pushed to
+[`codex/mac-cloud-ui-isolation-20261103`](https://github.com/alikatgh/quenderin/tree/codex/mac-cloud-ui-isolation-20261103),
+commit `37598755cdb01fa7c77afbf2a941340a54995577`, based on archived source `a6f6454`.
+App code, UI assertions, Release build settings, resources, signing and archive
+actions are unchanged. This tests a session-interference hypothesis; it is not
+a proven fix for the managed-host lock.
+
+Live team usage showed **24h 39m used / 21m available of 25h**, resetting
+November 28 at 16:02 local. No paid plan change was made. The intended next run
+is **one manual Mac Test action only**, selecting only the new plan on this
+exact branch/SHA, one clean Mac destination, no repetitions or automatic
+retries, no post-actions and no repeat Archive. Refresh shared quota before
+starting; keep the original workflow intact. **No Cloud workflow mutation or
+new test run has occurred.**
+
+Codex's browser access host remains unavailable despite the user's restored
+Apple Developer window and a REPL reset. Native Chrome was attempted in an
+exclusive coordinated slot, but its foreground window changed; input was
+stopped and released. One PDF tab was accidentally closed, automated undo was
+rejected under target uncertainty, and the user was told how to reopen it.
+Original PDF metadata remains present. An unrelated session screenshot was
+removed and is not quota proof. Do not repeat foreground actions under stale
+window assumptions. The Mac draft remains build34, not submitted.
+
+Source/evidence: `.worktrees/mac-cloud-ui-isolation-20261103` (no native build
+output) and `outputs/release-060-20261030/cloud-ui-isolation-20261103/evidence.json`.
+The two ignored XcodeGen scratch files were removed (1,915 bytes).
+
+### Earlier November 3 submission attempt
+
+November 3 refresh: the Mac draft still contains **0.6.0 (34)** with compliance
+cleared and automatic immediate release after approval selected. Remote `main`
+is still the archived `a6f6454fef670edac1f4500b9d60d7a5d6b74723`. GitHub now
+also confirms Cloud34's archive Success and Mac Test Action Required. An attempt
+to **Add for Review** was rejected by automatic approval review because the
+required Mac UI journey remains blocked; no review package or submission was
+created. The user was asked for the specific one-submission exception: submit
+build34 accepting the unverified Mac UI journey, or wait for successful Mac UI
+validation. The earlier local-fallback choice has not been approved and should
+not be treated as the only route. Local prebuilt-product compatibility is still
+unknown; available disk at this refresh was only 765,571,072 bytes, so a local
+test-product allocation has not been started. Preserve existing user files.
+
+- **iOS 0.6.0 (33) is Ready for Distribution**, verified in live App Store
+  Connect on November 2. It was submitted November 1 at 17:42
+  Asia/Ulaanbaatar. [Submission receipt](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/93b2adc4-81bc-426e-9e26-3a4d2cdb47d2).
+  Automatic release after approval and immediate release to all users are saved.
+  The selected build is from `a6f6454fef670edac1f4500b9d60d7a5d6b74723`.
+  Cloud33 iOS tests passed; all 14 retained journey screenshots were reviewed.
+  The UI journey uses a Debug fixture; this does not establish full-weight
+  inference or physical-device performance.
+- **macOS 0.6.0 (34) is selected in the draft, not submitted.** Both Cloud33 signed
+  archives passed. Five Mac hosted tests passed, but the UI journey could not
+  activate the app. The exact Mac result's 1-second and 60-second recording
+  frames both show Apple's managed host at its password lock screen. No app
+  startup defect has been established. Apple documents that XCUITest cannot
+  operate in a locked Mac session. A support report is prepared; sending it
+  awaits permission. Do not weaken tests, change app startup speculatively or
+  repeat the same run without a supported recovery step.
+  A separate manual Mac-only recovery workflow, `Quenderin macOS 0.6 recovery`
+  (`53607d3e-f5cb-4369-bf71-9d471b651855`), is now saved with stable Xcode
+  27.1 (27A9275) and the offered macOS 27.2 RC (26B118) host. It preserves the
+  required Mac test plan, one Mac destination and signed App Store archive,
+  uses only manual starts on `main`, and has no distribution post-actions.
+  Independent configuration/source review found no defects; this is a single
+  changed-image recovery experiment, not an established fix for the locked
+  host. Cloud build **34** (`226b233c-c28d-492e-b6ef-83b124b1a3d2`) was
+  started once at 14:59 local on November 2 on exact source
+  `a6f6454fef670edac1f4500b9d60d7a5d6b74723`. Its signed Mac archive passed;
+  five hosted tests passed and the UI launch failed again. Exact result
+  metadata confirms the newer 27.2/26B118 virtual machine; recording frames at
+  1s and 60s both show its password lock screen. The image change did not
+  resolve the provider blocker. No app startup change or further blind retry
+  was made. A bounded local fallback was proposed and awaits the user's
+  explicit choice under the project instructions; installed local tools are
+  Xcode 26.3 / macOS 15.6, so prebuilt-test compatibility must be checked first.
+  The updated Apple support report is prepared but unsent. Included team capacity was verified
+  as 25 hours, 11h 37m used and 13h 23m available, resetting November 28 at
+  16:02 local. No plan or paid capacity was changed.
+  Build 34 (`f5f2e511-c2dc-4fe5-a04b-03763a655a81`) is now attached to the
+  Mac draft; its standard-encryption/France-No answers are saved and Missing
+  Compliance is cleared. Automatic approval release and immediate rollout
+  remain selected. The initial automated rejection of the draft's Delete
+  control was resolved by checking Apple's official procedure: removing a
+  build from an unsubmitted version retains it in the account. The build
+  chooser confirmed build 33 remains available; no uploaded build was deleted.
+- **France is excluded temporarily at the user's direction.** On November 2,
+  App Store Connect shows 174 available countries and France as the sole
+  **Not Available** country. A separate storefront download was not checked.
+  Both build33 encryption answers
+  declare bundled standard encryption in addition to Apple's OS encryption,
+  with no France distribution. [France follow-up #217](https://github.com/alikatgh/quenderin/issues/217)
+  remains open.
+- **Android 0.6.0 (6) is not uploaded.** The existing closed Alpha still has
+  0.2.0 (2). Data safety submission3 is Published; that receipt covers the
+  questionnaire only. The registered upload certificate remains `8b38f4e5…949cf3d`.
+  The original private key's location/password remains unresolved, not proven
+  lost. Replacement `880aca18…84f8b6f` successfully signed and verified a tiny
+  synthetic JAR through the existing encrypted Varlock loader. It is not the
+  registered upload key. The user explicitly authorized its reset on November
+  2; the human certificate-entry/Request steps, Google receipt and activation
+  remain pending. No accepted-fingerprint change has been made.
+
+Selected proof, artifact hashes, exact IDs and remaining gates are in
+`outputs/release-060-20261030/verification.json`, `cloud33-ios/`,
+`cloud33-macos/` and `cloud34-macos/`. Disposable downloaded ZIPs, extracted results and recordings
+were removed after selected evidence was retained. Refresh live state before
+resuming; the older dated sections below are historical.
+
 ## October 18 source candidate — not a store release
 
 [PR 163](https://github.com/alikatgh/quenderin/pull/163) expands the shared text

@@ -1,0 +1,114 @@
+[
+  {
+    "name": "13-iphone-history-after-relaunch.png",
+    "bytes": 352185,
+    "sha256": "f5aa706813a0f5963ec9220c126c9710a66b8a3153c16214e2eccb7e4d693384",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "12-iphone-saved-history.png",
+    "bytes": 154678,
+    "sha256": "9081f85dfafc894b9fca3c84fcf8e083b7863e27bac2a0d005c6907d37bb5dd8",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "11-iphone-settings.png",
+    "bytes": 305475,
+    "sha256": "20f02848484111159062db08c01e32f1d042bc1bb87253eab2dee2b9cf719712",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "10-local-canned-reply.png",
+    "bytes": 353189,
+    "sha256": "bfb79ebf94107e5f46db47729d7548fcd3fd5c9091a4626c33e6dbdc13b8f89a",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "09-local-draft-after-navigation.png",
+    "bytes": 356711,
+    "sha256": "4f9c749326f4506d0baffe6f3064ae0e5468c4e91f61139a4b7a8b40eb344396",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "08b-iphone-keyboard-dismissed-draft-retained.png",
+    "bytes": 292899,
+    "sha256": "c1ed9923f58ec0647ddd35a6709f295660c387fce4a11f2e5f5507dffd6b4379",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "08-local-chat-empty.png",
+    "bytes": 345432,
+    "sha256": "f133657ab8acd2d2ced2bb95eba4141e4d1a76a34618bcf8e4003382c6075cdb",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "07-computer-local-validation-recovery.png",
+    "bytes": 156696,
+    "sha256": "5083500c70818b87e2df59ff84810d0f086bf5abab3324cf783da4920e70b7db",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "06-computer-disconnected-form.png",
+    "bytes": 223308,
+    "sha256": "560ec3473990bdd8faa55df6c2b426eecf1782a1b3c33d4963176bf3568975a3",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "05-deepseek-local-validation-recovery.png",
+    "bytes": 273340,
+    "sha256": "c168b724815a83a3e252fe5742382c2c832eaedc9bf6cf142e806444333ea376",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "04-deepseek-consent-default-off.png",
+    "bytes": 261816,
+    "sha256": "7ac9fab91c4adfe8087608b9add354d3ba5b1b8703f02e5a0d5195d8d527ba51",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "03-default-local-model-route.png",
+    "bytes": 476477,
+    "sha256": "964724421c63af9a7769b7dad5381ae777249e4ce7483e8aed4ffe451f5c5bb3",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "02-ai-consent.png",
+    "bytes": 264222,
+    "sha256": "1870c9877d4e9be8f43d5852312fb744cc3ff96a359490f02de8f442dc0cfb5a",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  },
+  {
+    "name": "01-fresh-welcome.png",
+    "bytes": 338760,
+    "sha256": "72ae2ce8b1af69d1551b21b59b212952fbce67afdb4201d10ee2652acc79df26",
+    "width": 1206,
+    "height": 2622,
+    "testIdentifier": "CloudJourneyTests/testFreshOfflineEntryConnectionsChatAndRecovery()"
+  }
+]

@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-28T03:37:02.109629+00:00",
+  "status": "passed",
+  "oldVersion": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+  "newVersion": "29ec91c0-214d-43c1-a974-84fd171dfb1d",
+  "checks": {
+    "fullResourcesIdentical": true,
+    "workerETagIdentical": true,
+    "scriptRuntimeIdentical": true,
+    "bindingsIdentical": true,
+    "compatibilityDateIdentical": true,
+    "compatibilityFlagsIdentical": true,
+    "usageModelIdentical": true,
+    "assetConfigurationIdentical": true,
+    "rawHeadersByteExact": true,
+    "immutablePreviewExists": true,
+    "onlyPrivacyUploaded": true,
+    "oldVersionStill100Percent": true
+  },
+  "workerETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+  "privacyInputSha256": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+  "securityHeadersBytes": 613,
+  "securityHeadersSha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0",
+  "assetInputCount": 112,
+  "publicAssetCount": 111,
+  "newPublicAssets": [
+    "/privacy.html"
+  ],
+  "unchangedPublicAssets": 110,
+  "previewUrl": "https://29ec91c0-quenderin.wallmarketshq.workers.dev",
+  "previewRendered": "pending parent immutable-browser review",
+  "previewRawHttpHashCheck": "not run; parent owns preview validation",
+  "activated": false,
+  "activeDeploymentAfterUpload": {
+    "id": "02bb09ef-37f5-4f50-8a35-c504c28363c1",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "wallmarketshq@gmail.com",
+    "annotations": {
+      "workers/message": "Publish verified privacy policy 0.6.0 asset",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "1c0320c7-15a4-42e0-9560-819dcc1edb42",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-28T02:31:17.100742Z"
+  },
+  "groupingTagNormalization": "explicitly approved by user; no claim tags were preserved"
+}
