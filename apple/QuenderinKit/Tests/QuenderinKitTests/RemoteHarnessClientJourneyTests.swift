@@ -95,6 +95,13 @@ import XCTest
     var companionAvailable = true
     var botCapabilities: [String] = []
     var botReads = 0, deferBotReads = false
+    var botReadOnly = true
+    var botSubmissions = 0, botStatusReads = 0
+    var holdBotReceipts = false
+    var botReceipts: [String: [String: Any]] = [:]
+    var botStatusOverride: [String: Any]?
+    var botSubmitOverride: [String: Any]?
+    var onBotSubmit: ((String) -> Void)?
     var botResponseOverride: [String: Any]?
     var sessionRowsOverride: [[String: Any]]?
     var workspaceSessionIDs: [String]?
@@ -138,7 +145,7 @@ import XCTest
     var sessionRow: [String: Any] { ["sessionId": "session-real", "updatedAt": now, "running": running, "blank": false, "title": "Synthetic task"] }
     var workspace: [String: Any] { ["workspaceId": "workspace-real", "path": "/synthetic/project", "title": "Synthetic workspace", "sessionIds": workspaceSessionIDs ?? (created ? ["session-real", "session-created"] : ["session-real"]), "createdAt": "2026-10-23", "updatedAt": "2026-10-23"] }
     func botResponse(workspaceID: String = "workspace-real", revision: Int = 7, bots: [[String: Any]]? = nil) -> [String: Any] {
-        ["status": 200, "json": ["ok": true, "value": ["schemaVersion": 1, "workspaceId": workspaceID, "revision": revision, "readOnly": true,
+        ["status": 200, "json": ["ok": true, "value": ["schemaVersion": 1, "workspaceId": workspaceID, "revision": revision, "readOnly": botReadOnly,
             "bots": bots ?? [["id": "bot-real", "name": "Synthetic researcher", "sessionId": "session-real", "model": "deepseek-flash", "permission": "read-only"]]]]]
     }
 }
@@ -154,6 +161,7 @@ import XCTest
     var officialFrameLimit = 7
     var pendingBotReads: [String] = []
     var pendingPromptReceipts: [String] = []
+    var pendingBotWork: [(String, [String: Any])] = []
     var emittedOfficialFrames: [Int] { server.official?.emittedFrames ?? [] }
     init(server: JourneyServer) { self.server = server }
     func start(origin: String) throws { XCTAssertTrue(origin.hasPrefix("https://")) }
@@ -179,6 +187,30 @@ import XCTest
         guard !pendingPromptReceipts.isEmpty else { throw FixtureError.noPendingPromptReceipt }
         let pending = pendingPromptReceipts; pendingPromptReceipts = []
         for id in pending { try business("rpc.response", ["requestId": id, "result": ["ok": true, "value": NSNull()]]) }
+    }
+    func releaseBotReceipts() throws {
+        let pending = pendingBotWork; pendingBotWork = []
+        for (rpcID, result) in pending { try business("rpc.response", ["requestId": rpcID, "result": result]) }
+    }
+    private func botWorkReceipt(_ request: [String: RemoteHarnessJSON], state: String = "accepted") throws -> [String: Any] {
+        let session: Any, revision: Any
+        if state == "notFound" { session = NSNull(); revision = NSNull() }
+        else { session = try request.text("expectedSessionId"); revision = try request.required("expectedRevision").integerValue() }
+        return ["status": 200, "json": ["ok": true, "value": ["schemaVersion": 1, "workspaceId": try request.text("workspaceId"),
+            "botId": try request.text("botId"), "commandId": try request.text("commandId"),
+            "sessionId": session, "revision": revision, "state": state, "reason": NSNull()]]]
+    }
+    private func emitBotWork() throws {
+        server.running = true
+        try frame("session/follow", ["type": "event", "event": ["type": "turn/start", "seq": 2, "time": server.now, "data": ["turn": 1]]])
+        try frame("session/follow", ["type": "assistant-stream", "frame": ["type": "start", "revision": 1, "attemptId": "bot-attempt", "startedAfterSeq": 2, "turn": 1, "step": 0]])
+        try frame("session/follow", ["type": "assistant-stream", "frame": ["type": "chunk", "revision": 2, "attemptId": "bot-attempt", "index": 0, "time": server.now, "chunk": ["type": "text-delta", "text": "Synthetic persistent Bot answer"]]])
+        try frame("session/follow", ["type": "event", "event": ["type": "tool/call", "seq": 3, "time": server.now, "data": ["turn": 1, "callId": "bot-call", "name": "read_file", "arguments": "{}"]]])
+        let request: [String: Any] = ["toolName": "read_file", "callId": "bot-call", "reason": "Synthetic Bot tool"]
+        let digest = try RemoteHarnessApprovalDigest.digest(journeyJSON(request))
+        try frame("$events", ["type": "waterfall", "event": "approval/request", "eventId": "bot-approval", "agentId": "session-real", "request": request,
+            "quenderinBinding": ["hostDeviceId": server.hostID, "clientDeviceId": server.deviceID, "workspaceId": "workspace-real", "sessionId": "session-real",
+                "runId": "turn:1", "eventId": "bot-approval", "actionDigest": digest, "expiresAt": server.now + 60_000]])
     }
     func drainOfficialFrames() throws {
         guard let official = server.official else { return }
@@ -216,9 +248,26 @@ import XCTest
             if method == "plugin.route.call" {
                 XCTAssertEqual(try params.text("route"), "api/bot")
                 let body = try params.required("body").fields(), request = try body.required("payload").fields()
-                XCTAssertEqual(try body.text("endpoint"), "quenderin-roster")
+                let endpoint = try body.text("endpoint")
                 XCTAssertEqual(try request.required("schemaVersion").integerValue(), 1)
                 XCTAssertEqual(try request.text("workspaceId"), "workspace-real")
+                if endpoint == "quenderin-submit" {
+                    let commandID = try request.text("commandId")
+                    server.onBotSubmit?(commandID)
+                    server.botSubmissions += 1
+                    let receipt = try server.botSubmitOverride ?? botWorkReceipt(request)
+                    server.botReceipts[commandID] = receipt
+                    if server.botSubmitOverride == nil { try emitBotWork() }
+                    if server.holdBotReceipts { pendingBotWork.append((rpcID, receipt)) }
+                    else { try business("rpc.response", ["requestId": rpcID, "result": receipt]) }
+                    return
+                }
+                if endpoint == "quenderin-command" {
+                    server.botStatusReads += 1
+                    let receipt = try server.botStatusOverride ?? server.botReceipts[request.text("commandId")] ?? botWorkReceipt(request, state: "notFound")
+                    try business("rpc.response", ["requestId": rpcID, "result": receipt]); return
+                }
+                XCTAssertEqual(endpoint, "quenderin-roster")
                 server.botReads += 1
                 if server.deferBotReads { pendingBotReads.append(rpcID) }
                 else { try business("rpc.response", ["requestId": rpcID, "result": server.botResponseOverride ?? server.botResponse()]) }
@@ -975,7 +1024,7 @@ import XCTest
         XCTAssertNil(native.botRoster); XCTAssertFalse(native.botReadAvailable); XCTAssertFalse(native.botLoading); XCTAssertFalse(native.canOpenBot(oldBot))
         server.deferBotReads = false; server.botResponseOverride = server.botResponse(revision: 9)
         await native.reconnect(); await settle { native.snapshotReady && native.botRoster?.revision == 9 }
-        XCTAssertEqual(server.botReads, reads + 1); XCTAssertNil(native.failure)
+        XCTAssertEqual(server.botReads, reads + 2, "Recovery resolves stable Bot identity before reopening its authoritative part"); XCTAssertNil(native.failure)
     }
     func testBotNavigationRequiresCurrentUniqueSessionAndLiveWorkspaceMembership() async throws {
         let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
@@ -1344,6 +1393,115 @@ import XCTest
             }
             native.disconnect()
         }
+    }
+
+    private func workingBot(_ server: JourneyServer, storage: JourneyStorage) async throws -> RemoteHarnessClientController {
+        server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1", "quenderin.bot.work.v1"]
+        server.botReadOnly = false
+        let native = try await botController(server, storage: storage)
+        await settle { native.botRoster != nil }
+        await native.openBotSession(try XCTUnwrap(native.botRoster?.bots.first))
+        await settle { native.snapshotReady && native.canWorkWithBot }
+        return native
+    }
+    func testBotWorkUsesOneSealedSubmitAndExistingStreamingApprovalAndStop() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await workingBot(server, storage: storage); defer { native.disconnect() }
+        native.updateDraft("Do persistent Bot work")
+        server.onBotSubmit = { id in
+            let command = storage.value?.commands.first { $0.id == id }
+            XCTAssertEqual(command?.endpoint, "quenderin-submit"); XCTAssertEqual(command?.outcome, "prepared")
+            XCTAssertEqual(command?.origin, "https://synthetic.example"); XCTAssertEqual(command?.botID, "bot-real")
+            XCTAssertEqual(command?.hostFingerprint, native.journal.profile?.hostFingerprint)
+            XCTAssertEqual(command?.clientDeviceID, server.deviceID)
+            XCTAssertEqual(command?.clientIdentityKey, native.journal.clientIdentityKey)
+        }
+        XCTAssertTrue(native.canSend); XCTAssertFalse(native.canChangeModel)
+        await native.send(); await settle { native.approvals.count == 1 && native.running }
+        XCTAssertEqual(server.botSubmissions, 1); XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0)
+        XCTAssertEqual(native.botCommandReceipt?.state, .accepted); XCTAssertEqual(native.journal.draft, "")
+        XCTAssertTrue(native.botCommandStatusText?.contains("still running") == true)
+        XCTAssertTrue(native.timeline.rows.contains { $0.text.contains("persistent Bot answer") })
+        let approval = try XCTUnwrap(native.approvals.first)
+        XCTAssertNotNil(native.approvalAction(for: approval))
+        await native.decide(approval, allow: false); XCTAssertEqual(server.approvals, 1)
+        await native.stop(); XCTAssertEqual(server.cancellations, 1); XCTAssertEqual(native.stopState, .receiptReceived)
+        server.running = false; await native.refreshSessionState()
+        XCTAssertEqual(native.stopState, .confirmedStopped)
+        XCTAssertTrue(native.botCommandStatusText?.contains("is stopped") == true)
+        XCTAssertEqual(server.botSubmissions, 1); XCTAssertEqual(server.prompts, 0)
+    }
+    func testBotLostACKColdRestoreAndNotFoundQueryNeverReplayAndKeepDraft() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await workingBot(server, storage: storage)
+        server.holdBotReceipts = true; native.updateDraft("Keep uncertain work")
+        let send = Task { await native.send() }
+        await settle { server.botSubmissions == 1 && server.sockets.last?.pendingBotWork.count == 1 }
+        try XCTUnwrap(server.sockets.last).close()
+        await send.value
+        XCTAssertEqual(native.journal.commands.last?.outcome, "outcomeUnknown")
+        XCTAssertEqual(native.journal.draft, "Keep uncertain work")
+        let commandID = try XCTUnwrap(native.journal.commands.last?.id)
+        native.disconnect()
+        server.botStatusOverride = ["status": 200, "json": ["ok": true, "value": ["schemaVersion": 1, "workspaceId": "workspace-real", "botId": "bot-real", "commandId": commandID,
+            "sessionId": NSNull(), "revision": NSNull(), "state": "notFound", "reason": NSNull()]]]
+        let restored = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: try XCTUnwrap(server.credentials), storage: storage, clock: JourneyClock(), makeSocket: { server.makeSocket() })
+        defer { restored.disconnect() }
+        await restored.reconnect(); await settle { restored.snapshotReady && restored.botCommandReceipt?.state == .notFound }
+        XCTAssertEqual(restored.journal.draft, "Keep uncertain work"); XCTAssertFalse(restored.canSend)
+        await restored.send(); await restored.refreshSessionState()
+        XCTAssertGreaterThanOrEqual(server.botStatusReads, 1); XCTAssertEqual(server.botSubmissions, 1); XCTAssertEqual(server.prompts, 0)
+        XCTAssertTrue(restored.botCommandStatusText?.contains("never replayed") == true)
+    }
+    func testBotReceiptKeepsEditsMadeWhileAdmissionIsPending() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await workingBot(server, storage: storage); defer { native.disconnect() }
+        server.holdBotReceipts = true; native.updateDraft("Submitted task")
+        let send = Task { await native.send() }
+        await settle { server.sockets.last?.pendingBotWork.count == 1 }
+        native.updateDraft("Later user draft")
+        try XCTUnwrap(server.sockets.last).releaseBotReceipts(); await send.value
+        XCTAssertEqual(native.journal.draft, "Later user draft"); XCTAssertEqual(server.botSubmissions, 1)
+    }
+    func testBotRotationReopensAuthoritativePartAndRetainsOriginalReceiptScope() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await workingBot(server, storage: storage)
+        native.updateDraft("One task"); await native.send()
+        native.updateDraft("Draft for stable Bot"); native.disconnect()
+        server.created = true; server.running = false
+        server.botResponseOverride = server.botResponse(revision: 8, bots: [["id": "bot-real", "name": "Synthetic researcher", "sessionId": "session-created", "model": "deepseek-flash", "permission": "work"]])
+        await native.reconnect(); await settle { native.snapshotReady && native.journal.sessionID == "session-created" && native.botCommandReceipt != nil }
+        defer { native.disconnect() }
+        XCTAssertEqual(native.journal.selectedBot?.botID, "bot-real"); XCTAssertEqual(native.journal.draft, "Draft for stable Bot")
+        XCTAssertEqual(native.botCommandReceipt?.sessionID, "session-real"); XCTAssertEqual(native.botCommandReceipt?.revision, 7)
+        XCTAssertEqual(server.botSubmissions, 1); XCTAssertEqual(server.prompts, 0)
+        server.running = true; await native.refreshSessionState()
+        await native.stop(); XCTAssertEqual(server.cancellations, 0, "A receipt cannot authorize Stop on a different part")
+    }
+    func testBotReadOnlyCapabilityLossAndScopeMismatchFailClosed() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await workingBot(server, storage: storage); defer { native.disconnect() }
+        native.updateDraft("Preserve blocked draft")
+        server.botReadOnly = true; await native.refreshBots(); XCTAssertFalse(native.canSend)
+        await native.send(); XCTAssertEqual(server.botSubmissions, 0)
+        server.botReadOnly = false; native.disconnect(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
+        await native.reconnect(); await settle { native.snapshotReady && native.botRoster != nil }
+        XCTAssertFalse(native.canSend); XCTAssertTrue(native.isBotSession); XCTAssertEqual(native.journal.draft, "Preserve blocked draft")
+        await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertEqual(server.botSubmissions, 0); XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0)
+        var wrong = try XCTUnwrap(storage.value)
+        let identity = try XCTUnwrap(wrong.selectedBot)
+        wrong.selectedBot = .init(origin: identity.origin, hostID: identity.hostID, hostFingerprint: String(repeating: "0", count: 64),
+            clientDeviceID: identity.clientDeviceID, clientIdentityKey: identity.clientIdentityKey, workspaceID: identity.workspaceID, botID: identity.botID)
+        XCTAssertThrowsError(try wrong.validate())
+    }
+    func testBotJournalFailureBlocksSubmitAndRetainsDraft() async throws {
+        let server = JourneyServer(), storage = JourneyStorage()
+        let native = try await workingBot(server, storage: storage); defer { native.disconnect() }
+        native.updateDraft("Keep work when storage fails"); storage.failWrites = true
+        await native.send()
+        XCTAssertEqual(server.botSubmissions, 0); XCTAssertEqual(server.prompts, 0)
+        XCTAssertEqual(native.journal.draft, "Keep work when storage fails"); XCTAssertEqual(native.failure, .storage)
     }
     #endif
 }

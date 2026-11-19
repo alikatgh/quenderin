@@ -27,13 +27,13 @@ public struct RemoteHarnessView: View {
                         .padding().accessibilityIdentifier("remote-error")
                 }
                 if controller.busy { ProgressView("Connecting to your computer…").padding().accessibilityIdentifier("remote-progress") }
-                if !controller.companionAvailable, !controller.busy, [.workspaces, .sessions].contains(controller.screen) {
+                if !controller.companionAvailable, !controller.botWorkSupported, !controller.busy, [.workspaces, .sessions].contains(controller.screen) {
                     Text(RemoteHarnessClientFailure.companionRequired.localizedDescription).font(.callout).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading).padding().accessibilityIdentifier("remote-companion-required")
                 }
                 content
             }
-            .navigationTitle("My computer")
+            .navigationTitle("Bots")
             .toolbar {
                 if showsDoneButton { ToolbarItem(placement: .confirmationAction) { Button("Done") { password = ""; dismiss() } } }
                 if controller.journal.origin != nil, controller.screen != .setup {
@@ -89,10 +89,10 @@ public struct RemoteHarnessView: View {
     private var setup: some View {
         Form {
             Section {
-                Text("Run DeepSeek Harness on your computer and control it here. Tasks and tools execute on that computer. Your local chats stay on this device.")
+                Text("Work with persistent DS-Bot assistants on your computer through DeepSeek Harness. Send a task, follow its conversation, review tool approvals, and stop work here. No local model download is needed.")
             }
             if controller.cryptoAvailable {
-                Section("Your Remote Harness server") {
+                Section("Connect to your Bot computer") {
                     TextField("HTTPS server origin", text: $origin).accessibilityIdentifier("remote-server")
                         .autocorrectionDisabled()
                     Text("Use the HTTPS origin of your self-hosted server. This connection does not create an account or start a hosted service.").font(.caption).foregroundStyle(.secondary)
@@ -173,7 +173,8 @@ public struct RemoteHarnessView: View {
     private var sessionList: some View {
         List {
             Section { destination }
-            Section(controller.workspaceTitle) {
+            bots
+            Section("Other computer sessions") {
                 Button { Task { await controller.createSession() } } label: { Label("New session on computer", systemImage: "square.and.pencil") }
                     .disabled(!controller.canCreateSession).accessibilityIdentifier("remote-new-session")
                 if controller.sessions.isEmpty { Text("No sessions in this workspace yet.").foregroundStyle(.secondary) }
@@ -183,7 +184,6 @@ public struct RemoteHarnessView: View {
                     }.disabled(controller.busy).accessibilityIdentifier("remote-session-\(session.sessionID)")
                 }
             }
-            bots
         }
     }
     private struct BotListItem: Identifiable {
@@ -221,10 +221,10 @@ public struct RemoteHarnessView: View {
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .disabled(controller.busy || controller.botLoading || !controller.canOpenBot(bot))
-                        .accessibilityHint("Opens this bot’s current conversation for viewing.")
+                        .accessibilityHint("Opens this Bot’s current conversation and available work controls.")
                         .accessibilityIdentifier("remote-bot-\(item.id.base64EncodedString())")
                     }
-                    Text("Open a bot to read its current conversation. Send messages and change bot settings on your computer.")
+                    Text("Open a Bot to continue its current conversation. Compatible computers also accept work here. Manage Bots on your computer. Local-model Bots are planned.")
                         .font(.caption).foregroundStyle(.secondary)
                     if roster.readOnly {
                         Text("Bot changes are currently disabled on the computer.")
@@ -285,7 +285,7 @@ public struct RemoteHarnessView: View {
             if let failure = controller.failure {
                 Text(failure.localizedDescription).font(.callout).foregroundStyle(.red).accessibilityIdentifier("remote-error")
             }
-            if !controller.companionAvailable, !controller.busy {
+            if !controller.companionAvailable, !controller.isBotSession, !controller.busy {
                 Text(RemoteHarnessClientFailure.companionRequired.localizedDescription).font(.callout).foregroundStyle(.secondary)
                     .accessibilityIdentifier("remote-companion-required")
             }
@@ -296,6 +296,9 @@ public struct RemoteHarnessView: View {
                     .labelStyle(.iconOnly).disabled(controller.busy).accessibilityIdentifier("remote-refresh-status")
             }
             if controller.running { Text("Running on computer").font(.caption.weight(.semibold)) }
+            if let commandStatus = controller.botCommandStatusText {
+                Text(commandStatus).font(.callout).foregroundStyle(.secondary).accessibilityIdentifier("remote-bot-command-status")
+            }
             Text(stopLabel).font(.caption).foregroundStyle(.secondary)
             DisclosureGroup("Computer and session details") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -304,7 +307,7 @@ public struct RemoteHarnessView: View {
                         Text("Session: \(sessionID)").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                     }
                     if controller.isBotSessionReadOnly || controller.botReadAvailable || controller.botSessionClassificationPending { sessionBotStatus }
-                    if !controller.isBotSessionReadOnly { modelControls }
+                    if !controller.isBotSession { modelControls }
                 }
             }
         }
@@ -316,8 +319,8 @@ public struct RemoteHarnessView: View {
                 Text("This draft hasn’t been saved. Copy it from the Connection menu before leaving.")
                     .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("remote-unsaved-draft")
             }
-            if !controller.isBotSessionReadOnly {
-                TextField("Task for this computer", text: Binding(
+            if !controller.isBotSession || controller.canWorkWithBot || !controller.draft(for: destination).isEmpty {
+                TextField(controller.isBotSession ? "Message this Bot" : "Task for this computer", text: Binding(
                     get: { controller.draft(for: destination) }, set: { controller.updateDraft($0, for: destination) }
                 ), axis: .vertical)
                     .lineLimit(1...3).textFieldStyle(.roundedBorder).disabled(controller.botSessionClassificationPending)
@@ -333,7 +336,7 @@ public struct RemoteHarnessView: View {
                 Spacer()
                 Button("Stop") { Task { await controller.stop() } }.disabled(!controller.canStop)
                     .accessibilityValue(stopLabel).accessibilityIdentifier("remote-stop")
-                if !controller.isBotSessionReadOnly {
+                if !controller.isBotSession || controller.canWorkWithBot {
                     Button("Send") {
                         guard let submission = controller.submission(for: destination) else { return }
                         Task { await controller.send(submission) }
@@ -345,10 +348,12 @@ public struct RemoteHarnessView: View {
     }
     private var sessionBotStatus: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if controller.isBotSessionReadOnly {
-                Label("Bot session · View only", systemImage: "eye").font(.callout.weight(.semibold))
+            if controller.isBotSession {
+                Label(controller.canWorkWithBot ? "Bot work · Remote computer" : "Bot session · View only", systemImage: controller.canWorkWithBot ? "person.crop.square" : "eye").font(.callout.weight(.semibold))
                     .accessibilityIdentifier("remote-bot-session-read-only")
-                Text("Read the conversation here. Send messages and change bot settings on your computer.")
+                Text(controller.canWorkWithBot
+                     ? "Messages enter this persistent Bot’s queue on your computer. Acceptance is separate from completion."
+                     : "Work is unavailable for this connection. You can read history and stop a running task. Your draft is kept.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if controller.botSessionClassificationPending && !controller.isBotSessionReadOnly {

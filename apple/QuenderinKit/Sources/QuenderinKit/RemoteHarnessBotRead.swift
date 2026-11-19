@@ -111,3 +111,104 @@ public struct RemoteHarnessBotRoster: Sendable, Equatable, NativeConnectionPriva
             && lhs.revision == rhs.revision && lhs.readOnly == rhs.readOnly && lhs.bots == rhs.bots
     }
 }
+
+/// Persistent Bot work is a separate, fixed extension. It never uses a raw
+/// session prompt, creates a Bot, or treats admission as turn completion.
+enum RemoteHarnessBotWorkContract {
+    static let capability = "quenderin.bot.work.v1"
+    static let requestBytes = 32_768
+    static let resultBytes = 8_192
+    static let textBytes = 16_384
+    static func request(_ params: RemoteHarnessJSON) throws -> (endpoint: String, workspace: String, bot: String, command: String, session: String?) {
+        guard params.data.count <= requestBytes else { throw RemoteHarnessError.limitExceeded }
+        let fields = try params.fields(); try fields.requireKeys(["route", "body"])
+        guard try fields.required("route").stringValue().utf8.elementsEqual("api/bot".utf8) else { throw RemoteHarnessError.endpointNotAllowed }
+        let body = try fields.required("body").fields(); try body.requireKeys(["endpoint", "payload"])
+        let endpoint = try body.text("endpoint")
+        guard ["quenderin-submit", "quenderin-command"].contains(endpoint) else { throw RemoteHarnessError.endpointNotAllowed }
+        let payload = try body.required("payload").fields()
+        try payload.requireKeys(endpoint == "quenderin-submit"
+            ? ["schemaVersion", "workspaceId", "botId", "expectedSessionId", "expectedRevision", "commandId", "text"]
+            : ["schemaVersion", "workspaceId", "botId", "commandId"])
+        guard try payload.required("schemaVersion").integerValue() == 1 else { throw RemoteHarnessError.unsupportedVersion }
+        let workspace = try RemoteHarnessBotReadContract.text(payload.required("workspaceId"), maximum: 1_024)
+        let bot = try RemoteHarnessBotReadContract.text(payload.required("botId"), maximum: 1_024)
+        let command = try RemoteHarnessBotReadContract.text(payload.required("commandId"), maximum: 128)
+        var session: String?
+        if endpoint == "quenderin-submit" {
+            session = try RemoteHarnessBotReadContract.text(payload.required("expectedSessionId"), maximum: 1_024)
+            _ = try payload.required("expectedRevision").integerValue()
+            let text = try RemoteHarnessBotReadContract.text(payload.required("text"), maximum: textBytes)
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RemoteHarnessError.invalidMessage }
+        }
+        return (endpoint, workspace, bot, command, session)
+    }
+}
+
+public enum RemoteHarnessBotCommandState: String, Sendable { case accepted, rejected, uncertain, notFound }
+public enum RemoteHarnessBotCommandReason: String, Sendable {
+    case staleSession, staleRevision, unavailable, readOnly, revoked, wrongScope, payloadConflict, capacity, storageFailure, dispatchUncertain, invalidRequest
+    public var explanation: String {
+        switch self {
+        case .staleSession, .staleRevision: return "The Bot changed. Refresh its conversation before sending new work."
+        case .unavailable: return "The Bot is currently unavailable on your computer."
+        case .readOnly: return "This computer currently permits viewing only."
+        case .revoked, .wrongScope: return "This connection no longer has permission to work with this Bot."
+        case .payloadConflict: return "The saved command identity already belongs to different work. Its original receipt is preserved."
+        case .capacity: return "The Bot already has unsettled work, or the computer has reached its work limit."
+        case .storageFailure: return "The computer could not safely save this command."
+        case .dispatchUncertain: return "The computer cannot yet confirm whether this command entered the Bot queue."
+        case .invalidRequest: return "The computer refused this command. Refresh before preparing new work."
+        }
+    }
+}
+public struct RemoteHarnessBotCommandReceipt: Sendable, Equatable, NativeConnectionPrivateValue {
+    public let workspaceID: String
+    public let botID: String
+    public let commandID: String
+    public let sessionID: String?
+    public let revision: Int64?
+    public let state: RemoteHarnessBotCommandState
+    public let reason: RemoteHarnessBotCommandReason?
+    public init(routeResult: RemoteHarnessJSON, expectedWorkspaceID: String, expectedBotID: String, expectedCommandID: String) throws {
+        guard routeResult.data.count <= RemoteHarnessBotWorkContract.resultBytes else { throw RemoteHarnessError.limitExceeded }
+        let outer = try routeResult.fields(); try outer.requireKeys(["status", "json"])
+        guard try outer.required("status").integerValue() == 200 else { throw RemoteHarnessError.invalidMessage }
+        let json = try outer.required("json").fields(); try json.requireKeys(["ok", "value"])
+        guard try json.required("ok").booleanValue() else { throw RemoteHarnessError.invalidMessage }
+        let value = try json.required("value").fields()
+        try value.requireKeys(["schemaVersion", "workspaceId", "botId", "commandId", "sessionId", "revision", "state", "reason"])
+        guard try value.required("schemaVersion").integerValue() == 1 else { throw RemoteHarnessError.unsupportedVersion }
+        workspaceID = try RemoteHarnessBotReadContract.text(value.required("workspaceId"), maximum: 1_024)
+        botID = try RemoteHarnessBotReadContract.text(value.required("botId"), maximum: 1_024)
+        commandID = try RemoteHarnessBotReadContract.text(value.required("commandId"), maximum: 128)
+        guard zip([workspaceID, botID, commandID], [expectedWorkspaceID, expectedBotID, expectedCommandID]).allSatisfy({ $0.0.utf8.elementsEqual($0.1.utf8) }) else { throw RemoteHarnessError.bindingMismatch }
+        sessionID = try RemoteHarnessBotReadContract.optionalText(value.required("sessionId"), maximum: 1_024)
+        let rawRevision = try value.required("revision")
+        if rawRevision.data == Data("null".utf8) { revision = nil }
+        else { revision = try rawRevision.integerValue() }
+        guard let state = RemoteHarnessBotCommandState(rawValue: try value.text("state")) else { throw RemoteHarnessError.invalidMessage }
+        self.state = state
+        let rawReason = try value.required("reason")
+        if rawReason.data == Data("null".utf8) { reason = nil }
+        else {
+            guard let reason = RemoteHarnessBotCommandReason(rawValue: try rawReason.stringValue()) else { throw RemoteHarnessError.invalidMessage }
+            self.reason = reason
+        }
+        guard (sessionID == nil) == (revision == nil), state != .accepted || (sessionID != nil && reason == nil),
+              state != .notFound || (sessionID == nil && reason == nil),
+              state != .rejected || (reason != nil && sessionID == nil),
+              state != .uncertain || (reason == .dispatchUncertain && sessionID != nil) else { throw RemoteHarnessError.invalidMessage }
+    }
+    func validateAdmission(for submit: RemoteHarnessOperation) throws {
+        guard state == .accepted || state == .uncertain else { return }
+        let payload = try submit.params.fields().required("body").fields().required("payload").fields()
+        guard sessionID?.utf8.elementsEqual(try payload.text("expectedSessionId").utf8) == true,
+              revision == (try payload.required("expectedRevision").integerValue()) else { throw RemoteHarnessError.bindingMismatch }
+    }
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        zip([lhs.workspaceID, lhs.botID, lhs.commandID], [rhs.workspaceID, rhs.botID, rhs.commandID]).allSatisfy { $0.0.utf8.elementsEqual($0.1.utf8) }
+            && lhs.sessionID.map { Data($0.utf8) } == rhs.sessionID.map { Data($0.utf8) }
+            && lhs.revision == rhs.revision && lhs.state == rhs.state && lhs.reason == rhs.reason
+    }
+}

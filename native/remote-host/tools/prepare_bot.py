@@ -12,7 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = '1bebe826f74e9a72cabafd3b80602b05af867b38'
 COMPANIONS = {'ds-bot/src/host/' + name: name for name in [
     'quenderin-bot-read-policy.mjs', 'quenderin-bot-read-policy.d.mts',
-    'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts']}
+    'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts',
+    'quenderin-bot-work-policy.mjs', 'quenderin-bot-work-policy.d.mts',
+    'quenderin-bot-work-journal.mjs', 'quenderin-bot-work-journal.d.mts',
+    'quenderin-bot-work-runtime.mjs', 'quenderin-bot-work-runtime.d.mts']}
 
 
 def once(source, before, after):
@@ -23,16 +26,20 @@ def once(source, before, after):
 
 def transform(path, source):
     if path == 'ds-bot/src/host/channel.js':
-        source = "import { mountBotRead } from './quenderin-bot-runtime.mjs'\n" + source
+        source = "import { mountBotWork } from './quenderin-bot-work-runtime.mjs'\nimport { botWorkUnavailable } from './quenderin-bot-work-policy.mjs'\nimport { mountBotRead } from './quenderin-bot-runtime.mjs'\n" + source
         source = once(source, '  const { ctx, state } = rt',
-            '  const { ctx, state } = rt\n  const quenderinBotRead = mountBotRead(rt)')
+            '  const { ctx, state } = rt\n  const quenderinBotRead = mountBotRead(rt)\n'
+            "  mountBotWork(rt, { botRevision: '1bebe826f74e9a72cabafd3b80602b05af867b38',\n"
+            "    prepare: (sessionId, signal) => { signal.throwIfAborted(); return rt.ensureCapabilities(sessionId) },\n"
+            "    prompt: (request, signal) => ctx.sessionController.prompt(request, signal),\n  })")
         source = once(source, "      const result = await handle(String(body?.endpoint ?? ''), body?.payload, request.signal)",
             "      // Branch before handle(): ordinary endpoints refresh/load/bootstrap.\n"
             "      const roster = body?.endpoint === 'quenderin-roster'\n"
             "        ? quenderinBotRead({ route: 'api/bot', body }) : undefined\n"
-            "      const result = roster?.json ?? await handle(String(body?.endpoint ?? ''), body?.payload, request.signal)")
+            "      const work = ['quenderin-submit', 'quenderin-command'].includes(body?.endpoint) ? botWorkUnavailable() : undefined\n"
+            "      const result = roster?.json ?? work?.json ?? await handle(String(body?.endpoint ?? ''), body?.payload, request.signal)")
         source = once(source, "return new Response(JSON.stringify(result), { status: 200, headers:",
-            "return new Response(JSON.stringify(result), { status: roster?.status ?? 200, headers:")
+            "return new Response(JSON.stringify(result), { status: roster?.status ?? work?.status ?? 200, headers:")
     elif path == 'ds-bot/src/host/store.js':
         source = once(source, '  let loaded = null', '  let loaded = null\n  let quenderinReady = false')
         source = once(source, '    for (const room of stale) void rt.retitleRoom(room)\n  })()',

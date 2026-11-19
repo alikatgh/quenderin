@@ -288,9 +288,9 @@
     <string name="releases_refresh">更新</string>
     <string name="action_back">戻る</string>
     <string name="tab_images">画像</string>
-    <string name="entry_welcome_body">ローカルモデル、DeepSeek、自分のパソコンでチャット。メッセージを処理する場所を選べます。</string>
+    <string name="entry_welcome_body">ローカルでチャットするか、自分のパソコンの永続ボットと作業できます。作業の実行場所を選べます。</string>
     <string name="entry_choose_title">どこでチャットしますか？</string>
-    <string name="entry_choose_body">この端末のモデル、DeepSeekアカウント、または自分で管理するパソコンを使えます。</string>
+    <string name="entry_choose_body">このスマートフォンのモデルを使うか、自分で管理するパソコンのボットを開けます。</string>
     <string name="entry_local_title">このスマートフォン</string>
     <string name="entry_local_detail">一度ダウンロードすればオフラインで使えます。ローカルのメッセージは端末内に保存され、API料金はかかりません。</string>
     <string name="entry_setup_local">この端末で設定</string>
@@ -353,4 +353,6 @@
     <string name="response_section">%2$dセクション中%1$d</string>
     <string name="report_excerpt_too_long">抜粋が長すぎます。より短い範囲を選んでください。</string>
     <string name="report_note_too_long">メモが長すぎます。送信前に短くしてください。</string>
+    <string name="entry_bots_title">ボット</string>
+    <string name="entry_bots_detail">自分のパソコンの永続ボットと作業できます。まずはDS-Botから。ローカルモデルのダウンロードは不要です。</string>
 </resources>

@@ -7,7 +7,6 @@ final class CloudJourneyTests: XCTestCase {
     @MainActor private lazy var app = XCUIApplication()
     private let timeout: TimeInterval = 15
     private let draft = "What is 17% of 240?"
-    private let deepSeekConsent = "Send this key to DeepSeek for validation and save it securely on this device."
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -27,12 +26,11 @@ final class CloudJourneyTests: XCTestCase {
         require(app.buttons["I understand and agree"])
         capture("02-ai-consent")
         tap(app.buttons["I understand and agree"])
-        require(app.buttons["deepseek-before-download"])
-        require(app.buttons["remote-before-download"])
+        require(app.buttons["bots-before-download"])
+        XCTAssertFalse(app.buttons["deepseek-before-download"].exists)
         require(app.staticTexts["RECOMMENDED FOR YOUR DEVICE"])
         capture("03-default-local-model-route")
 
-        checkDeepSeekFormWithoutNetwork()
         checkComputerFormWithoutNetwork()
 
         // This invokes only the app's existing Debug MockModelDownloader and
@@ -41,6 +39,7 @@ final class CloudJourneyTests: XCTestCase {
         let composer = app.textFields["Message"]
         require(composer, "Mock local setup must reach the real chat composer")
         require(app.staticTexts["Try one"], "A fresh install must open an empty local conversation")
+        XCTAssertFalse(app.buttons["bots-before-download"].exists)
         XCTAssertFalse(app.buttons["deepseek-before-download"].exists)
         capture("08-local-chat-empty")
         tap(composer)
@@ -65,39 +64,8 @@ final class CloudJourneyTests: XCTestCase {
         #endif
     }
 
-    @MainActor private func checkDeepSeekFormWithoutNetwork() {
-        tap(app.buttons["deepseek-before-download"])
-        let key = app.secureTextFields["deepseek-api-key"]
-        let connect = app.buttons["deepseek-connect"]
-        require(key, "A fresh install must show the disconnected DeepSeek form")
-        require(connect)
-        let consent = deepSeekConsentControl
-        require(consent)
-        XCTAssertEqual(consent.label, deepSeekConsent)
-        XCTAssertEqual(switchValue(consent), "0", "Provider validation consent must start off")
-        XCTAssertFalse(connect.isEnabled)
-        capture("04-deepseek-consent-default-off")
-
-        tap(key)
-        // Spaces are rejected by DeepSeekAPIKey before the client can make a request.
-        key.typeText("invalid fixture key")
-        XCTAssertFalse(connect.isEnabled, "Typing alone must not grant validation consent")
-        tap(consent)
-        XCTAssertEqual(switchValue(consent), "1", "The explicit consent action must turn the switch on")
-        XCTAssertTrue(connect.isEnabled)
-        tap(connect)
-        require(app.staticTexts["Enter a valid DeepSeek API key without spaces."])
-        XCTAssertFalse(connect.isEnabled, "The rejected key must be cleared")
-        XCTAssertTrue(key.isEnabled, "Validation failure must leave an editable form")
-        capture("05-deepseek-local-validation-recovery")
-        tap(consent)
-        XCTAssertEqual(switchValue(consent), "0")
-        tap(app.buttons["Done"])
-        require(app.buttons["deepseek-before-download"])
-    }
-
     @MainActor private func checkComputerFormWithoutNetwork() {
-        tap(app.buttons["remote-before-download"])
+        tap(app.buttons["bots-before-download"])
         let server = app.textFields["remote-server"]
         let email = app.textFields["remote-email"]
         let password = app.secureTextFields["remote-password"]
@@ -136,33 +104,21 @@ final class CloudJourneyTests: XCTestCase {
         XCTAssertEqual(email.value as? String, "cloud-fixture@example.invalid")
         capture("07-computer-local-validation-recovery")
         tap(app.buttons["Done"])
-        require(app.buttons["remote-before-download"])
-    }
-
-    @MainActor private var deepSeekConsentControl: XCUIElement {
-        app.switches["deepseek-validation-consent"]
-    }
-
-    @MainActor private func switchValue(_ element: XCUIElement) -> String? {
-        // iOS exposes String values; macOS exposes numeric accessibility values.
-        let value = element.value
-        return (value as? String) ?? (value as? NSNumber)?.stringValue
+        require(app.buttons["bots-before-download"])
     }
 
     @MainActor private func checkDraftSurvivesDestinationNavigation() {
         #if os(macOS)
-        tap(app.buttons["DeepSeek cloud chat"])
-        require(app.secureTextFields["deepseek-api-key"])
-        XCTAssertEqual(switchValue(deepSeekConsentControl), "0")
+        tap(app.buttons["Bots"])
+        require(app.textFields["remote-server"])
         tap(app.buttons["Chats (⌘1)"])
         require(app.textFields["Message"])
         #else
         dismissChatKeyboard()
         XCTAssertEqual(app.textFields["Message"].value as? String, draft)
         capture("08b-iphone-keyboard-dismissed-draft-retained")
-        tap(app.tabBars.buttons["DeepSeek"])
-        require(app.secureTextFields["deepseek-api-key"])
-        XCTAssertEqual(switchValue(deepSeekConsentControl), "0")
+        tap(app.tabBars.buttons["Bots"])
+        require(app.textFields["remote-server"])
         tap(app.tabBars.buttons["Chat"])
         require(app.textFields["Message"])
         #endif

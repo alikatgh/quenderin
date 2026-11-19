@@ -14,7 +14,6 @@ public struct RootView: View {
     /// iOS tab selection — programmatic so the chat→agent handoff can jump to the Agent tab.
     @State private var tab = 0
     @State private var showImagesBeforeChat = false
-    @State private var showDeepSeek = false
     @State private var showMyComputer = false
     @State private var showStep5BeforeChat = false
     @StateObject private var step5BeforeChat = Step5Controller()
@@ -56,14 +55,8 @@ public struct RootView: View {
                     .safeAreaInset(edge: .top) {
                         VStack(alignment: .trailing, spacing: 8) {
                             Button { showMyComputer = true } label: {
-                                Label("My computer · Remote Harness", systemImage: "desktopcomputer").frame(maxWidth: .infinity)
-                            }.buttonStyle(.bordered).accessibilityIdentifier("remote-before-download")
-                            Button { showDeepSeek = true } label: {
-                                Label("Chat with DeepSeek · no model download", systemImage: "network")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("deepseek-before-download")
+                                Label("Bots · no model download", systemImage: "person.crop.square").frame(maxWidth: .infinity)
+                            }.buttonStyle(.bordered).accessibilityIdentifier("bots-before-download")
                             Menu {
                                 Button { showVisionBeforeChat = true } label: { Label("Still image", systemImage: "photo.viewfinder") }
                                 Button { showStep5BeforeChat = true } label: { Label("Step 5", systemImage: "server.rack") }
@@ -77,10 +70,6 @@ public struct RootView: View {
         .quenderinWindowCanvas()
         // Appearance → Theme (nil = follow the system, the default).
         .preferredColorScheme(settings.theme.colorScheme)
-        .sheet(isPresented: $showDeepSeek) {
-            DeepSeekView(showsDoneButton: true)
-                .quenderinSheetWindowCanvas()
-        }
         .sheet(isPresented: $showMyComputer) { RemoteHarnessView(showsDoneButton: true).quenderinSheetWindowCanvas() }
         .sheet(isPresented: $showImagesBeforeChat) {
             ImageGenerationView(showsDoneButton: true, suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
@@ -132,11 +121,8 @@ public struct RootView: View {
                     })
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
                         .tag(0)
-                    DeepSeekView()
-                        .tabItem { Label("DeepSeek", systemImage: "network") }
-                        .tag(6)
                     RemoteHarnessView()
-                        .tabItem { Label("Computer", systemImage: "desktopcomputer") }
+                        .tabItem { Label("Bots", systemImage: "person.crop.square") }
                         .tag(7)
                     if let agent {
                         AgentView(session: agent)

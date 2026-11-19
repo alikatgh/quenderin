@@ -280,11 +280,12 @@ fun main(args: Array<String>) {
     uncertainVault.use(uncertainStore.profile!!.credentialReference!!) { check(it.isNotEmpty()) }
     uncertainRelaunch.close()
 
-    // Guard the composition boundary: a cloud visit must retain existing local remember owners.
+    // Legacy provider storage/transport remains supported without a direct API-chat entry.
     val root = File(args.firstOrNull() ?: ".")
     val router = File(root, "android/app/src/main/kotlin/ai/quenderin/app/ui/OnboardingScreen.kt").readText()
-    val cloudRoute = router.substringAfter("if (showDeepSeek) {").substringBefore("var showImagesBeforeChat")
-    check("Dialog(" in cloudRoute && "SecureFlagPolicy.SecureOn" in cloudRoute && !Regex("\\breturn\\b").containsMatchIn(cloudRoute))
+    check("DeepSeekController(" !in router && "DeepSeekScreen(" !in router && "showDeepSeek" !in router)
+    val remoteRoute = router.substringAfter("if (showComputer) {").substringBefore("var showImagesBeforeChat")
+    check("Dialog(" in remoteRoute && "SecureFlagPolicy.SecureOn" in remoteRoute && !Regex("\\breturn\\b").containsMatchIn(remoteRoute))
     val keyEntry = File(root, "android/app/src/main/kotlin/ai/quenderin/app/ui/DeepSeekScreen.kt").readText()
     check("IME_FLAG_NO_PERSONALIZED_LEARNING" in keyEntry && "isSaveEnabled = false" in keyEntry && "isSaveFromParentEnabled = false" in keyEntry)
     for (path in listOf("backup_rules.xml", "data_extraction_rules.xml")) {

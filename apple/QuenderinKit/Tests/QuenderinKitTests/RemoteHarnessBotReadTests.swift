@@ -510,4 +510,124 @@ final class RemoteHarnessBotReadTests: XCTestCase {
         XCTAssertFalse(String(reflecting: snapshot).contains("workspace-a"))
         XCTAssertFalse(String(reflecting: snapshot.bots[0]).contains("deepseek-flash"))
     }
+    private func workReceipt(command: String = "command-a", session: String? = "session-a", revision: Int64? = 7,
+                             state: String = "accepted", reason: String? = nil) throws -> RemoteHarnessJSON {
+        try .object(["status": .integer(200), "json": .object(["ok": .boolean(true), "value": .object([
+            "schemaVersion": .integer(1), "workspaceId": .string("workspace-a"), "botId": .string("bot-a"), "commandId": .string(command),
+            "sessionId": session.map { try .string($0) } ?? RemoteHarnessJSON(data: Data("null".utf8)),
+            "revision": revision.map { try .integer($0) } ?? RemoteHarnessJSON(data: Data("null".utf8)),
+            "state": .string(state), "reason": reason.map { try .string($0) } ?? RemoteHarnessJSON(data: Data("null".utf8))
+        ])])])
+    }
+    private func workSubmit(command: String = "command-a", text: String = "Synthetic Bot work") throws -> RemoteHarnessOperation {
+        try .botSubmit(workspaceID: "workspace-a", botID: "bot-a", expectedSessionID: "session-a", expectedRevision: 7, commandID: command, text: text)
+    }
+    func testBotWorkRequiresEveryCapabilityAndExactBoundSession() throws {
+        for missing in ["plugin.route.v1", "quenderin.bot.read.v1", "quenderin.bot.work.v1"] {
+            let caps = ["harness.remote.v3", "plugin.route.v1", "quenderin.bot.read.v1", "quenderin.bot.work.v1"].filter { $0 != missing }
+            let h = try harness(session: "session-a", capabilities: caps)
+            XCTAssertFalse(h.coordinator.supportsBotWork)
+            XCTAssertThrowsError(try h.coordinator.perform(workSubmit(), commandID: "command-a") { _ in })
+            XCTAssertEqual(h.journal.writes, 0); XCTAssertEqual(h.port.sent.count, 1)
+        }
+        let h = try harness(session: "different-part", capabilities: capabilities() + ["quenderin.bot.work.v1"])
+        XCTAssertThrowsError(try h.coordinator.perform(workSubmit(), commandID: "command-a") { _ in })
+        XCTAssertEqual(h.journal.writes, 0)
+    }
+    func testBotSubmitJournalsBeforeSendAndAdmissionNeverFinishesATurn() throws {
+        let h = try harness(session: "session-a", capabilities: capabilities() + ["quenderin.bot.work.v1"])
+        h.port.onSend = { _, _ in XCTAssertEqual(h.journal.writes, 1) }
+        var result: RemoteHarnessCompletion?
+        let rpc = try h.coordinator.perform(workSubmit(), commandID: "command-a") { result = $0 }
+        XCTAssertEqual(h.journal.writes, 1); XCTAssertNil(result)
+        let raw = try workReceipt()
+        try h.coordinator.receive(response(rpc, raw), authenticatedBinding: h.binding)
+        XCTAssertEqual(result, .response(raw)); XCTAssertEqual(h.journal.outcomes, 1)
+        XCTAssertEqual(h.coordinator.stopState, .notRequested)
+        XCTAssertEqual(h.port.sent.count, 2)
+    }
+    func testBotLostACKBecomesUnknownAndStatusNeverJournalsOrResubmits() throws {
+        let h = try harness(session: "session-a", capabilities: capabilities() + ["quenderin.bot.work.v1"])
+        var submission: RemoteHarnessCompletion?
+        try h.coordinator.perform(workSubmit(), commandID: "command-a") { submission = $0 }
+        let sent = h.port.sent.count
+        h.clock.monotonicMilliseconds += RemoteHarnessLimits.deadlineMilliseconds
+        h.coordinator.expireDeadlines()
+        XCTAssertEqual(submission, .outcomeUnknown); XCTAssertEqual(h.journal.outcomes, 1)
+        XCTAssertEqual(h.port.sent.count, sent); XCTAssertEqual(h.coordinator.binding, h.binding)
+        var status: RemoteHarnessCompletion?
+        let query = try h.coordinator.perform(.botCommand(workspaceID: "workspace-a", botID: "bot-a", commandID: "command-a")) { status = $0 }
+        let missing = try workReceipt(session: nil, revision: nil, state: "notFound")
+        try h.coordinator.receive(response(query, missing), authenticatedBinding: h.binding)
+        XCTAssertEqual(status, .response(missing)); XCTAssertEqual(h.journal.writes, 1)
+        XCTAssertEqual(h.port.sent.count, sent + 1)
+    }
+    func testBotReceiptRejectsRetargetedPartOrRevisionWithoutLosingReservation() throws {
+        for raw in [try workReceipt(session: "rotated-part"), try workReceipt(revision: 8)] {
+            let h = try harness(session: "session-a", capabilities: capabilities() + ["quenderin.bot.work.v1"])
+            var result: RemoteHarnessCompletion?
+            let rpc = try h.coordinator.perform(workSubmit(), commandID: "command-a") { result = $0 }
+            try h.coordinator.receive(response(rpc, raw), authenticatedBinding: h.binding)
+            XCTAssertEqual(result, .outcomeUnknown); XCTAssertEqual(h.journal.writes, 1); XCTAssertEqual(h.journal.outcomes, 1)
+            XCTAssertEqual(h.coordinator.binding, h.binding)
+        }
+    }
+    func testBotCommandStrictDTOAndUTF8Limits() throws {
+        let submit = try workSubmit()
+        XCTAssertEqual(submit.botID, "bot-a"); XCTAssertTrue(submit.isMutation)
+        XCTAssertNoThrow(try workSubmit(text: String(repeating: "é", count: 8_192)))
+        XCTAssertThrowsError(try workSubmit(text: String(repeating: "é", count: 8_193)))
+        XCTAssertThrowsError(try workSubmit(text: " \n\t"))
+        XCTAssertThrowsError(try workSubmit(command: String(repeating: "a", count: 129)))
+        let request = try submit.params.fields(), body = try request.required("body").fields()
+        let payload = try body.required("payload")
+        let extra = try replacing(submit.params, ["body": replacing(request.required("body"), ["payload": replacing(payload, ["hostId": .string("untrusted")])])])
+        XCTAssertThrowsError(try RemoteHarnessOperation(method: .pluginRouteCall, params: extra))
+        for raw in [try workReceipt(state: "complete"), try workReceipt(session: nil, revision: nil),
+                    try workReceipt(state: "rejected", reason: "readOnly"), try workReceipt(state: "uncertain"),
+                    try workReceipt(state: "notFound"), try workReceipt(reason: "unavailable")] {
+            XCTAssertThrowsError(try RemoteHarnessBotCommandReceipt(routeResult: raw, expectedWorkspaceID: "workspace-a", expectedBotID: "bot-a", expectedCommandID: "command-a"))
+        }
+        let valid = try workReceipt(state: "uncertain", reason: "dispatchUncertain")
+        XCTAssertEqual(try RemoteHarnessBotCommandReceipt(routeResult: valid, expectedWorkspaceID: "workspace-a", expectedBotID: "bot-a", expectedCommandID: "command-a").state, .uncertain)
+        XCTAssertThrowsError(try RemoteHarnessBotCommandReceipt(routeResult: valid, expectedWorkspaceID: "workspace-other", expectedBotID: "bot-a", expectedCommandID: "command-a"))
+    }
+
+    func testSharedBotCommandContractFixtures() throws {
+        let root = (0..<5).reduce(URL(fileURLWithPath: #filePath)) { url, _ in url.deletingLastPathComponent() }
+        let all = try RemoteHarnessJSON(data: Data(contentsOf: root.appendingPathComponent("shared/remote-harness-bot-command-fixtures.json"))).fields()
+        let valid = try all.required("valid").fields()
+        let submit = try RemoteHarnessOperation(method: .pluginRouteCall, params: valid.required("submit"))
+        XCTAssertTrue(submit.isMutation)
+        XCTAssertFalse(try RemoteHarnessOperation(method: .pluginRouteCall, params: valid.required("status")).isMutation)
+        func decode(_ raw: RemoteHarnessJSON, request: RemoteHarnessOperation? = nil) throws {
+            let receipt = try RemoteHarnessBotCommandReceipt(routeResult: raw, expectedWorkspaceID: "workspace-a", expectedBotID: "bot-a", expectedCommandID: "command-a")
+            try receipt.validateAdmission(for: request ?? submit)
+        }
+        for name in ["accepted", "rejected", "uncertain", "notFound", "payloadConflict"] { XCTAssertNoThrow(try decode(valid.required(name)), name) }
+        for item in try all.required("invalidRequests").elements() {
+            let fields = try item.fields(), id = try fields.text("id")
+            XCTAssertThrowsError(try RemoteHarnessOperation(method: .pluginRouteCall, params: fields.required("params")), id)
+        }
+        for item in try all.required("invalidResponses").elements() {
+            let fields = try item.fields(), id = try fields.text("id")
+            let request = try fields["request"].map { try RemoteHarnessOperation(method: .pluginRouteCall, params: $0) } ?? submit
+            XCTAssertThrowsError(try decode(fields.required("result"), request: request), id)
+        }
+        for item in try all.required("generatedLimits").elements() {
+            let fields = try item.fields(), id = try fields.text("id"), key = try fields.text("field"), count = Int(try fields.required("count").integerValue())
+            let body = try submit.params.fields().required("body"), payload = try body.fields().required("payload")
+            let updated = try replacing(submit.params, ["body": replacing(body, ["payload": replacing(payload, [key: .string(String(repeating: try fields.text("value"), count: count))])])])
+            if try fields.required("expectedValid").booleanValue() {
+                XCTAssertNoThrow(try RemoteHarnessOperation(method: .pluginRouteCall, params: updated), id)
+            } else { XCTAssertThrowsError(try RemoteHarnessOperation(method: .pluginRouteCall, params: updated), id) }
+        }
+    }
+    func testBotPendingWriteBoundDoesNotConsumeAnotherJournalSlot() throws {
+        let h = try harness(session: "session-a", capabilities: capabilities() + ["quenderin.bot.work.v1"])
+        try h.coordinator.perform(workSubmit(), commandID: "command-a") { _ in }
+        XCTAssertThrowsError(try h.coordinator.perform(workSubmit(command: "command-b"), commandID: "command-b") { _ in })
+        XCTAssertEqual(h.journal.writes, 1); XCTAssertEqual(h.port.sent.count, 2)
+    }
+
 }

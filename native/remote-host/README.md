@@ -31,7 +31,7 @@ the Host operating system.
    python3 native/remote-host/tools/prepare_host.py /absolute/path/to/ds-harness-remote --apply
    ```
 
-   The tool adds eight companion source files and edits nine verified source/build files.
+   The tool adds fourteen companion source files and edits nine verified source/build files.
    It refuses another revision, changed seams, linked source files, or an existing
    companion. It does not download, install, start, authenticate or configure
    Harness. The upstream MIT notice is retained in `LICENSE.upstream`.
@@ -61,7 +61,7 @@ the Host operating system.
    documents the `file:` form. A successful build does not establish that the
    user's installed Harness version/profile has loaded the companion.
 
-## Optional read-only DS Bot integration
+## Optional DS Bot integration
 
 Use DS Bot **0.2.1**, exact source
 `1bebe826f74e9a72cabafd3b80602b05af867b38`, in a separate source checkout.
@@ -73,7 +73,7 @@ python3 native/remote-host/tools/prepare_bot.py /absolute/path/to/DeepSeek-Bot -
 ```
 
 The preparation tool verifies 24 pinned public source/license files, changes two
-seams and adds four companion files. It does not install or start the plugin.
+seams and adds ten companion files. It does not install or start the plugin.
 Keep the Apache-2.0 license and `NOTICE.DeepSeek-Bot` attribution with the adapted
 source. The isolated fixture uses the existing official Harness rc.1 dependency
 lock; it exercises the actual store/channel and authenticated route, rather than
@@ -84,21 +84,89 @@ bundle through the same official `file:` plugin route, in the same existing
 Harness profile as the prepared Remote plugin. Full DS Bot startup can migrate
 state, resume tasks, read its existing credentials and start connectors. Those
 existing startup effects require the operator's own configuration and execution
-limits; preparing this read-only adapter does not make startup passive or
+limits; preparing these adapters does not make startup passive or
 authorize provider activity. Preserve the working profile and its data.
 
 The exact mounted adapter enables `quenderin.bot.read.v1` alongside
-`plugin.route.v1`. The only forwarded Bot operation is `quenderin-roster` at
+`plugin.route.v1`. The passive Bot roster operation is `quenderin-roster` at
 `api/bot`: at most 100 bots, 4,096 original UTF-8 request-parameter bytes and a
 262,144-byte result. It uses the authenticated in-process shared Fetch handler;
 no browser cookie or loopback HTTP fallback is exposed to the phone. Missing
 support leaves the capability absent. An unready or inconsistent mounted runtime
 returns a fixed unavailable response without loading, refreshing or starting it.
 
-Bot-selected native sessions are view-only until a separate Bot execution
-capability is implemented. Raw Harness prompt/model changes for Bot-owned parts
-are refused on the prepared Host; ordinary Harness sessions, bound approvals and
-Stop retain their existing paths. Roster refresh never authorizes a write.
+Raw Harness prompt/model changes for Bot-owned parts remain refused on the
+prepared Host. Ordinary Harness sessions, bound approvals and Stop retain their
+existing paths. Roster refresh never authorizes a write. The separately negotiated
+work capability below is the only Quenderin path for new work on an existing Bot.
+
+## Opt-in durable Bot work
+
+The work path is source preparation, with synthetic Node checks. The new hosted
+real-runtime journey and actual patched bundle must pass before compatibility or
+release readiness is claimed. No DS Bot/provider is installed or activated by
+these scripts. DS Bot/DeepSeek is the initial backend; local-model Bot backends
+remain a roadmap item, distinct from direct API chat.
+
+To prepare a new private journal under an existing real directory:
+
+```sh
+node native/remote-host/tools/initialize_bot_work_journal.mjs /absolute/private-directory/new-bot-work-journal
+```
+
+The helper creates a new `0700` directory and fsynced `0600` initialization marker.
+It refuses existing paths, symlinked ancestors and replacement/reset. Preserve
+this directory with the Host profile; it contains scoped public identities,
+payload digests, generated request IDs and receipts, never prompt text or keys.
+Before a user-authorized activation, point the existing Host launch configuration's
+nonsecret `QUENDERIN_BOT_WORK_JOURNAL` setting at this absolute directory. This
+document does not perform that activation. An absent, corrupt, replaced, insecure
+or locked journal cannot advertise ready work or dispatch a command. A missing
+marker is a failure; it is never silently recreated.
+
+A mounted compatible writer advertises `quenderin.bot.work.v1` only alongside
+`quenderin.bot.read.v1` and `plugin.route.v1`, with healthy writer/journal state.
+`plugin.route.call` accepts only the exact `api/bot` operations in the
+[shared command contract](../../shared/remote-harness-bot-command-contract.json):
+
+- `quenderin-submit`: sealed workspace, stable Bot ID, expected current session,
+  expected revision, command ID and text.
+- `quenderin-command`: scoped status lookup by workspace, Bot and command ID.
+
+Host/Peer identities and live authorization come from the authenticated server
+context through an in-process adapter. Fetch headers, payload fields and raw
+session IDs cannot create that authority; ordinary shared Fetch calls cannot
+invoke work. The adapter rechecks workspace membership, Bot ownership, current
+part, revision, writer state and authorization after asynchronous capability
+preparation and immediately before one existing `sessionController.prompt` call
+in queue mode. It never retargets a sealed command after a Bot rotates parts.
+
+Admission fsyncs an exclusive durable reservation and Host-generated request ID
+before preparation/dispatch. Identical deliveries return the original receipt;
+changed payloads are rejected without overwriting it. `accepted` requires the
+actual queue's `{accepted:true}` acknowledgement and durable receipt. It does not
+mean task completion. An exception, lost ACK or incomplete reservation remains
+`uncertain`, with no automatic replay. `notFound` also never licenses automatic
+resubmission. Status returns the original admitted part even after rotation.
+
+Bounds are fixed: 16,384 text bytes; 32,768 request bytes; 8,192 result bytes;
+1,024 journal records without eviction; 32 outstanding commands total and one per
+stable Bot across Peers; one prompt call per command with a 30-second deadline.
+Each journal record is capped at 98,304 bytes (96 MiB maximum record content,
+plus bounded directory metadata). A pending slot is released only after the
+matching official `user/message` `source.rpcId` and subsequent `turn/end`.
+Stop's receipt never releases a slot by itself. History, session control, bound
+approvals and Stop continue on the admitted receipt's session.
+
+A Host/plugin restart conservatively retains unresolved pending slots. A stale
+admission lock or uncertain command needs explicit operator reconciliation against
+authoritative Harness history; this increment supplies no reset/eviction or
+replay helper. Same-process reconnect can query status and follow the original
+session. Preserve the journal and user history while investigating.
+
+These are application admission bounds. They do not cap downstream configured
+Bot model/tool turns or guarantee a provider invoice maximum. Provider activation,
+spending limits, recovery and actual runtime compatibility remain release gates.
 
 ## Confirm both identities
 
@@ -169,10 +237,10 @@ automatically retried after a lost acknowledgement. Host restart does not restor
 approval capabilities. Quenderin must recover authoritative history and open new
 streams; resolving an older pending request can require the computer.
 
-This companion does not implement a durable Host command-deduplication service,
-an agent spending cap, a terminal sandbox, or approval recovery across Host
-restart. Native command journals prevent automatic mutation replay. These
-remaining execution/recovery controls stay explicit in the delivery checklist.
+The durable Bot journal applies only to the two Bot work operations above.
+Ordinary Harness prompts still rely on native replay prevention and upstream's
+existing request-ID behavior. An agent spending cap, terminal sandbox and approval
+recovery across Host restart remain outside this companion.
 
 The source-inspected Harness baseline is `dsh-v0.2.1-rc.1`, commit
 `1600d8a1e140dcde43a1a0941940a0480712c011`. Its
@@ -195,8 +263,8 @@ Synthetic policy tests cover exact bindings, one-time consumption, expiry,
 withdrawal, turn/workspace changes, revoked identities, unsafe public-policy files,
 canonical action digests and bounds. `.github/workflows/remote-host.yml` applies
 the exact source patch to a disposable pinned upstream checkout and compiles the
-actual bundle plus Gateway tests. No fixture calls a model, uses an account key,
-starts a relay or installs a plugin in a user's profile. Passing those checks
+actual bundle plus Gateway tests. Fixtures use bounded credential-free scripted model adapters; none calls a
+provider, uses an account key, starts a relay or installs a plugin in a user's profile. Passing those checks
 does not establish a live desktop/mobile journey.
 
 The shared approval-digest fixtures include JavaScript numeric property ordering,

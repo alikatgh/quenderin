@@ -7,10 +7,6 @@ import ai.quenderin.app.R
 import ai.quenderin.app.Step5Controller
 import ai.quenderin.app.VisionController
 import ai.quenderin.app.GraniteController
-import ai.quenderin.app.AndroidDeepSeekVault
-import ai.quenderin.app.AndroidDeepSeekPersistence
-import ai.quenderin.app.DeepSeekController
-import ai.quenderin.app.DeepSeekOkHttpTransport
 
 import ai.quenderin.app.WorkManagerModelDownloader
 import ai.quenderin.core.AndroidDeviceProfile
@@ -201,13 +197,17 @@ fun AppRoot(
         return
     }
 
-    var showDeepSeek by rememberSaveable { mutableStateOf(false) }
+    var showBots by rememberSaveable {
+        mutableStateOf(context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).getBoolean("remoteBotsOpen", false))
+    }
     var showComputer by rememberSaveable {
         mutableStateOf(context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).getBoolean("remoteComputerOpen", false))
     }
     val remoteComputer = remember { ai.quenderin.app.RemoteHarnessController(context) }
     androidx.compose.runtime.DisposableEffect(remoteComputer) { onDispose { remoteComputer.close() } }
-    fun openComputer() {
+    fun openComputer(bots: Boolean = false) {
+        showBots = bots
+        context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteBotsOpen", bots).apply()
         context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteComputerOpen", true).apply()
         showComputer = true
     }
@@ -217,24 +217,10 @@ fun AppRoot(
             context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteComputerOpen", false).apply()
         }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false, securePolicy = androidx.compose.ui.window.SecureFlagPolicy.SecureOn)) {
-            RemoteHarnessScreen(remoteComputer, onBack = {
+            RemoteHarnessScreen(remoteComputer, botsOnly = showBots, onBack = {
                 remoteComputer.disconnect(); showComputer = false
                 context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteComputerOpen", false).apply()
             })
-        }
-    }
-    if (showDeepSeek) {
-        val deepSeek = remember {
-            val vault = AndroidDeepSeekVault(context)
-            DeepSeekController(vault, DeepSeekOkHttpTransport(vault), AndroidDeepSeekPersistence(context))
-        }
-        androidx.compose.runtime.DisposableEffect(deepSeek) { onDispose { deepSeek.close() } }
-        // Keep the local shell composed beneath this native full-screen destination so a local
-        // draft, attachment, open conversation and run owner survive the cloud visit.
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showDeepSeek = false },
-            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false, securePolicy = androidx.compose.ui.window.SecureFlagPolicy.SecureOn)) {
-            DeepSeekScreen(deepSeek, onBack = { showDeepSeek = false })
         }
     }
     var showImagesBeforeChat by rememberSaveable { mutableStateOf(false) }
@@ -298,8 +284,8 @@ fun AppRoot(
             },
             captureLocalTurnIntent = automatic::captureTurnIntent,
             prepareAutomaticTurn = automatic::prepareTurn,
-            onOpenDeepSeek = { showDeepSeek = true },
-            onOpenComputer = ::openComputer,
+            onOpenBots = { openComputer(bots = true) },
+            onOpenComputer = { openComputer() },
         )
         else -> {
             var showPicker by remember { mutableStateOf(false) }
@@ -311,8 +297,8 @@ fun AppRoot(
                 onAccept = ::selectManual,
                 onChoose = { showPicker = true },
                 onCancel = { model -> (downloader as? WorkManagerModelDownloader)?.cancel(model) },
-                onOpenDeepSeek = { showDeepSeek = true },
-                onOpenComputer = ::openComputer,
+                onOpenBots = { openComputer(bots = true) },
+                onOpenComputer = { openComputer() },
                 onOpenVision = { showVisionBeforeChat = true },
                 onOpenStep5 = { showStep5BeforeChat = true },
                 onOpenImages = { showImagesBeforeChat = true },
@@ -351,7 +337,7 @@ fun OnboardingScreen(
     onAccept: (ModelEntry) -> Unit,
     onChoose: () -> Unit = {},
     onCancel: (ModelEntry) -> Unit = {},
-    onOpenDeepSeek: () -> Unit = {},
+    onOpenBots: () -> Unit = {},
     onOpenComputer: () -> Unit = {},
     onOpenVision: () -> Unit = {},
     onOpenStep5: () -> Unit = {},
@@ -393,8 +379,8 @@ fun OnboardingScreen(
         }
         Column {
             NativeSectionLabel(stringResource(R.string.entry_connections))
-            NativeSettingsRow(stringResource(R.string.entry_deepseek_title), stringResource(R.string.entry_deepseek_detail),
-                onOpenDeepSeek, Modifier.testTag("setup.deepseek"))
+            NativeSettingsRow(stringResource(R.string.entry_bots_title), stringResource(R.string.entry_bots_detail),
+                onOpenBots, Modifier.testTag("setup.bots"))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             NativeSettingsRow(stringResource(R.string.entry_computer_title), stringResource(R.string.entry_computer_detail),
                 onOpenComputer, Modifier.testTag("setup.computer"))

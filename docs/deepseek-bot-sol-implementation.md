@@ -10,6 +10,25 @@ The foundation evidence below describes the first published increment. The
 current continuation attaches its passive Host route and native read-only Bot
 state; see the continuation status at the end before starting new work.
 
+## Active product correction — 29 October 2026
+
+The feature is a separate native **Bots** workflow for persistent remote work.
+DS-Bot with DeepSeek on the paired computer is the first implementation; bots
+using local models are on the roadmap. Standalone direct DeepSeek API chat is
+not the target and its native entry points are being removed without deleting
+saved data. See the updated [product roadmap](native-connections-roadmap.md)
+and [Bot integration plan](deepseek-bot-integration-plan.md).
+
+The current increment adds narrow task submission and durable command-status
+recovery around the existing Bot runtime. It preserves the raw Harness write
+guard, requires a negotiated Bot-work capability, and never automatically replays
+an uncertain task. Native clients keep stable Bot identity separate from a
+conversation part and follow the admitted part's history, approvals and Stop.
+The [command contract](../shared/remote-harness-bot-command-contract.json) owns
+wire and admission bounds. The read-only sections below record the earlier
+foundation; they do not limit this newly authorized implementation to browsing.
+No new store upload, live Host execution or provider activation is claimed here.
+
 ## Mission and working agreement
 
 Deliver persistent DeepSeek bots through Quenderin's existing **My computer**

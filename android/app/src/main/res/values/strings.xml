@@ -297,9 +297,9 @@
     <string name="download_verification_progress">%1$d of %2$d files</string>
     <string name="action_back">Back</string>
     <string name="tab_images">Images</string>
-    <string name="entry_welcome_body">Chat with local models, connect DeepSeek, or use your own computer. Choose where your messages are processed.</string>
+    <string name="entry_welcome_body">Chat locally or work with persistent bots on your computer. Choose where your work runs.</string>
     <string name="entry_choose_title">Where will you chat?</string>
-    <string name="entry_choose_body">Use a model here, your DeepSeek account, or a computer you control.</string>
+    <string name="entry_choose_body">Use a model on this phone or open Bots on a computer you control.</string>
     <string name="entry_local_title">On this phone</string>
     <string name="entry_local_detail">Download once. Local messages stay on this phone and work offline. No API charge.</string>
     <string name="entry_setup_local">Set up on this phone</string>
@@ -362,4 +362,6 @@
     <string name="response_section">Section %1$d of %2$d</string>
     <string name="report_excerpt_too_long">This excerpt is too long. Use a shorter selection.</string>
     <string name="report_note_too_long">This note is too long. Shorten it before sending.</string>
+    <string name="entry_bots_title">Bots</string>
+    <string name="entry_bots_detail">Work with persistent bots on your computer. Start with DS-Bot; no local model download needed.</string>
 </resources>

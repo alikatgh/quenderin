@@ -116,5 +116,70 @@ class BotHistoryJourneyTest {
         }
         println("UI_BOT_FIXTURE roster refresh and history rendered; ordinary composer retained; Bot composer/model controls absent; no live Host")
     }
+    @Test(timeout = 120_000)
+    fun botComposerSubmitsOnceAndReconcilesLostACKAfterOwnerRelaunch() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val fixture = BotJourneyFixture(workSupported = true).apply { dropSubmissionACK = true }
+        scenario = ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)
+            .putExtra("quenderin.mock_ui", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        scenario!!.onActivity { activity ->
+            val remote = RemoteHarnessController(activity) { _, schedule -> fixture.client(schedule) to true }
+            controller = remote
+            activity.setContent { QuenderinTheme { RemoteHarnessScreen(remote, onBack = {}, botsOnly = true) } }
+        }
+        compose.waitUntil(10_000) { controller?.securityAvailable == true }
+        compose.runOnIdle { controller!!.authorize("https://synthetic.example.org", "fixture@example.org", "synthetic-only".toCharArray()) }
+        await("remote.host.host-a"); compose.onNodeWithTag("remote.host.host-a").performClick()
+        await("remote.pinCompared"); compose.onNodeWithTag("remote.pinCompared").performScrollTo().performClick()
+        compose.onNodeWithTag("remote.confirmPin").performScrollTo().performClick()
+        await("remote.workspace.workspace-a"); compose.onNodeWithTag("remote.workspace.workspace-a").performClick()
+        await("remote.botsReady")
+        compose.onNodeWithTag("remote.createSession").assertDoesNotExist()
+        compose.onNodeWithTag("remote.session.ordinary-session").assertDoesNotExist()
+        compose.onNodeWithTag("remote.bot.bot-a").performScrollTo().performClick()
+        compose.waitUntil(10_000) { controller!!.state.historyReady && controller!!.state.botWorkSupported && !controller!!.state.botRosterLoading }
+        await("remote.composer")
+        compose.onNodeWithTag("remote.models").assertDoesNotExist()
+        val task = "Synthetic persistent Bot task from the Android composer"
+        compose.onNodeWithTag("remote.composer").performTextInput(task)
+        compose.onNodeWithTag("remote.send").performClick()
+        compose.waitUntil(10_000) { fixture.submissions.get() == 1 && controller!!.state.botCommand?.state == ai.quenderin.core.RemoteHarnessBotCommandState.PENDING }
+        compose.onNodeWithTag("remote.send").assertIsNotEnabled()
+        compose.runOnIdle { assertEquals(task, controller!!.state.draft) }
+        // Close only this test's owner; same serialized store and synthetic Host receipt survive.
+        val beforeClose = fixture.journalWrites.get()
+        scenario!!.onActivity { controller!!.close() }
+        compose.waitUntil(10_000) { fixture.journalWrites.get() > beforeClose }
+        scenario!!.onActivity { activity ->
+            val remote = RemoteHarnessController(activity) { _, schedule -> fixture.client(schedule) to true }
+            controller = remote
+            activity.setContent { QuenderinTheme { RemoteHarnessScreen(remote, onBack = {}, botsOnly = true) } }
+        }
+        compose.waitUntil(10_000) { controller!!.state.selectedBot?.botID == "bot-a" }
+        compose.runOnIdle {
+            assertEquals(task, controller!!.state.draft)
+            assertEquals(1, fixture.submissions.get())
+        }
+        // Lifecycle recovery may already have reconnected. Explicit reconnect is needed only while closed.
+        if (controller!!.state.phase == ai.quenderin.core.RemoteHarnessClientPhase.DISCONNECTED) {
+            compose.onNodeWithTag("remote.reconnect").performClick()
+        }
+        compose.waitUntil(15_000) { fixture.queries.get() == 1 && controller!!.state.historyReady &&
+            controller!!.state.botCommand?.state == ai.quenderin.core.RemoteHarnessBotCommandState.ACCEPTED && !controller!!.state.botCommandChecking }
+        compose.onNodeWithTag("remote.botCommandStatus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Task accepted by Bot · completion comes from history").assertIsDisplayed()
+        compose.onNodeWithTag("remote.composer").assertIsEnabled()
+        compose.onNodeWithTag("remote.send").assertIsNotEnabled()
+        ScreenshotEvidence.capture("11-bot-work.png", compose.onRoot())
+        compose.runOnIdle {
+            assertEquals(1, fixture.submissions.get())
+            assertEquals(1, fixture.queries.get())
+            assertEquals(0, fixture.prompts.get())
+            assertEquals(0, fixture.modelChanges.get())
+            assertEquals("", controller!!.state.draft)
+        }
+        println("UI_BOT_WORK_FIXTURE actual Composer/client submitted once; lost ACK reconciled after owner relaunch; no replay or live Host")
+    }
     private fun await(tag: String) = compose.awaitJourneyTag(tag)
 }

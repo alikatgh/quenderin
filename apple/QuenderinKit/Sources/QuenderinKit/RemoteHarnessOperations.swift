@@ -17,6 +17,7 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
     public let streamID: String?
     public let sessionID: String?
     public let workspaceID: String?
+    public let botID: String?
     public let promptCommandID: String?
     public let isMutation: Bool
     let approvalClientID: String?
@@ -27,12 +28,20 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
     public init(method: RemoteHarnessMethod, params: RemoteHarnessJSON) throws {
         let fields = try params.fields()
         var endpoint: String?, streamID: String?, sessionID: String?, workspaceID: String?, promptID: String?
+        var botID: String?
         var mutation = false, approvalClient: String?, approvalEvent: String?, approvalAllows = false, extendedApproval: RemoteHarnessApprovalBinding?
         switch method {
         case .describe: try fields.requireKeys([])
         case .pluginRouteCall:
-            workspaceID = try RemoteHarnessBotReadContract.requestWorkspace(params)
-            endpoint = "quenderin-roster"
+            let body = try fields.required("body").fields()
+            if try body.text("endpoint") == "quenderin-roster" {
+                workspaceID = try RemoteHarnessBotReadContract.requestWorkspace(params); endpoint = "quenderin-roster"
+            } else {
+                let request = try RemoteHarnessBotWorkContract.request(params)
+                workspaceID = request.workspace; botID = request.bot; endpoint = request.endpoint
+                sessionID = request.session; mutation = request.endpoint == "quenderin-submit"
+                if mutation { promptID = request.command }
+            }
         case .close:
             try fields.requireKeys(["streamId"]); streamID = try fields.text("streamId")
         case .call, .open:
@@ -106,7 +115,7 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
             }
         }
         self.method = method; self.params = params; self.endpoint = endpoint; self.streamID = streamID
-        self.sessionID = sessionID; self.workspaceID = workspaceID; promptCommandID = promptID; isMutation = mutation
+        self.sessionID = sessionID; self.workspaceID = workspaceID; self.botID = botID; promptCommandID = promptID; isMutation = mutation
         approvalClientID = approvalClient; approvalEventID = approvalEvent; self.approvalAllows = approvalAllows
         approvalBinding = extendedApproval
     }
@@ -117,6 +126,16 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
             "endpoint": .string("quenderin-roster"),
             "payload": .object(["schemaVersion": .integer(1), "workspaceId": .string(workspaceID)])
         ])]))
+    }
+    public static func botSubmit(workspaceID: String, botID: String, expectedSessionID: String, expectedRevision: Int64, commandID: String, text: String) throws -> Self {
+        try botRoute("quenderin-submit", payload: .object(["schemaVersion": .integer(1), "workspaceId": .string(workspaceID), "botId": .string(botID),
+            "expectedSessionId": .string(expectedSessionID), "expectedRevision": .integer(expectedRevision), "commandId": .string(commandID), "text": .string(text)]))
+    }
+    public static func botCommand(workspaceID: String, botID: String, commandID: String) throws -> Self {
+        try botRoute("quenderin-command", payload: .object(["schemaVersion": .integer(1), "workspaceId": .string(workspaceID), "botId": .string(botID), "commandId": .string(commandID)]))
+    }
+    private static func botRoute(_ endpoint: String, payload: RemoteHarnessJSON) throws -> Self {
+        try Self(method: .pluginRouteCall, params: .object(["route": .string("api/bot"), "body": .object(["endpoint": .string(endpoint), "payload": payload])]))
     }
     public static func sessionList() throws -> Self { try call("session/list", args: .object(["_request": .object([:])])) }
     public static func sessionCreate(workspaceID: String) throws -> Self { try call("session/create", args: .object(["request": .object(["workspaceId": .string(workspaceID)])])) }

@@ -232,3 +232,22 @@ patched remote bridge/switch remain the existing pinned MIT upstream source
 at `9a60e783ec1ceaff6116b0462a2863f07f602a55`; their notice is
 [../LICENSE.upstream](../LICENSE.upstream). No third-party implementation is
 vendored into this package.
+
+
+## Prepared Bot work journey — hosted execution pending
+
+The Bot fixture retains the passive store/channel read proof, then enables an
+explicit empty synthetic capability preparer and a two-call text adapter. The
+actual patched Remote controller/router, mounted Bot writer, durable journal and
+official `sessionController.prompt` run. It checks two sequential commands on one
+stable Bot, each matching the real `user/message` `source.rpcId` and subsequent
+`turn/end`; duplicates and payload conflicts preserve the original receipt.
+The second scripted call waits for the existing Stop path; an official aborted
+turn must settle it. A status query recovers the first admitted part, and a
+shared Fetch dispatcher without authenticated work scope remains unavailable.
+The two model calls and zero tools are synthetic; no provider is activated.
+
+`run.mjs` requires these work facts before accepting the hosted Bot artifact.
+This extension has not been run locally or against an installed user Bot. Its
+successful source/Node checks do not establish the new hosted journey passed,
+full Bot startup compatibility, a provider invoice cap, or native rendered UI.

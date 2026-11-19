@@ -101,7 +101,11 @@ object RemoteHarnessCodec {
         val params = paramsValue.objectValue()
         when (method) {
             DESCRIBE -> rhCheck(params.isEmpty(), "invalid-params")
-            RemoteHarnessBotRead.METHOD -> RemoteHarnessBotRead.validateRequest(paramsValue)
+            RemoteHarnessBotRead.METHOD -> {
+                val endpoint = params.rhRequired("body").objectValue().rhString("endpoint")
+                if (endpoint == RemoteHarnessBotRead.ENDPOINT) RemoteHarnessBotRead.validateRequest(paramsValue)
+                else RemoteHarnessBotWork.validateRequest(paramsValue)
+            }
             CLOSE -> { params.rhFields("streamId"); rhID(params.rhString("streamId")) }
             CALL, OPEN -> {
                 if (method == OPEN) { params.rhFields("streamId", "endpoint", "payload"); rhID(params.rhString("streamId")) }

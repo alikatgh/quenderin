@@ -97,6 +97,9 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
     var assistantRevision = 0L
     var companion = true
     var botCarrier = false; var botCapability = false; var botReads = 0
+    var botWorkCapability = false; var botSubmits = 0; var botQueries = 0; var dropBotACK = false
+    var botReceiptTransform: (RemoteHarnessJSON) -> RemoteHarnessJSON = { it }
+    val botReceipts = linkedMapOf<String, RemoteHarnessJSON>()
     var deferBotResponse = false; var botResult: RemoteHarnessJSON? = null
     val heldBotResponses = java.util.ArrayDeque<() -> Unit>()
     var deferSessionList = false
@@ -150,7 +153,7 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
     fun botRoster(workspaceID: String = "workspace-a", revision: Long = 7, ids: List<Pair<String, String>> = listOf("bot-a" to "session-a")) =
         obj("status" to num(200), "json" to obj("ok" to RemoteHarnessJSON.BooleanValue(true), "value" to obj(
             "schemaVersion" to num(1), "workspaceId" to str(workspaceID), "revision" to num(revision),
-            "readOnly" to RemoteHarnessJSON.BooleanValue(true), "bots" to RemoteHarnessJSON.ArrayValue(ids.map { (botID, sessionID) ->
+            "readOnly" to RemoteHarnessJSON.BooleanValue(!botWorkCapability), "bots" to RemoteHarnessJSON.ArrayValue(ids.map { (botID, sessionID) ->
                 obj("id" to str(botID), "name" to str("Researcher"), "sessionId" to str(sessionID), "model" to str("deepseek-flash"),
                     "permission" to RemoteHarnessJSON.NullValue)
             }))))
@@ -202,13 +205,39 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
                 RemoteHarnessCodec.DESCRIBE -> response(obj("capabilities" to RemoteHarnessJSON.ArrayValue(
                     listOf(str("harness.remote.v3")) + (if (companion) listOf(str("quenderin.approvals.v1")) else emptyList()) +
                         (if (botCarrier) listOf(str(RemoteHarnessBotRead.CARRIER_CAPABILITY)) else emptyList()) +
-                        (if (botCapability) listOf(str(RemoteHarnessBotRead.CAPABILITY)) else emptyList()))))
+                        (if (botCapability) listOf(str(RemoteHarnessBotRead.CAPABILITY)) else emptyList()) +
+                        (if (botWorkCapability) listOf(str(RemoteHarnessBotWork.CAPABILITY)) else emptyList()))))
                 RemoteHarnessBotRead.METHOD -> {
-                    val workspaceID = p.rhRequired("body").objectValue().rhRequired("payload").objectValue().rhString("workspaceId")
-                    RemoteHarnessBotRead.validateRequest(request.payload.values.rhRequired("params"), workspaceID)
-                    botReads++
-                    val result = botResult ?: botRoster(workspaceID)
-                    if (deferBotResponse) heldBotResponses.add { response(result) } else response(result)
+                    val body = p.rhRequired("body").objectValue(); val payload = body.rhRequired("payload").objectValue()
+                    val workspaceID = payload.rhString("workspaceId")
+                    if (body.rhString("endpoint") == RemoteHarnessBotRead.ENDPOINT) {
+                        RemoteHarnessBotRead.validateRequest(request.payload.values.rhRequired("params"), workspaceID)
+                        botReads++
+                        val result = botResult ?: botRoster(workspaceID)
+                        if (deferBotResponse) heldBotResponses.add { response(result) } else response(result)
+                    } else {
+                        check(botWorkCapability)
+                        val id = payload.rhString("commandId"); val bot = payload.rhString("botId")
+                        fun receipt(state: String, session: String? = null, revision: Long? = null, reason: String? = null) =
+                            obj("status" to num(200), "json" to obj("ok" to RemoteHarnessJSON.BooleanValue(true), "value" to obj(
+                                "schemaVersion" to num(1), "workspaceId" to str(workspaceID), "botId" to str(bot), "commandId" to str(id),
+                                "sessionId" to (session?.let(::str) ?: RemoteHarnessJSON.NullValue), "revision" to (revision?.let(::num) ?: RemoteHarnessJSON.NullValue),
+                                "state" to str(state), "reason" to (reason?.let(::str) ?: RemoteHarnessJSON.NullValue))))
+                        when (body.rhString("endpoint")) {
+                            RemoteHarnessBotWork.SUBMIT -> {
+                                botSubmits++
+                                val durable = saved.read()!!.botCommands.single { it.commandID == id }
+                                check(durable.state == RemoteHarnessBotCommandState.PENDING && durable.scope.botID == bot && durable.scope.peerDeviceID == clientDeviceID)
+                                check(durable.digest == RemoteHarnessBotWork.submission(workspaceID, bot, payload.rhString("expectedSessionId"),
+                                    payload.rhRequired("expectedRevision").integerValue(), id, payload.rhString("text")).digest)
+                                check(id !in botReceipts)
+                                botReceipts[id] = botReceiptTransform(receipt("accepted", payload.rhString("expectedSessionId"), payload.rhRequired("expectedRevision").integerValue()))
+                                if (!dropBotACK) response(botReceipts.getValue(id))
+                            }
+                            RemoteHarnessBotWork.COMMAND -> { botQueries++; response(botReceipts[id] ?: receipt("notFound")) }
+                            else -> error("Unexpected Bot work route")
+                        }
+                    }
                 }
                 RemoteHarnessCodec.OPEN -> {
                     val endpoint = p.rhString("endpoint"); val stream = p.rhString("streamId"); streams[endpoint] = stream
@@ -997,6 +1026,113 @@ fun main(args: Array<String>) {
         classificationClient.snapshot.historyReady && classificationClient.snapshot.draft == "Retain after failed reclassification" &&
         classification.modelSelections == 1 && classification.prompts == 1 && classification.saved.read()!!.commands == priorClassifiedCommands,
         "a stale prior successful roster cannot authorize prompt/model mutations after refresh failure")
+
+    val botWork = ClientFixture().apply { botCarrier = true; botCapability = true; botWorkCapability = true }
+    var workClient = botClient(botWork)
+    workClient.chooseBot("bot-a"); botWork.pump()
+    workClient.draft("A persistent Bot task"); workClient.send(); botWork.pump()
+    verify(botWork.botSubmits == 1 && botWork.prompts == 0 && workClient.snapshot.draft.isEmpty() &&
+        workClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.ACCEPTED && workClient.snapshot.status == RemoteSessionStatus.READY,
+        "Bot task uses its own durable queue admission and does not fabricate running/completed status or a raw prompt")
+    verify(botWork.saved.read()!!.botCommands.single().scope.botID == "bot-a" && botWork.saved.read()!!.commands.isNotEmpty(),
+        "stable Bot identity and bounded scoped receipt retain the legacy uncertainty journal")
+    workClient.selectModel("deepseek", "deepseek-chat", null); botWork.pump()
+    verify(botWork.modelSelections == 0, "Bot model mutation stays guarded")
+    val originalCommand = botWork.saved.read()!!.botCommands.single()
+    workClient.draft("Changed text cannot reuse the same command identity"); botWork.id--; workClient.send(); botWork.pump()
+    verify(botWork.botSubmits == 1 && botWork.saved.read()!!.botCommands.single() == originalCommand && workClient.snapshot.draft.isNotEmpty(),
+        "a reused command ID fails before dispatch and preserves the original receipt and changed draft")
+    botWork.current!!.event("session/follow", botWork.current!!.record(++botWork.sequence, "turn/start", obj("turn" to num(1))))
+    botWork.current!!.event("session/follow", botWork.current!!.record(++botWork.sequence, "tool/call", obj("turn" to num(1), "step" to num(1),
+        "callId" to str("tool-a"), "name" to str("shell"), "arguments" to str("{\"command\":\"pwd\"}"))))
+    botWork.current!!.approval("bot-approval", session = "session-a"); botWork.pump()
+    verify(workClient.snapshot.approvalActions["bot-approval"] != null && workClient.snapshot.status == RemoteSessionStatus.AWAITING_APPROVAL,
+        "Bot work reuses exact bound tool-call approval evidence in its admitted part")
+    workClient.decideApproval("bot-approval", true); botWork.pump(); workClient.stop(); botWork.pump()
+    verify(botWork.approvalDecisions == 1 && botWork.cancellations == 1 && workClient.snapshot.status == RemoteSessionStatus.STOP_REQUESTED,
+        "Bot work approval and Stop use the existing session transport; Stop admission does not claim settlement")
+    botWork.current!!.event("session/follow", botWork.current!!.record(++botWork.sequence, "turn/end", obj("turn" to num(1), "reason" to obj("kind" to str("aborted")))))
+    botWork.pump()
+    verify(workClient.snapshot.status == RemoteSessionStatus.STOPPED, "only authoritative turn-end confirms that Bot work stopped")
+
+    val lost = ClientFixture().apply { botCarrier = true; botCapability = true; botWorkCapability = true; dropBotACK = true }
+    var lostClient = botClient(lost); lostClient.chooseBot("bot-a"); lost.pump()
+    val exactTask = "Keep this task after a lost acknowledgement"
+    lostClient.draft(exactTask); lostClient.send(); lost.pump()
+    verify(lost.botSubmits == 1 && lostClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.PENDING &&
+        lost.saved.read()!!.botCommands.single().digest.length == 64, "Bot command reservation is durable before the first send")
+    lostClient.disconnect(); lostClient = lost.newClient()
+    verify(lostClient.snapshot.draft == exactTask && lostClient.snapshot.selectedBot?.botID == "bot-a" &&
+        lostClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.UNCERTAIN, "relaunch preserves stable Bot, draft and uncertainty")
+    lostClient.resume(); lost.pump()
+    verify(lost.botSubmits == 1 && lost.botQueries == 1 && lost.prompts == 0 && lostClient.snapshot.draft.isEmpty() &&
+        lostClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.ACCEPTED && lostClient.snapshot.historyReady,
+        "lost acknowledgement reconnect queries the old command and reloads authoritative history without replay")
+    lostClient.draft("Draft follows the stable Bot across parts")
+    val oldPartTarget = lostClient.snapshot.botDispatchTarget
+    lostClient.disconnect()
+    lost.sessions.clear(); lost.sessions.add("part-b"); lost.botResult = lost.botRoster(revision = 8, ids = listOf("bot-a" to "part-b"))
+    lostClient = lost.newClient(); lostClient.resume(); lost.pump()
+    verify(lostClient.snapshot.sessionID == "part-b" && lostClient.snapshot.selectedBot?.botID == "bot-a" &&
+        lostClient.snapshot.historyReady && lostClient.snapshot.draft == "Draft follows the stable Bot across parts" && lost.botSubmits == 1,
+        "part rotation follows the authoritative stable Bot without replaying its older command or moving its draft")
+    lostClient.send(expectedBotTarget = oldPartTarget); lost.pump()
+    verify(lost.botSubmits == 1 && lostClient.snapshot.draft == "Draft follows the stable Bot across parts",
+        "a queued Send sealed for an older part cannot retarget to the Bot's newer part")
+    lostClient.stop(); lost.pump()
+    verify(lost.cancellations == 0, "an old command receipt cannot authorize Stop on a different current Bot part")
+
+    val unknown = ClientFixture().apply { botCarrier = true; botCapability = true; botWorkCapability = true; dropBotACK = true }
+    var unknownClient = botClient(unknown); unknownClient.chooseBot("bot-a"); unknown.pump()
+    unknownClient.draft("Unresolved task"); unknownClient.send(); unknown.pump(); unknown.botReceipts.clear(); unknownClient.disconnect()
+    unknownClient = unknown.newClient(); unknownClient.resume(); unknown.pump(); unknownClient.send(); unknown.pump()
+    verify(unknown.botSubmits == 1 && unknown.botQueries == 1 && unknownClient.snapshot.draft == "Unresolved task" &&
+        unknownClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.NOT_FOUND,
+        "notFound is a durable uncertain outcome and never licenses automatic or accidental resubmission")
+    unknownClient.chooseWorkspace("workspace-a"); unknown.pump(); unknownClient.chooseSession("session-a"); unknown.pump()
+    verify(unknownClient.snapshot.selectedBot == null && unknownClient.snapshot.draft.isEmpty() && unknownClient.snapshot.botSessionReadOnly,
+        "ordinary navigation cannot inherit a stable Bot draft or bypass its raw-session restriction")
+
+    val deniedWork = ClientFixture().apply { botCarrier = true; botCapability = true }
+    val deniedWorkClient = botClient(deniedWork); deniedWorkClient.chooseBot("bot-a"); deniedWork.pump()
+    deniedWorkClient.draft("Read-only task"); deniedWorkClient.send(); deniedWork.pump()
+    verify(deniedWork.botSubmits == 0 && deniedWork.prompts == 0 && deniedWorkClient.snapshot.draft == "Read-only task" &&
+        !deniedWorkClient.snapshot.botWorkSupported, "older Hosts retain view-only Bot history without task fallback")
+
+    val rejectedWork = ClientFixture().apply { botCarrier = true; botCapability = true; botWorkCapability = true
+        botReceiptTransform = { result ->
+            val json = result.objectValue().rhRequired("json").objectValue()
+            val value = json.rhRequired("value").objectValue()
+            obj("status" to num(200), "json" to RemoteHarnessJSON.ObjectValue(json + ("value" to RemoteHarnessJSON.ObjectValue(value + mapOf(
+                "state" to str("rejected"), "sessionId" to RemoteHarnessJSON.NullValue, "revision" to RemoteHarnessJSON.NullValue, "reason" to str("staleRevision"))))))
+        }
+    }
+    val rejectedClient = botClient(rejectedWork); rejectedClient.chooseBot("bot-a"); rejectedWork.pump()
+    rejectedClient.draft("Keep this refused task"); rejectedClient.send(); rejectedWork.pump()
+    verify(rejectedWork.botSubmits == 1 && rejectedClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.REJECTED &&
+        rejectedClient.snapshot.draft == "Keep this refused task", "authoritative refusal keeps the exact task draft")
+
+    val failedBotStore = ClientFixture().apply { botCarrier = true; botCapability = true; botWorkCapability = true }
+    val failedBotClient = botClient(failedBotStore); failedBotClient.chooseBot("bot-a"); failedBotStore.pump()
+    failedBotClient.draft("Keep before durable reservation failure"); val beforeFailure = failedBotStore.saved.source
+    failedBotStore.saved.failWrite = true; failedBotClient.send(); failedBotStore.pump()
+    verify(failedBotStore.botSubmits == 0 && failedBotClient.snapshot.phase == RemoteHarnessClientPhase.BLOCKED &&
+        failedBotStore.saved.source == beforeFailure && failedBotClient.snapshot.draft == "Keep before durable reservation failure",
+        "failed Bot reservation persistence prevents all dispatch while retaining the committed draft")
+
+    val badPartReceipt = ClientFixture().apply { botCarrier = true; botCapability = true; botWorkCapability = true
+        botReceiptTransform = { result ->
+            val json = result.objectValue().rhRequired("json").objectValue()
+            val value = json.rhRequired("value").objectValue()
+            obj("status" to num(200), "json" to RemoteHarnessJSON.ObjectValue(json + ("value" to RemoteHarnessJSON.ObjectValue(value + ("sessionId" to str("wrong-part"))))))
+        }
+    }
+    val badReceiptClient = botClient(badPartReceipt); badReceiptClient.chooseBot("bot-a"); badPartReceipt.pump()
+    badReceiptClient.draft("Retain after invalid admission receipt"); badReceiptClient.send(); badPartReceipt.pump()
+    verify(badPartReceipt.botSubmits == 1 && badReceiptClient.snapshot.botCommand?.state == RemoteHarnessBotCommandState.UNCERTAIN &&
+        badReceiptClient.snapshot.draft == "Retain after invalid admission receipt" && badPartReceipt.saved.read()!!.botCommands.single().expectedSessionID == "session-a",
+        "a retargeted admission receipt leaves the original command uncertain instead of accepting another part")
+
 
     val remembered = ClientFixture().apply { botCarrier = true; botCapability = true; sessions.add("ordinary-session") }
     val rememberedClient = botClient(remembered)

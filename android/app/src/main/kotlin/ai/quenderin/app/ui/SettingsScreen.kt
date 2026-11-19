@@ -77,7 +77,7 @@ fun SettingsScreen(
     model: ModelEntry,
     persistence: ConversationPersistence,
     onSelectModel: (ModelEntry) -> Unit,
-    onOpenDeepSeek: () -> Unit = {},
+    onOpenBots: () -> Unit = {},
     onOpenComputer: () -> Unit = {},
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
@@ -152,8 +152,8 @@ fun SettingsScreen(
                 { page = SettingsPage.RESPONSES }, Modifier.testTag("settings.responses"))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             NativeSectionLabel(stringResource(R.string.settings_connections))
-            NativeSettingsRow(stringResource(R.string.entry_deepseek_title), stringResource(R.string.entry_deepseek_detail),
-                onOpenDeepSeek, Modifier.testTag("settings.deepseek"))
+            NativeSettingsRow(stringResource(R.string.entry_bots_title), stringResource(R.string.entry_bots_detail),
+                onOpenBots, Modifier.testTag("settings.bots"))
             NativeSettingsRow(stringResource(R.string.entry_computer_title), stringResource(R.string.entry_computer_detail),
                 onOpenComputer, Modifier.testTag("settings.computer"))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

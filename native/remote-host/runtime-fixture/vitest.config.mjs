@@ -26,6 +26,8 @@ export default {
       if (source === '@quenderin/plugin-route-dispatcher') return resolve(upstream, 'packages/plugin/src/plugin-route-dispatcher.ts');
       if (source === '@quenderin/connection-controller') return resolve(upstream, 'packages/plugin/src/connection-controller.ts');
       if (source === '@quenderin/rpc-router') return resolve(upstream, 'packages/plugin/src/rpc-router.ts');
+      if (source === '@quenderin/bot-work-runtime') return resolve(upstream, 'packages/plugin/src/quenderin-bot-work-runtime.mjs');
+      if (source === '@quenderin/bot-work-journal') return resolve(upstream, 'packages/plugin/src/quenderin-bot-work-journal.mjs');
       if (source === '@quenderin/bot-runtime') return resolve(upstream, 'packages/plugin/src/quenderin-bot-runtime.mjs');
       if (source === '@quenderin/pinned-bot-channel') return resolve(bot, 'ds-bot/src/host/channel.js');
       if (source === '@quenderin/pinned-bot-store') return resolve(bot, 'ds-bot/src/host/store.js');

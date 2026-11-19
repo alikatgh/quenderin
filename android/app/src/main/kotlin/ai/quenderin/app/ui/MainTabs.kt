@@ -59,7 +59,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Four peer destinations share the loaded local engine. Material navigation adapts to the current
+ * Local peer destinations share the loaded local engine. Material navigation adapts to the current
  * window while retained destination layers preserve the original coroutine and draft ownership.
  */
 @Composable
@@ -68,7 +68,7 @@ fun MainTabs(
     model: ModelEntry,
     conversations: ConversationPersistence,
     onSelectModel: (ModelEntry) -> Unit,
-    onOpenDeepSeek: () -> Unit = {},
+    onOpenBots: () -> Unit = {},
     onOpenComputer: () -> Unit = {},
     automaticEnabled: Boolean = false,
     onAutomaticChange: (Boolean) -> Unit = {},
@@ -99,6 +99,7 @@ fun MainTabs(
         val destinations = listOf(
             Triple(NavKind.Chat, stringResource(R.string.tab_chat), 0),
             Triple(NavKind.Agent, stringResource(R.string.tab_agent), 1),
+            Triple(NavKind.Bots, stringResource(R.string.entry_bots_title), 4),
             Triple(NavKind.Images, stringResource(R.string.tab_images), 3),
             Triple(NavKind.Settings, stringResource(R.string.tab_settings), 2),
         )
@@ -109,7 +110,7 @@ fun MainTabs(
                     destinations.forEach { (kind, label, index) ->
                         NavigationBarItem(
                             selected = tab == index,
-                            onClick = { selectTab(index) },
+                            onClick = { if (index == 4) onOpenBots() else selectTab(index) },
                             icon = { NavIcon(kind, tab == index) },
                             label = { Text(label) },
                             modifier = Modifier.testTag("nav.${kind.name.lowercase()}"),
@@ -125,7 +126,7 @@ fun MainTabs(
                     destinations.forEach { (kind, label, index) ->
                         NavigationRailItem(
                             selected = tab == index,
-                            onClick = { selectTab(index) },
+                            onClick = { if (index == 4) onOpenBots() else selectTab(index) },
                             icon = { NavIcon(kind, tab == index) },
                             label = { Text(label) },
                             modifier = Modifier.testTag("nav.${kind.name.lowercase()}"),
@@ -159,7 +160,7 @@ fun MainTabs(
                     }
                     RetainedDestination(visible = tab == 2) {
                         SettingsScreen(
-                            onOpenDeepSeek = onOpenDeepSeek,
+                            onOpenBots = onOpenBots,
                             onOpenComputer = onOpenComputer,
                             active = tab == 2,
                             suspendForSpecialist = engine::suspendForSpecialist,
@@ -286,7 +287,7 @@ private fun Modifier.tabVisibility(visible: Boolean): Modifier = this
         ) {},
     )
 
-private enum class NavKind { Chat, Agent, Images, Settings }
+private enum class NavKind { Chat, Agent, Bots, Images, Settings }
 
 /**
  * Crisp, theme-tinted line icons drawn in Compose — replacing the full-colour emoji that clashed with
@@ -326,6 +327,14 @@ private fun NavIcon(kind: NavKind, selected: Boolean) {
                     close()
                 }
                 drawPath(p, color, style = Stroke(sw, join = StrokeJoin.Round))
+            }
+            NavKind.Bots -> {
+                drawRoundRect(color, topLeft = Offset(s * 0.15f, s * 0.27f), size = Size(s * 0.70f, s * 0.53f),
+                    cornerRadius = CornerRadius(s * 0.13f), style = Stroke(sw))
+                drawLine(color, Offset(s * 0.5f, s * 0.12f), Offset(s * 0.5f, s * 0.27f), sw, StrokeCap.Round)
+                drawCircle(color, s * 0.035f, Offset(s * 0.5f, s * 0.12f))
+                for (x in listOf(0.35f, 0.65f)) drawCircle(color, s * 0.045f, Offset(s * x, s * 0.48f))
+                drawLine(color, Offset(s * 0.36f, s * 0.65f), Offset(s * 0.64f, s * 0.65f), sw, StrokeCap.Round)
             }
             NavKind.Images -> {
                 drawRoundRect(color, topLeft = Offset(s * 0.12f, s * 0.14f), size = Size(s * 0.76f, s * 0.72f),

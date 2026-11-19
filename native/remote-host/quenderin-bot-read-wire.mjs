@@ -55,9 +55,13 @@ export function assertBotReadWireBytes(text) {
   const payload = members(text, payloadSpan.begin), method = payload.result.get('method');
   if (!method || method.end - method.begin > 128 || JSON.parse(text.slice(method.begin, method.end)) !== 'plugin.route.call') return;
   const params = payload.result.get('params');
-  if (!params || bytes(text.slice(params.begin, params.end)) > 4096) throw new Error('Bot roster request exceeds its bound');
+  if (!params || bytes(text.slice(params.begin, params.end)) > 32768) throw new Error('Bot route request exceeds its bound');
   const request = members(text, params.begin), bodySpan = request.result.get('body');
   const body = bodySpan ? members(text, bodySpan.begin) : { result: new Map(), duplicate: false };
+  const endpointSpan = body.result.get('endpoint');
+  const endpoint = endpointSpan && endpointSpan.end - endpointSpan.begin <= 128 ? JSON.parse(text.slice(endpointSpan.begin, endpointSpan.end)) : undefined;
+  const limit = ['quenderin-submit', 'quenderin-command'].includes(endpoint) ? 32768 : 4096;
+  if (bytes(text.slice(params.begin, params.end)) > limit) throw new Error('Bot route request exceeds its bound');
   const argsSpan = body.result.get('payload');
   const args = argsSpan ? members(text, argsSpan.begin) : { duplicate: false };
   if ([outer, payload, request, body, args].some(value => value.duplicate)) throw new Error('Duplicate Bot roster field');

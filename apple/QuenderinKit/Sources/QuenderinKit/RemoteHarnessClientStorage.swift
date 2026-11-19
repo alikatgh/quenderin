@@ -143,6 +143,35 @@ public struct RemoteHarnessClientSavedCommand: Codable, NativeConnectionPrivateV
     /// The exact private operation is protected by the local journal, never logged.
     let params: Data
     var outcome: String
+    var origin: String? = nil
+    var hostFingerprint: String? = nil
+    var clientDeviceID: String? = nil
+    var clientIdentityKey: String? = nil
+    var botID: String? = nil
+    var botReceipt: Data? = nil
+}
+/// Stable Bot identity survives current-part rotation. No display metadata or
+/// credentials are stored here. Legacy view-only scopes remain independent.
+struct RemoteHarnessClientBotIdentity: Codable, NativeConnectionPrivateValue {
+    let origin: String
+    let hostID: String
+    let hostFingerprint: String
+    let clientDeviceID: String
+    let clientIdentityKey: String
+    let workspaceID: String
+    let botID: String
+    func matches(_ journal: RemoteHarnessClientJournal) -> Bool {
+        zip([origin, hostID, hostFingerprint, clientDeviceID, clientIdentityKey, workspaceID],
+            [journal.origin, journal.profile?.hostID, journal.profile?.hostFingerprint, journal.deviceID, journal.clientIdentityKey, journal.profile?.workspaceID]).allSatisfy { expected, actual in
+                actual.map { expected.utf8.elementsEqual($0.utf8) } == true
+            }
+    }
+    func matches(_ command: RemoteHarnessClientSavedCommand) -> Bool {
+        zip([origin, hostID, hostFingerprint, clientDeviceID, clientIdentityKey, workspaceID, botID],
+            [command.origin, command.hostID, command.hostFingerprint, command.clientDeviceID, command.clientIdentityKey, command.workspaceID, command.botID]).allSatisfy { expected, actual in
+                actual.map { expected.utf8.elementsEqual($0.utf8) } == true
+            }
+    }
 }
 /// Durable navigation restriction only; this contains no Bot display data.
 /// A missing optional marker in an older record means no known restriction.
@@ -166,6 +195,7 @@ public struct RemoteHarnessClientSavedSession: Codable, NativeConnectionPrivateV
     var draft: String
     var history: [Data]
     var botReadOnlyScope: RemoteHarnessClientBotSessionScope? = nil
+    var selectedBot: RemoteHarnessClientBotIdentity? = nil
 }
 struct RemoteHarnessClientRecoveryHost: Codable, NativeConnectionPrivateValue {
     let hostID: String
@@ -216,6 +246,7 @@ public struct RemoteHarnessClientJournal: Codable, NativeConnectionPrivateValue 
     public var schemaVersion = 1
     public var origin: String?
     public var deviceID: String?
+    public var clientIdentityKey: String?
     public var pins: [String: String] = [:]
     public var profile: NativeConnectionProfile?
     public var sessionID: String?
@@ -224,12 +255,14 @@ public struct RemoteHarnessClientJournal: Codable, NativeConnectionPrivateValue 
     public var commands: [RemoteHarnessClientSavedCommand] = []
     public var savedSessions: [RemoteHarnessClientSavedSession] = []
     var botReadOnlyScope: RemoteHarnessClientBotSessionScope?
+    var selectedBot: RemoteHarnessClientBotIdentity?
     var recoveryHost: RemoteHarnessClientRecoveryHost?
     public init() {}
     func validate() throws {
         guard schemaVersion == 1, pins.count <= 256, history.count <= 1024, commands.count <= 4096, savedSessions.count <= 50, draft.utf8.count <= 65_536 else { throw RemoteHarnessClientFailure.storage }
         if let origin { guard try NativeConnectionOrigin.canonical(origin) == origin else { throw RemoteHarnessClientFailure.storage } }
         if let deviceID { try RemoteHarnessClientEncoding.deviceID(deviceID) }
+        if let clientIdentityKey { _ = try RemoteHarnessClientEncoding.key(clientIdentityKey) }
         if let profile { guard profile.kind == .remoteHarness, profile.endpoint == origin, let hostID = profile.hostID, pins[hostID] == profile.hostFingerprint else { throw RemoteHarnessClientFailure.storage } }
         if let recoveryHost {
             try RemoteHarnessClientEncoding.deviceID(recoveryHost.hostID)
@@ -241,12 +274,38 @@ public struct RemoteHarnessClientJournal: Codable, NativeConnectionPrivateValue 
         if let scope = botReadOnlyScope {
             guard scope.matches(origin: origin, hostID: profile?.hostID, hostFingerprint: profile?.hostFingerprint, workspaceID: profile?.workspaceID, sessionID: sessionID) else { throw RemoteHarnessClientFailure.storage }
         }
+        if let selectedBot {
+            guard selectedBot.matches(self), sessionID != nil else { throw RemoteHarnessClientFailure.storage }
+            try RemoteHarnessBotReadContract.workspace(selectedBot.botID)
+        }
+        guard commands.filter({ $0.botID != nil }).count <= 1_024 else { throw RemoteHarnessClientFailure.storage }
         for data in history { _ = try RemoteHarnessJSON(data: data) }
-        for command in commands { _ = try RemoteHarnessJSON(data: command.params) }
+        for command in commands {
+            let params = try RemoteHarnessJSON(data: command.params)
+            if let botID = command.botID {
+                let request = try RemoteHarnessBotWorkContract.request(params)
+                guard request.endpoint == "quenderin-submit", request.bot.utf8.elementsEqual(botID.utf8),
+                      request.command.utf8.elementsEqual(command.id.utf8), command.workspaceID?.utf8.elementsEqual(request.workspace.utf8) == true,
+                      command.sessionID?.utf8.elementsEqual(request.session?.utf8 ?? "".utf8) == true,
+                      let commandOrigin = command.origin, try NativeConnectionOrigin.canonical(commandOrigin) == commandOrigin,
+                      command.hostFingerprint != nil, command.clientDeviceID != nil, command.clientIdentityKey != nil else { throw RemoteHarnessClientFailure.storage }
+                try NativeConnectionBounds.digest(command.hostFingerprint!)
+                try RemoteHarnessClientEncoding.deviceID(command.clientDeviceID!)
+                _ = try RemoteHarnessClientEncoding.key(command.clientIdentityKey!)
+                if let receipt = command.botReceipt {
+                    let decoded = try RemoteHarnessBotCommandReceipt(routeResult: RemoteHarnessJSON(data: receipt), expectedWorkspaceID: request.workspace, expectedBotID: botID, expectedCommandID: command.id)
+                    try decoded.validateAdmission(for: RemoteHarnessOperation(method: .pluginRouteCall, params: params))
+                }
+            }
+        }
         for session in savedSessions {
             guard !session.hostID.isEmpty, !session.workspaceID.isEmpty, !session.sessionID.isEmpty, session.draft.utf8.count <= 65_536, session.history.count <= 1024 else { throw RemoteHarnessClientFailure.storage }
             if let scope = session.botReadOnlyScope {
                 guard scope.matches(origin: origin, hostID: session.hostID, hostFingerprint: pins[session.hostID], workspaceID: session.workspaceID, sessionID: session.sessionID) else { throw RemoteHarnessClientFailure.storage }
+            }
+            if let bot = session.selectedBot {
+                guard zip([bot.origin, bot.hostID, bot.hostFingerprint, bot.clientDeviceID, bot.clientIdentityKey, bot.workspaceID],
+                    [origin, session.hostID, pins[session.hostID], deviceID, clientIdentityKey, session.workspaceID]).allSatisfy({ expected, actual in actual.map { expected.utf8.elementsEqual($0.utf8) } == true }) else { throw RemoteHarnessClientFailure.storage }
             }
             for data in session.history { _ = try RemoteHarnessJSON(data: data) }
         }

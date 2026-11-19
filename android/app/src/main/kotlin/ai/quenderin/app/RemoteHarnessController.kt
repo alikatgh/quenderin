@@ -75,6 +75,7 @@ class RemoteHarnessController internal constructor(
     fun session(id: String) = navigate { it.chooseSession(id) }
     fun refreshBots() { dispatch(RemoteHarnessClient::refreshBotRoster) }
     fun bot(id: String) = navigate { it.chooseBot(id) }
+    fun checkBotCommands() { dispatch(RemoteHarnessClient::checkBotCommands) }
     fun createSession() = navigate(RemoteHarnessClient::createSession)
     fun selectModel(provider: String, model: String, effort: String?) { dispatch { it.selectModel(provider, model, effort) } }
     fun draft(value: String, scope: RemoteHarnessClientDraftScope?) {
@@ -90,7 +91,8 @@ class RemoteHarnessController internal constructor(
             return
         }
         inputError = null
-        dispatch { it.send(scope) }
+        val botTarget = state.botDispatchTarget
+        dispatch { it.send(scope, botTarget) }
     }
     fun stop() { dispatch(RemoteHarnessClient::stop) }
     fun decideApproval(eventID: String, allowedOnce: Boolean) { dispatch { it.decideApproval(eventID, allowedOnce) } }

@@ -36,6 +36,7 @@ interface RemoteHarnessDecryptedPort {
 class RemoteHarnessPreparedMutation internal constructor(
     val logicalCommandID: String, val wireRequestID: String, val endpoint: String,
     val context: RemoteHarnessAuthenticatedContext,
+    val botSubmission: RemoteHarnessBotSubmission? = null,
 ) {
     override fun toString() = "RemoteHarnessPreparedMutation(redacted)"
 }
@@ -54,6 +55,7 @@ class RemoteHarnessOutcome internal constructor(
     val context: RemoteHarnessAuthenticatedContext,
     val value: RemoteHarnessJSON? = null, val frame: RemoteHarnessFrame? = null, val errorCode: String? = null,
     val botRoster: RemoteHarnessBotRoster? = null,
+    val botCommand: RemoteHarnessBotCommandReceipt? = null,
 ) {
     override fun toString() = "RemoteHarnessOutcome(redacted)"
 }
@@ -75,9 +77,13 @@ class RemoteHarnessCoordinator(
     private val clock: RemoteHarnessClock,
     private val journal: RemoteHarnessMutationJournal,
 ) {
-    private enum class Kind { DESCRIBE, CALL, BOT_READ, OPEN, CLOSE }
+    private enum class Kind { DESCRIBE, CALL, BOT_READ, BOT_SUBMIT, BOT_COMMAND, OPEN, CLOSE }
     private class Pending(val id: String, val context: RemoteHarnessAuthenticatedContext, val kind: Kind, val deadline: Long, val operation: RemoteHarnessOperation?,
-        val logicalID: String?, val streamID: String?, val completion: (RemoteHarnessOutcome) -> Unit) { var sent = false }
+        val logicalID: String?, val streamID: String?, val completion: (RemoteHarnessOutcome) -> Unit,
+        val botID: String? = null, val botCommandID: String? = null, val botSubmission: RemoteHarnessBotSubmission? = null) {
+        var sent = false
+        val mutating get() = operation?.mutating == true || kind == Kind.BOT_SUBMIT
+    }
     private class Stream(val id: String, val context: RemoteHarnessAuthenticatedContext, val operation: RemoteHarnessOperation,
         val listener: (RemoteHarnessStreamNotice) -> Unit)
 
@@ -86,6 +92,7 @@ class RemoteHarnessCoordinator(
     private var nextID = 0L
     private var ready = false
     private var botReadEnabled = false
+    private var botWorkEnabled = false
     private var latestDescribeID: String? = null
     private var teardownUnconfirmed = false
     private var retiringConnection = false
@@ -105,7 +112,7 @@ class RemoteHarnessCoordinator(
     @Synchronized fun describe(completion: (RemoteHarnessOutcome) -> Unit): String {
         expireLocked(); requireConnected()
         ready = false
-        botReadEnabled = false
+        botReadEnabled = false; botWorkEnabled = false
         latestDescribeID = null
         return dispatch(Kind.DESCRIBE, RemoteHarnessCodec.DESCRIBE, obj(), null, null, null, completion)
     }
@@ -119,6 +126,21 @@ class RemoteHarnessCoordinator(
         val params = RemoteHarnessBotRead.request(workspaceID)
         RemoteHarnessBotRead.validateRequest(params, workspaceID)
         return dispatch(Kind.BOT_READ, RemoteHarnessBotRead.METHOD, params, null, null, null, completion)
+    }
+
+    @Synchronized fun submitBot(submission: RemoteHarnessBotSubmission, completion: (RemoteHarnessOutcome) -> Unit): String {
+        expireLocked(); val c = requireConnected()
+        rhCheck(ready && botWorkEnabled, "bot-work-capabilities-required")
+        rhCheck(c.binding.workspaceID == submission.workspaceID && c.sessionID == submission.sessionID, "bot-work-binding-mismatch")
+        return dispatch(Kind.BOT_SUBMIT, RemoteHarnessBotRead.METHOD, submission.params, null, submission.commandID, null, completion,
+            submission.botID, submission.commandID, submission)
+    }
+    @Synchronized fun botCommand(botID: String, commandID: String, completion: (RemoteHarnessOutcome) -> Unit): String {
+        expireLocked(); val c = requireConnected()
+        rhCheck(ready && botWorkEnabled, "bot-work-capabilities-required")
+        val workspace = c.binding.workspaceID ?: throw RemoteHarnessException("workspace-binding-required")
+        return dispatch(Kind.BOT_COMMAND, RemoteHarnessBotRead.METHOD, RemoteHarnessBotWork.command(workspace, botID, commandID),
+            null, null, null, completion, botID, commandID)
     }
 
     @Synchronized fun call(operation: RemoteHarnessOperation, logicalCommandID: String? = operation.logicalCommandID,
@@ -177,7 +199,7 @@ class RemoteHarnessCoordinator(
         val result = frame.payload.values["result"]
         if (frame.type == "rpc.error") {
             // RESPONSE_TOO_LARGE can occur AFTER a Host invokes the mutation. Never replay it.
-            val unknown = request.operation?.mutating == true
+            val unknown = request.mutating
             completeFailure(request, if (unknown) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.REMOTE_FAILURE,
                 frame = if (request.kind == Kind.BOT_READ) null else frame, code = if (unknown) "mutation-outcome-unknown" else "remote-error")
             return true
@@ -187,13 +209,18 @@ class RemoteHarnessCoordinator(
                 Kind.DESCRIBE -> {
                     rhCheck(request.id == latestDescribeID, "stale-describe")
                     RemoteHarnessCodec.requireV3(result!!); approvalGate.enable(result)
-                    botReadEnabled = RemoteHarnessBotRead.supported(result); ready = true
+                    botReadEnabled = RemoteHarnessBotRead.supported(result); botWorkEnabled = RemoteHarnessBotWork.supported(result); ready = true
                     deliver(request, RemoteHarnessOutcomeKind.RESULT, result, frame)
                 }
                 Kind.BOT_READ -> {
                     val workspaceID = request.context.binding.workspaceID ?: throw RemoteHarnessException("workspace-binding-required")
                     val roster = RemoteHarnessBotRead.result(result!!, workspaceID)
                     deliver(request, RemoteHarnessOutcomeKind.RESULT, botRoster = roster)
+                }
+                Kind.BOT_SUBMIT, Kind.BOT_COMMAND -> {
+                    val receipt = request.botSubmission?.let { RemoteHarnessBotWork.receipt(result!!, it) }
+                        ?: RemoteHarnessBotWork.receipt(result!!, request.context.binding.workspaceID!!, request.botID!!, request.botCommandID!!)
+                    deliver(request, RemoteHarnessOutcomeKind.RESULT, botCommand = receipt)
                 }
                 Kind.CALL -> {
                     val gateway = RemoteHarnessCodec.gatewayResult(result!!)
@@ -213,7 +240,7 @@ class RemoteHarnessCoordinator(
                 }
             }
         } catch (_: RemoteHarnessException) {
-            completeFailure(request, if (request.operation?.mutating == true) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE,
+            completeFailure(request, if (request.mutating) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE,
                 frame = if (request.kind == Kind.BOT_READ) null else frame, code = "invalid-response")
         }
         return true
@@ -225,6 +252,7 @@ class RemoteHarnessCoordinator(
     @Synchronized fun expire() = expireLocked()
     @Synchronized fun isReady() = ready
     @Synchronized fun botReadSupported() = ready && botReadEnabled
+    @Synchronized fun botWorkSupported() = ready && botWorkEnabled
     @Synchronized fun approvalSupported() = approvalGate.available()
     @Synchronized fun pendingApprovals() = approvalGate.approvals()
     @Synchronized fun pendingCount() = pending.size
@@ -247,19 +275,20 @@ class RemoteHarnessCoordinator(
         return "rh-$lastGeneration-$prefix-$nextID"
     }
     private fun dispatch(kind: Kind, method: String, params: RemoteHarnessJSON, operation: RemoteHarnessOperation?, logicalID: String?,
-        streamID: String?, completion: (RemoteHarnessOutcome) -> Unit): String {
+        streamID: String?, completion: (RemoteHarnessOutcome) -> Unit, botID: String? = null, botCommandID: String? = null,
+        botSubmission: RemoteHarnessBotSubmission? = null): String {
         val c = requireConnected()
         rhCheck(pending.size < RemoteHarnessBounds.PENDING_RPC, "pending-limit")
         val now = clock.monotonicMilliseconds()
         rhCheck(now >= 0 && now <= Long.MAX_VALUE - RemoteHarnessBounds.DEADLINE_MS, "invalid-clock")
         val id = identifier("rpc")
         val frame = RemoteHarnessCodec.request(method, params, id, clock.epochMilliseconds())
-        val request = Pending(id, c, kind, now + RemoteHarnessBounds.DEADLINE_MS, operation, logicalID, streamID, completion)
+        val request = Pending(id, c, kind, now + RemoteHarnessBounds.DEADLINE_MS, operation, logicalID, streamID, completion, botID, botCommandID, botSubmission)
         if (kind == Kind.DESCRIBE) latestDescribeID = id
         // Reserve capacity before invoking the journal, which may itself call the owner reentrantly.
         pending[id] = request
-        if (operation?.mutating == true) {
-            val prepared = RemoteHarnessPreparedMutation(logicalID!!, id, operation.endpoint, c)
+        if (request.mutating) {
+            val prepared = RemoteHarnessPreparedMutation(logicalID!!, id, operation?.endpoint ?: RemoteHarnessBotWork.SUBMIT, c, botSubmission)
             val saved = try { journal.prepare(prepared) } catch (_: Exception) { false }
             if (!saved) { pending.remove(id); throw RemoteHarnessException("journal-rejected") }
             // A reentrant journal callback must not swap the connection or expire the reservation.
@@ -270,7 +299,7 @@ class RemoteHarnessCoordinator(
         try { port.send(c, frame.rawJSON.toByteArray(Charsets.UTF_8)) }
         catch (error: Exception) {
             if (pending.remove(id) != null) {
-                completeFailure(request, if (operation?.mutating == true) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE,
+                completeFailure(request, if (request.mutating) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE,
                     code = "send-failed")
             }
             if (error is RemoteHarnessException && error.code == "transport-invalidation-failed") throw error
@@ -310,7 +339,7 @@ class RemoteHarnessCoordinator(
         rhCheck(now >= 0, "invalid-clock")
         for (request in pending.values.toList()) {
             if (request.deadline > now || pending.remove(request.id) == null) continue
-            completeFailure(request, if (request.sent && request.operation?.mutating == true) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE,
+            completeFailure(request, if (request.sent && request.mutating) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE,
                 code = "deadline-exceeded")
         }
     }
@@ -360,7 +389,7 @@ class RemoteHarnessCoordinator(
         val oldPending = pending.values.toList(); val oldStreams = streams.values.toList()
         val oldContext = context
         pending.clear(); streams.clear(); hostSlots.clear(); context = null; ready = false
-        botReadEnabled = false; latestDescribeID = null
+        botReadEnabled = false; botWorkEnabled = false; latestDescribeID = null
         approvalGate.reset()
         var deliveredReason = reason
         if (invalidateTransport && oldContext != null) {
@@ -376,13 +405,13 @@ class RemoteHarnessCoordinator(
             if (replacement != null) lastGeneration = replacement.generation
         }
         for (request in oldPending) deliver(request,
-            if (request.sent && request.operation?.mutating == true) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE, code = deliveredReason)
+            if (request.sent && request.mutating) RemoteHarnessOutcomeKind.OUTCOME_UNKNOWN else RemoteHarnessOutcomeKind.LOCAL_FAILURE, code = deliveredReason)
         for (stream in oldStreams) notify(stream, RemoteHarnessStreamNotice(RemoteHarnessStreamNoticeKind.CLOSED, stream.id, stream.context, reason = deliveredReason))
         if (deliveredReason == "transport-invalidation-failed") throw RemoteHarnessException(deliveredReason)
     }
     private fun deliver(request: Pending, kind: RemoteHarnessOutcomeKind, value: RemoteHarnessJSON? = null, frame: RemoteHarnessFrame? = null, code: String? = null,
-        botRoster: RemoteHarnessBotRoster? = null) {
-        try { request.completion(RemoteHarnessOutcome(kind, request.id, request.logicalID, request.context, value, frame, code, botRoster)) } catch (_: Exception) { }
+        botRoster: RemoteHarnessBotRoster? = null, botCommand: RemoteHarnessBotCommandReceipt? = null) {
+        try { request.completion(RemoteHarnessOutcome(kind, request.id, request.logicalID, request.context, value, frame, code, botRoster, botCommand)) } catch (_: Exception) { }
     }
     private fun notify(stream: Stream, notice: RemoteHarnessStreamNotice) { try { stream.listener(notice) } catch (_: Exception) { } }
 }

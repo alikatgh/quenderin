@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "status": "Quenderin extension; source preparation only, requires a separately configured compatible Host writer and initialized durable journal",
+  "capability": "quenderin.bot.work.v1",
+  "requiredCapabilities": [
+    "harness.remote.v3",
+    "plugin.route.v1",
+    "quenderin.bot.read.v1",
+    "quenderin.bot.work.v1"
+  ],
+  "method": "plugin.route.call",
+  "route": "api/bot",
+  "submitEndpoint": "quenderin-submit",
+  "statusEndpoint": "quenderin-command",
+  "upstream": {
+    "remoteRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+    "botRevision": "1bebe826f74e9a72cabafd3b80602b05af867b38",
+    "runtimeCompatibilityVerified": false
+  },
+  "request": {
+    "requiredExactly": [
+      "route",
+      "body"
+    ],
+    "bodyRequiredExactly": [
+      "endpoint",
+      "payload"
+    ],
+    "submitRequiredExactly": [
+      "schemaVersion",
+      "workspaceId",
+      "botId",
+      "expectedSessionId",
+      "expectedRevision",
+      "commandId",
+      "text"
+    ],
+    "statusRequiredExactly": [
+      "schemaVersion",
+      "workspaceId",
+      "botId",
+      "commandId"
+    ],
+    "automaticRetries": 0
+  },
+  "response": {
+    "requiredExactly": [
+      "status",
+      "json"
+    ],
+    "status": 200,
+    "jsonRequiredExactly": [
+      "ok",
+      "value"
+    ],
+    "ok": true,
+    "valueRequiredExactly": [
+      "schemaVersion",
+      "workspaceId",
+      "botId",
+      "commandId",
+      "sessionId",
+      "revision",
+      "state",
+      "reason"
+    ],
+    "states": [
+      "accepted",
+      "rejected",
+      "uncertain",
+      "notFound"
+    ],
+    "reasons": [
+      "staleSession",
+      "staleRevision",
+      "unavailable",
+      "readOnly",
+      "revoked",
+      "wrongScope",
+      "payloadConflict",
+      "capacity",
+      "storageFailure",
+      "dispatchUncertain",
+      "invalidRequest"
+    ],
+    "nullable": [
+      "sessionId",
+      "revision",
+      "reason"
+    ],
+    "meaning": {
+      "accepted": "Durable admission acknowledged by the existing Bot queue; not completion, a successful model turn, or a stopped task.",
+      "rejected": "This submission was refused; a payloadConflict never replaces the original stored receipt.",
+      "uncertain": "A durable reservation exists but dispatch acknowledgement is uncertain. Reconcile history and status; never replay.",
+      "notFound": "No receipt is known in this exact authenticated scope. This never licenses automatic resubmission."
+    },
+    "invariants": {
+      "accepted": "Non-null sessionId/revision equal the sealed submit expectedSessionId/expectedRevision exactly; reason is null.",
+      "uncertain": "Non-null sessionId/revision equal the sealed submit expectedSessionId/expectedRevision exactly; reason is dispatchUncertain.",
+      "rejected": "sessionId and revision are null; reason is a required bounded enum.",
+      "notFound": "sessionId, revision and reason are null.",
+      "status": "Returns the original scoped receipt even after Bot part rotation."
+    }
+  },
+  "limits": {
+    "identityUTF8Bytes": 1024,
+    "commandIdUTF8Bytes": 128,
+    "textUTF8Bytes": 16384,
+    "requestUTF8Bytes": 32768,
+    "resultUTF8Bytes": 8192,
+    "revisionMaximum": 9007199254740991,
+    "journalRecords": 1024,
+    "pendingPerBot": 1,
+    "pendingTotal": 32,
+    "promptCallsPerCommand": 1,
+    "dispatchTimeoutMilliseconds": 30000
+  },
+  "identity": {
+    "strings": "Nonempty, NUL-free, valid Unicode scalar values; compare exact UTF-8 without normalization. Text must contain a non-whitespace scalar.",
+    "scope": "Authenticated Host identity, Peer identity and current authorization come only from server context. Workspace, stable Bot identity, current part, revision and writer state are checked against authoritative materialized runtime state before reservation and immediately before queue dispatch.",
+    "receipt": "sessionId and revision identify the actual admitted Bot part and authoritative revision; null when no part was admitted.",
+    "key": "Host identity, Peer identity key, workspace, stable Bot identity and commandId; exact payload digest distinguishes duplicate delivery from conflicts."
+  },
+  "durability": {
+    "reserve": "Fsync an exclusive command reservation before any capability preparation or queue dispatch; persist a Host-generated requestId.",
+    "duplicates": "Concurrent/restarted duplicates return the stored receipt. Changed payloads are refused without replacing it.",
+    "recovery": "Never automatically replay a reserved or uncertain command. Missing initialized journals, corruption, capacity and storage failures fail closed. Records are never evicted automatically.",
+    "pending": "At most one unsettled command per stable Bot across Peers; matching official message and turn-end evidence releases the slot. Unreconciled restart reservations remain blocked."
+  },
+  "lifecycle": [
+    "Negotiate all required capabilities on each authenticated connection; clear on reconnect and renegotiate.",
+    "Use the existing Harness history, session/control, bound approvals and Stop on the receipt session only.",
+    "Stop acknowledgement does not prove task settlement.",
+    "Preserve the normal Harness guard against prompting Bot-owned root/current/past/group sessions.",
+    "Status and reconnect do not resend work, activate providers, create Bots or run a new agent loop.",
+    "A work capability requires the actual compatible mounted writer and initialized healthy journal."
+  ]
+}

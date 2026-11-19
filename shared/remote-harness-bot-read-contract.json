@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "Quenderin extension; source foundation only, not installed or advertised by the current Host companion",
+  "status": "Implemented passive Host/native roster and history contract; installation on a user-operated Host remains a separate verification step",
   "capability": "quenderin.bot.read.v1",
   "requiredCarrierCapability": "plugin.route.v1",
   "method": "plugin.route.call",
@@ -9,24 +9,55 @@
   "upstream": {
     "remoteRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
     "botRevision": "1bebe826f74e9a72cabafd3b80602b05af867b38",
-    "runtimeCompatibilityVerified": false
+    "runtimeCompatibilityVerified": false,
+    "runtimeCompatibilityScope": "Pinned official-runtime fixtures cover the passive read adapter; full Bot execution and live provider compatibility are not established by those read fixtures."
   },
   "request": {
-    "requiredExactly": ["route", "body"],
-    "bodyRequiredExactly": ["endpoint", "payload"],
-    "payloadRequiredExactly": ["schemaVersion", "workspaceId"],
+    "requiredExactly": [
+      "route",
+      "body"
+    ],
+    "bodyRequiredExactly": [
+      "endpoint",
+      "payload"
+    ],
+    "payloadRequiredExactly": [
+      "schemaVersion",
+      "workspaceId"
+    ],
     "mutating": false,
     "automaticRetries": 0
   },
   "success": {
-    "requiredExactly": ["status", "json"],
+    "requiredExactly": [
+      "status",
+      "json"
+    ],
     "status": 200,
-    "jsonRequiredExactly": ["ok", "value"],
+    "jsonRequiredExactly": [
+      "ok",
+      "value"
+    ],
     "ok": true,
     "readOnly": "Strict Boolean describing Host writer state; both true and false are valid. This operation is always read-only.",
-    "valueRequiredExactly": ["schemaVersion", "workspaceId", "revision", "readOnly", "bots"],
-    "botRequiredExactly": ["id", "name", "sessionId", "model", "permission"],
-    "nullable": ["bot.model", "bot.permission"],
+    "valueRequiredExactly": [
+      "schemaVersion",
+      "workspaceId",
+      "revision",
+      "readOnly",
+      "bots"
+    ],
+    "botRequiredExactly": [
+      "id",
+      "name",
+      "sessionId",
+      "model",
+      "permission"
+    ],
+    "nullable": [
+      "bot.model",
+      "bot.permission"
+    ],
     "nonSuccess": "Reject as a bounded read failure; do not display raw Host error payloads or change session state."
   },
   "limits": {
@@ -49,13 +80,13 @@
     "input": "Explicit already-materialized object: ready, workspaceId, revision, readOnly, bots. Bot entries supply current authoritative sessionId plus display metadata. Extra source fields are ignored, never forwarded.",
     "notReady": "ready must be true; never load, refresh, bootstrap, migrate, resolve agents, read a secret, call a provider or discover a runtime to make it ready.",
     "purity": "No I/O, callbacks, mutation or effects. Reject malformed source and accessor properties in required input fields rather than executing accessors.",
-    "authority": "The future installed adapter must derive current bot/session ownership from authoritative Host state; this pure projector does not establish that provenance."
+    "authority": "The mounted adapter derives current bot/session ownership from authoritative Host state; this pure projector alone does not establish that provenance."
   },
   "lifecycle": [
     "Negotiate both capabilities on each authenticated connection; clear on reconnect/disconnect and before renegotiation.",
     "Use existing RPC correlation, deadlines, capacity and stale-generation rejection.",
     "Route results are not Harness Gateway envelopes; preserve the existing session-call parser unchanged.",
     "Read operations never write the mutation journal and never authorize a tool/card action.",
-    "No UI, persistence migration, generic plugin proxy, route activation, capability advertisement or DS Bot installation in this increment."
+    "This contract authorizes roster reads only. Native Bot screens and persistence consume that projection; writes require the separate quenderin.bot.work.v1 contract."
   ]
 }

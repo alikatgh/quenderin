@@ -99,7 +99,9 @@ async function run() {
       if (readSync(botFactsDescriptor, Buffer.alloc(1), 0, 1, null)) throw new Error('Bot runtime facts size differs');
     } finally { closeSync(botFactsDescriptor); }
     const botValue = JSON.parse(botFacts.toString('utf8'));
-    if (botValue.schema !== 1 || botValue.botRevision !== '1bebe826f74e9a72cabafd3b80602b05af867b38' || botValue.readEffects.modelCalls !== 0) throw new Error('Bot runtime facts identity differs');
+    if (botValue.schema !== 1 || botValue.botRevision !== '1bebe826f74e9a72cabafd3b80602b05af867b38' || botValue.readEffects.modelCalls !== 0
+      || botValue.work?.scriptedModelCalls !== 2 || botValue.work?.twoSequentialCommands !== true
+      || botValue.work?.abortedTurnObserved !== true || botValue.work?.statusPreserved !== true) throw new Error('Bot runtime facts identity differs');
     process.stdout.write('QUENDERIN_OFFICIAL_BOT_RUNTIME_FACTS_BEGIN\n');
     process.stdout.write(botFacts);
     process.stdout.write('QUENDERIN_OFFICIAL_BOT_RUNTIME_FACTS_END\n');

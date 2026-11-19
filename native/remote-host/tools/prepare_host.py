@@ -17,7 +17,10 @@ COMPANIONS = {
     **{'packages/plugin/src/' + name: name for name in [
         'quenderin-host-policy.mjs', 'quenderin-host-policy.d.mts',
         'quenderin-bot-read-policy.mjs', 'quenderin-bot-read-policy.d.mts',
-        'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts']},
+        'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts',
+        'quenderin-bot-work-policy.mjs', 'quenderin-bot-work-policy.d.mts',
+        'quenderin-bot-work-journal.mjs', 'quenderin-bot-work-journal.d.mts',
+        'quenderin-bot-work-runtime.mjs', 'quenderin-bot-work-runtime.d.mts']},
     **{'packages/protocol/src/' + name: name for name in [
         'quenderin-bot-read-wire.mjs', 'quenderin-bot-read-wire.d.mts']},
 }
@@ -36,51 +39,16 @@ def transform(path, source):
         source = once(source, '"build": "tsc -p tsconfig.json"', '"build": ' + json.dumps(build))
     elif path == 'packages/plugin/src/index.ts':
         source = "import { botSessionWritable } from './quenderin-bot-runtime.mjs'\n" + source
-        source = once(source, "        peer,\n      ),\n    )", "        peer,\n      ),\n      sessionId => botSessionWritable(ctx.get('connection'), sessionId),\n    )")
+        source = once(source, '      peer => createPluginRouteDispatcher(', '      (peer, workScope) => createPluginRouteDispatcher(')
+        source = once(source, "        peer,\n      ),\n    )", "        peer,\n        workScope,\n      ),\n      sessionId => botSessionWritable(ctx.get('connection'), sessionId),\n    )")
     elif path == 'packages/protocol/src/index.ts':
         source = "import { assertBotReadWireBytes } from './quenderin-bot-read-wire.mjs'\n" + source
         source = once(source, '  return parseRemoteMessage(JSON.parse(text))',
             '  assertBotReadWireBytes(text)\n  return parseRemoteMessage(JSON.parse(text))')
     elif path.endswith('plugin-route-bridge.ts'):
-        source = "import { BOT_READ_LIMITS, validateBotReadRequest, validateBotReadResponse } from './quenderin-bot-read-policy.mjs'\n" + source
-        start = source.index('export const BOT_REMOTE_OPERATIONS = [')
-        stop = source.index('] as const', start) + len('] as const')
-        source = source[:start] + "export const BOT_REMOTE_OPERATIONS = ['quenderin-roster'] as const" + source[stop:]
-        source = once(source, 'export type PluginRouteDispatcher = (',
-            'export type PluginRouteDispatcher = ((')
-        source = once(source, ') => Promise<{ status: number; json: unknown }>',
-            ') => Promise<{ status: number; json: unknown }>) & { quenderinBotReadAvailable?: () => boolean }')
-        start = source.index('    payload: z.record(')
-        stop = source.index('\n}).strict()', start)
-        source = source[:start] + "    payload: z.object({ schemaVersion: z.literal(1), workspaceId: z.string().min(1) }).strict(),\n  }).strict()," + source[stop:]
-        source = once(source, '    if (serializedBytes(params) > MAX_SECURE_MESSAGE_BYTES) {',
-            "    if (!validateBotReadRequest(params, (params.body.payload as { workspaceId: string }).workspaceId).ok\n      || serializedBytes(params) > BOT_READ_LIMITS.requestUTF8Bytes) {")
-        source = once(source, '    if (serializedBytes(result) > MAX_SECURE_MESSAGE_BYTES) {',
-            '    if (serializedBytes(result) > BOT_READ_LIMITS.resultUTF8Bytes) {')
-        source = once(source, '    return { status: result.status, json: result.json }',
-            "    if (result.status === 200 && !validateBotReadResponse(result, (params.body.payload as { workspaceId: string }).workspaceId).ok) {\n"
-            "      throw new RpcError('INVALID_MESSAGE', 'Bot roster read unavailable')\n    }\n"
-            "    if (result.status !== 200) return { status: 503, json: { ok: false, error: { code: 'BOT_READ_UNAVAILABLE', message: 'Bot roster read unavailable' } } }\n"
-            '    return { status: result.status, json: result.json }')
+        return (ROOT / 'patches/plugin-route-bridge.ts').read_text()
     elif path.endswith('plugin-route-dispatcher.ts'):
-        source = "import { mountedBotRead, botReadUnavailable } from './quenderin-bot-runtime.mjs'\n" + source
-        source = once(source, '): PluginRouteDispatcher {\n  let cookie: string | undefined',
-            "): PluginRouteDispatcher | undefined {\n  if (readConnection() === undefined) return undefined")
-        source = once(source, '  return async (route, body, signal) => {',
-            '  const dispatch: PluginRouteDispatcher = async (route, body, signal) => {')
-        source = once(source, '    const handler = connection?.createSharedFetchHandler?.(\'/api\')',
-            "    const mounted = mountedBotRead(connection)\n    if (!mounted) return botReadUnavailable()\n    const handler = connection?.createSharedFetchHandler?.('/api')")
-        start = source.index('    } else {\n      const port = readPort()')
-        stop = source.index('    const text = await response.text()', start)
-        source = source[:start] + '    } else {\n      return botReadUnavailable()\n    }\n' + source[stop:]
-        source = once(source, '    const text = await response.text()',
-            "    const text = await response.text()\n    if (mountedBotRead(connection) !== mounted || new TextEncoder().encode(text).byteLength > 262144) return botReadUnavailable()")
-        source = once(source, '    return { status: response.status, json }\n  }\n}',
-            "    return { status: response.status, json }\n  }\n"
-            "  dispatch.quenderinBotReadAvailable = () => {\n"
-            "    const connection = readConnection()\n"
-            "    return mountedBotRead(connection) !== undefined && typeof connection?.createSharedFetchHandler === 'function'\n"
-            "  }\n  return dispatch\n}")
+        return (ROOT / 'patches/plugin-route-dispatcher.ts').read_text()
     elif path.endswith('server-connection.ts'):
         source = "import { assertPeerAllowed } from './quenderin-host-policy.mjs'\n" + source
         source = once(source, '    const existing = this.identities.trustedPeer(descriptor.deviceId)',
@@ -89,6 +57,14 @@ def transform(path, source):
             "      return\n    }\n    const existing = this.identities.trustedPeer(descriptor.deviceId)")
     elif path.endswith('connection-controller.ts'):
         source = "import { assertPeerAllowed } from './quenderin-host-policy.mjs'\n" + source
+        source = once(source, '  peerDeviceId: string\n}', '  peerDeviceId: string\n  peerIdentityKey?: string\n  quenderinAssertAuthorized?: () => void\n}')
+        source = once(source, '      { connectionId, peerDeviceId: channel.peerDeviceId },',
+            "      { connectionId, peerDeviceId: channel.peerDeviceId, peerIdentityKey: channel.peerIdentityKey,\n"
+            "        quenderinAssertAuthorized: () => {\n"
+            "          assertPeerAllowed(channel.peerDeviceId, channel.peerIdentityKey)\n"
+            "          if (this.active.get(connectionId)?.channel !== channel || !this.identities.isTrusted(channel.peerDeviceId, channel.peerIdentityKey)) {\n"
+            "            throw new ConnectionRejectedError('DEVICE_REVOKED', 'The Bot channel is no longer authorized.')\n"
+            "          }\n        } },")
         source = once(source, '    const connectionId = channel.security.connectionId',
             "    try { assertPeerAllowed(channel.peerDeviceId, channel.peerIdentityKey) } catch {\n"
             "      await channel.close('DEVICE_REVOKED')\n"
@@ -163,18 +139,26 @@ def transform(path, source):
         source = once(source, '      this.streams.delete(streamId)\n      await this.publish',
             '      this.quenderin?.streamClosed(endpoint)\n      this.streams.delete(streamId)\n      await this.publish')
     elif path.endswith('service.ts'):
-        source = "import { createHash } from 'node:crypto'\nimport { APPROVAL_CAPABILITY, QuenderinApprovalPolicy } from './quenderin-host-policy.mjs'\n" + source
+        source = "import { createBotWorkScope } from './quenderin-bot-work-runtime.mjs'\nimport { createHash } from 'node:crypto'\nimport { APPROVAL_CAPABILITY, QuenderinApprovalPolicy } from './quenderin-host-policy.mjs'\n" + source
         source = once(source, '              this.terminalSpawner,\n            ),\n          )',
             '              this.terminalSpawner,\n            ),\n            new QuenderinApprovalPolicy(this.currentIdentity().deviceId, context.peerDeviceId),\n            this.quenderinSessionWritable,\n          )')
         source = once(source, '    private readonly pluginRoutes?: (peer?: unknown) => PluginRouteDispatcher | undefined,',
-            '    private readonly pluginRoutes?: (peer?: unknown) => PluginRouteDispatcher | undefined,\n    private readonly quenderinSessionWritable?: (sessionId: unknown) => boolean,')
+            '    private readonly pluginRoutes?: (peer?: unknown, workScope?: import("./quenderin-bot-work-journal.mjs").BotWorkScope) => PluginRouteDispatcher | undefined,\n    private readonly quenderinSessionWritable?: (sessionId: unknown) => boolean,')
         source = once(source, "        'harness.remote.transfer.v1',\n      )",
             "        'harness.remote.transfer.v1',\n        APPROVAL_CAPABILITY,\n      )")
         source = once(source, '      fingerprint: this.identity.fingerprint,',
             "      fingerprint: this.identity.fingerprint,\n"
             "      pairingFingerprintSHA256: createHash('sha256').update(Buffer.from(this.identity.publicKey, 'base64url')).digest('hex'),")
+        source = once(source, '      const dispatcher = this.pluginRoutes?.(peerGateway?.peer)',
+            "      const workHost = this.currentIdentity().deviceId\n"
+            "      const workScope = context.peerIdentityKey && context.quenderinAssertAuthorized\n"
+            "        ? createBotWorkScope(workHost, context.peerDeviceId, context.peerIdentityKey, () => {\n"
+            "          if (this.currentIdentity().deviceId !== workHost) throw new Error('Host identity changed')\n"
+            "          context.quenderinAssertAuthorized!()\n        }) : undefined\n"
+            "      const dispatcher = this.pluginRoutes?.(peerGateway?.peer, workScope)")
         source = once(source, "    if (this.pluginRoutes?.() !== undefined) capabilities.push('plugin.route.v1')",
-            "    if (this.pluginRoutes?.()?.quenderinBotReadAvailable?.() === true) capabilities.push('plugin.route.v1', 'quenderin.bot.read.v1')")
+            "    if (this.pluginRoutes?.()?.quenderinBotReadAvailable?.() === true) capabilities.push('plugin.route.v1', 'quenderin.bot.read.v1')\n"
+            "    if (this.pluginRoutes?.()?.quenderinBotWorkAvailable?.() === true) capabilities.push('quenderin.bot.work.v1')")
     else:
         raise ValueError('Unknown pinned source path')
     return source
@@ -209,7 +193,7 @@ def patch_for(checkout):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('checkout', type=Path)
-    parser.add_argument('--apply', action='store_true', help='Edit the four verified source files and add the two companion source files')
+    parser.add_argument('--apply', action='store_true', help='Edit the nine verified source/build files and add fourteen companion files')
     args = parser.parse_args()
     if args.checkout.is_symlink():
         raise ValueError('Linked Host checkout is forbidden')

@@ -105,14 +105,53 @@ data class RemoteHarnessClientBotReadOnlyScope(
     }
     override fun toString() = "RemoteHarnessClientBotReadOnlyScope(redacted)"
 }
-/** A composer belongs to one pinned Host and destination; null session means a new session. */
-data class RemoteHarnessClientDraftScope(
-    val origin: String, val hostDeviceID: String, val hostFingerprint: String,
-    val workspaceID: String, val sessionID: String?,
+/** Durable stable identity. Display names, roster revisions and capabilities are never authority. */
+data class RemoteHarnessClientBotScope(
+    val origin: String, val peerDeviceID: String, val hostDeviceID: String, val hostFingerprint: String,
+    val workspaceID: String, val botID: String,
 ) {
     init {
         rhCheck(origin == ConnectionOrigins.canonicalize(origin), "client-storage")
-        rhID(hostDeviceID); rhID(workspaceID); sessionID?.let(::rhID)
+        rhID(peerDeviceID); rhID(hostDeviceID); rhID(workspaceID); RemoteHarnessBotWork.identity(botID)
+        rhCheck(hostFingerprint.matches(Regex("^[a-f0-9]{64}$")), "client-storage")
+    }
+    override fun toString() = "RemoteHarnessClientBotScope(redacted)"
+}
+data class RemoteHarnessClientBotCommand(
+    val scope: RemoteHarnessClientBotScope, val commandID: String, val expectedSessionID: String, val expectedRevision: Long,
+    val digest: String, val state: RemoteHarnessBotCommandState = RemoteHarnessBotCommandState.PENDING,
+    val sessionID: String? = null, val revision: Long? = null, val reason: String? = null,
+) {
+    init {
+        rhID(commandID); RemoteHarnessBotWork.identity(commandID, RemoteHarnessBotWork.COMMAND_ID_BYTES)
+        RemoteHarnessBotWork.identity(expectedSessionID); RemoteHarnessBotWork.revision(expectedRevision)
+        rhCheck(digest.matches(Regex("^[a-f0-9]{64}$")), "client-storage")
+        sessionID?.let { RemoteHarnessBotWork.identity(it) }; revision?.let { RemoteHarnessBotWork.revision(it) }
+        rhCheck((sessionID == null) == (revision == null) && (reason == null || reason in RemoteHarnessBotWork.reasons), "client-storage")
+        rhCheck(state != RemoteHarnessBotCommandState.ACCEPTED || sessionID != null && reason == null, "client-storage")
+        rhCheck(state != RemoteHarnessBotCommandState.REJECTED || sessionID == null && reason != null, "client-storage")
+        rhCheck(state != RemoteHarnessBotCommandState.PENDING || sessionID == null && reason == null, "client-storage")
+        rhCheck(state !in setOf(RemoteHarnessBotCommandState.ACCEPTED, RemoteHarnessBotCommandState.UNCERTAIN) ||
+            sessionID == expectedSessionID && revision == expectedRevision, "client-storage")
+        rhCheck(state != RemoteHarnessBotCommandState.UNCERTAIN || reason == "dispatchUncertain", "client-storage")
+        rhCheck(state != RemoteHarnessBotCommandState.NOT_FOUND || sessionID == null && reason == null, "client-storage")
+    }
+    val unresolved get() = state in setOf(RemoteHarnessBotCommandState.PENDING, RemoteHarnessBotCommandState.UNCERTAIN, RemoteHarnessBotCommandState.NOT_FOUND)
+    override fun toString() = "RemoteHarnessClientBotCommand(redacted)"
+}
+
+/** UI click captures this immutable current-part expectation; queued sends never retarget. */
+data class RemoteHarnessClientBotDispatchTarget(val scope: RemoteHarnessClientBotScope, val sessionID: String, val revision: Long) {
+    override fun toString() = "RemoteHarnessClientBotDispatchTarget(redacted)"
+}
+/** A composer belongs to one pinned Host and destination; null session means a new session. */
+data class RemoteHarnessClientDraftScope(
+    val origin: String, val hostDeviceID: String, val hostFingerprint: String,
+    val workspaceID: String, val sessionID: String?, val botID: String? = null,
+) {
+    init {
+        rhCheck(origin == ConnectionOrigins.canonicalize(origin), "client-storage")
+        rhID(hostDeviceID); rhID(workspaceID); sessionID?.let(::rhID); botID?.let { RemoteHarnessBotWork.identity(it) }
         rhCheck(hostFingerprint.matches(Regex("^[a-f0-9]{64}$")), "client-storage")
     }
     override fun toString() = "RemoteHarnessClientDraftScope(redacted)"
@@ -133,6 +172,8 @@ data class RemoteHarnessClientSnapshot(
     val workspaces: List<RemoteHarnessClientWorkspace> = emptyList(), val workspaceID: String? = null,
     val workspaceTitle: String = "", val sessions: List<RemoteHarnessClientSession> = emptyList(), val sessionID: String? = null,
     val botSessionReadOnly: Boolean = false,
+    val selectedBot: RemoteHarnessClientBotScope? = null, val botWorkSupported: Boolean = false,
+    val botCommand: RemoteHarnessClientBotCommand? = null, val botCommandChecking: Boolean = false,
     val timeline: List<RemoteHarnessClientTimelineItem> = emptyList(), val models: List<RemoteHarnessClientModel> = emptyList(),
     val provider: String? = null, val model: String? = null, val effort: String? = null,
     val draft: String = "", val draftScope: RemoteHarnessClientDraftScope? = null,
@@ -148,6 +189,9 @@ data class RemoteHarnessClientSnapshot(
     val botSessionClassificationPending: Boolean = false,
     val clientPublicIdentity: String? = null, val clientFingerprint: String? = null,
 ) {
+    val botDispatchTarget: RemoteHarnessClientBotDispatchTarget? get() = selectedBot?.let { scope ->
+        sessionID?.let { session -> botRoster?.let { roster -> RemoteHarnessClientBotDispatchTarget(scope, session, roster.revision) } }
+    }
     override fun toString() = "RemoteHarnessClientSnapshot(redacted)"
 }
 
@@ -162,7 +206,10 @@ class RemoteHarnessClientSavedState(
     drafts: List<RemoteHarnessClientDraft>? = null,
     // Legacy journal hint only. The controller's independent intent store is authoritative.
     val foregroundReconnectAllowed: Boolean = true,
+    val selectedBot: RemoteHarnessClientBotScope? = null,
+    botCommands: List<RemoteHarnessClientBotCommand> = emptyList(),
 ) {
+    val botCommands: List<RemoteHarnessClientBotCommand>
     val botReadOnlyScopes: List<RemoteHarnessClientBotReadOnlyScope>
     val botSessionReadOnly: Boolean
     val drafts: List<RemoteHarnessClientDraft>
@@ -185,9 +232,14 @@ class RemoteHarnessClientSavedState(
         rhCheck(draft.toByteArray(Charsets.UTF_8).size <= RemoteHarnessBounds.TEXT_BYTES && timeline.size <= 512 &&
             commands.size <= 512 && commands.distinct().size == commands.size, "client-storage")
         commands.forEach(::rhID)
+        rhCheck(selectedBot == null || selectedBot.origin == origin && selectedBot.peerDeviceID == deviceID &&
+            selectedBot.hostDeviceID == hostID && selectedBot.hostFingerprint == hostFingerprint && selectedBot.workspaceID == workspaceID, "client-storage")
+        rhCheck(botCommands.size <= MAX_BOT_COMMANDS && botCommands.map { it.commandID }.distinct().size == botCommands.size &&
+            botCommands.all { it.scope.origin == origin && it.scope.peerDeviceID == deviceID && it.commandID in commands }, "client-storage")
+        this.botCommands = java.util.Collections.unmodifiableList(ArrayList(botCommands))
         rhUnicode(draft)
         val draftScope = if (hostID != null && hostFingerprint != null && workspaceID != null)
-            RemoteHarnessClientDraftScope(origin, hostID, hostFingerprint, workspaceID, sessionID) else null
+            RemoteHarnessClientDraftScope(origin, hostID, hostFingerprint, workspaceID, if (selectedBot == null) sessionID else null, selectedBot?.botID) else null
         // Upgrade the original selected-draft format without guessing another destination.
         val scoped = drafts ?: if (draft.isNotEmpty() && draftScope != null) listOf(RemoteHarnessClientDraft(draftScope, draft)) else emptyList()
         rhCheck(scoped.size <= MAX_DRAFTS && scoped.map { it.scope }.distinct().size == scoped.size &&
@@ -197,6 +249,7 @@ class RemoteHarnessClientSavedState(
     }
     override fun toString() = "RemoteHarnessClientSavedState(redacted)"
     companion object {
+        const val MAX_BOT_COMMANDS = 128
         const val MAX_BOT_READ_ONLY_SCOPES = 128
         const val MAX_DRAFTS = 32
         const val MAX_DRAFT_BYTES = 1_048_576
@@ -243,9 +296,16 @@ object RemoteHarnessClientRecords {
             "drafts" to RemoteHarnessJSON.ArrayValue(record.drafts.map { draft ->
                 RemoteHarnessJSON.obj("origin" to s(draft.scope.origin), "hostDeviceId" to s(draft.scope.hostDeviceID),
                     "hostFingerprint" to s(draft.scope.hostFingerprint), "workspaceId" to s(draft.scope.workspaceID),
-                    "sessionId" to (s(draft.scope.sessionID) ?: RemoteHarnessJSON.NullValue), "text" to s(draft.text))
+                    "sessionId" to (s(draft.scope.sessionID) ?: RemoteHarnessJSON.NullValue), "botId" to s(draft.scope.botID), "text" to s(draft.text))
             }),
             "foregroundReconnectAllowed" to RemoteHarnessJSON.BooleanValue(record.foregroundReconnectAllowed),
+            "selectedBot" to record.selectedBot?.let(::botScope),
+            "botCommands" to RemoteHarnessJSON.ArrayValue(record.botCommands.map { command ->
+                RemoteHarnessJSON.obj("scope" to botScope(command.scope), "commandId" to s(command.commandID),
+                    "expectedSessionId" to s(command.expectedSessionID), "expectedRevision" to RemoteHarnessJSON.num(command.expectedRevision),
+                    "digest" to s(command.digest), "state" to s(command.state.wire), "sessionId" to (s(command.sessionID) ?: RemoteHarnessJSON.NullValue),
+                    "revision" to (command.revision?.let(RemoteHarnessJSON::num) ?: RemoteHarnessJSON.NullValue), "reason" to (s(command.reason) ?: RemoteHarnessJSON.NullValue))
+            }),
             "botSessionReadOnly" to RemoteHarnessJSON.BooleanValue(record.botSessionReadOnly),
             "botReadOnlyScopes" to RemoteHarnessJSON.ArrayValue(record.botReadOnlyScopes.map { scope ->
                 RemoteHarnessJSON.obj("origin" to s(scope.origin), "hostDeviceId" to s(scope.hostDeviceID),
@@ -276,16 +336,36 @@ object RemoteHarnessClientRecords {
             rhCheck(rows.values.size <= RemoteHarnessClientSavedState.MAX_DRAFTS, "client-storage")
             rows.values.map { row ->
                 val fields = row.objectValue()
-                rhCheck(fields.keys == setOf("origin", "hostDeviceId", "hostFingerprint", "workspaceId", "sessionId", "text"), "client-storage")
+                rhCheck(fields.keys == setOf("origin", "hostDeviceId", "hostFingerprint", "workspaceId", "sessionId", "text") ||
+                    fields.keys == setOf("origin", "hostDeviceId", "hostFingerprint", "workspaceId", "sessionId", "botId", "text"), "client-storage")
                 RemoteHarnessClientDraft(RemoteHarnessClientDraftScope(fields.rhString("origin"), fields.rhString("hostDeviceId"),
-                    fields.rhString("hostFingerprint"), fields.rhString("workspaceId"), fields.s("sessionId")), fields.rhString("text"))
+                    fields.rhString("hostFingerprint"), fields.rhString("workspaceId"), fields.s("sessionId"), fields.s("botId")), fields.rhString("text"))
             }
         }
         rhCheck(timeline.size <= 512 && commands.size <= 512 && p.rhString("draft").toByteArray().size <= RemoteHarnessBounds.TEXT_BYTES, "client-storage")
         return RemoteHarnessClientSavedState(p.rhString("origin"), p.rhString("deviceId"), p.s("hostId"), p.s("hostName"), p.s("pin"),
             p.s("workspaceId"), p.rhString("workspaceTitle"), p.s("sessionId"), p.rhString("draft"), timeline, commands,
             p.s("provider"), p.s("model"), p.s("effort"), p["botSessionReadOnly"]?.booleanValue() ?: false, scopes, drafts,
-            p["foregroundReconnectAllowed"]?.booleanValue() ?: true)
+            p["foregroundReconnectAllowed"]?.booleanValue() ?: true,
+            p["selectedBot"]?.takeUnless { it === RemoteHarnessJSON.NullValue }?.let(::botScope),
+            p["botCommands"]?.let { (it as? RemoteHarnessJSON.ArrayValue ?: throw RemoteHarnessException("client-storage")).values }?.also { rhCheck(it.size <= RemoteHarnessClientSavedState.MAX_BOT_COMMANDS, "client-storage") }?.map { row ->
+                val fields = row.objectValue()
+                rhCheck(fields.keys == setOf("scope", "commandId", "expectedSessionId", "expectedRevision", "digest", "state", "sessionId", "revision", "reason"), "client-storage")
+                val state = RemoteHarnessBotCommandState.entries.singleOrNull { it.wire == fields.rhString("state") } ?: throw RemoteHarnessException("client-storage")
+                RemoteHarnessClientBotCommand(botScope(fields.rhRequired("scope")), fields.rhString("commandId"), fields.rhString("expectedSessionId"),
+                    fields.rhRequired("expectedRevision").integerValue(), fields.rhString("digest"), state, fields.s("sessionId"),
+                    fields["revision"]?.takeUnless { it === RemoteHarnessJSON.NullValue }?.integerValue(), fields.s("reason"))
+            } ?: emptyList())
+    }
+    private fun botScope(scope: RemoteHarnessClientBotScope): RemoteHarnessJSON = RemoteHarnessJSON.obj(
+        "origin" to RemoteHarnessJSON.str(scope.origin), "peerDeviceId" to RemoteHarnessJSON.str(scope.peerDeviceID),
+        "hostDeviceId" to RemoteHarnessJSON.str(scope.hostDeviceID), "hostFingerprint" to RemoteHarnessJSON.str(scope.hostFingerprint),
+        "workspaceId" to RemoteHarnessJSON.str(scope.workspaceID), "botId" to RemoteHarnessJSON.str(scope.botID))
+    private fun botScope(value: RemoteHarnessJSON): RemoteHarnessClientBotScope {
+        val p = value.objectValue()
+        rhCheck(p.keys == setOf("origin", "peerDeviceId", "hostDeviceId", "hostFingerprint", "workspaceId", "botId"), "client-storage")
+        return RemoteHarnessClientBotScope(p.rhString("origin"), p.rhString("peerDeviceId"), p.rhString("hostDeviceId"), p.rhString("hostFingerprint"),
+            p.rhString("workspaceId"), p.rhString("botId"))
     }
     fun fingerprint(key: ByteArray): String {
         rhCheck(key.size == 32, "client-host-key")

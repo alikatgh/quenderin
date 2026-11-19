@@ -184,16 +184,16 @@ RES = {
     # Native Android entry and grouped settings.
     'action_back': 'Back',
     'tab_images': 'Images',
-    'entry_welcome_body': 'Chat with local models, connect DeepSeek, or use your own computer. Choose where your messages are processed.',
+    'entry_welcome_body': 'Chat locally or work with persistent bots on your computer. Choose where your work runs.',
     'entry_choose_title': 'Where will you chat?',
-    'entry_choose_body': 'Use a model here, your DeepSeek account, or a computer you control.',
+    'entry_choose_body': 'Use a model on this phone or open Bots on a computer you control.',
     'entry_local_title': 'On this phone',
     'entry_local_detail': 'Download once. Local messages stay on this phone and work offline. No API charge.',
     'entry_setup_local': 'Set up on this phone',
     'entry_estimated_fit': 'Estimated device fit',
     'entry_connections': 'Or connect elsewhere',
-    'entry_deepseek_title': 'DeepSeek',
-    'entry_deepseek_detail': 'Internet and your API key. Messages go to DeepSeek; your account is billed.',
+    'entry_bots_title': 'Bots',
+    'entry_bots_detail': 'Work with persistent bots on your computer. Start with DS-Bot; no local model download needed.',
     'entry_computer_title': 'My computer',
     'entry_computer_detail': 'Connect your paired host. Messages leave this phone; host or API costs may apply.',
     'entry_other_tools': 'More ways to use Quenderin',
@@ -255,6 +255,7 @@ RES = {
 
 # Android-only strings (or wording that differs from any iOS key) — full 4-lang set.
 EXTRAS = {
+    'Bots': ('Боты', '봇', 'ボット', '机器人'),
     # first-run flow (phone-baked variants of the iOS %@-device rows + format-string conversions)
     "A personal AI that runs local models on your phone.":
         ("Персональный ИИ с локальными моделями на вашем телефоне.",
@@ -487,16 +488,16 @@ EXTRAS = {
     # Native Android entry and grouped settings. Shared TSV rows still resolve from TSV.
     'Back': ('Назад', '뒤로', '戻る', '返回'),
     'Images': ('Изображения', '이미지', '画像', '图像'),
-    'Chat with local models, connect DeepSeek, or use your own computer. Choose where your messages are processed.': ('Общайтесь с локальными моделями, подключите DeepSeek или свой компьютер. Выберите, где обрабатываются ваши сообщения.', '로컬 모델, DeepSeek 또는 내 컴퓨터로 대화하세요. 메시지를 처리할 위치를 선택합니다.', 'ローカルモデル、DeepSeek、自分のパソコンでチャット。メッセージを処理する場所を選べます。', '使用本地模型、连接 DeepSeek，或使用自己的电脑。选择消息的处理位置。'),
+    'Chat locally or work with persistent bots on your computer. Choose where your work runs.': ('Общайтесь локально или работайте с постоянными ботами на своём компьютере. Выберите, где выполняются задачи.', '로컬로 대화하거나 내 컴퓨터의 지속형 봇과 작업하세요. 작업을 실행할 위치를 선택합니다.', 'ローカルでチャットするか、自分のパソコンの永続ボットと作業できます。作業の実行場所を選べます。', '在本地聊天，或与自己电脑上的持久机器人协作。选择任务运行的位置。'),
     'Where will you chat?': ('Где будем общаться?', '어디서 대화할까요?', 'どこでチャットしますか？', '在哪里聊天？'),
-    'Use a model here, your DeepSeek account, or a computer you control.': ('Используйте модель здесь, свой аккаунт DeepSeek или свой компьютер.', '이 기기의 모델, 내 DeepSeek 계정 또는 직접 관리하는 컴퓨터를 사용하세요.', 'この端末のモデル、DeepSeekアカウント、または自分で管理するパソコンを使えます。', '使用此设备上的模型、自己的 DeepSeek 账户，或自己控制的电脑。'),
+    'Use a model on this phone or open Bots on a computer you control.': ('Используйте модель на этом телефоне или откройте ботов на своём компьютере.', '이 휴대폰의 모델을 사용하거나 직접 관리하는 컴퓨터의 봇을 여세요.', 'このスマートフォンのモデルを使うか、自分で管理するパソコンのボットを開けます。', '使用此手机上的模型，或打开自己控制的电脑上的机器人。'),
     'On this phone': ('На этом телефоне', '이 휴대폰에서', 'このスマートフォン', '在此手机上'),
     'Download once. Local messages stay on this phone and work offline. No API charge.': ('Скачайте один раз. Локальные сообщения остаются на телефоне, работают офлайн. Без платы за API.', '한 번 다운로드하면 오프라인에서도 사용합니다. 로컬 메시지는 이 휴대폰에 남으며 API 요금은 없습니다.', '一度ダウンロードすればオフラインで使えます。ローカルのメッセージは端末内に保存され、API料金はかかりません。', '下载一次即可离线使用。本地消息保留在此手机上，无 API 费用。'),
     'Set up on this phone': ('Настроить на телефоне', '이 휴대폰에 설정', 'この端末で設定', '在此手机上设置'),
     'Estimated device fit': ('Оценка совместимости', '기기 적합도 추정', '端末との適合性の推定', '设备适配估计'),
     'Or connect elsewhere': ('Или подключитесь удалённо', '다른 곳에 연결', '外部に接続する', '或连接其他位置'),
     'DeepSeek': ('DeepSeek', 'DeepSeek', 'DeepSeek', 'DeepSeek'),
-    'Internet and your API key. Messages go to DeepSeek; your account is billed.': ('Нужны интернет и ваш API-ключ. Сообщения уходят в DeepSeek; оплата с вашего аккаунта.', '인터넷과 내 API 키가 필요합니다. 메시지가 DeepSeek로 전송되며 내 계정에 요금이 청구됩니다.', 'インターネットとAPIキーが必要です。メッセージはDeepSeekへ送られ、利用料金は自分のアカウントに請求されます。', '需要联网及自己的 API 密钥。消息发送至 DeepSeek，费用由你的账户承担。'),
+    'Work with persistent bots on your computer. Start with DS-Bot; no local model download needed.': ('Работайте с постоянными ботами на своём компьютере. Сначала DS-Bot; скачивать локальную модель не нужно.', '내 컴퓨터의 지속형 봇과 작업하세요. DS-Bot부터 시작하며 로컬 모델 다운로드가 필요 없습니다.', '自分のパソコンの永続ボットと作業できます。まずはDS-Botから。ローカルモデルのダウンロードは不要です。', '与自己电脑上的持久机器人协作。从 DS-Bot 开始，无需下载本地模型。'),
     'My computer': ('Мой компьютер', '내 컴퓨터', '自分のパソコン', '我的电脑'),
     'Connect your paired host. Messages leave this phone; host or API costs may apply.': ('Подключите сопряжённый хост. Сообщения покидают телефон; возможна плата за хост или API.', '페어링한 호스트에 연결합니다. 메시지가 휴대폰 밖으로 전송되며 호스트나 API 요금이 발생할 수 있습니다.', 'ペアリングしたホストに接続します。メッセージは端末外に送られ、ホストやAPIの費用が発生する場合があります。', '连接已配对的主机。消息会离开此手机，可能产生主机或 API 费用。'),
     'More ways to use Quenderin': ('Другие возможности Quenderin', 'Quenderin의 다른 기능', 'Quenderinのその他の使い方', 'Quenderin 的更多用法'),

@@ -8,6 +8,8 @@ on:
       - 'shared/remote-harness-approval-digest-fixtures.json'
       - 'shared/remote-harness-bot-read-contract.json'
       - 'shared/remote-harness-bot-read-fixtures.json'
+      - 'shared/remote-harness-bot-command-contract.json'
+      - 'shared/remote-harness-bot-command-fixtures.json'
       - '.github/workflows/remote-host.yml'
 
 permissions:

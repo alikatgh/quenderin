@@ -39,9 +39,9 @@ from pathlib import Path
 import re
 import sys
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
-if not re.search(r"OK \(5 tests?\)", text) or "INSTRUMENTATION_CODE: -1" not in text:
-    raise SystemExit("UI_JUNIT_FAILED: native instrumentation did not confirm all five tests passed")
+if not re.search(r"OK \(6 tests?\)", text) or "INSTRUMENTATION_CODE: -1" not in text:
+    raise SystemExit("UI_JUNIT_FAILED: native instrumentation did not confirm all six tests passed")
 if any(marker in text for marker in ("FAILURES!!!", "INSTRUMENTATION_FAILED", "Process crashed.", "shortMsg=")):
     raise SystemExit("UI_JUNIT_FAILED: instrumentation reported a failure")
-print("UI_JUNIT_PASSED: 5 synthetic native tests; rendered PNG review remains separate")
+print("UI_JUNIT_PASSED: 6 synthetic native tests; rendered PNG review remains separate")
 PY

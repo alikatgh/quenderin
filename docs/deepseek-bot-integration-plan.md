@@ -1,13 +1,42 @@
 # DeepSeek Bot ideas and native integration plan
 
-Date: 24 October 2026. Status: **read-only Host/native slice implemented; full workflow remains open**.
+Updated: 29 October 2026. Status: **remote Bot task submission and recovery in implementation; no new release claimed**.
 
 Implementation now includes the pinned passive Host route and native Bot list/history.
 See the [Sol 6.1 implementation brief](deepseek-bot-sol-implementation.md) for
 delivered source, verification and the exact remaining live/native checks. The
 phase-level tasks below remain unchecked until their complete exit criteria pass.
 
-This supplements the [native delivery roadmap, section 6](native-connections-roadmap.md#6-full-feature-parity-in-dependency-order). It expands that roadmap's existing DS Bot teams, groups, cards and automation items; it does not replace the core remote-control completion gates. Store submission remains deferred.
+This supplements the [native delivery roadmap, section 6](native-connections-roadmap.md#6-full-feature-parity-in-dependency-order). It expands that roadmap's existing DS Bot teams, groups, cards and automation items; it does not replace the core remote-control completion gates. Store delivery is authorized; exact runtime, native and signing evidence still gates the resulting release.
+
+## Product direction and active increment
+
+Bots are a separate Quenderin feature for doing persistent work remotely. DS-Bot
+with DeepSeek on the paired computer is the first implementation and learning
+baseline. Bots powered by local models are the roadmap, using the same Bot/task
+identity and native controls. Standalone direct DeepSeek API chat is not the goal;
+its entry points are being removed without deleting existing user data.
+
+The next complete path is **Bots → choose an existing Bot → send work → follow
+its history and result → approve or stop the current work → recover after a
+disconnect**. The Host owns execution, memory and provider credentials. Native
+clients persist command identity before sending, and reconcile uncertain outcomes
+without automatic replay. Raw Harness prompts remain forbidden for Bot-owned
+sessions; the separate versioned Bot-work capability is the only new write path.
+
+Current upstream research checked [DS-Bot v0.2.3](https://github.com/Fei2411/DS-Bot/tree/4a7b55069ad300eae8be42a74f31bc170b40ead7).
+The existing pinned v0.2.1 already has the required send/history machinery, so
+this increment preserves the reviewed pin instead of upgrading the runtime.
+Stock send has no caller-idempotency receipt; Quenderin supplies a narrowly
+scoped durable admission/status adapter around the actual existing Bot lifecycle.
+The shared [Bot command contract](../shared/remote-harness-bot-command-contract.json)
+defines its exact bounds. No Host, provider or scheduled work is activated by
+writing this integration.
+
+The remaining ideas stay in dependency order: Bot creation and structured
+questions/cards; source-linked memory and long-task continuity; local-model Bot
+adapters; controlled teams; bounded schedules and optional capabilities. Each
+requires its own working native journey and evidence before being marked shipped.
 
 ## Recommendation
 
@@ -158,7 +187,7 @@ Checked items have the bounded evidence described in the implementation brief. U
 
 ## First implementation assignment
 
-Start with **phase 0 plus the phase 1 read-only slice**: one pinned DS Bot in the existing Host fixture, a minimal sanitized roster/current-session projection through the existing Remote bridge, and identical typed Swift/Kotlin decoding. Do not begin with team automation or a new server.
+The read-only slice is the existing foundation. Continue with the active single-Bot task submission and recovery path above, using the same pinned Host and typed Swift/Kotlin contracts. Keep teams and schedules behind the subsequent phase exit criteria.
 
 After that contract passes, Host integration, Apple UI and Android UI can proceed in parallel with separate file ownership. Memory/context work depends on stable bot/part identity; teams depend on durable admission and aggregate execution bounds; schedules depend on both.
 

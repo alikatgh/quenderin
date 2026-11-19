@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 /** Test APK only. Protocol shapes reuse RemoteHarnessClientVerify; no network or native crypto.
  * All callbacks run through the real controller's owner executor, including reconnects. */
-internal class BotJourneyFixture {
+internal class BotJourneyFixture(private val workSupported: Boolean = false) {
     private val now = 1_800_000_000_000L
     private val clock = object : RemoteHarnessClock {
         override fun epochMilliseconds() = now
@@ -22,6 +22,11 @@ internal class BotJourneyFixture {
     private var identifier = 0
     val botReads = AtomicInteger()
     val prompts = AtomicInteger()
+    val submissions = AtomicInteger()
+    val queries = AtomicInteger()
+    val journalWrites = AtomicInteger()
+    @Volatile var dropSubmissionACK = false
+    private val receipts = linkedMapOf<String, RemoteHarnessJSON>()
     val modelChanges = AtomicInteger()
     val lastFollowSession = AtomicReference<String?>(null)
     private val hostKey = ByteArray(32) { 8 }
@@ -31,7 +36,7 @@ internal class BotJourneyFixture {
     }
     private val state = object : RemoteHarnessClientStateStore {
         override fun read() = savedBytes?.let(RemoteHarnessClientRecords::state)
-        override fun write(state: RemoteHarnessClientSavedState) { savedBytes = RemoteHarnessClientRecords.state(state) }
+        override fun write(state: RemoteHarnessClientSavedState) { savedBytes = RemoteHarnessClientRecords.state(state); journalWrites.incrementAndGet() }
     }
     private val recovery = object : RemoteHarnessClientRecoveryIntentStore {
         override fun read() = recoveryAllowed
@@ -106,13 +111,37 @@ internal class BotJourneyFixture {
             fun response(value: RemoteHarnessJSON) = businessFrame("rpc.response", obj("requestId" to str(request.id), "result" to value))
             when (request.payload.values.string("method")) {
                 RemoteHarnessCodec.DESCRIBE -> response(obj("capabilities" to array(str("harness.remote.v3"),
-                    str("quenderin.approvals.v1"), str(RemoteHarnessBotRead.CARRIER_CAPABILITY), str(RemoteHarnessBotRead.CAPABILITY))))
+                    str("quenderin.approvals.v1"), str(RemoteHarnessBotRead.CARRIER_CAPABILITY), str(RemoteHarnessBotRead.CAPABILITY),
+                    *(if (workSupported) arrayOf(str(RemoteHarnessBotWork.CAPABILITY)) else emptyArray()))))
                 RemoteHarnessBotRead.METHOD -> {
-                    val revision = botReads.incrementAndGet()
-                    response(obj("status" to num(200), "json" to obj("ok" to bool(true), "value" to obj(
-                        "schemaVersion" to num(1), "workspaceId" to str("workspace-a"), "revision" to num(revision.toLong()),
-                        "readOnly" to bool(true), "bots" to array(obj("id" to str("bot-a"), "name" to str("Synthetic researcher"),
-                            "sessionId" to str("bot-session"), "model" to str("deepseek-flash"), "permission" to str("ask")))))))
+                    val body = params.required("body").objectValue(); val payload = body.required("payload").objectValue()
+                    when (body.string("endpoint")) {
+                        RemoteHarnessBotRead.ENDPOINT -> {
+                            val revision = botReads.incrementAndGet()
+                            response(obj("status" to num(200), "json" to obj("ok" to bool(true), "value" to obj(
+                                "schemaVersion" to num(1), "workspaceId" to str("workspace-a"), "revision" to num(revision.toLong()),
+                                "readOnly" to bool(!workSupported), "bots" to array(obj("id" to str("bot-a"), "name" to str("Synthetic researcher"),
+                                    "sessionId" to str("bot-session"), "model" to str("deepseek-flash"), "permission" to str("ask")))))))
+                        }
+                        RemoteHarnessBotWork.SUBMIT -> {
+                            check(workSupported)
+                            val commandID = payload.string("commandId")
+                            val stored = state.read()!!.botCommands.single { it.commandID == commandID }
+                            check(stored.state == RemoteHarnessBotCommandState.PENDING && stored.scope.botID == "bot-a" && stored.scope.peerDeviceID == deviceID)
+                            check(stored.digest == RemoteHarnessBotWork.submission("workspace-a", "bot-a", "bot-session",
+                                payload.required("expectedRevision").integerValue(), commandID, payload.string("text")).digest)
+                            check(commandID !in receipts)
+                            submissions.incrementAndGet()
+                            receipts[commandID] = obj("status" to num(200), "json" to obj("ok" to bool(true), "value" to obj(
+                                "schemaVersion" to num(1), "workspaceId" to str("workspace-a"), "botId" to str("bot-a"), "commandId" to str(commandID),
+                                "sessionId" to str("bot-session"), "revision" to payload.required("expectedRevision"), "state" to str("accepted"), "reason" to RemoteHarnessJSON.NullValue)))
+                            if (!dropSubmissionACK) response(receipts.getValue(commandID))
+                        }
+                        RemoteHarnessBotWork.COMMAND -> {
+                            check(workSupported); queries.incrementAndGet(); response(receipts.getValue(payload.string("commandId")))
+                        }
+                        else -> error("Unexpected synthetic Bot route")
+                    }
                 }
                 RemoteHarnessCodec.OPEN -> {
                     val endpoint = params.string("endpoint"); val streamID = params.string("streamId"); streams[endpoint] = streamID

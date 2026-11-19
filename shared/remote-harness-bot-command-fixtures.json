@@ -1,0 +1,796 @@
+{
+  "schemaVersion": 1,
+  "workspaceId": "workspace-a",
+  "botId": "bot-a",
+  "capabilities": [
+    "harness.remote.v3",
+    "plugin.route.v1",
+    "quenderin.bot.read.v1",
+    "quenderin.bot.work.v1"
+  ],
+  "fixtureRules": {
+    "invalidResponses": "Validate against valid.submit unless an explicit request is provided.",
+    "invalidRequests": "Full params objects must be rejected by structural validation. Workspace/Host/Peer authority is separately authenticated context.",
+    "generatedLimits": "Copy valid.submit, set the indicated payload field to repeat(value,count), then validate expectedValid; fixtures stay compact."
+  },
+  "valid": {
+    "submit": {
+      "route": "api/bot",
+      "body": {
+        "endpoint": "quenderin-submit",
+        "payload": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "expectedSessionId": "session-a",
+          "expectedRevision": 7,
+          "commandId": "command-a",
+          "text": "Complete this synthetic task."
+        }
+      }
+    },
+    "status": {
+      "route": "api/bot",
+      "body": {
+        "endpoint": "quenderin-command",
+        "payload": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a"
+        }
+      }
+    },
+    "accepted": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": "session-a",
+          "revision": 7,
+          "state": "accepted",
+          "reason": null
+        }
+      }
+    },
+    "rejected": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": null,
+          "revision": null,
+          "state": "rejected",
+          "reason": "staleRevision"
+        }
+      }
+    },
+    "uncertain": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": "session-a",
+          "revision": 7,
+          "state": "uncertain",
+          "reason": "dispatchUncertain"
+        }
+      }
+    },
+    "notFound": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": null,
+          "revision": null,
+          "state": "notFound",
+          "reason": null
+        }
+      }
+    },
+    "payloadConflict": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": null,
+          "revision": null,
+          "state": "rejected",
+          "reason": "payloadConflict"
+        }
+      }
+    }
+  },
+  "invalidRequests": [
+    {
+      "id": "stock-send",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "send",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "wrong-route",
+      "params": {
+        "route": "api/bot/other",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "unknown-version",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 2,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-revision",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": -1,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "unsafe-revision",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 9007199254740992,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "null-target",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": null,
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-command",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "blank-text",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "  "
+          }
+        }
+      }
+    },
+    {
+      "id": "nul-bot",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot\u0000a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task."
+          }
+        }
+      }
+    },
+    {
+      "id": "spoof-host",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a",
+            "text": "Complete this synthetic task.",
+            "hostDeviceId": "spoof"
+          }
+        }
+      }
+    },
+    {
+      "id": "missing-text",
+      "params": {
+        "route": "api/bot",
+        "body": {
+          "endpoint": "quenderin-submit",
+          "payload": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "expectedSessionId": "session-a",
+            "expectedRevision": 7,
+            "commandId": "command-a"
+          }
+        }
+      }
+    }
+  ],
+  "invalidResponses": [
+    {
+      "id": "wrong-workspace",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-b",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "wrong-bot",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-b",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "wrong-command",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-b",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "retargeted-session",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-b",
+            "revision": 7,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "retargeted-revision",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 8,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "unknown-state",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "completed",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "accepted-null-session",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": null,
+            "revision": 7,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "accepted-null-revision",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": null,
+            "state": "accepted",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "accepted-reason",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "accepted",
+            "reason": "unavailable"
+          }
+        }
+      }
+    },
+    {
+      "id": "extra-private-field",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "accepted",
+            "reason": null,
+            "privateMetadata": "SYNTHETIC_PRIVATE"
+          }
+        }
+      }
+    },
+    {
+      "id": "missing-nullable",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "accepted"
+          }
+        }
+      }
+    },
+    {
+      "id": "rejected-missing-reason",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": null,
+            "revision": null,
+            "state": "rejected",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "rejected-target",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": null,
+            "state": "rejected",
+            "reason": "staleRevision"
+          }
+        }
+      }
+    },
+    {
+      "id": "uncertain-missing-target",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": null,
+            "revision": 7,
+            "state": "uncertain",
+            "reason": "dispatchUncertain"
+          }
+        }
+      }
+    },
+    {
+      "id": "uncertain-wrong-reason",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": 7,
+            "state": "uncertain",
+            "reason": "unavailable"
+          }
+        }
+      }
+    },
+    {
+      "id": "notfound-target",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": "session-a",
+            "revision": null,
+            "state": "notFound",
+            "reason": null
+          }
+        }
+      }
+    },
+    {
+      "id": "notfound-reason",
+      "result": {
+        "status": 200,
+        "json": {
+          "ok": true,
+          "value": {
+            "schemaVersion": 1,
+            "workspaceId": "workspace-a",
+            "botId": "bot-a",
+            "commandId": "command-a",
+            "sessionId": null,
+            "revision": null,
+            "state": "notFound",
+            "reason": "unavailable"
+          }
+        }
+      }
+    }
+  ],
+  "generatedLimits": [
+    {
+      "id": "text-at-limit",
+      "field": "text",
+      "value": "x",
+      "count": 16384,
+      "expectedValid": true
+    },
+    {
+      "id": "text-too-large",
+      "field": "text",
+      "value": "x",
+      "count": 16385,
+      "expectedValid": false
+    },
+    {
+      "id": "multibyte-text-too-large",
+      "field": "text",
+      "value": "\u52a9",
+      "count": 5462,
+      "expectedValid": false
+    },
+    {
+      "id": "command-too-large",
+      "field": "commandId",
+      "value": "x",
+      "count": 129,
+      "expectedValid": false
+    },
+    {
+      "id": "identity-too-large",
+      "field": "botId",
+      "value": "x",
+      "count": 1025,
+      "expectedValid": false
+    }
+  ],
+  "payloadConflict": {
+    "original": {
+      "route": "api/bot",
+      "body": {
+        "endpoint": "quenderin-submit",
+        "payload": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "expectedSessionId": "session-a",
+          "expectedRevision": 7,
+          "commandId": "command-a",
+          "text": "Complete this synthetic task."
+        }
+      }
+    },
+    "changed": {
+      "route": "api/bot",
+      "body": {
+        "endpoint": "quenderin-submit",
+        "payload": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "expectedSessionId": "session-a",
+          "expectedRevision": 7,
+          "commandId": "command-a",
+          "text": "Changed synthetic task."
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": null,
+          "revision": null,
+          "state": "rejected",
+          "reason": "payloadConflict"
+        }
+      }
+    },
+    "originalReceiptAfterConflict": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": "session-a",
+          "revision": 7,
+          "state": "accepted",
+          "reason": null
+        }
+      }
+    }
+  },
+  "scopeIsolation": {
+    "originalServerContext": {
+      "hostDeviceId": "host-a",
+      "peerDeviceId": "peer-a"
+    },
+    "otherServerContexts": [
+      {
+        "hostDeviceId": "host-b",
+        "peerDeviceId": "peer-a"
+      },
+      {
+        "hostDeviceId": "host-a",
+        "peerDeviceId": "peer-b"
+      }
+    ],
+    "request": {
+      "route": "api/bot",
+      "body": {
+        "endpoint": "quenderin-command",
+        "payload": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a"
+        }
+      }
+    },
+    "responseInOtherContext": {
+      "status": 200,
+      "json": {
+        "ok": true,
+        "value": {
+          "schemaVersion": 1,
+          "workspaceId": "workspace-a",
+          "botId": "bot-a",
+          "commandId": "command-a",
+          "sessionId": null,
+          "revision": null,
+          "state": "notFound",
+          "reason": null
+        }
+      }
+    },
+    "serverContextIsNeverTransmitted": true
+  }
+}

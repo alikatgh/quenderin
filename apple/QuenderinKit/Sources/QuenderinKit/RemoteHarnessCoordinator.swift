@@ -113,6 +113,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
     private var negotiated = false
     private var approvalExtension = false
     private var botReadExtension = false
+    private var botWorkExtension = false
     private var botReadDescribeOrdinal: UInt64?
     private var activeRunID: String?
     private var recoveryRequired = false
@@ -127,6 +128,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
     public var pendingRPCCount: Int { pending.count }
     /// The feature requires an authenticated workspace as well as both Host capabilities.
     public var supportsBotRead: Bool { botReadExtension && binding?.workspaceID != nil }
+    public var supportsBotWork: Bool { supportsBotRead && botWorkExtension }
     /// Reserved Host slots, including local listeners awaiting close confirmation.
     public var activeStreamCount: Int { streams.count }
     public var nextDeadline: Int64? { pending.values.map(\.deadline).min() }
@@ -143,7 +145,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         if binding != nil { disconnect() }
         guard maximumGeneration == authenticatedBinding.generation, binding == nil else { throw RemoteHarnessError.bindingMismatch }
         binding = authenticatedBinding; negotiated = false; recoveryRequired = everConnected; everConnected = true
-        botReadExtension = false; botReadDescribeOrdinal = nil
+        botReadExtension = false; botWorkExtension = false; botReadDescribeOrdinal = nil
         activeRunID = nil
         seenApprovalIDs.removeAll(); approvalDeadlines.removeAll()
         ordinal = 0; streamOrdinal = 0; usedStreams.removeAll(); stopOrdinal = nil; stopState = .notRequested
@@ -161,13 +163,17 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         guard let binding else { throw RemoteHarnessError.disconnected }
         guard negotiated || operation.method == .describe else { throw RemoteHarnessError.unsupportedCapability }
         guard pending.count < RemoteHarnessLimits.pendingRPCs, ordinal < 4_096 else { throw RemoteHarnessError.limitExceeded }
-        if let sessionID = operation.sessionID { guard binding.sessionID == sessionID else { throw RemoteHarnessError.bindingMismatch } }
-        if let workspaceID = operation.workspaceID { guard binding.workspaceID == workspaceID else { throw RemoteHarnessError.bindingMismatch } }
+        if let sessionID = operation.sessionID { guard binding.sessionID?.utf8.elementsEqual(sessionID.utf8) == true else { throw RemoteHarnessError.bindingMismatch } }
+        if let workspaceID = operation.workspaceID { guard binding.workspaceID?.utf8.elementsEqual(workspaceID.utf8) == true else { throw RemoteHarnessError.bindingMismatch } }
         if operation.method == .pluginRouteCall {
-            guard botReadExtension else { throw RemoteHarnessError.unsupportedCapability }
+            guard botReadExtension, operation.botID == nil || botWorkExtension else { throw RemoteHarnessError.unsupportedCapability }
             guard let workspaceID = binding.workspaceID, let requested = operation.workspaceID,
                   workspaceID.utf8.elementsEqual(requested.utf8) else { throw RemoteHarnessError.bindingMismatch }
             try RemoteHarnessBotReadContract.workspace(workspaceID)
+            if operation.isMutation, let botID = operation.botID {
+                let botWrites = pending.values.filter { $0.operation.isMutation && $0.operation.botID != nil }
+                guard botWrites.count < 32, !botWrites.contains(where: { $0.operation.botID?.utf8.elementsEqual(botID.utf8) == true }) else { throw RemoteHarnessError.limitExceeded }
+            }
         }
         // Upstream clientId/eventId do not establish trusted Host/workspace/
         // session/run/digest/expiry binding. Both approval decisions remain
@@ -185,7 +191,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         }
         if operation.isMutation { guard let commandID, !commandID.isEmpty, commandID.utf8.count <= 1_024 else { throw RemoteHarnessError.invalidMessage } }
         else if commandID != nil { throw RemoteHarnessError.invalidMessage }
-        if let promptID = operation.promptCommandID { guard promptID == commandID else { throw RemoteHarnessError.bindingMismatch } }
+        if let promptID = operation.promptCommandID { guard commandID?.utf8.elementsEqual(promptID.utf8) == true else { throw RemoteHarnessError.bindingMismatch } }
         if operation.method == .open {
             guard !recoveryRequired else { throw RemoteHarnessError.recoveryRequired }
             guard let streamID = operation.streamID, let endpoint = operation.endpoint, onStream != nil,
@@ -211,7 +217,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         if operation.method == .describe {
             // Renegotiation suspends this extension immediately. Out-of-order
             // replies to earlier describes cannot restore obsolete capabilities.
-            botReadExtension = false; botReadDescribeOrdinal = requestOrdinal
+            botReadExtension = false; botWorkExtension = false; botReadDescribeOrdinal = requestOrdinal
         }
         // Reserve the bounded RPC slot before invoking the injected journal.
         // Even a synchronously reentrant journal cannot overbook pending work.
@@ -314,7 +320,8 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
             guard let request = pending[id] else { continue }
             if request.operation.method == .pluginRouteCall {
                 pending.removeValue(forKey: id)
-                request.completion(.failed(.deadlineExceeded))
+                if request.commandID != nil { settle(request, outcome: .outcomeUnknown, completion: .outcomeUnknown) }
+                else { request.completion(.failed(.deadlineExceeded)) }
             } else {
                 // Retiring also releases Host stream slots whose open ack timed
                 // out. Nothing is resent; sent mutations remain uncertain.
@@ -350,22 +357,30 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
             if request.ordinal == botReadDescribeOrdinal {
                 botReadExtension = capabilities.contains(RemoteHarnessBotReadContract.carrierCapability)
                     && capabilities.contains(RemoteHarnessBotReadContract.capability)
+                botWorkExtension = botReadExtension && capabilities.contains(RemoteHarnessBotWorkContract.capability)
             }
             negotiated = true; request.completion(.response(result))
         case .pluginRouteCall:
             do {
                 guard let workspaceID = operation.workspaceID, let current = binding?.workspaceID,
                       current.utf8.elementsEqual(workspaceID.utf8) else { throw RemoteHarnessError.bindingMismatch }
-                _ = try RemoteHarnessBotRoster(routeResult: result, expectedWorkspaceID: workspaceID)
+                if operation.endpoint == "quenderin-roster" {
+                    _ = try RemoteHarnessBotRoster(routeResult: result, expectedWorkspaceID: workspaceID)
+                } else {
+                    let request = try RemoteHarnessBotWorkContract.request(operation.params)
+                    let receipt = try RemoteHarnessBotCommandReceipt(routeResult: result, expectedWorkspaceID: workspaceID, expectedBotID: request.bot, expectedCommandID: request.command)
+                    if operation.isMutation { try receipt.validateAdmission(for: operation) }
+                }
             } catch {
                 // A bounded route failure cannot change session, Stop, approval
                 // or journal state by retiring their otherwise valid channel.
-                request.completion(.failed((error as? RemoteHarnessError) ?? .invalidMessage))
+                if request.commandID != nil { settle(request, outcome: .outcomeUnknown, completion: .outcomeUnknown) }
+                else { request.completion(.failed((error as? RemoteHarnessError) ?? .invalidMessage)) }
                 return
             }
             // Keep the existing completion vocabulary; this raw route result is
             // validated above and never passed through RemoteHarnessGatewayResult.
-            request.completion(.response(result))
+            settle(request, outcome: .responseReceived, completion: .response(result))
         case .open, .close:
             let fields = try result.fields()
             let key = operation.method == .open ? "opened" : "closed"
@@ -495,7 +510,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
     private func retireConnection(reason: RemoteHarnessError, expectedBinding: RemoteHarnessBinding? = nil, additional: Pending? = nil) {
         guard let previousBinding = binding else { return }
         if let expectedBinding, !bindingMatchesExactly(expectedBinding) { return }
-        binding = nil; negotiated = false; approvalExtension = false; botReadExtension = false; botReadDescribeOrdinal = nil
+        binding = nil; negotiated = false; approvalExtension = false; botReadExtension = false; botWorkExtension = false; botReadDescribeOrdinal = nil
         activeRunID = nil; clearApprovals()
         let requests = (Array(pending.values) + (additional.map { [$0] } ?? [])).sorted { $0.ordinal < $1.ordinal }
         let liveStreams = streams.keys.sorted().compactMap { streams[$0] }.filter { !$0.closing }

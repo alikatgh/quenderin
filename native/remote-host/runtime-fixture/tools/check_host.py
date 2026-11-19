@@ -18,6 +18,8 @@ ALIASES = {
     '@quenderin/plugin-route-dispatcher': 'packages/plugin/src/plugin-route-dispatcher.ts',
     '@quenderin/connection-controller': 'packages/plugin/src/connection-controller.ts',
     '@quenderin/rpc-router': 'packages/plugin/src/rpc-router.ts',
+    '@quenderin/bot-work-runtime': 'packages/plugin/src/quenderin-bot-work-runtime.mjs',
+    '@quenderin/bot-work-journal': 'packages/plugin/src/quenderin-bot-work-journal.mjs',
     '@quenderin/bot-runtime': 'packages/plugin/src/quenderin-bot-runtime.mjs',
 }
 BOT_ALIASES = {'@quenderin/pinned-bot-channel': 'ds-bot/src/host/channel.js',
@@ -25,7 +27,10 @@ BOT_ALIASES = {'@quenderin/pinned-bot-channel': 'ds-bot/src/host/channel.js',
 EXTERNALS = {'zod', '@xterm/headless', '@xterm/addon-serialize'}
 POLICIES = ['quenderin-host-policy.mjs', 'quenderin-host-policy.d.mts',
             'quenderin-bot-read-policy.mjs', 'quenderin-bot-read-policy.d.mts',
-            'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts']
+            'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts',
+            'quenderin-bot-work-policy.mjs', 'quenderin-bot-work-policy.d.mts',
+            'quenderin-bot-work-journal.mjs', 'quenderin-bot-work-journal.d.mts',
+            'quenderin-bot-work-runtime.mjs', 'quenderin-bot-work-runtime.d.mts']
 COMPANIONS = {**{'packages/plugin/src/' + name: name for name in POLICIES},
               **{'packages/protocol/src/' + name: name for name in ['quenderin-bot-read-wire.mjs', 'quenderin-bot-read-wire.d.mts']}}
 

@@ -83,7 +83,7 @@ class OnboardingRecoveryTest {
         compose.onNodeWithText(context.getString(R.string.action_try_again)).performScrollTo().performClick()
         compose.onNodeWithTag("setup.startLocal").assertIsDisplayed()
         compose.onNodeWithTag("setup.computer").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("setup.deepseek").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("setup.bots").performScrollTo().assertIsDisplayed()
         println("UI_RECOVERY_PASSED injected failure preserves local and optional connection choices")
 
         // Exercise the production retained-layer helper. A blank part of the active layer

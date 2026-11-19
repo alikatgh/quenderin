@@ -288,9 +288,9 @@
     <string name="releases_refresh">Обновить</string>
     <string name="action_back">Назад</string>
     <string name="tab_images">Изображения</string>
-    <string name="entry_welcome_body">Общайтесь с локальными моделями, подключите DeepSeek или свой компьютер. Выберите, где обрабатываются ваши сообщения.</string>
+    <string name="entry_welcome_body">Общайтесь локально или работайте с постоянными ботами на своём компьютере. Выберите, где выполняются задачи.</string>
     <string name="entry_choose_title">Где будем общаться?</string>
-    <string name="entry_choose_body">Используйте модель здесь, свой аккаунт DeepSeek или свой компьютер.</string>
+    <string name="entry_choose_body">Используйте модель на этом телефоне или откройте ботов на своём компьютере.</string>
     <string name="entry_local_title">На этом телефоне</string>
     <string name="entry_local_detail">Скачайте один раз. Локальные сообщения остаются на телефоне, работают офлайн. Без платы за API.</string>
     <string name="entry_setup_local">Настроить на телефоне</string>
@@ -353,4 +353,6 @@
     <string name="response_section">Часть %1$d из %2$d</string>
     <string name="report_excerpt_too_long">Этот отрывок слишком длинный. Выберите фрагмент покороче.</string>
     <string name="report_note_too_long">Примечание слишком длинное. Сократите его перед отправкой.</string>
+    <string name="entry_bots_title">Боты</string>
+    <string name="entry_bots_detail">Работайте с постоянными ботами на своём компьютере. Сначала DS-Bot; скачивать локальную модель не нужно.</string>
 </resources>

@@ -31,6 +31,8 @@ import { ConnectionController } from '@quenderin/connection-controller';
 import { RpcRouter } from '@quenderin/rpc-router';
 import { PluginRouteBridge } from '@quenderin/plugin-route-bridge';
 import { createPluginRouteDispatcher } from '@quenderin/plugin-route-dispatcher';
+import { createBotWorkScope, mountedBotWork } from '@quenderin/bot-work-runtime';
+import { initializeBotWorkJournal, BotWorkJournal } from '@quenderin/bot-work-journal';
 import { mountedBotRead, botSessionWritable } from '@quenderin/bot-runtime';
 import { install as installStore } from '@quenderin/pinned-bot-store';
 import { install as installChannel } from '@quenderin/pinned-bot-channel';
@@ -41,10 +43,29 @@ import { join } from 'node:path';
 import { types } from 'node:util';
 
 class ZeroCallAdapter extends LlmAdapter {
-  calls = 0;
+  calls = 0; workMode = false; waiting = false; aborted = false;
   async listModels(provider: string) { return [{ provider, id: 'scripted', name: 'scripted' }]; }
   async resolveModel(provider: string, model: string) { return { provider, id: model, name: model }; }
-  async *stream(_options: GenerateOptions): AsyncIterable<StreamChunk> { this.calls++; throw new Error('Zero model-call read budget exceeded'); }
+  async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    this.calls++;
+    if (!this.workMode || this.calls > 2) throw new Error('Two-call synthetic Bot work budget exceeded');
+    options.signal?.throwIfAborted();
+    const text = 'Synthetic Bot work reply.';
+    yield { type: 'block-start', index: 0, blockType: 'text' };
+    yield { type: 'text-delta', index: 0, text };
+    if (this.calls === 2) {
+      const signal = options.signal;
+      if (!signal) throw new Error('Official cancellation signal required');
+      let abort!: () => void;
+      try {
+        this.waiting = true;
+        await new Promise<void>(done => { abort = () => { this.aborted = true; done(); }; if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true }); });
+      } finally { signal.removeEventListener('abort', abort); this.waiting = false; }
+      signal.throwIfAborted();
+    }
+    yield { type: 'block-end', index: 0, block: { type: 'text', text } };
+    yield { type: 'finish', reason: { kind: 'stop' } };
+  }
 }
 class NoMediaAttachments extends AttachmentStore {
   readonly imageLimits: ImageAttachmentLimits = { maxImageBytes: 1, maxImagesPerMessage: 1, maxMessageImageBytes: 1, maxImagePixels: 1, maxImageDimension: 1, mediaTypes: [] };
@@ -78,6 +99,9 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
   const publicKey = Buffer.alloc(32, 3).toString('base64url');
   const trustPath = join(root, 'public-trust.json');
   const previousTrust = process.env.QUENDERIN_REMOTE_TRUST_FILE;
+  const previousJournal = process.env.QUENDERIN_BOT_WORK_JOURNAL;
+  const journalPath = join(root, 'work-journal'); initializeBotWorkJournal(journalPath);
+  process.env.QUENDERIN_BOT_WORK_JOURNAL = journalPath;
   process.env.QUENDERIN_REMOTE_TRUST_FILE = trustPath;
   const trust = (allowed: boolean) => writeFileSync(trustPath, JSON.stringify({ version: 1, peers: allowed ? [{ deviceId: 'fixture-native', publicKey }] : [] }), { mode: 0o600 });
   trust(true);
@@ -117,13 +141,14 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     expect(local.supportsCarrier).toBe(true);
     harness = new HarnessRemoteBridge(local, async () => undefined, undefined, '0.2.1-rc.1', undefined, undefined, undefined,
       sessionId => botSessionWritable(ctx.connection, sessionId));
-    const capabilities = () => ['harness.remote.v3', 'harness.remote.transfer.v1', ...(createPluginRouteDispatcher(() => ctx.connection, () => undefined)?.quenderinBotReadAvailable?.() === true ? ['plugin.route.v1', 'quenderin.bot.read.v1'] : [])];
+    const capabilities = () => ['harness.remote.v3', 'harness.remote.transfer.v1', ...(createPluginRouteDispatcher(() => ctx.connection, () => undefined)?.quenderinBotReadAvailable?.() === true ? ['plugin.route.v1', 'quenderin.bot.read.v1'] : []), ...(createPluginRouteDispatcher(() => ctx.connection, () => undefined)?.quenderinBotWorkAvailable?.() === true ? ['quenderin.bot.work.v1'] : [])];
     let routersCreated = 0;
     let deferred: (() => void) | undefined, hold = false, dispatchCompleted = false;
     controller = new ConnectionController({ isTrusted: (id: string, key: string) => id === 'fixture-native' && key === publicKey } as never,
-      () => {
+      context => {
         routersCreated++;
-        const dispatch = createPluginRouteDispatcher(() => ctx.connection, () => { throw new Error('Loopback fallback forbidden'); }, peer);
+        const workScope = createBotWorkScope('fixture-host', context.peerDeviceId, context.peerIdentityKey!, context.quenderinAssertAuthorized!);
+        const dispatch = createPluginRouteDispatcher(() => ctx.connection, () => { throw new Error('Loopback fallback forbidden'); }, peer, workScope);
         const route = dispatch && new PluginRouteBridge(async (...args: any[]) => {
           const result = await dispatch(...args as [string, unknown, AbortSignal]);
           if (hold) { dispatchCompleted = true; await new Promise<void>(resolve => { deferred = resolve; }); }
@@ -172,7 +197,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
         sessions: { 'fixture-bot': 'fixture-group-member' }, segments: { 'fixture-bot': [{ sessionId: 'fixture-group-past' }] } } },
       agents: {}, capabilities: { items: {} }, exchanges: [], exchangeTurns: {}, works: {}, questions: {}, views: {}, prefs: {}, switching: {} }));
     let rt: any, botFiber: any;
-    await ctx.plugin({ name: 'fixture-user-operated-bot', inject: ['connection', 'workspaceRegistry'], async apply(botCtx: Context) {
+    await ctx.plugin({ name: 'fixture-user-operated-bot', inject: ['connection', 'workspaceRegistry', 'sessionController'], async apply(botCtx: Context) {
       botFiber = botCtx.fiber;
       rt = { ctx: botCtx, home, statePath: join(home, 'state.json'), warn: () => undefined };
       installStore(rt);
@@ -193,7 +218,9 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     const described = (await invoke('harness.transport.describe', {})).payload.result;
     expect(described.capabilities).toEqual(expect.arrayContaining(['plugin.route.v1', 'quenderin.bot.read.v1']));
     const readEffects: Record<string, number> = { modelCalls: 0, refreshCalls: 0, loadCalls: 0, bootstrapCalls: 0, secretReads: 0, agentStarts: 0, stateWrites: 0, catalogCalls: 0 };
+    const originalMethods: Record<string, any> = {};
     for (const [method, count] of [['refresh', 'refreshCalls'], ['load', 'loadCalls'], ['bootstrap', 'bootstrapCalls'], ['loadSecrets', 'secretReads'], ['resolveAgent', 'agentStarts'], ['save', 'stateWrites'], ['catalog', 'catalogCalls']]) {
+      originalMethods[method] = rt[method];
       rt[method] = () => { readEffects[count]++; throw new Error('Forbidden read effect'); };
     }
     const before = files(root);
@@ -279,6 +306,60 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
       lifecycle: 'explicit synthetic store load, then real channel.install; full createRuntime not invoked', authenticatedCarrier: 'admitted ConnectionController channel -> RpcRouter -> shared Fetch with official owner Peer',
       workspaceId: workspace.id, request, rawResult: JSON.stringify(result), result, readEffects, outcomes,
       ordinaryWorkspace: { workspaceId: other.id, request: otherWorkspaceRequest, rawResult: JSON.stringify(otherWorkspaceResult), result: otherWorkspaceResult } };
+    // Work begins only after the zero-effect read checks. The runtime and queue
+    // are real; an empty synthetic capability preparer and two-call text adapter
+    // replace credentials and install no Bot tools/providers or background jobs.
+    for (const [method, original] of Object.entries(originalMethods)) rt[method] = original;
+    let capabilityPreparations = 0;
+    rt.ensureCapabilities = async () => { capabilityPreparations++; };
+    adapter.workMode = true;
+    const workEvents: { sessionId: string; type: string; data: any }[] = [];
+    ctx.on('session/event', (session, event) => {
+      if (session.id === 'fixture-bot-part' && ['user/message', 'turn/start', 'turn/end'].includes(event.type)) {
+        if (workEvents.length >= 16) throw new Error('Synthetic Bot work event budget exceeded');
+        workEvents.push({ sessionId: session.id, type: event.type, data: event.data });
+      }
+    });
+    expect(mountedBotWork(ctx.connection)?.ready()).toBe(true);
+    expect((await invoke('harness.transport.describe', {})).payload.result.capabilities).toContain('quenderin.bot.work.v1');
+    const workScope = createBotWorkScope('fixture-host', 'fixture-native', publicKey, () => undefined);
+    const journal = new BotWorkJournal(journalPath);
+    const command = (commandId: string) => ({ route: 'api/bot', body: { endpoint: 'quenderin-submit', payload: {
+      schemaVersion: 1, workspaceId: workspace.id, botId: 'fixture-bot', expectedSessionId: 'fixture-bot-part',
+      expectedRevision: rt.state.revision, commandId, text: 'Complete the bounded synthetic Bot task.',
+    } } });
+    const firstCommand = command('fixture-work-first');
+    const firstWork = (await invoke('plugin.route.call', firstCommand)).payload.result;
+    expect(firstWork.json.value).toMatchObject({ state: 'accepted', sessionId: 'fixture-bot-part', revision: firstCommand.body.payload.expectedRevision, reason: null });
+    const firstEntry = journal.lookup(workScope, firstCommand.body.payload)!;
+    await until(() => workEvents.some(event => event.type === 'turn/end') && journal.lookup(workScope, firstCommand.body.payload)?.pending === false);
+    expect(workEvents.filter(event => event.type === 'user/message' && event.data.source.rpcId === firstEntry.requestId)).toHaveLength(1);
+    const duplicateWork = (await invoke('plugin.route.call', firstCommand)).payload.result;
+    expect(duplicateWork).toEqual(firstWork); expect(adapter.calls).toBe(1);
+    const changedCommand = { ...firstCommand, body: { ...firstCommand.body, payload: { ...firstCommand.body.payload, text: 'Changed task' } } };
+    const conflictWork = (await invoke('plugin.route.call', changedCommand)).payload.result;
+    expect(conflictWork.json.value).toMatchObject({ state: 'rejected', reason: 'payloadConflict', sessionId: null, revision: null });
+    const secondCommand = command('fixture-work-second');
+    const secondWork = (await invoke('plugin.route.call', secondCommand)).payload.result;
+    expect(secondWork.json.value.state).toBe('accepted');
+    const secondEntry = journal.lookup(workScope, secondCommand.body.payload)!;
+    await until(() => adapter.waiting);
+    const stop = (await invoke('harness.remote.call', { endpoint: 'session/cancel', payload: { args: { request: { sessionId: secondWork.json.value.sessionId } } } })).payload.result;
+    expect(stop).toEqual({ ok: true, value: { accepted: true } });
+    // The cancel ACK is not settlement; wait for official aborted turn evidence.
+    await until(() => adapter.aborted && workEvents.some(event => event.type === 'turn/end' && event.data.reason?.kind === 'aborted')
+      && journal.lookup(workScope, secondCommand.body.payload)?.pending === false);
+    expect(workEvents.filter(event => event.type === 'user/message' && event.data.source.rpcId === secondEntry.requestId)).toHaveLength(1);
+    const statusCommand = { route: 'api/bot', body: { endpoint: 'quenderin-command', payload: {
+      schemaVersion: 1, workspaceId: workspace.id, botId: 'fixture-bot', commandId: firstCommand.body.payload.commandId,
+    } } };
+    expect((await invoke('plugin.route.call', statusCommand)).payload.result).toEqual(firstWork);
+    const withoutScope = createPluginRouteDispatcher(() => ctx.connection, () => undefined, peer)!;
+    expect((await withoutScope('api/bot', firstCommand.body, AbortSignal.timeout(1000))).status).toBe(503);
+    expect(adapter.calls).toBe(2); expect(capabilityPreparations).toBe(2); expect(toolCalls).toBe(0);
+    completed.work = { scriptedModelCalls: 2, capabilityPreparations, twoSequentialCommands: true, matchingMessages: [1, 1],
+      duplicatePreserved: true, conflictPreserved: true, statusPreserved: true, stopAcknowledged: true, abortedTurnObserved: true,
+      authenticatedInProcessScope: true, firstReceipt: firstWork, secondReceipt: secondWork };
     // Revoke while a successful real Fetch dispatch is awaiting publication.
     hold = true;
     receive!(decodeMessage(JSON.stringify({ v: 1, id: 'revoke-read', type: 'rpc.request', timestamp: 1, payload: { method: 'plugin.route.call', params: request } })));
@@ -289,6 +370,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     const staleDispatcher = createPluginRouteDispatcher(() => connection, () => undefined, peer)!;
     await botFiber.dispose();
     expect(mountedBotRead(connection)).toBeUndefined();
+    expect(mountedBotWork(connection)).toBeUndefined();
     expect((await invoke('harness.transport.describe', {})).payload.result.capabilities).not.toContain('quenderin.bot.read.v1');
     hold = false;
     await unavailable('unmounted');
@@ -302,6 +384,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     writeFileSync(join(fixture, 'bot-runtime-facts.json'), JSON.stringify(completed) + '\n', { flag: 'wx', mode: 0o600 });
   } finally {
     await controller?.close(); await harness?.closeAll(); await ctx.fiber.dispose();
+    if (previousJournal === undefined) delete process.env.QUENDERIN_BOT_WORK_JOURNAL; else process.env.QUENDERIN_BOT_WORK_JOURNAL = previousJournal;
     if (previousTrust === undefined) delete process.env.QUENDERIN_REMOTE_TRUST_FILE; else process.env.QUENDERIN_REMOTE_TRUST_FILE = previousTrust;
   }
 });

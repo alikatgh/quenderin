@@ -67,6 +67,7 @@ public struct RemoteHarnessClientHost: Identifiable, Equatable, NativeConnection
     public var onStateChanged: (@MainActor () -> Void)?
     public private(set) var supportsCompanion = false
     public var supportsBotRead: Bool { coordinator.supportsBotRead }
+    public var supportsBotWork: Bool { coordinator.supportsBotWork }
     public var binding: RemoteHarnessBinding? { coordinator.binding }
     public var stopState: RemoteHarnessStopState { coordinator.stopState }
     public var approvals: [RemoteHarnessPendingApproval] { coordinator.pendingApprovalRequests }

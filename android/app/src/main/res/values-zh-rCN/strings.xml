@@ -288,9 +288,9 @@
     <string name="releases_refresh">刷新</string>
     <string name="action_back">返回</string>
     <string name="tab_images">图像</string>
-    <string name="entry_welcome_body">使用本地模型、连接 DeepSeek，或使用自己的电脑。选择消息的处理位置。</string>
+    <string name="entry_welcome_body">在本地聊天，或与自己电脑上的持久机器人协作。选择任务运行的位置。</string>
     <string name="entry_choose_title">在哪里聊天？</string>
-    <string name="entry_choose_body">使用此设备上的模型、自己的 DeepSeek 账户，或自己控制的电脑。</string>
+    <string name="entry_choose_body">使用此手机上的模型，或打开自己控制的电脑上的机器人。</string>
     <string name="entry_local_title">在此手机上</string>
     <string name="entry_local_detail">下载一次即可离线使用。本地消息保留在此手机上，无 API 费用。</string>
     <string name="entry_setup_local">在此手机上设置</string>
@@ -353,4 +353,6 @@
     <string name="response_section">第 %1$d 部分，共 %2$d 部分</string>
     <string name="report_excerpt_too_long">摘录过长，请选择较短的内容。</string>
     <string name="report_note_too_long">备注过长，请在发送前缩短。</string>
+    <string name="entry_bots_title">机器人</string>
+    <string name="entry_bots_detail">与自己电脑上的持久机器人协作。从 DS-Bot 开始，无需下载本地模型。</string>
 </resources>

@@ -87,11 +87,10 @@ class NativeJourneysTest {
         screenshot("02-setup-light.png")
 
         // Entry and Back only: do not enter credentials, authorize a host, connect or send.
-        clickScrolled("setup.deepseek")
-        compose.waitUntil(10_000) {
-            compose.onAllNodesWithTag("deepseek.connect").fetchSemanticsNodes().isNotEmpty() ||
-                compose.onAllNodesWithText("Connect your DeepSeek account").fetchSemanticsNodes().isNotEmpty()
-        }
+        compose.onNodeWithTag("setup.deepseek").assertDoesNotExist()
+        clickScrolled("setup.bots")
+        awaitTag("remote.back")
+        compose.onNodeWithText("Bots").assertExists()
         back()
         awaitTag("setup.computer")
         clickScrolled("setup.computer")
@@ -108,6 +107,11 @@ class NativeJourneysTest {
         awaitTag("setup.download")
         compose.onNodeWithTag("nav.chat").assertDoesNotExist()
         clickScrolled("setup.download")
+        awaitTag("nav.chat")
+        compose.onNodeWithTag("nav.chat").assertIsSelected()
+        compose.onNodeWithTag("nav.bots").performClick()
+        awaitTag("remote.back")
+        back()
         awaitTag("nav.chat")
         compose.onNodeWithTag("nav.chat").assertIsSelected()
         compose.onNodeWithTag("chat.composer").performClick().performTextInput("Hello from a synthetic UI test")
@@ -225,6 +229,8 @@ class NativeJourneysTest {
         awaitTag("settings.responses")
         compose.onNodeWithTag("settings.root").assertIsEnabled()
         compose.onNodeWithTag("settings.back").assertDoesNotExist()
+        compose.onNodeWithTag("settings.bots").assertExists()
+        compose.onNodeWithTag("settings.deepseek").assertDoesNotExist()
         compose.onNodeWithTag("nav.settings").assertIsSelected()
     }
     private fun awaitTag(tag: String) = compose.awaitJourneyTag(tag)

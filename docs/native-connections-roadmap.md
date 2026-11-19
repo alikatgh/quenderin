@@ -1,10 +1,20 @@
 # Native connections and remote-agent delivery checklist
 
-Quenderin will provide three explicit execution destinations in its native
-SwiftUI and Kotlin/Compose apps: on-device models, DeepSeek's API, and a remote
-DeepSeek Harness on the user's computer. Every conversation identifies its
-destination, model, workspace and tool execution location. Changing a destination
-never silently transmits an existing local conversation or attached documents.
+Quenderin's native apps provide local conversations and a separate **Bots**
+workflow for persistent work on a paired computer. DeepSeek through DS-Bot is the
+first remote implementation. Bots backed by local models are the product roadmap;
+provider choice belongs to the Host, not to a second agent loop on the phone.
+Every remote task identifies its bot, model, workspace and execution location.
+Changing destinations never silently transmits local conversations or documents.
+
+**Product correction, 29 October 2026:** standalone direct DeepSeek API chat is
+not part of this feature. Its native entry points are being removed while saved
+conversations, credential references and legacy decoding are preserved. Earlier
+implementation records below are historical evidence, not a promise to ship that
+destination. The active increment is deliberate Bot task submission, durable
+admission/status recovery, existing-session history, bound approvals and Stop.
+Memory, questions/cards, teams and bounded automation remain ordered follow-up
+work in the [Bot integration plan](deepseek-bot-integration-plan.md).
 
 Created: 23 October 2026. Baseline: `fb9389d82fc8e8b3486897af3f4585c17d928fcc`.
 DeepSeek source: `4abdd1f1794d1fe9e732d2737acc410a2fb7c9a6`,
@@ -32,8 +42,9 @@ Android discovery: [PR #177](https://github.com/alikatgh/quenderin/pull/177),
 source `d937e79bd058f415eb0565b5def0880448a38aa6`, merged as
 `518af0679d3157809a5f3adc9f828b230df07a39` after all 18 CI jobs, crypto
 host checks and secret scan passed.
-Current mission: operate a DeepSeek Harness on the user's computer through a
-complete native task/session interface. Store submission is deferred by the user.
+Current mission: operate persistent Bots on the user's computer through a
+complete native task interface. Store delivery is authorized, but a changed
+release still requires its exact verification and signing prerequisites.
 The native journey source is merged through
 [PR #178](https://github.com/alikatgh/quenderin/pull/178) as
 `ae22b9de73eed009a3eb7cd3b8879315179a1acd`. Its tree exactly matches tested
@@ -83,15 +94,16 @@ The immediate completion sequence is:
 | Destination | Model execution | Tool execution | Credentials |
 | --- | --- | --- | --- |
 | On this device | Existing local runtime | Permitted local capabilities | Existing local setup |
-| DeepSeek | DeepSeek API | Permitted local capabilities | User API key in native secure storage |
-| My computer | Host's provider, initially DeepSeek | Remote computer | Provider credentials stay on the Host |
+| Bots | Host's provider, initially DeepSeek through DS-Bot | Paired computer | Provider credentials stay on the Host |
+| Local-model Bots (roadmap) | A supported local-model adapter on the Host | Paired computer | No provider key required by local inference |
 
 ```text
 Native Quenderin (SwiftUI / Kotlin Compose)
   +-- Local adapter -> existing on-device runtime and capability gates
-  +-- DeepSeek provider -> HTTPS -> DeepSeek API
-  +-- Remote session adapter -> end-to-end encrypted connection
-        -> Host Remote plugin -> DeepSeek Harness -> Host tools / model provider
+  +-- Bots -> end-to-end encrypted remote connection
+        -> Host Remote plugin -> DS-Bot persistent identity / memory / work
+        -> DeepSeek Harness -> Host tools / model provider
+        -> supported local-model adapters (roadmap)
 ```
 
 ## 1. Native connection and conversation contracts — foundation complete
@@ -125,7 +137,7 @@ Principal seams: `apple/QuenderinKit`, `apple/QuenderinApp`,
 `android/quenderin-core`, `android/app` and `shared/`. Keep UI bubbles as a
 projection; their user/assistant-only shape cannot replace provider history.
 
-## 2. First-class native DeepSeek provider — source implemented
+## 2. Historical direct DeepSeek provider — removed from the product entry points
 
 Acceptance: a fresh install can open a separate DeepSeek conversation, consent
 to transmission, securely validate/save its API key, choose a supported model and
