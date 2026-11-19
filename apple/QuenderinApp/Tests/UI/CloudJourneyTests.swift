@@ -157,6 +157,9 @@ final class CloudJourneyTests: XCTestCase {
         tap(app.buttons["Chats (⌘1)"])
         require(app.textFields["Message"])
         #else
+        dismissChatKeyboard()
+        XCTAssertEqual(app.textFields["Message"].value as? String, draft)
+        capture("08b-iphone-keyboard-dismissed-draft-retained")
         tap(app.tabBars.buttons["DeepSeek"])
         require(app.secureTextFields["deepseek-api-key"])
         XCTAssertEqual(switchValue(deepSeekConsentControl), "0")
@@ -232,7 +235,18 @@ final class CloudJourneyTests: XCTestCase {
         capture("15-mac-new-chat-recovers-and-focuses-main")
     }
     #else
+    @MainActor private func dismissChatKeyboard() {
+        let keyboard = app.keyboards.firstMatch
+        require(keyboard)
+        let dismiss = app.buttons["chat-dismiss-keyboard"]
+        require(dismiss)
+        XCTAssertTrue(dismiss.isHittable, "The keyboard Done button must be immediately reachable")
+        dismiss.tap()
+        requireGone(keyboard)
+    }
+
     @MainActor private func checkPhoneSettingsHistoryAndRelaunch() {
+        dismissChatKeyboard()
         // The native TabView exposes destinations beyond its first four through More.
         tap(app.tabBars.buttons["More"])
         tap(app.staticTexts["Settings"])
