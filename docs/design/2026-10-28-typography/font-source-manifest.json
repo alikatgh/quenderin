@@ -1,0 +1,97 @@
+{
+  "family": "Ysabeau Office",
+  "upstream": "https://github.com/CatharsisFonts/Ysabeau",
+  "license_source": "https://raw.githubusercontent.com/google/fonts/main/ofl/ysabeauoffice/OFL.txt",
+  "fonts": {
+    "ysabeau-office-cyrillic-ext-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg7AR9gOIifPjTg.woff2",
+      "bytes": 27088,
+      "sha256": "81f4297e24121a4e2a6e2d0064797a2e202b328975df8b73eb5d8d2f017a5992"
+    },
+    "ysabeau-office-cyrillic-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg7kR9gOIifPjTg.woff2",
+      "bytes": 24884,
+      "sha256": "b7ab4268cb82e4404587c16f00af429f776a117e756399877f8c9273828960fe"
+    },
+    "ysabeau-office-greek-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg74R9gOIifPjTg.woff2",
+      "bytes": 14588,
+      "sha256": "852b6dc8b1beed7aa49587eef666187b9c25499579d0ff1658a7f0998acfe9fa"
+    },
+    "ysabeau-office-math-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg8ER9gOIifPjTg.woff2",
+      "bytes": 43292,
+      "sha256": "015f733f7597f51562617b4244b988369921a977a285d73d3ad5256bdf917288"
+    },
+    "ysabeau-office-symbols-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg9MR9gOIifPjTg.woff2",
+      "bytes": 23940,
+      "sha256": "08e02137cedd2e249e5fbe5402e1e3c7fb1ea9477bd07712069607c42090684b"
+    },
+    "ysabeau-office-vietnamese-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg7IR9gOIifPjTg.woff2",
+      "bytes": 13280,
+      "sha256": "d4e2cbd4b0fe57ee9431e1360b9ca6b548333fb80e9629a069c6a203b73b887f"
+    },
+    "ysabeau-office-latin-ext-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg7MR9gOIifPjTg.woff2",
+      "bytes": 36628,
+      "sha256": "2ccab814e217d04cae0f3d8ce16bdbc4e608e1fb2ab601a571e4709f5db36268"
+    },
+    "ysabeau-office-latin-italic.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIpapaZKhM9RuQIp8FmdYrPPPLMg70R9gOIifM.woff2",
+      "bytes": 40140,
+      "sha256": "3fe0b2c3739ce7a9c54b3044df1b0efea8a1bc452f41576544a75a41ca484b97"
+    },
+    "ysabeau-office-cyrillic-ext-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPLEs78b8SGKufI.woff2",
+      "bytes": 23976,
+      "sha256": "591926b7662b02353f867e58bd9153ec3aafc96fed63c5ac17e00d4bb66bac7f"
+    },
+    "ysabeau-office-cyrillic-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPLNs78b8SGKufI.woff2",
+      "bytes": 22960,
+      "sha256": "0edcfc70d3bcc756b19ef0092c6f16a7349a6f638778f695dd25320879fcbdac"
+    },
+    "ysabeau-office-greek-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPLKs78b8SGKufI.woff2",
+      "bytes": 13108,
+      "sha256": "20898773a936437a46c4988a19675290b85110ac79c48b1b3970d2d824a412d5"
+    },
+    "ysabeau-office-math-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPK1s78b8SGKufI.woff2",
+      "bytes": 40724,
+      "sha256": "1584f44460188e2b72f97761fef81a2c69ac59af84b8803c97673077de5ee9a3"
+    },
+    "ysabeau-office-symbols-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPKns78b8SGKufI.woff2",
+      "bytes": 23284,
+      "sha256": "94d1cfa1a015492d4e6a36636ed5dde5bcc9b9019eb8c8ed26e30c926e7e560e"
+    },
+    "ysabeau-office-vietnamese-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPLGs78b8SGKufI.woff2",
+      "bytes": 12188,
+      "sha256": "e31642820dcc20b3e15e93cb6974e5ea0162eb4a074da25dc8bb95e065f851d6"
+    },
+    "ysabeau-office-latin-ext-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPLHs78b8SGKufI.woff2",
+      "bytes": 34004,
+      "sha256": "541ed7ca1dc26dff9804e869664af6f4f3fdd0f639c398157617b0e6609237cd"
+    },
+    "ysabeau-office-latin-normal.woff2": {
+      "source": "https://fonts.gstatic.com/s/ysabeauoffice/v4/LDIrapaZKhM9RuQIp8FmdYrPPPLJs78b8SGK.woff2",
+      "bytes": 38480,
+      "sha256": "fe5cd0dcfbc6897cb893063b4e65b9b1fc47e1b6145ab3b9937bdfa2b71008b0"
+    }
+  },
+  "changed_text_files": [
+    "styles.css",
+    "index.html",
+    "reality.html",
+    "tell-me-more.html",
+    "how-it-works.html",
+    "features.html",
+    "models.html",
+    "faq.html"
+  ]
+}

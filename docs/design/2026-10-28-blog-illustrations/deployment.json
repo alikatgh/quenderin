@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-28",
+  "site": "https://quenderin.org",
+  "provider": {
+    "name": "Cloudflare",
+    "account": "wallmarketshq",
+    "accountId": "4c1e57b6972105286a7aeb46b2b89c78",
+    "service": "Worker quenderin",
+    "verifiedPlan": "Workers Free",
+    "includedPriceUSD": 0,
+    "observedInvocationsPrevious24h": 21,
+    "observedErrorsPrevious24h": 0,
+    "workerRequestLimitPerDay": 100000,
+    "workerCpuMillisecondsPerRequest": 10,
+    "accountVerifiedInBrowser": "Albert - Main - CMax"
+  },
+  "deployment": {
+    "deploymentId": "6399fd68-f58f-48b4-8b82-08636a020e96",
+    "versionId": "a9875091-c8bb-4e0b-aa31-4b338c27520d",
+    "oldVersion": "d79c77fe-ce49-4417-a1a5-bbb2994fe0c6",
+    "moduleSha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5",
+    "activatedAt": "2026-10-28T11:02:11.324Z"
+  },
+  "previousDeploymentId": "ffb95aa2-6a71-475f-95e0-2c203565855e",
+  "previousVersionId": "d79c77fe-ce49-4417-a1a5-bbb2994fe0c6",
+  "source": {
+    "baseCommit": "21b025d8dbed42e3c5d1237ed1e8fd2939bf300d",
+    "branch": "codex/website-visual-polish-20261028",
+    "ownedFiles": 16,
+    "committed": false,
+    "pushed": false,
+    "status": "Owned source changes remain uncommitted; unrelated dirty files excluded from publication. All owned source hashes still equal the deployed manifest."
+  },
+  "change": "Fourteen existing blog HTML pages gain decorative section SVGs through one new stylesheet and one shared SVG sprite. Original article text and anchors preserved.",
+  "releaseSafety": {
+    "classification": "Static content only. Worker executable, runtime, bindings, routing, headers and current privacy policy retained exactly. No new API behavior, jobs, queues, storage, secrets, infrastructure or variable-charge meters. Static assets served before Worker except unchanged /api/* route. Existing Free limits retained; no plan, quota, overage or billing change.",
+    "uploadBounds": {
+      "stagedFiles": 116,
+      "servedAssets": 115,
+      "stagedBytes": 7275965,
+      "changedAssetsUploaded": 16,
+      "stageByteCap": 8000000,
+      "apiRequestCapPerInvocation": 200,
+      "uploadBucketCap": 10,
+      "requestTimeoutSeconds": 30,
+      "uploadRetries": 0
+    },
+    "reviewedReleaseScriptSha256": "dad32518d68a49d59039c2e9048b141a4bad1d000f65ba783f2a24b6461fe094",
+    "reviewedVerifierSha256": "4385a3dba392df39c6e791d940c739f06903416438d6fc1fe99737ba8c6f7808",
+    "independentReview": "PASS after fixing rollback to work when deployment staging is unavailable. Sole production writer during rollout."
+  },
+  "verification": {
+    "websiteTests": {
+      "command": "node --test scripts/tests/model-releases.test.mjs scripts/tests/website-theme.test.mjs",
+      "passed": 23,
+      "failed": 0
+    },
+    "releaseGuardTests": {
+      "passed": 8,
+      "failed": 0,
+      "covers": "Runtime/module drift, concurrent deployment rejection, successful stub activation, scoped manifest, rollback success, concurrent rollback rejection, and rollback with unavailable stage."
+    },
+    "secretScan": "Project scripts/verify_no_secrets.mjs passed on isolated publication directory.",
+    "preflight": "All 113 existing public assets matched the prior live snapshot. Newer October 28 privacy policy retained over older source base.",
+    "live": "All 115 served asset hashes passed; CSS/SVG MIME passed; exact Worker module and full runtime/bindings parity passed; API GET valid 200 JSON and POST 405 passed.",
+    "independentLiveCheck": "Primary independently confirmed new CSS/SVG exact hashes and all 15 HTML normalized hashes. Each urllib HTML response differs only by one identical existing Cloudflare Web Analytics script immediately before closing body, 367 bytes. Node/curl bytes match exactly.",
+    "rendered": "Primary verified the exact owned source in light/dark mobile/wide local rendering, then inspected the public blog-development-october-2026#chat page wide and at 390px: four illustrations visible, 350px artwork widths at mobile, no document overflow. Public tab left available for review and viewport restored."
+  },
+  "rollback": {
+    "route": "Cloudflare dashboard > Workers & Pages > quenderin > Deployments: promote/roll back to previousVersionId at 100%, after confirming current version is this release and no concurrent deployment occurred.",
+    "previousVersionRetainedByProvider": true,
+    "requiresDataMigration": false,
+    "status": "Not needed; all live checks passed. Tested temporary API rollback toolkit was removed after verification; exact provider version IDs retained here."
+  },
+  "retention": "Only this small evidence folder and original source assets are retained. Disposable publication staging, temporary deployment code, downloaded JavaScript dependencies and package investigation scratch were removed.",
+  "cleanup": {
+    "disposableStagingAndToolkitRemoved": true,
+    "finalRemovalApparentBytes": 11275905,
+    "finalRemovalAllocatedBytes": 12292096,
+    "earlierUnusedWranglerBundleRemovedApparentBytes": 15244647,
+    "retainedEvidenceFiles": 4,
+    "remainingCliDependencies": false,
+    "originalSourceAssetsPreserved": true,
+    "volumeFreeBytesAfter": 620027904,
+    "volumeDeltaAttribution": "Volume-wide free-space changes include concurrent sessions and APFS effects; only exact removed paths were measured as task cleanup.",
+    "ledgerNote": "The storage helper reports absent paths as missing without claiming deletion; foreground checks confirmed both session-owned scratch directories absent."
+  }
+}

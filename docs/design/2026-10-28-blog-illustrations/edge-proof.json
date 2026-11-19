@@ -1,0 +1,114 @@
+{
+  "passed": true,
+  "files": 15,
+  "normalization": "remove one exact identical Cloudflare Web Analytics script immediately before closing body; no other changes",
+  "injection_bytes": 367,
+  "injection_sha256": "8cec80ad42dece055e5d264065ef89b233dee5d1753c64a6ca636efcde6cef2e",
+  "records": [
+    {
+      "path": "blog-agent-hands.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "4a890b24c079e3e479608ea08fddc49f01d2e162fe7ef7e82669b279715248b0",
+      "sha256_raw": "06b8b77e3937bfcd89d70851b6df7c068218956fdf2af350fc5666e4fdd9e370"
+    },
+    {
+      "path": "blog-android-beta.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "380961b829a07eecea1b33f9d6a2a83582fa4eb2a63325be2257413fbeb7da2c",
+      "sha256_raw": "5a9b9531d9b38b83176da49657b0b5ba11acc7928b9fe7cc252bd92e284b1c7e"
+    },
+    {
+      "path": "blog-apple-launch.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "efd804d7279491e620baf875ee570d0c55f22f0e539d97b7394944f759049cdb",
+      "sha256_raw": "b885967331edb27edcbc7b3a84bf85bb1bb17ae922c6aa390b14ab70ef81d085"
+    },
+    {
+      "path": "blog-bonsai-2.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "475a172aaeb07ff1b82d1b27a1efb212bd69daf52eaf01095666273b559c7e4e",
+      "sha256_raw": "0e5a3c151b59cd4b5ae28514e8d79f59348f13b20d4b6ef34412af019567f9a8"
+    },
+    {
+      "path": "blog-bonsai-small-muse-spark.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "80ac6204ab694374a9c739999f04168a50c0a26d0654b4134dd2df5226a625ba",
+      "sha256_raw": "f98572b506c73f7b43e828a48a02a0d973d7d1a575a31330d8d3d2ae03cff1d4"
+    },
+    {
+      "path": "blog-cli.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "a5be83bfe0d4cebe3316c03ceaf703e2fd97d2f6cd20035a2984dd07c7a2c5b9",
+      "sha256_raw": "7a1f605acca9e8cdc18d73d5ea90554c691db5b763bde7887c5dc4fad0718b47"
+    },
+    {
+      "path": "blog-computer-use.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "e8beea784bc1747b285fb0162773f34321db7b86b7fd43a63b8add98307211b0",
+      "sha256_raw": "cc050f39ba6b5a1b7e53bafa57fc40aecacae7086058e076f71474fbfeb685e3"
+    },
+    {
+      "path": "blog-development-october-2026.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "cac9c539403681f531fd223b8694553bd3398f5321210e4a231c784fb1c4549b",
+      "sha256_raw": "18dd92fb6e76b01738fa384371dfc47e37d1f751407d1a17ba4a23ab73cc618d"
+    },
+    {
+      "path": "blog-ggml-abort.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "9a3159bf1c9b96efc7ebeb3039ae35d542d54e8c86a6ce290280d2c0218dac1f",
+      "sha256_raw": "8e48f2fb39674d63ed77c2e43a11fc811d0586418a4344f88e22a47ec67d3b5a"
+    },
+    {
+      "path": "blog-model-integrity.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "164d5a6dbb0a823762bc5d7035bc10bd3a58c5654376afd347ac77be52cf5140",
+      "sha256_raw": "1f0b9cc5eabeaab85f512d252fa97f80107066c9690549ff4e70f3912dd41270"
+    },
+    {
+      "path": "blog-muse-engineering.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "788ff4172198280fc6dba4aaf6a2b268c5f3af8c925efc9ae0c5e3ffd7db4ddd",
+      "sha256_raw": "772cab1d80edb89cdb18ad52fc6c47ecdbd90851dd01d182e89879c1a7dc22ae"
+    },
+    {
+      "path": "blog-open-models-october-2026.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "4ee5a0c3aa6b7fe1144ca7a997d8142bb38dd6255de57ed563cbc4e1ffb118cf",
+      "sha256_raw": "f75ee6054fa94f6f0a347f3fb698009a57799d61a54a46b0dc7838b6bad104db"
+    },
+    {
+      "path": "blog-setup.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "3bfbb273ab07ab54509beca4620c5b981645a8498a04db8018c6a0dcf17970b0",
+      "sha256_raw": "6a5d4495008f93dab6b6c54cbe91014cf021805cb1bcb01eaa9f879ad404fc4d"
+    },
+    {
+      "path": "blog-website-update-october-2026.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "3fe218abd55d4550f5b2183fb00d89c6d1add3c8f150e4be6ff5c9686c3332f1",
+      "sha256_raw": "ec7504db7cec3f88ad2122b4fa4d2dc7f65166057a59048639bdbb6a7686f04c"
+    },
+    {
+      "path": "privacy.html",
+      "status": 200,
+      "injected_bytes": 367,
+      "sha256_normalized": "0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c",
+      "sha256_raw": "ee1ce158df55fd47c3470452c2bd7868877ebe7fb27901024ec46add268448b4"
+    }
+  ]
+}

@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -40,6 +41,7 @@
   marketing. Every piece below maps to code you can read.</p>
 
   <h2>1 · Probe — guessing what your device can run, and admitting it's a guess</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#memory-fit"></use></svg>
   <p>On first launch Quenderin reads your hardware: total RAM, the chip, and on a phone the app's
   <em>jetsam</em> memory budget — the amount iOS will let one app hold before it kills it. It then picks
   the largest model that clears a memory-fitness gate: past <strong>85%</strong> of the budget is a hard
@@ -54,6 +56,7 @@
   bigger (or smaller) model yourself, with the same honest fitness label next to each.</p>
 
   <h2>2 · Download — one multi-gigabyte pull, verified before it's trusted</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#download"></use></svg>
   <p>The model is a single GGUF file streamed from a pinned URL to disk in the OS's native chunks. Three
   things happen that you don't see: the downloader <strong>checks the HTTP status before it writes a
   byte</strong> (a server error page is never mistaken for a model); the finished file is gated on its
@@ -70,6 +73,7 @@
   a file on your disk.</p>
 
   <h2>3 · Go offline — the model on your CPU, and the ceiling that comes with it</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#offline"></use></svg>
   <p>From then on, inference runs entirely through <a href="https://github.com/ggml-org/llama.cpp" rel="noopener">llama.cpp</a>
   — Metal on Apple silicon, and CPU with memory-mapped weights when a model is too big for the GPU budget.
   There are <strong>zero network calls</strong> after setup; an offline-readiness check confirms it before
@@ -85,6 +89,7 @@
   it isn't your trade, we'd rather you know that up front than find out later.</p>
 
   <h2>None of this is a claim you have to take on faith</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#source"></use></svg>
   <p>The probe (the memory-fitness math and the model picker), the download integrity gate, and the engine
   are all open source — read them, or read the measured numbers instead of our adjectives on
   <a href="reality">the real-numbers page</a>. Where it's all going, stage by stage:

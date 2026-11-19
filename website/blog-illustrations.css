@@ -1,0 +1,28 @@
+/* Editorial section drawings. Shared SVG symbols keep the artwork local and
+   cacheable; inherited colors follow the site's explicit appearance setting. */
+.post-illustration {
+  --art-teal: var(--brand);
+  --art-copper: var(--copper);
+  --art-paper: var(--surface-tint);
+  --art-soft: #e5efed;
+  --art-muted: #a6b0ab;
+  display: block;
+  width: min(100%, 35rem);
+  height: auto;
+  margin: 0.85rem 0 1.15rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+html[data-theme-mode="dark"] .post-illustration {
+  --art-teal: #82b7bb;
+  --art-copper: #dda16e;
+  --art-paper: #101a1b;
+  --art-soft: #1c3436;
+  --art-muted: #637c7d;
+}
+@media (max-width: 480px) {
+  .post-illustration { margin-block: 0.65rem 1rem; }
+}
+@media print {
+  .post-illustration { display: none; }
+}

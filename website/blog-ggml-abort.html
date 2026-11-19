@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -42,6 +43,7 @@
   a deterministic path someone walks every single time.</p>
 
   <h2>What the crash report actually said</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#lifecycle"></use></svg>
   <p>The abort came from <code>ggml_abort</code>, and it fired inside <code>__cxa_finalize</code> &mdash;
   the C++ runtime phase that runs <strong>static destructors at process exit</strong>. That&rsquo;s the tell.
   Nothing in our code was running; the process was on its way out, and a global C++ teardown tripped an
@@ -55,6 +57,7 @@
   first message is what arms it: no inference, no Metal worker, no crash.</p>
 
   <h2>The fix is one line, and it&rsquo;s a blunt one</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#bypass"></use></svg>
   <p>You cannot fix someone else&rsquo;s static destructor from the outside. What you <em>can</em> do is
   never reach it. <code>_exit(2)</code> terminates the process immediately and, crucially, <strong>does not
   run <code>atexit</code> handlers or C++ finalizers</strong> &mdash; it skips the entire teardown that was
@@ -78,6 +81,7 @@
   underscore is load-bearing.</p>
 
   <h2>The limitations, honestly</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#boundaries"></use></svg>
   <p>This is a workaround, and it&rsquo;s worth being clear about what it does and doesn&rsquo;t buy:</p>
   <ul>
     <li><strong>It papers over an upstream assert.</strong> The real defect is that a library aborts during
@@ -94,6 +98,7 @@
   </ul>
 
   <h2>How it should actually be fixed</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#shutdown"></use></svg>
   <p>The clean fixes all move upstream of the workaround:</p>
   <ul>
     <li><strong>An explicit, ordered shutdown.</strong> The right shape is a <code>engine.shutdown()</code>

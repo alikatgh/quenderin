@@ -24,6 +24,7 @@
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Bonsai 2 for smaller devices, and Muse Spark Open", "description": "Three smaller Bonsai 2 options in the next Quenderin update, with separate memory checks and a clear compatibility note for Muse Spark Open.", "datePublished": "2026-10-16", "dateModified": "2026-10-16", "author": {"@type": "Organization", "name": "Quenderin"}, "image": "https://quenderin.org/og-image.png", "mainEntityOfPage": "https://quenderin.org/blog-bonsai-small-muse-spark"}</script>
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -46,6 +47,7 @@
   <p>We have added PrismML’s Bonsai 2 2B, 4B, and 9B to the source catalogs used by Quenderin for Android, iPhone, and Mac. They join the existing 27B option as experimental models you can select manually in a build with the compatible Prism runtime. This is preparation for an app update; it does not mean new binaries have reached the stores.</p>
 
   <h2>Three smaller downloads</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#sizes"></use></svg>
   <p>The new models are based on Qwen3.5 and published under Apache 2.0. Quenderin uses their PTQ1_0 language weights:</p>
   <ul>
     <li><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Bonsai 2 2B</a>: 0.43 GB.</li>
@@ -55,14 +57,17 @@
   <p>Each download is pinned to an exact publisher revision and SHA-256 checksum. These sizes cover the language-model file, not a vision projector. Image understanding is not enabled by this update. See <a href="https://prismml.com/news/bonsai-2-family" rel="noopener">PrismML’s announcement</a> for its evaluations and supported runtimes.</p>
 
   <h2>Choosing a model that fits</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#memory-fit"></use></svg>
   <p>The smaller models now have separate memory estimates instead of inheriting the 27B model’s requirement. The app still reserves working-memory headroom and checks the memory available to it. Download size alone does not establish whether a model will run well on your phone or computer.</p>
   <p>Bonsai requires Prism’s custom runtime. Builds without that runtime show the requirement and disable selection in the latest-releases list. Compatible builds retain the 4,096-token context cap. Existing default recommendations and your selected model stay the same; viewing or refreshing the library never starts a model download.</p>
 
   <h2>Where Muse Spark Open fits</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#workstation"></use></svg>
   <p>Meta’s <a href="https://dev.meta.ai/docs/muse-spark-open" rel="noopener">Muse Spark Open</a> is a separate class of model: 816B total parameters, 42B active per token, and a context window of 1,048,576 tokens. The active parameter count describes how much computation is used per token; it does not reduce the stored model to 42B parameters.</p>
   <p>The native release candidate adds experimental Muse text-chat support through a verified runtime backport, a 22-part pinned installer, and a Muse-specific chat adapter. The Q2_K download is about 304 GB; normal phones do not meet the memory requirement. A compatible build and the full hardware checks are required before selection. This work does not add distributed execution, a remote inference connection, vision/audio input, or Muse tool calling. Read <a href="blog-muse-engineering">the engineering post</a> for the implementation, current verification limits, and planned improvements.</p>
 
   <h2>What this update verifies</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#evidence"></use></svg>
   <p>This update checks publisher metadata, catalog consistency, memory rules, runtime gates, and release-feed behavior. No model weights were downloaded locally for this work, and no simulator or physical device was used. Inference quality, device performance, signed builds, and store distribution remain separate verification and release steps.</p>
   <p><a href="changelog">Changelog</a> &middot; <a href="blog-bonsai-2">Earlier Bonsai 2 27B integration</a> &middot; <a href="models">Model library</a></p>
 </main>
