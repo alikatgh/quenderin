@@ -14,6 +14,20 @@ the original could not be found. The bounded follow-up located no usable key;
 repository and `github-pages` environment Actions secret counts were both zero.
 This does not establish permanent loss of the original key.
 
+**Current status — 29 October 2026:** The authorized replacement upload key has
+already been generated offline. Its public certificate SHA-256 is
+`880aca180c193bcbd670f1afddc2b0e15e95f755771805e470aa5e75384f8b6f`.
+Encrypted Varlock recovery and decryption were verified; private directories are
+mode 0700 and files mode 0600. No Google reset receipt, acceptance or effective
+date has been verified, and the registered certificate pin above is unchanged.
+The next step is [registering this existing replacement with Google](#register-the-replacement-with-google),
+not generating another key. Recovery is device-bound and depends on the existing
+host's Varlock encryption state; preserve that state, the private signing identity,
+its encrypted recovery material and any partial output from failed attempts.
+**Do not rerun the generator for this release.**
+The standard human-entry helper below is retained for future explicitly
+authorized replacement cases; it is not a pending step for this candidate.
+
 The cached official npm Varlock launcher at
 `~/.local/varlock/1.23.0/varlock` and JDK 21 signing tools were checked on this Mac
 on 2026-10-28. No additional download or installation is required. The wrapper pins

@@ -6,6 +6,93 @@ or already-authorized signing configuration. A debug build is not a signed store
 
 ## 29 October 2026 — native integration evidence
 
+### Current release status
+
+[PR #215](https://github.com/alikatgh/quenderin/pull/215) merged the Android Bot
+UI verification into `main` at `4af2b97eedd281850103ad917b4ee22b51433b37`.
+The selected Android application source is
+`0ad249dfd6cf09a2f2e437b2ee7576ee990b4485`; its Android tree
+`689ad9815d366a0379569a845b7baa7f4acedc48` matches the tested source
+`47a9867638e821c077139683ced51c1b2ad3518c` exactly.
+[Hosted UI run 40809493269](https://github.com/alikatgh/quenderin/actions/runs/40809493269),
+job `123236184657`, passed all **five synthetic tests**. All nine selected PNGs
+were inspected, including the Bot roster/history and keyboard/draft journey.
+Review evidence is retained outside the release sources in
+`outputs/android-hosted-47a9867-20261029/evidence.json`; the linked hosted run
+retains the portable test evidence. Screenshot 06 shows white System UI
+icons on a light background after a theme transition; screenshot 07 shows dark
+icons. A persistent System UI defect has not been established. These checks do
+not establish live Host/provider execution, model inference, physical-device
+behavior, successful native report delivery or a signed Play artifact.
+
+[Full Android export 40812571419](https://github.com/alikatgh/quenderin/actions/runs/40812571419)
+passed all 22 steps from workflow revision `4af2b97` for application source
+`0ad249d`, version **0.6.0 / 6**. Final APK/AAB image-library dependency/alignment
+and Noise/JNA bytes/ABI/alignment gates, runtime/memory tests and
+manifest/source/version checks passed. All three assets were uploaded to
+[dedicated draft release 427433884](https://github.com/alikatgh/quenderin/releases/tag/untagged-0f9464b2fea3e17c16a6),
+tag `android-beta-0.6.0-candidate-0ad249d`; it remains an unpublished prerelease.
+The unsigned AAB `quenderin-android-0.6.0-6-0ad249d-unsigned.aab`, asset `687261264`,
+is 36,395,913 bytes with GitHub SHA-256
+`dcaebfa878bab1e45405489766faf4b3dcc2a824fa200fe0d92c28c2645b9519`.
+The receipt asset `687261371` is 4,925 bytes, SHA-256
+`0f75e1759e8506564a6912030cdfca3408ddb04834bf19a1860923380176cf79`;
+the checksum asset `687261318` is 113 bytes, SHA-256
+`34e1723de68bf940075c010ce95a1601de5828f7d5114bbc370d06b0489975b6`.
+These are hosted build and asset-metadata checks; the candidate was not downloaded
+or signed locally, uploaded to Play or publicly released. The older `a1d9c9e`
+candidate draft `427362598` and its assets are preserved.
+
+A replacement **upload key was generated offline** under the user's explicit
+authorization after the bounded search found no usable original key. Encrypted
+Varlock recovery and decryption were verified, with private directories mode
+0700 and files mode 0600. The new public certificate SHA-256 is
+`880aca180c193bcbd670f1afddc2b0e15e95f755771805e470aa5e75384f8b6f`.
+The existing registered certificate/signing pin beginning `8b38f4e5` is unchanged.
+No Google reset receipt, acceptance or effective date has been verified. The next
+signing step is the existing owner's Google upload-key reset/registration, not
+another Terminal generation. Recovery is device-bound and depends on the existing
+host's Varlock encryption state; preserve that state, the private signing identity,
+its encrypted recovery material and any failed partial output. Do not rerun the
+generator. Update the signer pin only after
+Google's effective upload certificate is verified; see
+[the signing instructions](../tools/android-release/README.md).
+
+The content-report receiver is **deployed and live-synthetic-verified**, with two
+POSTs creating one stored report, an identical retry returning the same receipt,
+and matching owner UI readback on October 28. Its current source/manifest hashes
+match [the deployment record](../services/content-report-receiver/deployment.json),
+and all 17 receiver fixtures passed again. Current intake capacity and successful
+end-to-end delivery from the native Android client remain unverified. The hosted
+report UI checks use an injected sender. The 0.6.0 Play Data safety answers are
+prepared in [STORE_SUBMISSION.md](STORE_SUBMISSION.md), but applying/publishing
+those answers in Play Console has not been established.
+
+Apple Cloud **31** at `488658071ecafbd982a815ca993b6a722d9c23a3` passed both signed
+Archive actions. iOS passed three of four tests: both Done interactions and draft
+preservation passed, then the UI journey failed after Settings returned to the
+Chat root with the saved conversation row. That failure exposed an iOS test
+assumption about returning directly to the conversation; it does not prove data
+loss. On Mac, the rendered reply was present but the accessibility tree exposed
+an unlabeled Other element without children: missing assistant accessibility text
+is a confirmed product defect. The follow-up in
+[PR #216](https://github.com/alikatgh/quenderin/pull/216), source
+`13ba420841df8a237c383874584901da67451da4`, remains open. Its branch head
+`cd4d7b77f3a97f1fa6e3b66fa966a8ee1cf3e16b` merges current main into that branch;
+it is not a merge of the PR. All five required contexts passed; additional Apple
+checks are still queued/running. An optional Windows desktop job failed on an
+unchanged synthetic ACL fixture's PowerShell timeout before dependency setup.
+Cloud 32 has not been started at this observation.
+
+The published privacy HTML remains unchanged at SHA-256
+`0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c`.
+France remains enabled; the owner's ANSSI/export-compliance determination and
+filing evidence remain unresolved. No 0.6.0 App Store or Play submission is
+verified. These outstanding store, signing and runtime checks remain release
+gates; source integration and hosted synthetic results do not establish release.
+
+### Earlier 29 October integration snapshot — superseded by the status above
+
 The final integration preserves the Apple application and dependencies from
 `a366f137c6293d9cccf70b384df8fcec6165eb6b`, with the independently reviewed,
 test-only accessibility correction in `d2efd3b`, and Android source at
@@ -16,8 +103,8 @@ additions. This integration is separate from store publication.
 
 Cloud build 30 was started manually at the Apple revision above with the two
 synthetic Test actions (iOS and macOS) and two signed Archive actions. The included
-25-hour team allowance showed zero used immediately before the run. At the latest
-observation, both signed Archive actions succeeded and iOS Test is still running.
+25-hour team allowance showed zero used immediately before the run. At that
+observation, both signed Archive actions had succeeded and iOS Test was running.
 The macOS journey failed because its exact error assertion read an empty
 accessibility label. The retained recording shows the expected HTTPS error,
 preserved server and email, cleared password, and disabled authorization. The
@@ -32,16 +119,17 @@ PNGs were inspected, including the intentional offline reporting error, keyboard
 200% font and navigation-rail states. These results do not establish live
 provider inference, successful report delivery, physical-device behavior or a
 signed Play artifact. The reporting helpers and receiver fixtures are source
-and synthetic-test evidence only.
+and synthetic-test evidence only in that hosted run; the separate receiver
+deployment evidence is recorded in the current status above.
 
 The current published privacy HTML has SHA-256
 `0a294395995ad23ebb4069ccb0e3a255fae2c3cc95f6b3ad8c61187e09b3ef5c`;
 this integration retains that exact HTML and its matching policy source.
-The Android upload key remains unavailable; its private human-entry step and
-Google registration are outstanding. France remains enabled, while the owner's
-ANSSI/export-compliance determination and filing evidence are unresolved as
-described below. No 0.6.0 App Store or Play submission is established, and the
-native update is not ready for publication while these gates remain open.
+At that earlier snapshot the Android upload key was unavailable; its private
+generation and Google registration were outstanding. France remained enabled,
+while the owner's ANSSI/export-compliance determination and filing evidence were
+unresolved as described below. No 0.6.0 App Store or Play submission had been
+established, and those gaps prevented a publication-readiness claim.
 
 ## 28 October 2026 — native 0.6.0 preparation
 
