@@ -17,7 +17,7 @@
 <link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="../styles.css?v=20261122-polish" />
 <link rel="stylesheet" href="../lucide-icons.css?v=20261122-polish" />
-<link rel="stylesheet" href="docs.css?v=20261122-polish" />
+<link rel="stylesheet" href="docs.css?v=20261122-pacing" />
 </head>
 <body class="docs-page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -334,12 +334,16 @@ android/verify-llama-link.sh                       # MODE: CPU
 
 # 2) Vulkan GPU offload (builds GGML_VULKAN, runs smoke with n_gpu_layers=999)
 QUENDERIN_VULKAN=1 android/verify-llama-link.sh     # MODE: GPU-offload</code></pre></div>
-<p>Compare the two runs <strong>per metric</strong>. <strong>Expect the GPU win in PREFILL tok/s</strong> (compute-bound prompt pass), and <strong>decode tok/s to barely move</strong> — decode is memory-bandwidth bound and both paths share the same RAM bus (<code>docs/NPU_NEURAL_ENGINE.md</code>). If GPU decode is <em>slower</em> than CPU, or the GPU run crashes, that's a real finding: the <code>GpuOffloadPlanner</code> default (Adreno = offload) should be revised for that driver/model, and Mali/Xclipse should stay CPU-only (their default). Record both numbers below so the planner's defaults become <em>measured</em>, not assumed — fill the <strong>Prompt tok/s</strong> (prefill) and <strong>Decode tok/s</strong> columns for the CPU and Vulkan rows.</p>
+<p>Compare the two runs <strong>per metric</strong>. <strong>Expect the GPU win in PREFILL tok/s</strong> (compute-bound prompt pass), and <strong>decode tok/s to barely move</strong> — decode is memory-bandwidth bound and both paths share the same RAM bus (<code>docs/NPU_NEURAL_ENGINE.md</code>). If GPU decode is <em>slower</em> than CPU, or the GPU run crashes, that's a real finding: the <code>GpuOffloadPlanner</code> default (Adreno = offload) should be revised for that driver/model, and Mali/Xclipse should stay CPU-only (their default).</p>
+<p>Record both numbers below so the planner's defaults become <em>measured</em>, not assumed — fill the <strong>Prompt tok/s</strong> (prefill) and <strong>Decode tok/s</strong> columns for the CPU and Vulkan rows.</p>
 <hr />
 <h4 id="results">Results<a class="docs-heading-anchor" href="#results" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <p>Fill this in per device; then reconcile <code>apple/REALITY.md</code> (iOS) / the Android SoC scores in <code>AndroidSoc</code> if measured numbers diverge from the estimates.</p>
 <div class="docs-table-wrap"><table><thead><tr><th>Device</th><th>SoC / chip</th><th>Model (id)</th><th style="text-align:right">Prompt tok/s</th><th style="text-align:right">Decode tok/s</th><th style="text-align:right">Battery %/hr (agent loop)</th><th>Peak thermal state</th><th>Mins to throttle</th></tr></thead><tbody><tr><td><em>e.g. iPhone 16 Pro</em></td><td>A18 Pro</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td><em>e.g. Pixel 9 Pro</em></td><td>Tensor G4</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td>Galaxy S23 (CPU)</td><td>SD 8 Gen 2 / Adreno 740</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td>Galaxy S23 (Vulkan GPU)</td><td>SD 8 Gen 2 / Adreno 740</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr></tbody></table></div>
-<p><strong>Pass criteria (suggested):</strong> decode tok/s usable for chat (≳10), agent loop sustainable without hitting <code>.critical</code> thermal in the first ~10 min, battery drain disclosed to users. Record whatever you see — even "throttles in 4 min" is a shippable finding (it informs the default model pick and the heat warning the picker already surfaces).</p></section>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">Pass criteria (suggested)</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">decode tok/s usable for chat (≳10), agent loop sustainable without hitting <code>.critical</code> thermal in the first ~10 min, battery drain disclosed to users. Record whatever you see — even "throttles in 4 min" is a shippable finding (it informs the default model pick and the heat warning the picker already surfaces).</p></div>
+</div></section>
       </div>
       <nav class="docs-pager" aria-label="Documentation pagination">
         <a class="docs-pager-card" href="quickstart"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Quickstart, Setup &amp; Run Guide</span></a>

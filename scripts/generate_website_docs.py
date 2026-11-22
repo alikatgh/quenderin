@@ -795,6 +795,7 @@ class MarkdownCompiler:
                         sub_compiler = MarkdownCompiler(
                             self.source_path, self.current_slug, self.src_map, self.used_ids, False, self.base_heading_level
                         )
+                        sub_compiler.in_callout = True
                         inner_html, _ = sub_compiler._parse_blocks(body_lines, allow_h2_fold=False)
                         self.headings.extend(sub_compiler.headings)
                         self.plain_chunks.extend(sub_compiler.plain_chunks)
@@ -808,6 +809,7 @@ class MarkdownCompiler:
                         sub_compiler = MarkdownCompiler(
                             self.source_path, self.current_slug, self.src_map, self.used_ids, False, self.base_heading_level
                         )
+                        sub_compiler.in_callout = True
                         inner_html, _ = sub_compiler._parse_blocks(qlines, allow_h2_fold=False)
                         self.plain_chunks.extend(sub_compiler.plain_chunks)
                         blocks.append(f"<blockquote>{inner_html}</blockquote>")
@@ -879,7 +881,10 @@ class MarkdownCompiler:
             joined = " ".join(para_lines)
             inline = self.format_inline(joined)
             self.plain_chunks.append(re.sub(r"<[^>]+>", "", inline))
-            blocks.append(f"<p>{inline}</p>")
+            if getattr(self, "in_callout", False):
+                blocks.append(f"<p>{inline}</p>")
+            else:
+                blocks.append(format_prose_block(inline))
 
         close_fold()
         return "\n".join(blocks), i
@@ -1085,6 +1090,206 @@ def _patched_format_inline(self: MarkdownCompiler, text: str) -> str:
 
 
 MarkdownCompiler.format_inline = _patched_format_inline  # type: ignore[method-assign]
+
+
+_ABBR_RE = re.compile(
+    r"(?:^|[\s(])(?:e\.g|i\.e|etc|vs|fig|approx|dr|mr|ms|no|cf|al|resp|inc|ltd|st|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.$",
+    re.I,
+)
+_STATUS_PREFIX_RE = re.compile(
+    r"^(?:<strong>)?(Verified|Remaining|Status|Result|Outcome|Note):(?:</strong>)?(?:\s|$)",
+    re.I,
+)
+_TAG_TOKEN_RE = re.compile(r"</?(code|a|kbd|strong|em|del)\b[^>]*>|<img\b[^>]*/>", re.I)
+
+
+def _plain_text(fragment: str) -> str:
+    return re.sub(r"<[^>]+>", "", fragment)
+
+
+def _split_inline_sentences(inline_html: str) -> list[str]:
+    """Split rendered inline HTML at sentence boundaries outside tags and parentheses."""
+    n = len(inline_html)
+    tag_depth = 0
+    paren_depth = 0
+    breaks: list[int] = []
+    i = 0
+
+    while i < n:
+        if inline_html[i] == "<":
+            m_tag = _TAG_TOKEN_RE.match(inline_html, i)
+            if m_tag:
+                tok = m_tag.group(0)
+                if not tok.endswith("/>"):
+                    if tok.startswith("</"):
+                        tag_depth = max(0, tag_depth - 1)
+                    else:
+                        tag_depth += 1
+                i = m_tag.end()
+                continue
+
+        ch = inline_html[i]
+        if tag_depth == 0:
+            if ch == "(":
+                paren_depth += 1
+            elif ch == ")":
+                paren_depth = max(0, paren_depth - 1)
+            elif paren_depth == 0 and ch in ".!?":
+                end_punct = i + 1
+                while end_punct < n and inline_html[end_punct] in "\"'”’":
+                    end_punct += 1
+                # Handle period placed right before closing inline emphasis, e.g. `foo.</strong> Next`
+                if end_punct == i + 1:
+                    m_close_tag = re.match(r"^(?:</strong>|</em>|</del>)+", inline_html[end_punct:], re.I)
+                    if m_close_tag and end_punct + m_close_tag.end() < n and inline_html[end_punct + m_close_tag.end()].isspace():
+                        end_punct += m_close_tag.end()
+
+                if end_punct < n and inline_html[end_punct].isspace():
+                    ws_end = end_punct
+                    while ws_end < n and inline_html[ws_end].isspace():
+                        ws_end += 1
+                    if ws_end < n:
+                        before_plain = _plain_text(inline_html[max(0, i - 28) : i + 1])
+                        is_abbrev = bool(_ABBR_RE.search(before_plain)) or bool(re.search(r"(?:^|[\s(])[A-Z]\.$", before_plain))
+                        is_decimal = i > 0 and inline_html[i - 1].isdigit() and ws_end < n and inline_html[ws_end].isdigit()
+                        is_ellipsis = i > 0 and inline_html[i - 1] == "."
+                        if not is_abbrev and not is_decimal and not is_ellipsis:
+                            after_slice = inline_html[ws_end:]
+                            starts_sentence = bool(
+                                re.match(r"^(?:[\"'“'(]*[A-Z]|<(?:strong|em|code|kbd|a)\b)", after_slice)
+                            )
+                            if starts_sentence:
+                                breaks.append(end_punct)
+                                i = ws_end
+                                continue
+        i += 1
+
+    if not breaks:
+        return [inline_html.strip()]
+
+    sentences: list[str] = []
+    start = 0
+    for b in breaks:
+        part = inline_html[start:b].strip()
+        if part:
+            sentences.append(part)
+        start = b
+    tail = inline_html[start:].strip()
+    if tail:
+        sentences.append(tail)
+
+    orig_norm = re.sub(r"\s+", "", _plain_text(inline_html))
+    joined_norm = re.sub(r"\s+", "", _plain_text(" ".join(sentences)))
+    if orig_norm != joined_norm:
+        return [inline_html.strip()]
+    return sentences
+
+
+def _group_sentences_to_paragraphs(sentences: list[str], target_chars: int = 240) -> list[str]:
+    """Group sentence HTML fragments into crisp 2-3-sentence scannable paragraphs."""
+    if len(sentences) <= 1:
+        return sentences
+
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_len = 0
+    plain_lengths = [len(_plain_text(s)) for s in sentences]
+
+    for idx, sent in enumerate(sentences):
+        slen = plain_lengths[idx]
+        is_pivot = bool(
+            _STATUS_PREFIX_RE.match(sent)
+            or re.match(r"^<strong>(?:Later|Also|Note|Next|Meanwhile|Instead|However|Importantly)\b", sent)
+        )
+        if cur and (is_pivot or (cur_len >= 55 and slen >= 260)):
+            chunks.append(" ".join(cur))
+            cur = [sent]
+            cur_len = slen
+            continue
+
+        cur.append(sent)
+        cur_len += slen
+
+        remaining_chars = sum(plain_lengths[idx + 1 :])
+        next_is_pivot = idx + 1 < len(sentences) and bool(
+            _STATUS_PREFIX_RE.match(sentences[idx + 1])
+            or re.match(r"^<strong>(?:Later|Also|Note|Next|Meanwhile|Instead|However|Importantly)\b", sentences[idx + 1])
+        )
+        if idx + 1 < len(sentences) and (next_is_pivot or (cur_len >= target_chars and remaining_chars >= 110)):
+            chunks.append(" ".join(cur))
+            cur = []
+            cur_len = 0
+
+    if cur:
+        chunks.append(" ".join(cur))
+    return chunks
+
+
+def _render_chunk_tag(chunk: str, cap_first: bool = False) -> str:
+    classes: list[str] = []
+    m_status = _STATUS_PREFIX_RE.match(chunk)
+    if m_status:
+        kind = m_status.group(1).lower()
+        classes.append("docs-status-note")
+        if kind == "verified":
+            classes.append("docs-status-note--verified")
+        elif kind == "remaining":
+            classes.append("docs-status-note--remaining")
+        if not chunk.lstrip().startswith("<strong>"):
+            chunk = re.sub(
+                r"^(Verified|Remaining|Status|Result|Outcome|Note):",
+                r"<strong>\1:</strong>",
+                chunk,
+                count=1,
+                flags=re.I,
+            )
+    if cap_first:
+        classes.append("is-cap-first")
+    cls_attr = f' class="{" ".join(classes)}"' if classes else ""
+    return f"<p{cls_attr}>{chunk}</p>"
+
+
+def format_prose_block(inline_html: str) -> str:
+    """Turn dense walls of text and bold-lead log entries into scannable paragraphs/cards."""
+    plain = _plain_text(inline_html).strip()
+
+    # Pattern 1: Substantial bold-lead entry paragraph (`**Topic (YYYY-MM-DD):** ...` or `**Topic**: ...`)
+    m_entry = re.match(r"^<strong>((?:(?!</strong>).)+?)(?::</strong>|</strong>:)\s+(.+)$", inline_html.strip(), re.S)
+    if m_entry and len(plain) >= 280:
+        raw_title = m_entry.group(1).strip()
+        body_html = m_entry.group(2).strip()
+        date_badge = ""
+        m_date = re.search(r"\s*\((20\d{2}-\d{2}-\d{2})\)\s*$", raw_title)
+        if m_date:
+            date_badge = f'<span class="docs-entry-date">{html.escape(m_date.group(1))}</span>'
+            raw_title = raw_title[: m_date.start()].strip()
+
+        sentences = _split_inline_sentences(body_html)
+        paras = _group_sentences_to_paragraphs(sentences, target_chars=230)
+        rendered_paras = []
+        for idx, p in enumerate(paras):
+            starts_lower = idx == 0 and bool(re.match(r"^[a-z]", p))
+            rendered_paras.append(_render_chunk_tag(p, cap_first=starts_lower))
+
+        return (
+            '<div class="docs-entry">\n'
+            '  <div class="docs-entry-header">'
+            f'<span class="docs-entry-title">{raw_title}</span>{date_badge}</div>\n'
+            f'  <div class="docs-entry-body">{"".join(rendered_paras)}</div>\n'
+            '</div>'
+        )
+
+    # Pattern 2: Unbroken long narrative paragraphs (>= 380 chars)
+    if len(plain) >= 380:
+        sentences = _split_inline_sentences(inline_html)
+        paras = _group_sentences_to_paragraphs(sentences, target_chars=250)
+        if len(paras) > 1:
+            return "\n".join(_render_chunk_tag(p) for p in paras)
+
+    if len(plain) >= 90 and _STATUS_PREFIX_RE.match(inline_html.strip()):
+        return _render_chunk_tag(inline_html.strip())
+
+    return f"<p>{inline_html}</p>"
 
 
 def load_json(rel_path: str) -> dict:
@@ -1467,7 +1672,7 @@ def render_page_html(
 <link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="../styles.css?v=20261122-polish" />
 <link rel="stylesheet" href="../lucide-icons.css?v=20261122-polish" />
-<link rel="stylesheet" href="docs.css?v=20261122-polish" />
+<link rel="stylesheet" href="docs.css?v=20261122-pacing" />
 </head>
 <body class="docs-page">
 <a class="skip-link" href="#main">Skip to content</a>

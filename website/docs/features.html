@@ -17,7 +17,7 @@
 <link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="../styles.css?v=20261122-polish" />
 <link rel="stylesheet" href="../lucide-icons.css?v=20261122-polish" />
-<link rel="stylesheet" href="docs.css?v=20261122-polish" />
+<link rel="stylesheet" href="docs.css?v=20261122-pacing" />
 </head>
 <body class="docs-page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -101,7 +101,10 @@
 <p>Every assistant response in General Chat includes a metadata bar so you can benchmark your hardware and tune settings:</p>
 <div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>⚡ 42 tok/s   •   317 tokens   •   TTFT 0.8s   •   7.5s total</code></pre></div>
 <div class="docs-table-wrap"><table><thead><tr><th>Metric</th><th>Technical name</th><th>Description</th></tr></thead><tbody><tr><td><code>tok/s</code></td><td><code>tokensPerSecond</code></td><td>Generation throughput. Useful for comparing models and context sizes</td></tr><tr><td><code>tokens</code></td><td><code>tokenCount</code></td><td>Output token count for this specific response</td></tr><tr><td><code>TTFT</code></td><td><code>timeToFirstTokenMs</code></td><td>Milliseconds until the first token was emitted. Reflects model load + prompt evaluation</td></tr><tr><td><code>total</code></td><td><code>durationMs</code></td><td>Full wall-clock time for the complete response</td></tr></tbody></table></div>
-<p><strong>How it works:</strong> <code>LlmService.generalChat()</code> records a high-resolution timestamp before generation begins, captures the time of the first emitted token (TTFT), and measures total duration. The <code>GenerationMeta</code> object is attached to the WebSocket <code>chat_response</code> message and passed to the UI.</p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">How it works</span></div>
+  <div class="docs-entry-body"><p><code>LlmService.generalChat()</code> records a high-resolution timestamp before generation begins, captures the time of the first emitted token (TTFT), and measures total duration. The <code>GenerationMeta</code> object is attached to the WebSocket <code>chat_response</code> message and passed to the UI.</p></div>
+</div>
 <p><strong>What to watch for:</strong></p>
 <ul>
 <li>High TTFT on first request = model is loading from disk (normal, happens once)</li>
@@ -222,19 +225,34 @@ LLM response: sin(π/4) × √2 = 1.000</code></pre></div>
 <h3 id="the-whatsapp-shell-the-model-router-and-deep-settings">The WhatsApp shell, the model router, and deep settings<a class="docs-heading-anchor" href="#the-whatsapp-shell-the-model-router-and-deep-settings" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
 <p>Direction set by the owner 2026-07-03: (1) WhatsApp-style navigation where everything has a dedicated page, (2) let storage-rich users download ALL models and have the system pick the right one per task, (3) deeply customizable settings. This doc is the plan + live status.</p>
 <h4 id="1-shell-whatsapp-anatomy">1. Shell — WhatsApp anatomy<a class="docs-heading-anchor" href="#1-shell-whatsapp-anatomy" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
-<p><strong>macOS (shipped):</strong> a fixed 64pt icon RAIL (Chats / Agent / Model library, Settings gear at the foot) · list column · detail. <code>MacRootView.railColumn</code>; selection reads through color only. ⌘N from any rail section lands in the empty chat. The gear opens the standard ⌘, Settings scene (Mac idiom beats WhatsApp idiom for preferences).</p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">macOS (shipped)</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">a fixed 64pt icon RAIL (Chats / Agent / Model library, Settings gear at the foot) · list column · detail. <code>MacRootView.railColumn</code>; selection reads through color only. ⌘N from any rail section lands in the empty chat. The gear opens the standard ⌘, Settings scene (Mac idiom beats WhatsApp idiom for preferences).</p></div>
+</div>
 <p><strong>iOS (shipped):</strong> the tab bar gains a Models tab (same shared <code>ModelsLibraryView</code>).</p>
 <p><strong>Android (open — parity chip):</strong> bottom nav gains Models; same shared anatomy.</p>
-<p><strong>Also shipped (same-day polish round):</strong> live download badge on the Models rail item (count + progress ring; downloads survive navigation — the library controller is shared, not per-view) · sequential bulk download (first model usable while the rest arrive) · drag-a-.gguf-onto-the-library import (catalog-matching files only, magic-checked, never silently hoards disk) · Agent page identity header + structured numbered run log · vendor-logo avatars everywhere.</p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">Also shipped (same-day polish round)</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">live download badge on the Models rail item (count + progress ring; downloads survive navigation — the library controller is shared, not per-view) · sequential bulk download (first model usable while the rest arrive) · drag-a-.gguf-onto-the-library import (catalog-matching files only, magic-checked, never silently hoards disk) · Agent page identity header + structured numbered run log · vendor-logo avatars everywhere.</p></div>
+</div>
 <p><strong>Later, in the same spirit:</strong> Archived chats · Starred messages (both cheap on the existing conversation index).</p>
 <h4 id="2-model-library-router">2. Model library + router<a class="docs-heading-anchor" href="#2-model-library-router" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
-<p><strong>Library page (shipped, <code>ModelsLibraryView</code>):</strong> whole catalog with per-model state (installed / progress / failed-retry), live storage meter, per-row fit badges, and the 2 TB-owner move — "Download the complete library (N GB)" appears ONLY when everything missing fits with ≥10 GB of disk left over. Library downloads go through the same integrity gate as onboarding installs (corrupt file → deleted, never listed).</p>
-<p><strong>Router (shipped, <code>ModelRouter</code> Swift + Kotlin twins):</strong> classify the prompt (coding / reasoning / multilingual / general — plain substring &amp; code-point scans, NO regex: that's where Swift↔Kotlin silently diverge), then pick the largest installed model of the task's preferred family that fits RAM right now. Every decision carries a human-readable reason. Classification contract pinned by <code>shared/router-parity-vectors.json</code></p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">Library page (shipped, <code>ModelsLibraryView</code>)</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">whole catalog with per-model state (installed / progress / failed-retry), live storage meter, per-row fit badges, and the 2 TB-owner move — "Download the complete library (N GB)" appears ONLY when everything missing fits with ≥10 GB of disk left over.</p><p>Library downloads go through the same integrity gate as onboarding installs (corrupt file → deleted, never listed).</p></div>
+</div>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">Router (shipped, <code>ModelRouter</code> Swift + Kotlin twins)</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">classify the prompt (coding / reasoning / multilingual / general — plain substring &amp; code-point scans, NO regex: that's where Swift↔Kotlin silently diverge), then pick the largest installed model of the task's preferred family that fits RAM right now.</p><p>Every decision carries a human-readable reason. Classification contract pinned by <code>shared/router-parity-vectors.json</code></p></div>
+</div>
 <ul>
 <li><code>scripts/check_router_parity.py</code> (CI; namespace-split from the agent vectors — ids start</li>
 </ul>
 <p><code>router-</code>).</p>
-<p><strong>Surfacing (shipped, iOS/macOS):</strong> while drafting the FIRST message of a chat, if the router's pick differs from the loaded model, a chip above the composer offers it ("a coding question — Qwen2.5 Coder 7B is the best fit you have installed · Switch"). One tap switches (draft survives); ✕ dismisses. <strong>Never a silent mid-conversation swap</strong> — that would re-prefill the transcript on another model behind the user's back.</p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">Surfacing (shipped, iOS/macOS)</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">while drafting the FIRST message of a chat, if the router's pick differs from the loaded model, a chip above the composer offers it ("a coding question — Qwen2.5 Coder 7B is the best fit you have installed · Switch"). One tap switches (draft survives); ✕ dismisses.</p><p><strong>Never a silent mid-conversation swap</strong> — that would re-prefill the transcript on another model behind the user's back.</p></div>
+</div>
 <p><strong>Open:</strong></p>
 <ul>
 <li>Full-auto mode (route + switch + send in one flow) — needs send-after-load orchestration through <code>OnboardingModel</code>'s phases; the chip is the honest v1.</li>
@@ -292,7 +310,8 @@ LLM response: sin(π/4) × √2 = 1.000</code></pre></div>
 <li><strong><code>verify</code></strong> is the reliability lever for a weak local model: check the post-condition and say so honestly ("couldn't confirm…") rather than assume success. Advisory, never a rollback.</li>
 </ul>
 <h4 id="rule-1-the-seam-pattern-this-is-how-you-stay-testable">Rule 1 — the seam pattern (this is how you stay testable)<a class="docs-heading-anchor" href="#rule-1-the-seam-pattern-this-is-how-you-stay-testable" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
-<p>If your capability touches the outside world (macOS, a device, the network), do <strong>not</strong> call it directly. Put a thin <strong>seam</strong> interface in front of it, with a production implementation and a <strong>fake</strong> for tests. Then the capability <em>logic</em> — input parsing, label resolution, the blocklist re-check, <code>verify</code> — is fully unit-testable headless; only the production bridge is production-only, exactly like every other capability. (Don't ever call a capability "unverifiable" — see <a href="#dont-defer-native-work-as-unverifiable">the note below</a>.) The macOS GUI seam <a href="https://github.com/alikatgh/quenderin/blob/main/src/services/capability/macUi.ts" rel="noopener" target="_blank"><code>MacUi</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> ↔ its capabilities <a href="https://github.com/alikatgh/quenderin/blob/main/src/services/capability/macUiCapabilities.ts" rel="noopener" target="_blank"><code>macUiCapabilities.ts</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> ↔ the fake in <a href="https://github.com/alikatgh/quenderin/blob/main/tests/mac-ui.test.ts" rel="noopener" target="_blank"><code>tests/mac-ui.test.ts</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> is the canonical example.</p>
+<p>If your capability touches the outside world (macOS, a device, the network), do <strong>not</strong> call it directly. Put a thin <strong>seam</strong> interface in front of it, with a production implementation and a <strong>fake</strong> for tests. Then the capability <em>logic</em> — input parsing, label resolution, the blocklist re-check, <code>verify</code> — is fully unit-testable headless; only the production bridge is production-only, exactly like every other capability.</p>
+<p>(Don't ever call a capability "unverifiable" — see <a href="#dont-defer-native-work-as-unverifiable">the note below</a>.) The macOS GUI seam <a href="https://github.com/alikatgh/quenderin/blob/main/src/services/capability/macUi.ts" rel="noopener" target="_blank"><code>MacUi</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> ↔ its capabilities <a href="https://github.com/alikatgh/quenderin/blob/main/src/services/capability/macUiCapabilities.ts" rel="noopener" target="_blank"><code>macUiCapabilities.ts</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> ↔ the fake in <a href="https://github.com/alikatgh/quenderin/blob/main/tests/mac-ui.test.ts" rel="noopener" target="_blank"><code>tests/mac-ui.test.ts</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> is the canonical example.</p>
 <h4 id="rule-2-never-a-run-arbitrary-x-hole">Rule 2 — never a "run arbitrary X" hole<a class="docs-heading-anchor" href="#rule-2-never-a-run-arbitrary-x-hole" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <p>Reach comes from a <em>growing library of typed, bounded</em> capabilities — never one capability that runs arbitrary shell/AppleScript/SQL. <code>mac.shortcuts.run</code> invokes a shortcut the user <em>already built</em>, by name; it can't author one. If you're tempted to add an escape hatch, add ten specific capabilities instead.</p>
 <h4 id="rule-3-the-model-names-what-it-can-see-escape-everything">Rule 3 — the model names what it can see; escape everything<a class="docs-heading-anchor" href="#rule-3-the-model-names-what-it-can-see-escape-everything" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
