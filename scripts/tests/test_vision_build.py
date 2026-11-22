@@ -47,6 +47,22 @@ class VisionSafetyInvocationTests(unittest.TestCase):
                 with self.assertRaises(SystemExit): safety_runner.main()
             run.assert_not_called(); self.assertEqual(sentinel.read_text(), 'preserve')
 
+    def test_windows_clang_adds_stl_mismatch_guard_and_exe_suffix(self):
+        with tempfile.TemporaryDirectory(prefix='vision-win-clang-', dir=os.environ.get('RUNNER_TEMP') or os.environ.get('TMPDIR')) as temporary:
+            root = Path(temporary); source = root/'source'; (source/'vendor/stb').mkdir(parents=True)
+            (source/'vendor/stb/stb_image.h').write_text('// fixture\n')
+            work = root/'work'
+            with patch.object(safety_runner.sys, 'platform', 'win32'), \
+                 patch.object(safety_runner.shutil, 'which', return_value='C:/Program Files/LLVM/bin/clang++.EXE'), \
+                 patch.object(sys, 'argv', ['test_vision_runtime.py', '--source', str(source), '--work', str(work)]), \
+                 patch.object(safety_runner.subprocess, 'run') as run:
+                safety_runner.main()
+            self.assertEqual(run.call_count, 2)
+            compile_cmd = run.call_args_list[0].args[0]
+            self.assertIn('-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH', compile_cmd)
+            self.assertEqual(Path(compile_cmd[-1]).name, 'vision-safety.exe')
+            self.assertEqual(Path(run.call_args_list[1].args[0][0]).name, 'vision-safety.exe')
+
 class AppleVisionConfigureTests(unittest.TestCase):
     """Run the actual pre-project/deferred hook with tiny shared-runtime targets."""
     def configure(self, *, missing=None, rejected=False, abi=1, multiconfig=False, xcode=False):

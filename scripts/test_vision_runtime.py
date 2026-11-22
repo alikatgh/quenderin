@@ -19,11 +19,16 @@ def main():
     if not (a.source / 'vendor/stb/stb_image.h').is_file(): p.error('Pinned Prism stb header is missing')
     if a.work.exists() or a.work.is_symlink(): p.error('Fixture work directory must be new')
     a.work.mkdir(parents=True)
-    executable = a.work / ('vision-safety.exe' if Path(compiler).name.lower() in ('cl', 'cl.exe') else 'vision-safety')
-    if Path(compiler).name.lower() in ('cl', 'cl.exe'):
+    is_windows = sys.platform == 'win32'
+    compiler_name = Path(compiler).name.lower()
+    is_cl = compiler_name in ('cl', 'cl.exe')
+    executable = a.work / ('vision-safety.exe' if is_windows or is_cl else 'vision-safety')
+    if is_cl:
         command = [compiler, '/std:c++17', '/EHsc', '/utf-8', '/DQV_STB_ALLOCATION_BUDGET=1048576', '/I' + str(ROOT/'native/vision'), '/I' + str(a.source/'vendor'), str(ROOT/'native/vision/vision_safety.cpp'), str(ROOT/'native/vision/tests/safety.cpp'), '/Fe:' + str(executable)]
     else:
-        command = [compiler, '-std=c++17', '-O0', '-DQV_STB_ALLOCATION_BUDGET=1048576', '-I' + str(ROOT/'native/vision'), '-I' + str(a.source/'vendor'), str(ROOT/'native/vision/vision_safety.cpp'), str(ROOT/'native/vision/tests/safety.cpp'), '-o', str(executable)]
+        # Match node-llama-cpp build workaround: windows-latest ships VS 18 STL 14.52 alongside Clang 20.
+        extra = ['-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH'] if is_windows and 'clang' in compiler_name else []
+        command = [compiler, '-std=c++17', '-O0', *extra, '-DQV_STB_ALLOCATION_BUDGET=1048576', '-I' + str(ROOT/'native/vision'), '-I' + str(a.source/'vendor'), str(ROOT/'native/vision/vision_safety.cpp'), str(ROOT/'native/vision/tests/safety.cpp'), '-o', str(executable)]
     subprocess.run(command, cwd=a.work, check=True, timeout=60)
     subprocess.run([str(executable.resolve())], check=True, timeout=10)
     print('Vision safety fixtures passed (real decoder, bounds, templates and reasoning filter; no inference)')
