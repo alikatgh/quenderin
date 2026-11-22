@@ -35,7 +35,7 @@ async function prepare() {
 afterEach(cleanup);
 
 describe('desktop image workflow UI', () => {
-    it('shows all three real presets, exact component requirements and truthful browser-only state', async () => {
+    it('shows all real presets, exact component requirements and truthful browser-only state', async () => {
         const { container } = render(<ImageGenerationArea />);
         expect(screen.getByText('Image generation requires the Quenderin desktop app.')).toBeTruthy();
         expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual(catalog.models.map(model => model.label));

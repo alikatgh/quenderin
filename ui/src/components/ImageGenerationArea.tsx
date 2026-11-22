@@ -49,7 +49,7 @@ export function ImageGenerationArea({ active = true, api = (window as Window & {
         setModelsReady(false);
         void api.models().then(models => {
             if (!mounted.current) return;
-            if (models.length !== 3) throw new Error('The desktop image catalog is unavailable. Relaunch the app.');
+            if (models.length !== browserPresets.length) throw new Error('The desktop image catalog is unavailable. Relaunch the app.');
             setPresets(models);
             setModelsReady(true);
         }).catch(cause => { if (mounted.current) setError(errorText(cause)); });

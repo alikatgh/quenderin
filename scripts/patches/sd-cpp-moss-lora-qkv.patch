@@ -1,6 +1,8 @@
+diff --git a/src/model/adapter/lora.hpp b/src/model/adapter/lora.hpp
+index e9d20a4..33c199e 100644
 --- a/src/model/adapter/lora.hpp
 +++ b/src/model/adapter/lora.hpp
-@@ -164,6 +164,25 @@ struct LoraModel : public GGMLRunner {
+@@ -164,6 +164,27 @@ struct LoraModel : public GGMLRunner {
              lora_tensors = std::move(new_lora_tensors);
          }
  
@@ -24,6 +26,7 @@
 +            }
 +            lora_tensors = std::move(moss_lora_tensors);
 +        }
++
          std::unordered_map<std::string, ggml_tensor*> new_lora_tensors;
          for (const auto& [old_name, tensor] : lora_tensors) {
              std::string new_name = old_name;
