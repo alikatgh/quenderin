@@ -22,9 +22,8 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
-<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
-<link rel="preload" href="fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="styles.css?v=20261122-polish" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
 <link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Kromoss local images and native Hex speech across Quenderin","description":"Native source integrations for Kromoss 8-step image generation and Hex / transcribe.cpp 20-model local speech across C++, TypeScript, Swift, and Kotlin.","datePublished":"2026-11-22","dateModified":"2026-11-22","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-kromoss-hex-november-2026"}</script>
 <link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
@@ -50,7 +49,7 @@
   <p>Quenderin is expanding from offline text chat into multimodal local creation and voice interaction without asking users to install separate companion apps. Alongside today’s <a href="blog-website-fonts-docs-november-2026">30-page documentation portal and self-hosted typography rollout</a>, we have integrated two major open-source projects directly into Quenderin’s cross-platform native stack: <strong>Kromoss</strong> for fast local image synthesis and <strong>Hex + transcribe.cpp</strong> for local speech recognition and dictation.</p>
 
   <h2 id="kromoss">Kromoss and 8-step DMD2 image generation</h2>
-  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#engine"></use></svg>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#image"></use></svg>
   <p><a href="https://huggingface.co/lodestones/Kromoss" rel="noopener">Kromoss</a> (Apache-2.0) builds on the open MOSS Image architecture and adds an optional 8-step DMD2 LoRA accelerator (<code>CFG 1.0</code>, flow shift <code>5.0</code>). Rather than duplicating weights or rewriting inference from scratch, Quenderin integrates Kromoss cleanly onto our existing symbol-isolated diffusion pipeline:</p>
   <ul>
     <li><strong>Shared encoders, zero bloat.</strong> Both <code>kromoss</code> and <code>kromoss-dmd2</code> reuse the pinned Qwen3.5-9B text encoder, Flux2 VAE, and MOSS tokenizer already declared in <a href="docs/models-catalog#image-diffusion-catalog"><code>shared/image-model-catalog.json</code></a>.</li>
@@ -59,7 +58,7 @@
   </ul>
 
   <h2 id="hex-speech">Native Hex and transcribe.cpp speech across 20 models</h2>
-  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#capabilities"></use></svg>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#waveform"></use></svg>
   <p><a href="https://github.com/anomalyco/hex" rel="noopener">Hex</a> and <a href="https://github.com/anomalyco/transcribe.cpp" rel="noopener">transcribe.cpp</a> (MIT) bring production-grade, multi-engine speech recognition and deterministic dictation formatting without cloud audio upload:</p>
   <ul>
     <li><strong>20 pinned speech presets + Silero VAD v6.2.</strong> <a href="docs/models-catalog#speech-dictation-catalog"><code>shared/speech-model-catalog.json</code></a> catalogs Parakeet (Unified EN, v2, v3, Ultra), Orukeet, Fluid Speech Pro, Whisper Large v3 Turbo, Qwen3-ASR 0.6B/1.7B, SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite Speech 5.0, Ivrit/NB/KB-Whisper, and on-device Apple Speech.</li>

@@ -76,14 +76,17 @@
     .map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); })
     .filter(Boolean);
   if ("IntersectionObserver" in window && spySections.length) {
+    var visibleIds = new Set();
     var spy = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-          var id = entry.target.id;
-          spyLinks.forEach(function (a) {
-            a.classList.toggle("is-active", a.getAttribute("href") === "#" + id);
-          });
+          if (entry.isIntersecting) visibleIds.add(entry.target.id);
+          else visibleIds.delete(entry.target.id);
+        });
+        var activeSection = spySections.find(function (s) { return visibleIds.has(s.id); });
+        var activeId = activeSection ? activeSection.id : "";
+        spyLinks.forEach(function (a) {
+          a.classList.toggle("is-active", Boolean(activeId) && a.getAttribute("href") === "#" + activeId);
         });
       },
       { rootMargin: "-45% 0px -50% 0px", threshold: 0 }

@@ -2,7 +2,7 @@
  * Network-first with a same-origin cache fallback: online visitors always get fresh content,
  * and once you've loaded the site it keeps working with no connection — fitting for an
  * offline-first product. Same-origin only, so the "nothing loads from a third party" promise holds. */
-var CACHE = "quenderin-v2";
+var CACHE = "quenderin-v3";
 
 self.addEventListener("install", function () {
   self.skipWaiting();
@@ -20,7 +20,24 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
-  if (new URL(e.request.url).origin !== location.origin) return; // first-party only
+  var url = new URL(e.request.url);
+  if (url.origin !== location.origin) return; // first-party only
+  var isStatic = /^\/(?:fonts|assets|icons)\//.test(url.pathname);
+  if (isStatic) {
+    e.respondWith(
+      caches.match(e.request).then(function (cached) {
+        if (cached) return cached;
+        return fetch(e.request).then(function (res) {
+          if (res && res.ok && res.status === 200 && res.type === "basic") {
+            var copy = res.clone();
+            caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+          }
+          return res;
+        });
+      })
+    );
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then(function (res) {

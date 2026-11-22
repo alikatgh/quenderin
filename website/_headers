@@ -9,3 +9,12 @@
 # (possibly buggy) cached version that then controls the whole origin (audit re-sweep).
 /sw.js
   Cache-Control: no-cache
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=604800
+
+/icons/*
+  Cache-Control: public, max-age=604800
