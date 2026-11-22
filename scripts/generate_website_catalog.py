@@ -127,10 +127,14 @@ def main() -> int:
               'models': models, 'recommendation': rec}
     seed = json.dumps(releases, indent=2) + '\n'
     image_seed = (ROOT / 'shared/image-model-catalog.json').read_text()
+    speech_seed = (ROOT / 'shared/speech-model-catalog.json').read_text()
     targets = {ROOT / 'website/data/model-catalog.json': json.dumps(output, indent=2) + '\n',
                ROOT / 'website/data/image-model-catalog.json': image_seed,
                ROOT / 'apple/QuenderinKit/Sources/QuenderinKit/Resources/image-model-catalog.json': image_seed,
                ROOT / 'android/app/src/main/assets/image-model-catalog.json': image_seed,
+               ROOT / 'website/data/speech-model-catalog.json': speech_seed,
+               ROOT / 'apple/QuenderinKit/Sources/QuenderinKit/Resources/speech-model-catalog.json': speech_seed,
+               ROOT / 'android/app/src/main/assets/speech-model-catalog.json': speech_seed,
                ROOT / 'apple/QuenderinKit/Sources/QuenderinKit/Resources/model-releases.json': seed,
                ROOT / 'android/app/src/main/assets/model-releases.json': seed}
     for name in ['tell-me-more.html', 'models.html']:

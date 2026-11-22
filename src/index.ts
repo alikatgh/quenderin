@@ -30,6 +30,7 @@ import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
 import { ExecFileRunner } from './services/capability/platformAutomation.js';
 import { platformCapabilities } from './services/capability/platformCapabilities.js';
 import { registerImageCommands } from './commands/images.js';
+import { registerVoiceCommands } from './commands/voice.js';
 
 const program = new Command();
 
@@ -40,6 +41,7 @@ program
   .version('0.1.0');
 
 registerImageCommands(program);
+registerVoiceCommands(program);
 
 // Run a single agent task from the CLI without starting the full dashboard
 program
@@ -464,6 +466,8 @@ if (process.argv.length === 2) {
   console.log('  quenderin chat            - Chat with a local model in this terminal');
   console.log('  quenderin chat -p "…"     - One answer, pipe-friendly (git diff | quenderin chat -p "review")');
   console.log('  quenderin models          - What is installed / downloadable');
+  console.log('  quenderin image models    - Local FLUX 3 / MOSS / Kromoss image presets (experimental)');
+  console.log('  quenderin voice models    - Local Hex / transcribe.cpp speech models (experimental)');
   console.log('  quenderin download <id>   - Fetch a model (SHA-256 verified)');
   console.log('  quenderin dashboard       - Open the dashboard');
   console.log('  quenderin agent "<goal>"  - Start a new agent task');

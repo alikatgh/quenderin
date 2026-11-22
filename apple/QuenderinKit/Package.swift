@@ -49,6 +49,8 @@ let xcframeworkRelPath = prismRuntime ? prismFrameworkPath : "Frameworks/llama.x
 let hasXcframework = FileManager.default.fileExists(atPath: packageDir + "/" + xcframeworkRelPath)
 let diffusionFrameworkPath = "Frameworks/QuenderinDiffusion.xcframework"
 let hasDiffusionFramework = FileManager.default.fileExists(atPath: packageDir + "/" + diffusionFrameworkPath)
+let speechFrameworkPath = "Frameworks/QuenderinSpeech.xcframework"
+let hasSpeechFramework = FileManager.default.fileExists(atPath: packageDir + "/" + speechFrameworkPath)
 if prismRelease && !hasDiffusionFramework {
     fatalError("Release profile requires the verified local image runtime framework")
 }
@@ -167,6 +169,10 @@ if hasRemoteSDK {
 if hasDiffusionFramework {
     qkDependencies.append("QuenderinDiffusion")
     optionalTargets.append(.binaryTarget(name: "QuenderinDiffusion", path: diffusionFrameworkPath))
+}
+if hasSpeechFramework {
+    qkDependencies.append("QuenderinSpeech")
+    optionalTargets.append(.binaryTarget(name: "QuenderinSpeech", path: speechFrameworkPath))
 }
 
 // Portable MAX boundary. The staged C sources are byte-verified by

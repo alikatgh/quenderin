@@ -17,7 +17,7 @@ extern "C" {
 
 /* Only this ABI crosses the isolated diffusion library boundary. Never include
  * ggml or stable-diffusion.h in Swift/JNI/application translation units. */
-#define QUENDERIN_DIFFUSION_ABI 1u
+#define QUENDERIN_DIFFUSION_ABI 2u
 typedef struct quenderin_diffusion_engine quenderin_diffusion_engine;
 typedef enum {
     QUENDERIN_DIFFUSION_OK = 0,
@@ -32,7 +32,9 @@ typedef enum {
 typedef enum {
     QUENDERIN_DIFFUSION_FLUX3_KLEIN = 1,
     QUENDERIN_DIFFUSION_MOSS_BASE = 2,
-    QUENDERIN_DIFFUSION_MOSS_SFT = 3
+    QUENDERIN_DIFFUSION_MOSS_SFT = 3,
+    QUENDERIN_DIFFUSION_KROMOSS = 4,
+    QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5
 } quenderin_diffusion_model;
 typedef struct {
     uint32_t width, height, channels;
@@ -46,7 +48,7 @@ typedef struct {
     const char *diffusion_path;
     const char *text_encoder_path;
     const char *vae_path;
-    const char *tokenizer_path; /* mandatory for MOSS; NULL/empty for FLUX */
+    const char *tokenizer_path; /* mandatory for MOSS/Kromoss; NULL/empty for FLUX */
     const char *prompt;
     const char *negative_prompt;
     const char *output_path; /* new absolute local .png path; never overwritten */
@@ -56,6 +58,9 @@ typedef struct {
     int64_t seed;           /* nonnegative, reproducibility is backend-dependent */
     const quenderin_diffusion_image *reference_images; /* FLUX only, at most 10 */
     size_t reference_count;
+    const char *lora_path; /* mandatory for DMD2 distilled variants; NULL/empty otherwise */
+    float cfg;             /* positive CFG scale, or 0 for model default */
+    float flow_shift;      /* positive flow shift, or 0 for model default */
 } quenderin_diffusion_request;
 typedef void (*quenderin_diffusion_progress)(uint32_t step, uint32_t steps, void *user);
 

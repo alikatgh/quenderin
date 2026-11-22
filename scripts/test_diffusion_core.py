@@ -33,7 +33,8 @@ class Request(C.Structure):
     _fields_ = [("abi_version", C.c_uint32), ("struct_size", C.c_size_t), ("model", C.c_int),
                 *[(name, C.c_char_p) for name in ("diffusion_path", "text_encoder_path", "vae_path", "tokenizer_path", "prompt", "negative_prompt", "output_path")],
                 *[(name, C.c_uint32) for name in ("width", "height", "steps", "threads")],
-                ("seed", C.c_int64), ("reference_images", C.POINTER(Image)), ("reference_count", C.c_size_t)]
+                ("seed", C.c_int64), ("reference_images", C.POINTER(Image)), ("reference_count", C.c_size_t),
+                ("lora_path", C.c_char_p), ("cfg", C.c_float), ("flow_shift", C.c_float)]
 
 
 Progress = C.CFUNCTYPE(None, C.c_uint32, C.c_uint32, C.c_void_p)
@@ -69,7 +70,7 @@ class CoreTests(unittest.TestCase):
         cls.lib.quenderin_diffusion_validate.argtypes = [C.POINTER(Request), C.c_char_p, C.c_size_t]
         cls.lib.quenderin_diffusion_generate.argtypes = [C.c_void_p, C.POINTER(Request), Progress, C.c_void_p, C.c_char_p, C.c_size_t]
         cls.lib.quenderin_diffusion_revision.restype = C.c_char_p
-        for name in ("model.safetensors", "vae.safetensors", "moss-tokenizer.json", "load-fail.safetensors"):
+        for name in ("model.safetensors", "vae.safetensors", "moss-tokenizer.json", "lora.safetensors", "load-fail.safetensors"):
             (cls.base / name).write_bytes(b'{"fixture":true}')
         (cls.base / "encoder.gguf").write_bytes(b"GGUFfixture-data")
 
@@ -86,7 +87,7 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(self.lib.quenderin_diffusion_destroy(self.engine), 0)
 
     def request(self, **changes):
-        r = Request(abi_version=1, struct_size=C.sizeof(Request), model=1, width=64, height=64, steps=16, threads=2, seed=42)
+        r = Request(abi_version=2, struct_size=C.sizeof(Request), model=1, width=64, height=64, steps=16, threads=2, seed=42)
         for name, path in (("diffusion_path", "model.safetensors"), ("text_encoder_path", "encoder.gguf"), ("vae_path", "vae.safetensors")):
             setattr(r, name, str(self.base / path).encode())
         r.prompt = b"fixture:success"
@@ -107,7 +108,7 @@ class CoreTests(unittest.TestCase):
     def test_manifest_provenance_and_complete_roles(self):
         lock, catalog = prepare.manifests()
         self.assertEqual(self.lib.quenderin_diffusion_revision().decode(), lock["revision"])
-        self.assertEqual(len(catalog["models"]), 3)
+        self.assertEqual(len(catalog["models"]), 5)
         self.assertIs(lock["inferenceVerified"], False)
 
     def test_exports_isolate_all_ggml_sd_and_cpp_symbols(self):
@@ -133,8 +134,18 @@ class CoreTests(unittest.TestCase):
         request = self.request(model=3, tokenizer_path=str(self.base / "moss-tokenizer.json").encode(), steps=50)
         self.assertEqual(self.generate(request)[0], 0)
 
+    def test_kromoss_base_and_dmd2_lora_policy(self):
+        tok = str(self.base / "moss-tokenizer.json").encode()
+        lora = str(self.base / "lora.safetensors").encode()
+        self.assertEqual(self.generate(self.request(model=4, tokenizer_path=tok, steps=50))[0], 0)
+        self.assertEqual(self.validate(self.request(model=4, tokenizer_path=tok, lora_path=lora)), 1)
+        self.assertEqual(self.validate(self.request(model=5, tokenizer_path=tok)), 1)
+        out2 = self.base / "kromoss_dmd2.png"
+        self.assertEqual(self.generate(self.request(model=5, tokenizer_path=tok, lora_path=lora, steps=8, cfg=1.0, flow_shift=5.0, output_path=str(out2).encode()))[0], 0)
+        self.assertTrue(out2.exists())
+
     def test_bounds_abi_and_required_component_rejection(self):
-        for changes in ({"abi_version": 2}, {"width": 2048}, {"height": 65}, {"steps": 51}, {"threads": 9}, {"seed": -1}, {"model": 99}, {"diffusion_path": b"https://example/model.safetensors"}, {"text_encoder_path": str(self.base / "missing.gguf").encode()}):
+        for changes in ({"abi_version": 1}, {"width": 2048}, {"height": 65}, {"steps": 51}, {"threads": 9}, {"seed": -1}, {"model": 99}, {"cfg": -1.0}, {"diffusion_path": b"https://example/model.safetensors"}, {"text_encoder_path": str(self.base / "missing.gguf").encode()}):
             with self.subTest(changes=changes): self.assertEqual(self.validate(self.request(**changes)), 1)
 
     def test_existing_output_is_preserved(self):
@@ -188,10 +199,21 @@ class CoreTests(unittest.TestCase):
 
     def test_cli_protocol_and_generation(self):
         version = json.loads(subprocess.check_output([str(self.cli), "--version"], text=True))
-        self.assertEqual(version["abiVersion"], 1)
+        self.assertEqual(version["abiVersion"], 2)
         result = subprocess.run([str(self.cli), "--model", "flux3-image-klein", "--diffusion", str(self.base / "model.safetensors"), "--text-encoder", str(self.base / "encoder.gguf"), "--vae", str(self.base / "vae.safetensors"), "--prompt", "fixture:success", "--output", str(self.output), "--width", "64", "--height", "64"], capture_output=True, text=True, check=True)
         self.assertTrue(json.loads(result.stdout)["ok"])
         self.assertEqual(json.loads(result.stderr.splitlines()[0])["step"], 1)
+        dmd2_out = self.base / "cli_kromoss_dmd2.png"
+        dmd2 = subprocess.run([
+            str(self.cli), "--model", "kromoss-dmd2",
+            "--diffusion", str(self.base / "model.safetensors"), "--text-encoder", str(self.base / "encoder.gguf"),
+            "--vae", str(self.base / "vae.safetensors"), "--tokenizer", str(self.base / "moss-tokenizer.json"),
+            "--lora", str(self.base / "lora.safetensors"),
+            "--prompt", "fixture:success", "--output", str(dmd2_out),
+            "--width", "64", "--height", "64", "--steps", "8", "--cfg", "1", "--flow-shift", "5",
+        ], capture_output=True, text=True, check=True)
+        self.assertTrue(json.loads(dmd2.stdout)["ok"])
+        self.assertEqual(json.loads(dmd2.stderr.splitlines()[-1])["steps"], 8)
         rejected = subprocess.run([str(self.cli), "--unknown", "value"], capture_output=True, text=True)
         self.assertEqual(rejected.returncode, 1)
         self.assertFalse(json.loads(rejected.stdout)["ok"])

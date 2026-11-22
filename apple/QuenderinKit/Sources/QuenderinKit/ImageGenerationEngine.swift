@@ -32,7 +32,7 @@ public final class NativeImageGenerationEngine: ImageGenerationEngine, @unchecke
     public init() {}
     public var available: Bool {
         #if canImport(QuenderinDiffusion)
-        return quenderin_diffusion_abi() == 1
+        return quenderin_diffusion_abi() == 2
         #else
         return false
         #endif
@@ -78,25 +78,29 @@ public final class NativeImageGenerationEngine: ImageGenerationEngine, @unchecke
                                 .map { request.directory.appendingPathComponent($0.localFilename).path } ?? ""
                         }
                         let values: [String] = [component("diffusion"), component("text_encoder"), component("vae"),
-                                                component("tokenizer"), request.prompt, "", request.output.path(percentEncoded: false)]
+                                                component("tokenizer"), component("lora"),
+                                                request.prompt, "", request.output.path(percentEncoded: false)]
                         let strings = values.map { strdup($0)! }
                         defer { strings.forEach { free($0) } }
                         var native = quenderin_diffusion_request()
-                        native.abi_version = 1
+                        native.abi_version = 2
                         native.struct_size = MemoryLayout<quenderin_diffusion_request>.size
                         native.model = quenderin_diffusion_model(rawValue: UInt32(request.model.modelKind))
                         native.diffusion_path = UnsafePointer(strings[0])
                         native.text_encoder_path = UnsafePointer(strings[1])
                         native.vae_path = UnsafePointer(strings[2])
                         native.tokenizer_path = request.model.modelKind == 1 ? nil : UnsafePointer(strings[3])
-                        native.prompt = UnsafePointer(strings[4])
-                        native.negative_prompt = UnsafePointer(strings[5])
-                        native.output_path = UnsafePointer(strings[6])
+                        native.lora_path = request.model.modelKind == 5 ? UnsafePointer(strings[4]) : nil
+                        native.prompt = UnsafePointer(strings[5])
+                        native.negative_prompt = UnsafePointer(strings[6])
+                        native.output_path = UnsafePointer(strings[7])
                         native.width = UInt32(request.model.defaults.width)
                         native.height = UInt32(request.model.defaults.height)
                         native.steps = UInt32(request.model.defaults.steps)
                         native.threads = UInt32(min(8, max(1, ProcessInfo.processInfo.activeProcessorCount)))
                         native.seed = request.seed
+                        native.cfg = Float(request.model.defaults.cfg)
+                        native.flow_shift = Float(request.model.defaults.flowShift)
                         let callback = Unmanaged.passRetained(ImageProgressCallback(progress))
                         defer { callback.release() }
                         var error = [CChar](repeating: 0, count: 1024)

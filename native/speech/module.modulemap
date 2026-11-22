@@ -1,0 +1,5 @@
+framework module QuenderinSpeech {
+    umbrella header "quenderin_speech.h"
+    export *
+    module * { export * }
+}

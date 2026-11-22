@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "verifiedAt": "2026-11-22",
+  "abiVersion": 1,
+  "inferenceVerified": false,
+  "inferenceStatus": "Source-level integration and synthetic host fixtures only; no model weights downloaded and no local speech inference or microphone capture runs performed.",
+  "repository": "https://github.com/anomalyco/transcribe.cpp.git",
+  "revision": "60bed89dab84f7c1fddc3a17ad7fa8a27ddfba19",
+  "engineVersion": "0.4.1",
+  "license": "MIT",
+  "hex": {
+    "repository": "https://github.com/anomalyco/hex.git",
+    "revision": "fd2fafc91b67754065af17b9db70bb1cbbc13bb1",
+    "version": "3.4.0",
+    "localApiVersion": "2",
+    "license": "MIT"
+  },
+  "isolation": "separate-shared-library-private-ggml",
+  "bounds": {
+    "maxAudioBytes": 67108864,
+    "sampleRateHz": 16000,
+    "maxThreads": 8,
+    "maxVocabularyTerms": 100,
+    "maxTermLength": 64,
+    "maxPromptBytes": 8192
+  },
+  "sourceEvidence": [
+    "https://github.com/anomalyco/hex/blob/fd2fafc91b67754065af17b9db70bb1cbbc13bb1/src/transcription/models.rs",
+    "https://github.com/anomalyco/hex/blob/fd2fafc91b67754065af17b9db70bb1cbbc13bb1/src/transcription/artifacts.rs",
+    "https://github.com/anomalyco/hex/tree/fd2fafc91b67754065af17b9db70bb1cbbc13bb1/sdk/typescript",
+    "https://github.com/anomalyco/hex/tree/fd2fafc91b67754065af17b9db70bb1cbbc13bb1/ios/HEXShared",
+    "https://github.com/anomalyco/transcribe.cpp/blob/60bed89dab84f7c1fddc3a17ad7fa8a27ddfba19/include/transcribe.h"
+  ]
+}

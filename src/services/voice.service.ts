@@ -4,6 +4,11 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import logger from '../utils/logger.js';
+import {
+    HexSpeechAdapter,
+    type DictationFormatOptions,
+    type SpeechTranscriptionResult,
+} from './hexSpeechAdapter.js';
 
 // Picovoice types — loaded dynamically since they are optional native deps
 interface PorcupineLike {
@@ -20,12 +25,29 @@ interface PvRecorderLike {
 
 type VoiceState = 'IDLE' | 'RECORDING' | 'TRANSCRIBING';
 
+export interface VoiceSpeechConfig {
+    modelId: string;
+    directory?: string;
+    runtime?: string;
+    vad?: boolean;
+    language?: string;
+    prompt?: string;
+    threads?: number;
+    hexUrl?: string;
+    hexToken?: string;
+    hexDiscoveryPath?: string;
+    hexExecutable?: string;
+    format?: DictationFormatOptions;
+}
+
 export class VoiceService extends EventEmitter {
     private porcupine: PorcupineLike | null = null;
     private recorder: PvRecorderLike | null = null;
     private isListening = false;
     private STATE: VoiceState = 'IDLE'; // IDLE | RECORDING | TRANSCRIBING
     private voiceAvailable = false;
+    private speechAdapter: HexSpeechAdapter | null = null;
+    private speechConfig: VoiceSpeechConfig | null = null;
 
     // We enforce exactly 10 seconds of speech
     private MAX_RECORDING_SAMPLES = 16000 * 10;
@@ -36,18 +58,39 @@ export class VoiceService extends EventEmitter {
         super();
     }
 
-    public async initialize(accessKey: string) {
+    public configureSpeech(adapter: HexSpeechAdapter, config: VoiceSpeechConfig): void {
+        adapter.model(config.modelId);
+        this.speechAdapter = adapter;
+        this.speechConfig = { ...config };
+        this.voiceAvailable = true;
+        logger.info(`[Voice] Native Hex speech backend configured (model=${config.modelId}).`);
+    }
+
+    public hasNativeSpeech(): boolean {
+        return Boolean(this.speechAdapter && this.speechConfig);
+    }
+
+    public async initialize(accessKey?: string, speechConfig?: { adapter?: HexSpeechAdapter } & VoiceSpeechConfig) {
         try {
             logger.info('[Voice] Initializing voice helper...');
 
+            if (speechConfig) {
+                const adapter = speechConfig.adapter ?? new HexSpeechAdapter();
+                this.configureSpeech(adapter, speechConfig);
+            }
+
             // Note: Porcupine requires a valid AccessKey from Picovoice Console
             if (!accessKey) {
-                this.emit('action_required', {
-                    code: 'PICOVOICE_MISSING',
-                    title: 'Voice Engine Unconfigured',
-                    message: 'Please provide a valid Picovoice Access Key to enable offline voice commands.'
-                });
-                logger.warn('[Voice] No access key provided — voice disabled.');
+                if (!this.hasNativeSpeech()) {
+                    this.emit('action_required', {
+                        code: 'PICOVOICE_MISSING',
+                        title: 'Voice Engine Unconfigured',
+                        message: 'Provide a Picovoice Access Key or configure QUENDERIN_SPEECH_MODEL for offline voice commands.'
+                    });
+                    logger.warn('[Voice] No wake-word key or native speech model configured — voice disabled.');
+                } else {
+                    logger.info('[Voice] Ready in headless/manual Hex transcription mode (no wake-word key set).');
+                }
                 return;
             }
 
@@ -167,39 +210,7 @@ export class VoiceService extends EventEmitter {
             wavPath = path.join(os.tmpdir(), `quenderin_voice_${crypto.randomUUID()}.wav`);
             this.writeWavFile(wavPath, recordedFrames, 16000, 1);
 
-            // 3. Offline Transcription Phase
-            // whisper-node is an optional native dep — may not compile on all platforms
-            let whisper: any;
-            try {
-                const whisperModule = await import('whisper-node');
-                whisper = whisperModule.default || whisperModule.whisper;
-            } catch {
-                logger.info('[Voice] whisper-node not available — speech-to-text disabled.');
-                return;
-            }
-
-            const options = {
-                modelName: "tiny.en", // Using the smallest, fastest English-only model
-                whisperOptions: { word_timestamps: false }
-            };
-
-            const transcripts = await whisper(wavPath, options);
-
-            // whisper-node returns an array of objects: {start, end, speech}
-            let fullText = "";
-            for (const t of transcripts) {
-                fullText += " " + t.speech;
-            }
-            const cleanText = fullText.trim();
-
-            if (cleanText.length > 0) {
-                // Privacy: the transcript IS the user's private speech — never write the content to
-                // logs (audit re-sweep, PII). Length only; the command itself goes only to the agent.
-                logger.info(`[Voice] Transcribed ${cleanText.length} chars — emitting command.`);
-                this.emit('command', cleanText); // Pipe to AgentService!
-            } else {
-                logger.debug('[Voice] Empty transcription — no command emitted.');
-            }
+            await this.transcribeWav(wavPath);
 
         } catch (err: unknown) {
             logger.error('[Voice] Transcription error:', err);
@@ -212,6 +223,96 @@ export class VoiceService extends EventEmitter {
             this.STATE = 'IDLE';
             logger.debug('[Voice] Returning to idle state.');
         }
+    }
+
+    public async transcribePcm(pcmBuffer: Int16Array, sampleRate = 16000, signal?: AbortSignal): Promise<SpeechTranscriptionResult | null> {
+        if (sampleRate !== 16000) {
+            throw new Error('PCM voice transcription requires 16000 Hz mono audio.');
+        }
+        const wavPath = path.join(os.tmpdir(), `quenderin_voice_${crypto.randomUUID()}.wav`);
+        try {
+            this.writeWavFile(wavPath, pcmBuffer, sampleRate, 1);
+            return await this.transcribeWav(wavPath, signal);
+        } finally {
+            await fs.promises.unlink(wavPath).catch(() => { /* already removed */ });
+        }
+    }
+
+    public async transcribeWav(wavPath: string, signal?: AbortSignal): Promise<SpeechTranscriptionResult | null> {
+        let result: SpeechTranscriptionResult | null = null;
+        if (this.speechAdapter && this.speechConfig) {
+            const cfg = this.speechConfig;
+            if (cfg.hexUrl || cfg.hexDiscoveryPath || cfg.hexExecutable) {
+                result = await this.speechAdapter.transcribeWithHexHost({
+                    model: cfg.modelId,
+                    wav: wavPath,
+                    hexUrl: cfg.hexUrl,
+                    hexToken: cfg.hexToken,
+                    hexDiscoveryPath: cfg.hexDiscoveryPath,
+                    hexExecutable: cfg.hexExecutable,
+                    language: cfg.language,
+                    format: cfg.format,
+                    signal,
+                });
+            } else if (cfg.directory) {
+                result = await this.speechAdapter.transcribeWithCli({
+                    model: cfg.modelId,
+                    directory: cfg.directory,
+                    wav: wavPath,
+                    vad: cfg.vad,
+                    runtime: cfg.runtime,
+                    language: cfg.language,
+                    prompt: cfg.prompt,
+                    threads: cfg.threads,
+                    format: cfg.format,
+                    signal,
+                });
+            } else {
+                throw new Error('Speech backend is missing a model directory or Hex loopback host configuration.');
+            }
+        } else {
+            // 3. Optional whisper-node fallback
+            let whisper: any;
+            try {
+                const whisperModule = await import('whisper-node');
+                whisper = whisperModule.default || whisperModule.whisper;
+            } catch {
+                logger.info('[Voice] Neither Hex native speech nor whisper-node available — speech-to-text disabled.');
+                return null;
+            }
+
+            const options = {
+                modelName: "tiny.en",
+                whisperOptions: { word_timestamps: false }
+            };
+            const transcripts = await whisper(wavPath, options);
+            let fullText = '';
+            for (const t of transcripts) {
+                fullText += ' ' + t.speech;
+            }
+            const clean = fullText.trim();
+            result = {
+                text: clean,
+                rawText: clean,
+                language: 'en',
+                backend: 'whisper-node',
+                modelId: 'tiny.en',
+                durationMs: 0,
+                truncated: false,
+                segments: [],
+            };
+        }
+
+        const cleanText = result.text.trim();
+        if (cleanText.length > 0) {
+            // Privacy: the transcript IS the user's private speech — never write the content to
+            // logs (audit re-sweep, PII). Length only; the command itself goes only to the agent.
+            logger.info(`[Voice] Transcribed ${cleanText.length} chars — emitting command.`);
+            this.emit('command', cleanText);
+        } else {
+            logger.debug('[Voice] Empty transcription — no command emitted.');
+        }
+        return result;
     }
 
     /**

@@ -1,0 +1,4 @@
+QUENDERIN_SPEECH_1 {
+    global: quenderin_speech_*;
+    local: *;
+};

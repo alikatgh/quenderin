@@ -27,7 +27,7 @@ class ImageNativeCleanupTests(unittest.TestCase):
 struct quenderin_diffusion_engine { atomic_int cancelled; };
 static atomic_int active;
 int qd_fixture_active(void) { return atomic_load(&active); }
-uint32_t quenderin_diffusion_abi(void) { return 1; }
+uint32_t quenderin_diffusion_abi(void) { return 2; }
 quenderin_diffusion_engine *quenderin_diffusion_create(void) {
     quenderin_diffusion_engine *engine = calloc(1, sizeof(*engine)); atomic_fetch_add(&active, 1); return engine;
 }
@@ -56,7 +56,7 @@ import Foundation
 import QuenderinDiffusion
 public struct ImageModel: Sendable {
     struct Component: Sendable { let role: String; let localFilename: String }
-    struct Defaults: Sendable { let width = 64; let height = 64; let steps = 1 }
+    struct Defaults: Sendable { let width = 64; let height = 64; let steps = 1; let cfg = 1.0; let flowShift = 1.0 }
     let components: [Component] = []; let modelKind = 1; let defaults = Defaults()
     func validate() throws {}
 }

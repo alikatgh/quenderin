@@ -94,7 +94,7 @@ def description(framework: Path, execute: bool = False) -> dict:
             library = ctypes.CDLL(str(binary))
             library.quenderin_diffusion_abi.restype = ctypes.c_uint32
             library.quenderin_diffusion_revision.restype = ctypes.c_char_p
-            if library.quenderin_diffusion_abi() != 1 or library.quenderin_diffusion_revision().decode() != lock['revision']:
+            if library.quenderin_diffusion_abi() != lock['abiVersion'] or library.quenderin_diffusion_revision().decode() != lock['revision']:
                 raise ValueError('Compiled image runtime identity mismatch')
     identities = [(s['platform'], s.get('variant')) for s in slices]
     if len(set(identities)) != len(identities) or not {('ios', None), ('macos', None)}.issubset(identities):

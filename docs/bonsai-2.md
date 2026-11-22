@@ -1,5 +1,13 @@
 # Bonsai 2 27B integration
 
+## 22 November 2026: Kromoss DMD2 LoRA and Hex / transcribe.cpp speech
+
+Quenderin adds native cross-platform source integrations for **`lodestones/Kromoss`** (Apache-2.0) image generation and **`anomalyco/hex`** + **`anomalyco/transcribe.cpp`** (MIT) speech-to-text & dictation formatting:
+
+- **Kromoss & 8-Step DMD2 LoRA (`shared/image-model-catalog.json`, `shared/diffusion-runtime.json`):** Extends the isolated `native/diffusion` C ABI to v2 with `QUENDERIN_DIFFUSION_KROMOSS` (`4`) and `QUENDERIN_DIFFUSION_KROMOSS_DMD2` (`5`), explicit `cfg`, `flow_shift`, and `lora_path` parameters, and an upstream key-remapping patch (`scripts/patches/sd-cpp-moss-lora-qkv.patch`) for LoRA adapters targeting fused `proj.qkv` layers. Reuses the pinned `Qwen3.5-9B-Q4_K_M.gguf`, `flux2-vae.safetensors`, and `moss-tokenizer.json` artifacts so users do not duplicate 6 GB of shared encoders.
+- **Hex & `transcribe.cpp` speech (`shared/speech-model-catalog.json`, `shared/speech-runtime.json`):** Adds an isolated `native/speech` C ABI v1 (`quenderin-speech`, `quenderin-speech-cli`, JNI bridge), `HexSpeechAdapter` in TypeScript (`hex service --embedded` loopback v2 HTTP/SSE client + CLI runner), `quenderin voice` CLI commands, `VoiceService` integration, Apple `QuenderinKit` (`SpeechModels`, `SpeechFormatting`, `NativeSpeechEngine`), and Android `quenderin-core` (`SpeechModels`, `SpokenTextFormatter`, `NativeSpeechEngine`) across 20 pinned speech presets plus Silero VAD v6.2.
+- **Verification boundary:** Host tests verify manifest parity, SHA-256 verification, symlink rejection, symbol isolation, Swift/Clang native resource destruction, Kotlin core compilation/execution, loopback protocol security, and TypeScript dictation formatting using synthetic fixtures (`inferenceVerified: false`). No multi-GB model weights or phone/simulator runs were performed locally.
+
 ## 18 October 2026 engineering candidate
 
 The current candidate extends the pinned Prism runtime rather than treating a

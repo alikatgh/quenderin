@@ -37,6 +37,13 @@
   <h1>What's new</h1>
   <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
 
+  <h2 id="2026-11-22-integrations">22 November 2026 &middot; Native Kromoss diffusion &amp; Hex speech source integrations</h2>
+  <ul>
+    <li><strong>Kromoss 8-step DMD2 image generation (Apache-2.0).</strong> Upgraded <code>native/diffusion</code> C ABI to v2 with <code>lora_path</code>, <code>cfg</code>, <code>flow_shift</code>, and QKV LoRA remapping, wiring <code>kromoss</code> and <code>kromoss-dmd2</code> across Desktop CLI, Apple <code>QuenderinKit</code>, and Android <code>quenderin-core</code> while reusing MOSS encoders.</li>
+    <li><strong>Hex &amp; <code>transcribe.cpp</code> speech + dictation (MIT).</strong> Added <code>native/speech</code> C ABI v1 / CLI / JNI, pinned Silero VAD v6.2 and 20 speech models, added Desktop <code>HexSpeechAdapter</code> (loopback API v2 + CLI) and <code>quenderin voice</code> commands, and ported dictation formatting across TypeScript, Swift, and Kotlin.</li>
+  </ul>
+  <p>Verified against synthetic host fixtures across C++, Swift, Kotlin, and TypeScript (<code>inferenceVerified: false</code>; no weight downloads or phone runs performed). <a href="blog-kromoss-hex-november-2026">Read the engineering post</a>.</p>
+
   <h2 id="2026-11-22">22 November 2026 &middot; Documentation portal &amp; self-hosted typography</h2>
   <ul>
     <li><strong>30-page documentation portal at <code>/docs/</code>.</strong> Generated deterministically from 116 canonical Markdown files and live <code>shared/*.json</code> manifests via <code>scripts/generate_website_docs.py</code>, complete with zero-network search (<kbd>/</kbd> or <kbd>Cmd+K</kbd>), collapsible long logs, copy-code buttons, and verified internal links.</li>

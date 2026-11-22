@@ -16,8 +16,15 @@ void sd_cancel_generation(sd_ctx_t*c,sd_cancel_mode_t){c->cancelled=true;}
 bool generate_image(sd_ctx_t*c,const sd_img_gen_params_t*p,sd_image_t**out,int*count){
     *out=nullptr;*count=0;
     if(std::strcmp(p->prompt,"fixture:fail")==0)return false;
-    if(p->batch_count!=1||p->sample_params.guidance.txt_cfg!=(c->moss?3.f:1.f)||std::abs(p->sample_params.flow_shift-(c->moss?5.f:6.93f))>.001f)return false;
-    for(int step=1;step<=20;++step){if(c->cancelled)return false;if(progress)progress(step,20,0.f,progress_user);std::this_thread::sleep_for(std::chrono::milliseconds(2));}
+    if(p->batch_count!=1)return false;
+    if(p->lora_count){
+        if(!c->moss||p->lora_count!=1||!p->loras||!p->loras[0].path||!*p->loras[0].path||p->loras[0].multiplier!=1.f)return false;
+        if(std::abs(p->sample_params.guidance.txt_cfg-1.f)>.001f||std::abs(p->sample_params.flow_shift-5.f)>.001f)return false;
+    }else if(std::abs(p->sample_params.guidance.txt_cfg-(c->moss?3.f:1.f))>.001f||std::abs(p->sample_params.flow_shift-(c->moss?5.f:6.93f))>.001f){
+        return false;
+    }
+    const int total=p->sample_params.sample_steps>0?p->sample_params.sample_steps:20;
+    for(int step=1;step<=total;++step){if(c->cancelled)return false;if(progress)progress(step,total,0.f,progress_user);std::this_thread::sleep_for(std::chrono::milliseconds(1));}
     if(c->cancelled)return false;
     *out=new sd_image_t[1];*count=1;auto&image=(*out)[0];image.width=p->width;image.height=p->height;image.channel=3;image.data=new uint8_t[image.width*image.height*3];std::memset(image.data,123,image.width*image.height*3);return true;
 }

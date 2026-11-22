@@ -239,3 +239,21 @@ Quenderin is built around the principle that your data never leaves your device.
 | Settings input validation | All incoming WebSocket settings are validated against allowlists before use |
 | Privacy lock | Optional PIN-based UI lock with configurable idle timeout and lockout behavior |
 | Sensitive error suppression | Internal stack traces are not forwarded to the client in production responses |
+
+---
+
+## 11. Local image generation (FLUX 3, MOSS & Kromoss)
+
+Quenderin integrates a separate, symbol-isolated `stable-diffusion.cpp` C ABI (`native/diffusion`, ABI v2) alongside `quenderin image` CLI commands, Apple `QuenderinKit`, and Android `quenderin-core` Kotlin bindings:
+
+- **Presets (`shared/image-model-catalog.json`):** FLUX 3 Image Klein, MOSS Image Base, MOSS Image SFT, **Kromoss** (5B INT8-convrot, Apache-2.0), and **Kromoss 8-Step DMD2** (5B + `8-steps-dmd2-lora.safetensors`, 8 steps, CFG 1.0, Flow Shift 5.0).
+- **Offline safety & integrity:** Verifies exact byte lengths and SHA-256 checksums across all components before native execution, refuses symlinks, preserves existing PNG outputs, and runs inference under an exclusive memory lease (`inferenceVerified: false` until full-weight validation runs on target hardware).
+
+---
+
+## 12. Local speech & dictation (Hex + `transcribe.cpp`)
+
+Quenderin natively embeds MIT-licensed speech recognition and dictation formatting across C++ (`native/speech`, ABI v1), Desktop TypeScript (`HexSpeechAdapter`, `VoiceService`, `quenderin voice`), Apple `QuenderinKit`, and Android Kotlin (`quenderin-core`):
+
+- **20 pinned speech models + Silero VAD v6.2 (`shared/speech-model-catalog.json`):** Parakeet (Unified EN, v2, v3, Ultra), Orukeet, Fluid Speech Pro, Whisper Large v3 Turbo, Ivrit, NB-Whisper, KB-Whisper, Qwen3-ASR 0.6B/1.7B, SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite Speech 5.0, and on-device Apple Speech.
+- **Dual desktop execution + dictation formatting:** Connects to loopback `hex service --embedded` local API v2 (Bearer-authenticated `/health`, SSE `/prepare`, WAV `/transcriptions`) or bundled `quenderin-speech-cli`, applying pure MIT vocabulary spelling, spoken punctuation, spoken lists, filler removal, and French spacing while never logging spoken transcripts (`inferenceVerified: false` on host fixture checks).

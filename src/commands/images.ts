@@ -4,7 +4,7 @@ import { expandTilde } from '../utils/paths.js';
 
 export function registerImageCommands(program: Command): void {
     const image = program.command('image')
-        .description('Experimental local image generation with the pinned FLUX 3 / MOSS pipeline.')
+        .description('Experimental local image generation with the pinned FLUX 3 / MOSS / Kromoss pipeline.')
         .addHelpText('after', '\nPrepare every catalog component in one directory first. This CLI does not download files or accept publisher terms. FLUX files require your own publisher access and license review. Generation needs 24 GiB available memory and an installed pinned native runtime. FLUX prompts must already be expanded full-scene captions; reference-image input is not exposed by this CLI.');
     image.command('models').description('List image presets, required filenames and publisher licenses.')
         .action(() => {
@@ -12,7 +12,8 @@ export function registerImageCommands(program: Command): void {
                 const service = new ImageGenerationService();
                 console.log('Experimental source integration; full-model inference has not been validated.');
                 for (const model of service.models()) {
-                    console.log(`\n${model.id} — ${model.label}\n  License: ${model.license}\n  ${model.licenseUrl}`);
+                    const cfgLabel = model.defaults.cfg !== undefined ? `, cfg ${model.defaults.cfg}` : '';
+                    console.log(`\n${model.id} — ${model.label} (${model.defaults.width}x${model.defaults.height}, ${model.defaults.steps} steps${cfgLabel})\n  License: ${model.license}\n  ${model.licenseUrl}`);
                     if (model.requiresPublisherAccess) console.log('  Obtain gated files yourself after reviewing publisher terms.');
                     for (const component of model.components) console.log(`  ${component.localFilename} (${component.bytes} bytes)`);
                     if (model.promptRequirement) console.log(`  Prompt: ${model.promptRequirement}`);

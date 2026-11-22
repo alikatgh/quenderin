@@ -14,7 +14,7 @@ const OUTPUT_RESERVE_BYTES = 64 * 1024 ** 2;
 const STDOUT_LIMIT = 8 * 1024;
 const STDERR_LIMIT = 64 * 1024;
 
-type ComponentRole = 'diffusion' | 'text_encoder' | 'vae' | 'tokenizer';
+type ComponentRole = 'diffusion' | 'text_encoder' | 'vae' | 'tokenizer' | 'lora';
 export interface ImageModelComponent {
     role: ComponentRole;
     localFilename: string;
@@ -29,7 +29,7 @@ export interface ImageModelPreset {
     licenseUrl: string;
     requiresPublisherAccess: boolean;
     promptRequirement?: string;
-    defaults: { width: number; height: number; steps: number };
+    defaults: { width: number; height: number; steps: number; cfg?: number; flowShift?: number };
     components: ImageModelComponent[];
 }
 export interface ImageModelCatalog {
@@ -117,26 +117,42 @@ function sameFile(a: fs.BigIntStats, b: fs.BigIntStats): boolean {
 
 function validateConfiguration(catalog: ImageModelCatalog, lock: DiffusionRuntimeLock): void {
     if (catalog.version !== 1 || !Array.isArray(catalog.models) || !catalog.models.length
-        || lock.version !== 1 || lock.abiVersion !== 1 || !/^[a-f0-9]{40}$/u.test(lock.revision)
+        || lock.version !== 1 || lock.abiVersion !== 2 || !/^[a-f0-9]{40}$/u.test(lock.revision)
         || lock.bounds.maxDimension !== 1024 || lock.bounds.maxSteps !== 50
         || lock.bounds.maxThreads !== 8 || lock.bounds.maxImages !== 1) {
         throw new Error('Image catalog or runtime lock is invalid.');
     }
     const ids = new Set<string>();
-    const kinds: Record<string, number> = { 'flux3-image-klein': 1, 'moss-image-base': 2, 'moss-image-sft': 3 };
+    const kinds: Record<string, number> = {
+        'flux3-image-klein': 1,
+        'moss-image-base': 2,
+        'moss-image-sft': 3,
+        'kromoss': 4,
+        'kromoss-dmd2': 5,
+    };
     for (const model of catalog.models) {
         if (!kinds[model.id] || kinds[model.id] !== model.modelKind || ids.has(model.id)) {
             throw new Error('Image model identity is invalid.');
         }
         ids.add(model.id);
-        const { width, height, steps } = model.defaults;
+        const { width, height, steps, cfg, flowShift } = model.defaults;
         if (![width, height].every(n => Number.isInteger(n) && n >= 64 && n <= 1024 && n % 16 === 0)
-            || !Number.isInteger(steps) || steps < 1 || steps > 50) throw new Error('Image preset exceeds runtime bounds.');
+            || !Number.isInteger(steps) || steps < 1 || steps > 50
+            || (cfg !== undefined && (!Number.isFinite(cfg) || cfg <= 0 || cfg > 30))
+            || (flowShift !== undefined && (!Number.isFinite(flowShift) || flowShift <= 0 || flowShift > 20))) {
+            throw new Error('Image preset exceeds runtime bounds.');
+        }
         const roles = new Set<string>();
         const filenames = new Set<string>();
-        const extensions: Record<ComponentRole, string> = { diffusion: '.safetensors', text_encoder: '.gguf', vae: '.safetensors', tokenizer: '.json' };
+        const extensions: Record<ComponentRole, string> = {
+            diffusion: '.safetensors',
+            text_encoder: '.gguf',
+            vae: '.safetensors',
+            tokenizer: '.json',
+            lora: '.safetensors',
+        };
         for (const component of model.components) {
-            if (!['diffusion', 'text_encoder', 'vae', 'tokenizer'].includes(component.role)
+            if (!['diffusion', 'text_encoder', 'vae', 'tokenizer', 'lora'].includes(component.role)
                 || roles.has(component.role) || filenames.has(component.localFilename)
                 || !component.localFilename || component.localFilename.startsWith('.')
                 || /[/\\]/u.test(component.localFilename) || hasControlCharacters(component.localFilename)
@@ -146,7 +162,11 @@ function validateConfiguration(catalog: ImageModelCatalog, lock: DiffusionRuntim
             roles.add(component.role);
             filenames.add(component.localFilename);
         }
-        const required = model.modelKind === 1 ? ['diffusion', 'text_encoder', 'vae'] : ['diffusion', 'text_encoder', 'vae', 'tokenizer'];
+        const required = model.modelKind === 1
+            ? ['diffusion', 'text_encoder', 'vae']
+            : model.modelKind === 5
+                ? ['diffusion', 'text_encoder', 'vae', 'tokenizer', 'lora']
+                : ['diffusion', 'text_encoder', 'vae', 'tokenizer'];
         if (roles.size !== required.length || !required.every(role => roles.has(role))) {
             throw new Error('The complete image component set is required.');
         }
@@ -371,11 +391,19 @@ export class ImageGenerationService {
                     throw new Error('An image model component changed after verification.');
                 }
             }
-            const flags: Record<ComponentRole, string> = { diffusion: '--diffusion', text_encoder: '--text-encoder', vae: '--vae', tokenizer: '--tokenizer' };
+            const flags: Record<ComponentRole, string> = {
+                diffusion: '--diffusion',
+                text_encoder: '--text-encoder',
+                vae: '--vae',
+                tokenizer: '--tokenizer',
+                lora: '--lora',
+            };
             const args = ['--model', model.id];
             for (const component of components) args.push(flags[component.role], component.path);
             args.push('--prompt', request.prompt, '--output', output, '--width', String(model.defaults.width),
                 '--height', String(model.defaults.height), '--steps', String(model.defaults.steps), '--threads', '4', '--seed', '0');
+            if (model.defaults.cfg !== undefined) args.push('--cfg', String(model.defaults.cfg));
+            if (model.defaults.flowShift !== undefined) args.push('--flow-shift', String(model.defaults.flowShift));
             const response = await this.run(executable, args, this.timeoutMs, request.signal, request.onProgress, lease);
             let result: { ok?: boolean; path?: string; width?: number; height?: number };
             try { result = JSON.parse(response); } catch { throw new Error('Image runtime returned an invalid completion response.'); }
