@@ -12,7 +12,7 @@ data class ImageModelComponent(
     val downloadUrl: String get() = "https://huggingface.co/$repo/resolve/$revision/$filename?download=true"
 }
 
-data class ImageModelDefaults(val width: Int, val height: Int, val steps: Int)
+data class ImageModelDefaults(val width: Int, val height: Int, val steps: Int, val cfg: Float = 0f, val flowShift: Float = 0f)
 
 data class ImageModel(
     val id: String, val label: String, val modelKind: Int, val license: String,
@@ -23,12 +23,17 @@ data class ImageModel(
 
     fun validate() {
         val safeName = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,239}$")
-        require(safeName.matches(id) && !id.contains("..") && modelKind in 1..3) { "Invalid image model identity" }
-        val roles = if (modelKind == 1) setOf("diffusion", "text_encoder", "vae")
-            else setOf("diffusion", "text_encoder", "vae", "tokenizer")
+        require(safeName.matches(id) && !id.contains("..") && modelKind in 1..5) { "Invalid image model identity" }
+        val roles = buildSet {
+            add("diffusion"); add("text_encoder"); add("vae")
+            if (modelKind != 1) add("tokenizer")
+            if (modelKind == 5) add("lora")
+        }
         require(components.size == roles.size && components.map { it.role }.toSet() == roles &&
             components.map { it.localFilename }.distinct().size == components.size) { "Incomplete image model manifest" }
-        require(defaults.width == 512 && defaults.height == 512 && defaults.steps in 1..50) { "Invalid image model defaults" }
+        require(defaults.width in 64..1024 && defaults.width % 16 == 0 &&
+            defaults.height in 64..1024 && defaults.height % 16 == 0 &&
+            defaults.steps in 1..50) { "Invalid image model defaults" }
         require(licenseUrl.startsWith("https://")) { "Invalid license URL" }
         components.forEach { part ->
             require(safeName.matches(part.localFilename) && !part.localFilename.contains("..") &&

@@ -25,8 +25,11 @@ final class ImageModelsTests: XCTestCase {
 
     func testBundledCatalogContainsCompleteBoundedPackages() throws {
         let catalog = try ImageModelCatalog.bundled()
-        XCTAssertEqual(Set(catalog.models.map(\.id)), Set(["flux3-image-klein", "moss-image-base", "moss-image-sft"]))
+        XCTAssertEqual(Set(catalog.models.map(\.id)), Set(["flux3-image-klein", "moss-image-base", "moss-image-sft", "kromoss", "kromoss-dmd2"]))
         for model in catalog.models { try model.validate(); XCTAssertGreaterThan(model.downloadBytes, 10_000_000_000) }
+        let dmd2 = try XCTUnwrap(catalog.models.first { $0.id == "kromoss-dmd2" })
+        XCTAssertEqual(dmd2.defaults.steps, 8)
+        XCTAssertTrue(dmd2.components.contains { $0.role == "lora" })
         let phone = ImageResourceBudget(availableMemoryBytes: 8 * 1_073_741_824, freeDiskBytes: 100 * 1_073_741_824)
         XCTAssertNotNil(phone.blockReason(for: catalog.models[0], installing: true))
         let noDisk = ImageResourceBudget(availableMemoryBytes: ample.availableMemoryBytes, freeDiskBytes: catalog.models[0].downloadBytes)

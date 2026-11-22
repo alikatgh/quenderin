@@ -1,8 +1,12 @@
 {
   "version": 1,
-  "abiVersion": 1,
+  "verifiedAt": "2026-11-22",
+  "abiVersion": 2,
   "repository": "https://github.com/leejet/stable-diffusion.cpp.git",
   "revision": "f0aac524d3f29140e60ba78f3cfb16d6acea87db",
+  "patches": [
+    "scripts/patches/sd-cpp-moss-lora-qkv.patch"
+  ],
   "submodules": [
     {
       "path": "ggml",
@@ -10,13 +14,14 @@
       "revision": "dc998771e700d49bbdf9a39cede22bb5b3311767"
     }
   ],
-  "capabilities": ["flux3-klein", "moss-image-base", "moss-image-sft"],
+  "capabilities": ["flux3-klein", "moss-image-base", "moss-image-sft", "kromoss", "kromoss-dmd2"],
   "bounds": {"maxDimension": 1024, "maxSteps": 50, "maxThreads": 8, "maxImages": 1, "maxReferences": 10},
   "isolation": "separate-shared-library-private-patched-ggml",
   "upstreamLicense": "MIT",
   "inferenceVerified": false,
   "sourceEvidence": [
     "https://github.com/leejet/stable-diffusion.cpp/blob/f0aac524d3f29140e60ba78f3cfb16d6acea87db/docs/flux3.md",
-    "https://github.com/leejet/stable-diffusion.cpp/blob/f0aac524d3f29140e60ba78f3cfb16d6acea87db/docs/moss_image.md"
+    "https://github.com/leejet/stable-diffusion.cpp/blob/f0aac524d3f29140e60ba78f3cfb16d6acea87db/docs/moss_image.md",
+    "https://huggingface.co/lodestones/Kromoss/tree/f2267fbae7c038441b8d3bd8b7c90f2107ce58f4"
   ]
 }

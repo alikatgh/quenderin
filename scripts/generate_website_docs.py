@@ -1126,9 +1126,10 @@ def render_extra_section(key: str, used_ids: set[str], headings: list[dict]) -> 
     if key == "live_models":
         cat = load_json("shared/model-catalog.json")
         img_cat = load_json("shared/image-model-catalog.json")
+        speech_cat = load_json("shared/speech-model-catalog.json")
         hid = "live-gguf-catalog"
         used_ids.add(hid)
-        headings.append({"id": hid, "text": "Live Curated GGUF Catalog (28 Models)", "level": 2})
+        headings.append({"id": hid, "text": f"Live Curated GGUF Catalog ({len(cat['models'])} Models)", "level": 2})
         rows = []
         for m in cat["models"]:
             langs = ", ".join(m.get("languages", [])) or "en"
@@ -1152,23 +1153,54 @@ def render_extra_section(key: str, used_ids: set[str], headings: list[dict]) -> 
         ]
         hid2 = "image-diffusion-catalog"
         used_ids.add(hid2)
-        headings.append({"id": hid2, "text": "Local Image Diffusion Catalog", "level": 2})
+        headings.append({"id": hid2, "text": f"Local Image Diffusion Catalog ({len(img_cat.get('models', []))} Models)", "level": 2})
         img_rows = []
         for im in img_cat.get("models", []):
+            defs = im.get("defaults", {})
+            cfg_txt = f", CFG {defs['cfg']}" if defs.get("cfg") is not None else ""
+            spec = f"{defs.get('width', '—')}x{defs.get('height', '—')}, {defs.get('steps', '—')} steps{cfg_txt}"
             img_rows.append(
                 f"<tr><td><strong>{html.escape(im['label'])}</strong><br /><code>{html.escape(im['id'])}</code></td>"
                 f"<td>{html.escape(im.get('publisher', '—'))}</td>"
-                f"<td>{html.escape(im.get('modality', '—'))}</td>"
                 f"<td>{html.escape(im.get('transformerParameters', '—'))}</td>"
+                f"<td>{html.escape(spec)}</td>"
                 f"<td>{html.escape(im.get('license', '—'))}</td></tr>"
             )
         out.extend([
-            f'<h2 id="{hid2}">Local Image Diffusion Catalog</h2>',
+            f'<h2 id="{hid2}">Local Image Diffusion Catalog ({len(img_cat.get("models", []))} Models)</h2>',
             f'<p>Source: <code>shared/image-model-catalog.json</code> — runtime <code>{html.escape(str(img_cat.get("runtime", "")))}</code>, '
             f'status <code>{html.escape(str(img_cat.get("status", "")))}</code> (verified {html.escape(str(img_cat.get("verifiedAt", "")))}).</p>',
             '<div class="docs-table-wrap"><table><thead><tr>'
-            '<th>Model</th><th>Publisher</th><th>Modality</th><th>Transformer</th><th>License</th>'
+            '<th>Model</th><th>Publisher</th><th>Transformer</th><th>Default Run</th><th>License</th>'
             '</tr></thead><tbody>' + "".join(img_rows) + '</tbody></table></div>',
+        ])
+        hid3 = "speech-dictation-catalog"
+        used_ids.add(hid3)
+        speech_models = speech_cat.get("models", [])
+        headings.append({"id": hid3, "text": f"Local Speech & Dictation Catalog ({len(speech_models)} Models + Silero VAD v6.2)", "level": 2})
+        sp_rows = []
+        for sp in speech_models:
+            langs_list = sp.get("languages", [])
+            langs = ", ".join(langs_list[:6]) + (f" (+{len(langs_list) - 6})" if len(langs_list) > 6 else "")
+            size_txt = f"{sp['bytes'] / 1e6:.0f} MB" if sp.get("bytes") else "System API"
+            sha = (sp.get("sha256") or "")[:12] + "…" if sp.get("sha256") else "—"
+            rt_wer = " · ".join(x for x in [sp.get("realtime"), f"{sp['wordErrorRate']}% WER" if sp.get("wordErrorRate") is not None else None] if x) or "—"
+            sp_rows.append(
+                f"<tr><td><strong>{html.escape(sp['label'])}</strong><br /><code>{html.escape(sp['id'])}</code></td>"
+                f"<td><code>{html.escape(sp.get('engine', '—'))}</code></td>"
+                f"<td>{html.escape(rt_wer)}</td>"
+                f"<td>{html.escape(size_txt)}</td>"
+                f"<td>{html.escape(langs)}</td>"
+                f"<td><code>{html.escape(sha)}</code></td></tr>"
+            )
+        vad = speech_cat.get("vad", {})
+        out.extend([
+            f'<h2 id="{hid3}">Local Speech &amp; Dictation Catalog ({len(speech_models)} Models + Silero VAD v6.2)</h2>',
+            f'<p>Source: <code>shared/speech-model-catalog.json</code> — runtime <code>{html.escape(str(speech_cat.get("runtime", "")))}</code> '
+            f'(paired with Silero VAD v6.2 <code>{html.escape(str(vad.get("localFilename", "")))}</code>, {vad.get("bytes", 0) / 1e6:.2f} MB).</p>',
+            '<div class="docs-table-wrap"><table><thead><tr>'
+            '<th>Model</th><th>Engine</th><th>Speed / WER</th><th>Size</th><th>Languages</th><th>SHA-256 Prefix</th>'
+            '</tr></thead><tbody>' + "".join(sp_rows) + '</tbody></table></div>',
         ])
         return "\n".join(out)
 
@@ -1177,6 +1209,7 @@ def render_extra_section(key: str, used_ids: set[str], headings: list[dict]) -> 
         prism = load_json("shared/prism-runtime.json")
         muse = load_json("shared/muse-spark-artifacts.json")
         diff = load_json("shared/diffusion-runtime.json")
+        speech = load_json("shared/speech-runtime.json")
         hid = "experimental-provenance-manifests"
         used_ids.add(hid)
         headings.append({"id": hid, "text": "Live Runtime Provenance & Artifact Manifests", "level": 2})
@@ -1195,8 +1228,10 @@ def render_extra_section(key: str, used_ids: set[str], headings: list[dict]) -> 
             '<aside class="docs-callout docs-callout--warning">'
             '<div class="docs-callout-title"><span class="qi qi-alert-triangle" aria-hidden="true"></span>VERIFICATION BOUNDARY</div>'
             '<div class="docs-callout-body"><p>Per <code>shared/experimental-model-support.json</code> '
-            f'(reviewed {html.escape(str(exp.get("reviewedAt", "")))}) and <code>shared/diffusion-runtime.json</code> '
-            f'(<code>inferenceVerified: {str(diff.get("inferenceVerified", False)).lower()}</code>), source integration and hosted compilation are tracked separately from on-device tested inference.</p></div></aside>',
+            f'(reviewed {html.escape(str(exp.get("reviewedAt", "")))}), <code>shared/diffusion-runtime.json</code> '
+            f'(ABI v{diff.get("abiVersion", 2)}, <code>inferenceVerified: {str(diff.get("inferenceVerified", False)).lower()}</code>), and '
+            f'<code>shared/speech-runtime.json</code> (ABI v{speech.get("abiVersion", 1)}, <code>inferenceVerified: {str(speech.get("inferenceVerified", False)).lower()}</code>), '
+            'source integration and hosted fixture compilation are tracked separately from on-device tested inference.</p></div></aside>',
             '<div class="docs-table-wrap"><table><thead><tr>'
             '<th>Model ID</th><th>Status</th><th>In Public Store</th><th>Modalities</th><th>Manifest</th>'
             '</tr></thead><tbody>' + "".join(exp_rows) + '</tbody></table></div>',
@@ -1204,6 +1239,11 @@ def render_extra_section(key: str, used_ids: set[str], headings: list[dict]) -> 
             f'(default model <code>{html.escape(prism.get("modelId", ""))}</code>, {prism.get("downloadBytes", 0) / 1e9:.2f} GB).</p>',
             f'<p><strong>Muse Spark manifest:</strong> <code>{html.escape(muse.get("modelId", ""))}</code> — {len(muse.get("artifacts", []))} split GGUF shards '
             f'({muse_bytes / 1e9:.2f} GB total) listed in <code>shared/muse-spark-artifacts.json</code>.</p>',
+            f'<p><strong>Diffusion runtime pin:</strong> <code>{html.escape(diff.get("repository", ""))}</code> @ <code>{html.escape(diff.get("revision", "")[:12])}</code> '
+            f'(ABI v{diff.get("abiVersion", 2)}, supporting {", ".join(html.escape(c) for c in diff.get("capabilities", []))}).</p>',
+            f'<p><strong>Speech &amp; Hex runtime pin:</strong> <code>{html.escape(speech.get("repository", ""))}</code> @ <code>{html.escape(speech.get("revision", "")[:12])}</code> '
+            f'+ <code>{html.escape(speech.get("hex", {}).get("repository", ""))}</code> @ <code>{html.escape(speech.get("hex", {}).get("revision", "")[:12])}</code> '
+            f'(ABI v{speech.get("abiVersion", 1)}, Hex Local API v{html.escape(str(speech.get("hex", {}).get("localApiVersion", "2")))}).</p>',
         ])
 
     if key == "perf_contract":

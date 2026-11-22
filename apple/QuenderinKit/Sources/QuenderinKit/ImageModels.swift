@@ -24,6 +24,10 @@ public struct ImageModelDefaults: Codable, Sendable, Equatable {
     public let steps: Int
     public let cfg: Double
     public let flowShift: Double
+
+    public init(width: Int, height: Int, steps: Int, cfg: Double = 0, flowShift: Double = 0) {
+        self.width = width; self.height = height; self.steps = steps; self.cfg = cfg; self.flowShift = flowShift
+    }
 }
 
 public struct ImageModel: Codable, Sendable, Equatable, Identifiable {
@@ -44,10 +48,15 @@ public struct ImageModel: Codable, Sendable, Equatable, Identifiable {
         func matches(_ value: String, _ pattern: String) -> Bool {
             value.range(of: pattern, options: .regularExpression) != nil
         }
-        guard matches(id, safeName), !id.contains(".."), (1...3).contains(modelKind),
-              (3...4).contains(components.count), Set(components.map(\.localFilename)).count == components.count,
-              Set(components.map(\.role)) == (modelKind == 1 ? Set(["diffusion", "text_encoder", "vae"]) : Set(["diffusion", "text_encoder", "vae", "tokenizer"])),
-              defaults.width == 512, defaults.height == 512, (1...50).contains(defaults.steps),
+        var expectedRoles = Set(["diffusion", "text_encoder", "vae"])
+        if modelKind != 1 { expectedRoles.insert("tokenizer") }
+        if modelKind == 5 { expectedRoles.insert("lora") }
+        guard matches(id, safeName), !id.contains(".."), (1...5).contains(modelKind),
+              components.count == expectedRoles.count, Set(components.map(\.localFilename)).count == components.count,
+              Set(components.map(\.role)) == expectedRoles,
+              (64...1024).contains(defaults.width), defaults.width % 16 == 0,
+              (64...1024).contains(defaults.height), defaults.height % 16 == 0,
+              (1...50).contains(defaults.steps),
               URL(string: licenseUrl)?.scheme == "https" else {
             throw ImageGenerationError.invalid("The image model manifest is invalid.")
         }

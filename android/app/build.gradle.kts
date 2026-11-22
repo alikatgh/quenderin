@@ -40,7 +40,7 @@ val diffusionLibDir = providers.gradleProperty("quenderin.diffusionLibDir").orNu
 if (diffusionLibDir != null) {
     val stamp = JsonSlurper().parse(diffusionLibDir.resolve("quenderin-diffusion-runtime.json")) as Map<*, *>
     val lock = JsonSlurper().parse(rootProject.file("../shared/diffusion-runtime.json")) as Map<*, *>
-    require(stamp["revision"] == lock["revision"] && stamp["abiVersion"].toString() == "1" &&
+    require(stamp["revision"] == lock["revision"] && stamp["abiVersion"].toString() == "2" &&
         stamp["submodules"] == lock["submodules"] && stamp["androidStl"] == "c++_static") { "Image runtime identity differs" }
     val hashes = stamp["files"] as Map<*, *>
     for (name in listOf("libquenderin_diffusion.so", "libquenderin_diffusion_jni.so")) {

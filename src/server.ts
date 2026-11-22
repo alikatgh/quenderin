@@ -25,7 +25,8 @@ import { platformCapabilities } from './services/capability/platformCapabilities
 import { AndroidProvider } from './services/providers/android.provider.js';
 import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { BackgroundDaemonService } from './services/backgroundDaemon.service.js';
-import { VoiceService } from './services/voice.service.js';
+import { VoiceService, type VoiceSpeechConfig } from './services/voice.service.js';
+import { HexSpeechAdapter } from './services/hexSpeechAdapter.js';
 import { LlmService } from './services/llm.service.js';
 import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
@@ -202,10 +203,28 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             .catch((e) => logger.error(`[Voice Trigger] Agent loop failed for "${spokenCommand}":`, e));
     });
     const picovoiceAccessKey = process.env.PICOVOICE_ACCESS_KEY;
-    if (picovoiceAccessKey) {
-        await voiceService.initialize(picovoiceAccessKey);
+    const speechModelId = process.env.QUENDERIN_SPEECH_MODEL;
+    let speechConfig: ({ adapter: HexSpeechAdapter } & VoiceSpeechConfig) | undefined;
+    if (speechModelId && (process.env.QUENDERIN_SPEECH_DIR || process.env.QUENDERIN_HEX_DISCOVERY || process.env.QUENDERIN_HEX_BIN)) {
+        try {
+            speechConfig = {
+                adapter: new HexSpeechAdapter(),
+                modelId: speechModelId,
+                directory: process.env.QUENDERIN_SPEECH_DIR,
+                runtime: process.env.QUENDERIN_SPEECH_RUNTIME,
+                hexDiscoveryPath: process.env.QUENDERIN_HEX_DISCOVERY,
+                hexExecutable: process.env.QUENDERIN_HEX_BIN,
+                language: process.env.QUENDERIN_SPEECH_LANGUAGE,
+                vad: process.env.QUENDERIN_SPEECH_VAD !== '0',
+            };
+        } catch (err) {
+            logger.warn('[Voice Control] Invalid Hex speech configuration — ignoring.', err);
+        }
+    }
+    if (picovoiceAccessKey || speechConfig) {
+        await voiceService.initialize(picovoiceAccessKey, speechConfig);
     } else {
-        logger.info('[Voice Control] PICOVOICE_ACCESS_KEY not set — voice controls disabled.');
+        logger.info('[Voice Control] PICOVOICE_ACCESS_KEY and QUENDERIN_SPEECH_MODEL not set — voice controls disabled.');
     }
 
     // 2. Setup Express

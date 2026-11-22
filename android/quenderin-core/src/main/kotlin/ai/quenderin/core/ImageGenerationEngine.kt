@@ -19,7 +19,7 @@ fun interface NativeImageProgress { fun onProgress(step: Int, steps: Int) }
 
 object NativeImageGenerationBridge {
     val available: Boolean by lazy {
-        try { System.loadLibrary("quenderin_diffusion_jni"); abi() == 1 }
+        try { System.loadLibrary("quenderin_diffusion_jni"); abi() == 2 }
         catch (_: UnsatisfiedLinkError) { false }
         catch (_: SecurityException) { false }
     }
@@ -27,9 +27,9 @@ object NativeImageGenerationBridge {
     @JvmStatic external fun create(): Long
     @JvmStatic external fun generate(
         handle: Long, modelKind: Int, diffusionPath: String, textEncoderPath: String,
-        vaePath: String, tokenizerPath: String?, prompt: String, negativePrompt: String?,
+        vaePath: String, tokenizerPath: String?, loraPath: String?, prompt: String, negativePrompt: String?,
         outputPath: String, width: Int, height: Int, steps: Int, threads: Int, seed: Long,
-        progress: NativeImageProgress?,
+        cfg: Float, flowShift: Float, progress: NativeImageProgress?,
     ): String?
     @JvmStatic external fun cancel(handle: Long): Int
     @JvmStatic external fun destroy(handle: Long): Int
@@ -68,9 +68,12 @@ class NativeImageGenerationEngine(private val budget: () -> ImageResourceBudget)
                 .let { File(request.directory, it.localFilename).absolutePath }
             val error = NativeImageGenerationBridge.generate(
                 handle, request.model.modelKind, component("diffusion"), component("text_encoder"), component("vae"),
-                if (request.model.modelKind == 1) null else component("tokenizer"), request.prompt, null,
+                if (request.model.modelKind == 1) null else component("tokenizer"),
+                if (request.model.modelKind == 5) component("lora") else null,
+                request.prompt, null,
                 request.output.absolutePath, request.model.defaults.width, request.model.defaults.height,
                 request.model.defaults.steps, Runtime.getRuntime().availableProcessors().coerceIn(1, 8), request.seed,
+                request.model.defaults.cfg, request.model.defaults.flowShift,
                 NativeImageProgress { step, steps -> if (steps > 0) progress((step.toFloat() / steps).coerceIn(0f, 1f)) },
             )
             if (cancelled || request.isCancelled()) throw CancellationException("Image generation cancelled")

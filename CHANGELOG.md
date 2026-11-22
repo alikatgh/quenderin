@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased — Kromoss diffusion & Hex native speech integrations (2026-11-22)
+
+- **Native Kromoss image generation (`lodestones/Kromoss`, Apache-2.0):**
+  Bumped the symbol-isolated diffusion C ABI (`native/diffusion`) to v2 with
+  `QUENDERIN_DIFFUSION_KROMOSS = 4` and `QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5`,
+  explicit `cfg`, `flow_shift`, and `lora_path` parameters, and an upstream
+  QKV LoRA key-remapping patch (`scripts/patches/sd-cpp-moss-lora-qkv.patch`)
+  supporting the 8-step `8-steps-dmd2-lora.safetensors` accelerator alongside
+  reused MOSS Image text encoder/VAE/tokenizer artifacts. Wired end-to-end across
+  C CLI/JNI, Desktop TypeScript (`ImageGenerationService`, `quenderin image`),
+  Apple Swift (`ImageModels`, `ImageGenerationEngine`), and Android Kotlin
+  (`ImageModels`, `ImageModelInstaller`, `ImageGenerationEngine`).
+- **Native Hex + `transcribe.cpp` speech & dictation (`anomalyco/hex` +
+  `anomalyco/transcribe.cpp`, MIT):** Pinned Silero VAD v6.2 and all 20 speech
+  presets (Parakeet Unified/v2/v3/Ultra, Orukeet, Fluid Speech Pro, Whisper
+  Large v3 Turbo, Ivrit, NB-Whisper, KB-Whisper, Qwen3-ASR 0.6B/1.7B,
+  SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite
+  Speech 5.0, Apple Speech) in `shared/speech-model-catalog.json`. Added a
+  symbol-isolated `native/speech` C ABI (`quenderin_speech_*`), CLI
+  (`quenderin-speech-cli`), and JNI bridge, Desktop `HexSpeechAdapter`
+  supporting both `hex service --embedded` loopback v2 HTTP/SSE and native CLI,
+  `quenderin voice` CLI commands, `VoiceService` integration without storing
+  spoken transcripts in logs, Apple `SpeechModels`/`SpeechFormatting`/`NativeSpeechEngine`,
+  and Android `SpeechModels`/`SpokenTextFormatter`/`NativeSpeechEngine`.
+- **Verification scope:** All native C/C++ fixture harnesses, Swift/Clang
+  resource-cleanup harnesses, Kotlin verifier checks, and Vitest unit suites
+  ran against synthetic weights and audio fixtures (`inferenceVerified: false`).
+  No multi-GB model weights were downloaded and no phone/simulator inference
+  runs were executed locally.
+
 ## Unreleased — mobile MAX bindings (2026-10-26)
 
 - Refresh the missing mobile MAX inputs: main `8d5597…` still has no

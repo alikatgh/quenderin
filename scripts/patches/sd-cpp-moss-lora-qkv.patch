@@ -1,0 +1,32 @@
+diff --git a/src/model/adapter/lora.hpp b/src/model/adapter/lora.hpp
+index e9d20a4..33c199e 100644
+--- a/src/model/adapter/lora.hpp
++++ b/src/model/adapter/lora.hpp
+@@ -164,6 +164,27 @@ struct LoraModel : public GGMLRunner {
+             lora_tensors = std::move(new_lora_tensors);
+         }
+ 
++        if (model_tensor_names.find("model.diffusion_model.layers.0.proj.qkv.weight") != model_tensor_names.end()) {
++            // MOSS-Image & Kromoss DMD2 LoRAs emit split proj.q / proj.k / proj.v weights.
++            std::unordered_map<std::string, ggml_tensor*> moss_lora_tensors;
++            for (const auto& [old_name, tensor] : lora_tensors) {
++                std::string new_name = old_name;
++                for (const auto& [src, dst] : std::vector<std::pair<std::string, std::string>>{
++                         {".proj.q.weight.", ".proj.qkv.weight."},
++                         {".proj.k.weight.", ".proj.qkv.weight.1."},
++                         {".proj.v.weight.", ".proj.qkv.weight.2."},
++                     }) {
++                    size_t pos = new_name.find(src);
++                    if (pos != std::string::npos) {
++                        new_name.replace(pos, src.size(), dst);
++                        break;
++                    }
++                }
++                moss_lora_tensors[new_name] = tensor;
++            }
++            lora_tensors = std::move(moss_lora_tensors);
++        }
++
+         std::unordered_map<std::string, ggml_tensor*> new_lora_tensors;
+         for (const auto& [old_name, tensor] : lora_tensors) {
+             std::string new_name = old_name;

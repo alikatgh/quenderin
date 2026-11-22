@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "verifiedAt": "2026-10-18",
+  "verifiedAt": "2026-11-22",
   "runtime": "shared/diffusion-runtime.json",
   "status": "experimental-source-integration-no-inference-validation",
   "models": [
@@ -58,6 +58,43 @@
         {"role": "text_encoder", "repo": "unsloth/Qwen3.5-9B-GGUF", "revision": "3885219b6810b007914f3a7950a8d1b469d598a5", "filename": "Qwen3.5-9B-Q4_K_M.gguf", "localFilename": "Qwen3.5-9B-Q4_K_M.gguf", "bytes": 5680522464, "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8", "format": "gguf-q4_k_m", "access": "public", "license": "Apache-2.0"},
         {"role": "vae", "repo": "Comfy-Org/MOSS-Image", "revision": "f28da8f93449c16cfa7efa07dcd1303a1c0c44d1", "filename": "vae/flux2-vae.safetensors", "localFilename": "flux2-vae.safetensors", "bytes": 336211292, "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3", "format": "safetensors", "access": "public"},
         {"role": "tokenizer", "repo": "OpenMOSS-Team/MOSS-Image-Base", "revision": "1ceede80badddd6a7812069619edaa5633587192", "filename": "tokenizer/tokenizer.json", "localFilename": "moss-tokenizer.json", "bytes": 19989325, "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523", "format": "json", "access": "public"}
+      ]
+    },
+    {
+      "id": "kromoss",
+      "label": "Kromoss",
+      "modelKind": 4,
+      "publisher": "Lodestones (OpenMOSS derivative)",
+      "modality": "text-to-image",
+      "transformerParameters": "5B",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/lodestones/Kromoss",
+      "requiresPublisherAccess": false,
+      "defaults": {"width": 512, "height": 512, "steps": 50, "cfg": 3.0, "flowShift": 5.0},
+      "components": [
+        {"role": "diffusion", "repo": "lodestones/Kromoss", "revision": "f2267fbae7c038441b8d3bd8b7c90f2107ce58f4", "filename": "diffusion_models/kromoss_int8_convrot.safetensors", "localFilename": "kromoss_int8_convrot.safetensors", "bytes": 5413698958, "sha256": "cacff0dd25cd2cf531e1f5ddae7872c3d57a54dbf66f1a1279f2f118514e7905", "format": "safetensors-int8-convrot", "access": "public"},
+        {"role": "text_encoder", "repo": "unsloth/Qwen3.5-9B-GGUF", "revision": "3885219b6810b007914f3a7950a8d1b469d598a5", "filename": "Qwen3.5-9B-Q4_K_M.gguf", "localFilename": "Qwen3.5-9B-Q4_K_M.gguf", "bytes": 5680522464, "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8", "format": "gguf-q4_k_m", "access": "public", "license": "Apache-2.0"},
+        {"role": "vae", "repo": "Comfy-Org/MOSS-Image", "revision": "f28da8f93449c16cfa7efa07dcd1303a1c0c44d1", "filename": "vae/flux2-vae.safetensors", "localFilename": "flux2-vae.safetensors", "bytes": 336211292, "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3", "format": "safetensors", "access": "public"},
+        {"role": "tokenizer", "repo": "OpenMOSS-Team/MOSS-Image-Base", "revision": "1ceede80badddd6a7812069619edaa5633587192", "filename": "tokenizer/tokenizer.json", "localFilename": "moss-tokenizer.json", "bytes": 19989325, "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523", "format": "json", "access": "public"}
+      ]
+    },
+    {
+      "id": "kromoss-dmd2",
+      "label": "Kromoss 8-Step DMD2",
+      "modelKind": 5,
+      "publisher": "Lodestones (OpenMOSS derivative)",
+      "modality": "text-to-image",
+      "transformerParameters": "5B + DMD2 LoRA",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/lodestones/Kromoss",
+      "requiresPublisherAccess": false,
+      "defaults": {"width": 512, "height": 512, "steps": 8, "cfg": 1.0, "flowShift": 5.0},
+      "components": [
+        {"role": "diffusion", "repo": "lodestones/Kromoss", "revision": "f2267fbae7c038441b8d3bd8b7c90f2107ce58f4", "filename": "diffusion_models/kromoss_int8_convrot.safetensors", "localFilename": "kromoss_int8_convrot.safetensors", "bytes": 5413698958, "sha256": "cacff0dd25cd2cf531e1f5ddae7872c3d57a54dbf66f1a1279f2f118514e7905", "format": "safetensors-int8-convrot", "access": "public"},
+        {"role": "text_encoder", "repo": "unsloth/Qwen3.5-9B-GGUF", "revision": "3885219b6810b007914f3a7950a8d1b469d598a5", "filename": "Qwen3.5-9B-Q4_K_M.gguf", "localFilename": "Qwen3.5-9B-Q4_K_M.gguf", "bytes": 5680522464, "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8", "format": "gguf-q4_k_m", "access": "public", "license": "Apache-2.0"},
+        {"role": "vae", "repo": "Comfy-Org/MOSS-Image", "revision": "f28da8f93449c16cfa7efa07dcd1303a1c0c44d1", "filename": "vae/flux2-vae.safetensors", "localFilename": "flux2-vae.safetensors", "bytes": 336211292, "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3", "format": "safetensors", "access": "public"},
+        {"role": "tokenizer", "repo": "OpenMOSS-Team/MOSS-Image-Base", "revision": "1ceede80badddd6a7812069619edaa5633587192", "filename": "tokenizer/tokenizer.json", "localFilename": "moss-tokenizer.json", "bytes": 19989325, "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523", "format": "json", "access": "public"},
+        {"role": "lora", "repo": "lodestones/Kromoss", "revision": "f2267fbae7c038441b8d3bd8b7c90f2107ce58f4", "filename": "8-steps-dmd2-lora.safetensors", "localFilename": "kromoss-8-steps-dmd2-lora.safetensors", "bytes": 1189176800, "sha256": "7683fe1fb51f73f5d690f24dd6b7f46f31ab9a9873729a854ac5c9a420ffe6f2", "format": "safetensors-lora", "access": "public"}
       ]
     }
   ]

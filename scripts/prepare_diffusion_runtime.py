@@ -13,6 +13,11 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 LOCK_PATH = ROOT / "shared/diffusion-runtime.json"
 CATALOG_PATH = ROOT / "shared/image-model-catalog.json"
+SYNCED_CATALOGS = (
+    ROOT / "apple/QuenderinKit/Sources/QuenderinKit/Resources/image-model-catalog.json",
+    ROOT / "android/app/src/main/assets/image-model-catalog.json",
+    ROOT / "website/data/image-model-catalog.json",
+)
 EXPORTS = {"quenderin_diffusion_" + name for name in (
     "abi", "revision", "create", "destroy", "validate", "generate", "cancel")}
 
@@ -27,22 +32,35 @@ def relative(value: str) -> str:
 
 def manifests() -> tuple[dict, dict]:
     lock, catalog = json.loads(LOCK_PATH.read_text()), json.loads(CATALOG_PATH.read_text())
-    if (lock.get("version") != 1 or lock.get("abiVersion") != 1
+    if (lock.get("version") != 1 or lock.get("abiVersion") != 2
             or lock.get("repository") != "https://github.com/leejet/stable-diffusion.cpp.git"
             or not re.fullmatch(r"[0-9a-f]{40}", lock.get("revision", ""))
             or lock.get("inferenceVerified") is not False):
         raise ValueError("Image runtime identity is invalid")
+    patches = lock.get("patches", [])
+    if not isinstance(patches, list) or patches != ["scripts/patches/sd-cpp-moss-lora-qkv.patch"]:
+        raise ValueError("Pinned image runtime patch list is invalid")
+    for rel in patches:
+        if not (ROOT / relative(rel)).is_file():
+            raise ValueError(f"Missing pinned image runtime patch: {rel}")
     submodules = lock.get("submodules", [])
     if len(submodules) != 1 or submodules[0].get("path") != "ggml" or submodules[0].get("repository") != "https://github.com/leejet/ggml.git" or not re.fullmatch(r"[0-9a-f]{40}", submodules[0].get("revision", "")):
         raise ValueError("Patched GGML source pin is invalid")
     models = catalog.get("models", [])
-    expected = {"flux3-image-klein": 1, "moss-image-base": 2, "moss-image-sft": 3}
-    if catalog.get("version") != 1 or len(models) != 3 or {m.get("id") for m in models} != set(expected):
+    expected = {
+        "flux3-image-klein": 1,
+        "moss-image-base": 2,
+        "moss-image-sft": 3,
+        "kromoss": 4,
+        "kromoss-dmd2": 5,
+    }
+    if catalog.get("version") != 1 or len(models) != len(expected) or {m.get("id") for m in models} != set(expected):
         raise ValueError("Image model set is incomplete")
     for model in models:
         if type(model.get("modelKind")) is not int or model["modelKind"] != expected[model["id"]]:
             raise ValueError("Image model ABI kind is invalid")
-        required = {"diffusion", "text_encoder", "vae"} | ({"tokenizer"} if model["modelKind"] != 1 else set())
+        kind = model["modelKind"]
+        required = {"diffusion", "text_encoder", "vae"} | ({"tokenizer"} if kind != 1 else set()) | ({"lora"} if kind == 5 else set())
         components = model.get("components", [])
         if len(components) != len(required) or {c.get("role") for c in components} != required:
             raise ValueError("Required image components are incomplete or duplicated")
@@ -58,8 +76,12 @@ def manifests() -> tuple[dict, dict]:
             suffix = {"text_encoder": ".gguf", "tokenizer": ".json"}.get(component["role"], ".safetensors")
             if not local_name.endswith(suffix):
                 raise ValueError("Image component format is invalid")
-        if model["modelKind"] == 1 and (model.get("requiresPublisherAccess") is not True or "not accepted" not in model.get("licenseAcceptance", "")):
+        if kind == 1 and (model.get("requiresPublisherAccess") is not True or "not accepted" not in model.get("licenseAcceptance", "")):
             raise ValueError("FLUX publisher access and license review must remain explicit")
+    canonical_bytes = CATALOG_PATH.read_bytes()
+    for copy_path in SYNCED_CATALOGS:
+        if copy_path.exists() and copy_path.read_bytes() != canonical_bytes:
+            raise ValueError(f"Image model catalog copy drifted from shared manifest: {copy_path.relative_to(ROOT)}")
     return lock, catalog
 
 
@@ -67,13 +89,25 @@ def git(source: Path, *args: str) -> str:
     return subprocess.check_output(["git", "-C", str(source), *args], text=True).strip()
 
 
+def apply_patches(source: Path, lock: dict) -> None:
+    for rel in lock.get("patches", []):
+        patch_path = ROOT / rel
+        subprocess.run(["git", "-C", str(source), "apply", "--check", str(patch_path)], check=True)
+        subprocess.run(["git", "-C", str(source), "apply", str(patch_path)], check=True)
+
+
 def verify(source: Path) -> dict:
     lock, _ = manifests()
     source = source.resolve(strict=True)
     if git(source, "rev-parse", "HEAD") != lock["revision"] or git(source, "config", "--local", "--get-all", "remote.origin.url").removesuffix(".git") != lock["repository"].removesuffix(".git"):
         raise ValueError("Diffusion checkout does not match the pinned source origin/revision")
-    if git(source, "status", "--porcelain", "--untracked-files=all", "--ignore-submodules=none"):
-        raise ValueError("Diffusion checkout has local changes; preserve them and use a clean source checkout")
+    status = git(source, "status", "--porcelain", "--untracked-files=all", "--ignore-submodules=none")
+    if status:
+        # Only the exact pinned source patch set may modify tracked files in source.
+        diff = subprocess.check_output(["git", "-C", str(source), "diff"], text=True)
+        expected_patch = "".join((ROOT / rel).read_text() for rel in lock.get("patches", []))
+        if status.strip() != "M src/model/adapter/lora.hpp" or diff.strip() != expected_patch.strip():
+            raise ValueError("Diffusion checkout has unpinned local changes; preserve them and use a clean source checkout")
     for component in lock["submodules"]:
         path = source / component["path"]
         if path.is_symlink() or path.resolve(strict=True) != path or git(path, "rev-parse", "HEAD") != component["revision"]:
@@ -86,7 +120,7 @@ def verify(source: Path) -> dict:
     for api in ("new_sd_ctx", "generate_image", "free_sd_images", "sd_cancel_generation", "sd_ctx_params_init"):
         if api not in header:
             raise ValueError("Pinned diffusion C API is incomplete")
-    return {"version": 1, "abiVersion": lock["abiVersion"], "repository": lock["repository"], "revision": lock["revision"], "submodules": lock["submodules"]}
+    return {"version": 1, "abiVersion": lock["abiVersion"], "repository": lock["repository"], "revision": lock["revision"], "submodules": lock["submodules"], "patches": lock.get("patches", [])}
 
 
 def fetch(destination: Path) -> dict:
@@ -99,6 +133,7 @@ def fetch(destination: Path) -> dict:
     subprocess.run(["git", "-C", str(destination), "fetch", "--depth", "1", "origin", lock["revision"]], check=True)
     subprocess.run(["git", "-C", str(destination), "checkout", "--detach", lock["revision"]], check=True)
     subprocess.run(["git", "-C", str(destination), "submodule", "update", "--init", "--depth", "1", "--", "ggml"], check=True)
+    apply_patches(destination, lock)
     return verify(destination)
 
 

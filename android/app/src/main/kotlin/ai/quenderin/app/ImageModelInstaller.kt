@@ -32,7 +32,8 @@ object ImageModelJSON {
             val components = row.getJSONArray("components")
             ImageModel(row.getString("id"), row.getString("label"), row.getInt("modelKind"),
                 row.getString("license"), row.getString("licenseUrl"), row.getBoolean("requiresPublisherAccess"),
-                ImageModelDefaults(defaults.getInt("width"), defaults.getInt("height"), defaults.getInt("steps")),
+                ImageModelDefaults(defaults.getInt("width"), defaults.getInt("height"), defaults.getInt("steps"),
+                    defaults.optDouble("cfg", 0.0).toFloat(), defaults.optDouble("flowShift", 0.0).toFloat()),
                 (0 until components.length()).map { partIndex ->
                     val part = components.getJSONObject(partIndex)
                     ImageModelComponent(part.getString("role"), part.getString("repo"), part.getString("revision"),

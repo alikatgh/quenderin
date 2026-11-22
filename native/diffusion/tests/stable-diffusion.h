@@ -12,9 +12,10 @@ struct sd_ctx_params_t {
     int n_threads;bool enable_mmap,disable_prefetch,auto_fit;int conditioning_cache_size;
 };
 struct sd_image_t { uint32_t width,height,channel;uint8_t*data; };
+struct sd_lora_t { bool is_high_noise; float multiplier; const char* path; };
 struct sd_guidance_params_t {float txt_cfg;};
 struct sd_sample_params_t {int sample_steps;sample_method_t sample_method;scheduler_t scheduler;sd_guidance_params_t guidance;float flow_shift;};
-struct sd_img_gen_params_t {const char *prompt,*negative_prompt;int width,height;int64_t seed;int batch_count;sd_sample_params_t sample_params;sd_image_t*ref_images;int ref_images_count;};
+struct sd_img_gen_params_t {const sd_lora_t* loras; uint32_t lora_count; const char *prompt,*negative_prompt;int width,height;int64_t seed;int batch_count;sd_sample_params_t sample_params;sd_image_t*ref_images;int ref_images_count;};
 void sd_ctx_params_init(sd_ctx_params_t*);
 sd_ctx_t*new_sd_ctx(const sd_ctx_params_t*);
 void free_sd_ctx(sd_ctx_t*);

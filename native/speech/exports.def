@@ -1,0 +1,10 @@
+LIBRARY quenderin_speech
+EXPORTS
+    quenderin_speech_abi
+    quenderin_speech_revision
+    quenderin_speech_create
+    quenderin_speech_destroy
+    quenderin_speech_cancel
+    quenderin_speech_validate
+    quenderin_speech_transcribe
+    quenderin_speech_result_free

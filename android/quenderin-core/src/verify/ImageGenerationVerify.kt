@@ -41,6 +41,13 @@ fun main() {
         linked.delete()
         mustFail { model.copy(components = parts.dropLast(1)).validate() }
         mustFail { model.copy(components = parts.map { it.copy(localFilename = "../escape") }).validate() }
+        val kromossTokenizer = ImageModelComponent("tokenizer", "fixture/model", "a".repeat(40), "tok.json", "tok.json", bytes.size.toLong(), sha, "public")
+        val kromossLora = ImageModelComponent("lora", "fixture/model", "a".repeat(40), "lora.safetensors", "lora.safetensors", bytes.size.toLong(), sha, "public")
+        val kromoss = model.copy(id = "kromoss", modelKind = 4, components = parts + kromossTokenizer)
+        kromoss.validate()
+        mustFail { kromoss.copy(id = "kromoss-dmd2", modelKind = 5).validate() }
+        kromoss.copy(id = "kromoss-dmd2", modelKind = 5, defaults = ImageModelDefaults(1024, 1024, 8, 1f, 5f),
+            components = parts + kromossTokenizer + kromossLora).validate()
         if (!NativeImageGenerationBridge.available) {
             val engine = NativeImageGenerationEngine { ImageResourceBudget(Long.MAX_VALUE, Long.MAX_VALUE) }
             mustFail { engine.generate(ImageGenerationRequest(model, root, "Fixture", File(root, "result.png"))) {} }

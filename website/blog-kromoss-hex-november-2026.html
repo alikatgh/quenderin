@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kromoss local images and native Hex speech across Quenderin — Quenderin blog</title>
+<meta name="description" content="Quenderin adds native source integrations for Kromoss 8-step image generation and Hex / transcribe.cpp local speech across C ABI, desktop CLI/server, Apple QuenderinKit, and Android Kotlin." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<script src="theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/blog-kromoss-hex-november-2026" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="Kromoss local images and native Hex speech across Quenderin" />
+<meta property="og:description" content="Native source integrations for Kromoss 8-step image generation and Hex / transcribe.cpp 20-model local speech across C++, TypeScript, Swift, and Kotlin." />
+<meta property="og:url" content="https://quenderin.org/blog-kromoss-hex-november-2026" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-11-22" />
+<meta property="article:modified_time" content="2026-11-22" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="preload" href="fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Kromoss local images and native Hex speech across Quenderin","description":"Native source integrations for Kromoss 8-step image generation and Hex / transcribe.cpp 20-model local speech across C++, TypeScript, Swift, and Kotlin.","datePublished":"2026-11-22","dateModified":"2026-11-22","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-kromoss-hex-november-2026"}</script>
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
+      <a href="blog">&larr; Blog</a>
+      <a href="tell-me-more">Explore the app</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="eyebrow"><span class="qi qi-sparkles" aria-hidden="true"></span>Engineering &middot; source update</p>
+  <h1>Kromoss local images and native Hex speech across Quenderin</h1>
+  <p class="legal-updated"><time datetime="2026-11-22">22 November 2026</time> &middot; Quenderin</p>
+  <p>Quenderin is expanding from offline text chat into multimodal local creation and voice interaction without asking users to install separate companion apps. Alongside today’s <a href="blog-website-fonts-docs-november-2026">30-page documentation portal and self-hosted typography rollout</a>, we have integrated two major open-source projects directly into Quenderin’s cross-platform native stack: <strong>Kromoss</strong> for fast local image synthesis and <strong>Hex + transcribe.cpp</strong> for local speech recognition and dictation.</p>
+
+  <h2 id="kromoss">Kromoss and 8-step DMD2 image generation</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#engine"></use></svg>
+  <p><a href="https://huggingface.co/lodestones/Kromoss" rel="noopener">Kromoss</a> (Apache-2.0) builds on the open MOSS Image architecture and adds an optional 8-step DMD2 LoRA accelerator (<code>CFG 1.0</code>, flow shift <code>5.0</code>). Rather than duplicating weights or rewriting inference from scratch, Quenderin integrates Kromoss cleanly onto our existing symbol-isolated diffusion pipeline:</p>
+  <ul>
+    <li><strong>Shared encoders, zero bloat.</strong> Both <code>kromoss</code> and <code>kromoss-dmd2</code> reuse the pinned Qwen3.5-9B text encoder, Flux2 VAE, and MOSS tokenizer already declared in <a href="docs/models-catalog#image-diffusion-catalog"><code>shared/image-model-catalog.json</code></a>.</li>
+    <li><strong>C ABI v2 + QKV LoRA patch.</strong> Upgrading <code>native/diffusion</code> to ABI v2 introduces <code>lora_path</code>, <code>cfg</code>, and <code>flow_shift</code> alongside a source patch that maps unfused <code>proj.q/k/v</code> DMD2 LoRA tensors onto <code>stable-diffusion.cpp</code>’s fused <code>proj.qkv</code> layers.</li>
+    <li><strong>End-to-end across every client.</strong> Wired across Desktop CLI (<code>quenderin image</code>), Apple Swift (<code>QuenderinKit</code>), and Android Kotlin (<code>quenderin-core</code>), with SHA-256 verification before native load and non-overwriting PNG creation.</li>
+  </ul>
+
+  <h2 id="hex-speech">Native Hex and transcribe.cpp speech across 20 models</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#capabilities"></use></svg>
+  <p><a href="https://github.com/anomalyco/hex" rel="noopener">Hex</a> and <a href="https://github.com/anomalyco/transcribe.cpp" rel="noopener">transcribe.cpp</a> (MIT) bring production-grade, multi-engine speech recognition and deterministic dictation formatting without cloud audio upload:</p>
+  <ul>
+    <li><strong>20 pinned speech presets + Silero VAD v6.2.</strong> <a href="docs/models-catalog#speech-dictation-catalog"><code>shared/speech-model-catalog.json</code></a> catalogs Parakeet (Unified EN, v2, v3, Ultra), Orukeet, Fluid Speech Pro, Whisper Large v3 Turbo, Qwen3-ASR 0.6B/1.7B, SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite Speech 5.0, Ivrit/NB/KB-Whisper, and on-device Apple Speech.</li>
+    <li><strong>Isolated C ABI + loopback v2 SDK.</strong> <code>native/speech</code> runs in its own private GGML build (<code>quenderin_speech_*</code>, <code>quenderin-speech-cli</code>, and Android JNI) so symbol namespaces never collide with text inference, while Desktop <code>HexSpeechAdapter</code> supports both <code>hex service --embedded</code> Bearer HTTP/SSE and direct CLI execution via <code>quenderin voice</code> and <code>VoiceService</code>.</li>
+    <li><strong>MIT dictation pipeline on every OS.</strong> Custom vocabulary spelling, spoken punctuation, spoken lists, filler removal, and French spacing run identically in TypeScript, Swift, and Kotlin—while keeping private spoken transcripts out of disk logs.</li>
+  </ul>
+
+  <h2 id="verification">Honest verification scope</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#maintenance"></use></svg>
+  <p>As with all experimental model additions in Quenderin, source integration is explicitly separated from live weight inference and store distribution:</p>
+  <ul>
+    <li><strong>Verified today on host toolchains:</strong> Catalog parity and SHA-256 validators across all manifests, symbol-isolated C/C++ shared libraries and CLIs compiled against synthetic fixtures, Swift/Clang resource cleanup and cancellation harnesses, Kotlin core compilation and runtime checks, and Desktop TypeScript unit tests (including Hex loopback HTTP/SSE handshakes and <code>quenderin-speech-cli</code> subprocess bounds).</li>
+    <li><strong>Remains outside this source milestone:</strong> Multi-gigabyte weight downloads and end-to-end audio/image inference on end-user weights (<code>inferenceVerified: false</code>), simulator/physical phone UI runs, and public App Store / Google Play submissions. Mac and iPhone on the App Store remain <strong>0.6.0</strong> (<strong>0.6.1</strong> in source), and Android remains in closed beta (<strong>0.2.0</strong>).</li>
+  </ul>
+  <p>Explore the live manifests in <a href="docs/models-catalog">Model Catalog &amp; Runtime Manifests</a>, read the engineering details in <a href="docs/bonsai-muse">Experimental Engines</a>, or review <a href="changelog#2026-11-22-integrations">the changelog</a>.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,8 @@
+_quenderin_speech_abi
+_quenderin_speech_revision
+_quenderin_speech_create
+_quenderin_speech_destroy
+_quenderin_speech_cancel
+_quenderin_speech_validate
+_quenderin_speech_transcribe
+_quenderin_speech_result_free

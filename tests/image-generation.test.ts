@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, type SpawnOptions } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PNG } from 'pngjs';
@@ -12,8 +13,9 @@ import { ImageGenerationService, IMAGE_MEMORY_REQUIRED_BYTES,
     type ImageModelCatalog, type DiffusionRuntimeLock, type ImageGenerationDependencies } from '../src/services/imageGeneration.js';
 import { nativeWorkloads } from '../src/services/nativeWorkloads.js';
 
+const require = createRequire(import.meta.url);
 const REVISION = 'f0aac524d3f29140e60ba78f3cfb16d6acea87db';
-const LOCK: DiffusionRuntimeLock = { version: 1, abiVersion: 1, revision: REVISION,
+const LOCK: DiffusionRuntimeLock = { version: 1, abiVersion: 2, revision: REVISION,
     bounds: { maxDimension: 1024, maxSteps: 50, maxThreads: 8, maxImages: 1 } };
 let directory: string;
 let runtime: string;
@@ -33,22 +35,29 @@ beforeEach(async () => {
         { role: 'text_encoder' as const, filename: 'encoder.gguf', bytes: Buffer.from('GGUF tiny fixture') },
         { role: 'vae' as const, filename: 'vae.safetensors', bytes: Buffer.from('vae fixture') },
         { role: 'tokenizer' as const, filename: 'tokenizer.json', bytes: Buffer.from('{"fixture":true}') },
+        { role: 'lora' as const, filename: 'dmd2-lora.safetensors', bytes: Buffer.from('lora fixture') },
     ];
     for (const file of files) await fs.promises.writeFile(path.join(directory, file.filename), file.bytes);
     catalog = { version: 1, status: 'experimental-source-integration-no-inference-validation', models: [{
         id: 'moss-image-base', label: 'MOSS fixture', modelKind: 2, license: 'Apache-2.0',
         licenseUrl: 'https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base', requiresPublisherAccess: false,
-        defaults: { width: 64, height: 64, steps: 50 },
+        defaults: { width: 64, height: 64, steps: 50, cfg: 3.0, flowShift: 5.0 },
+        components: files.filter(f => f.role !== 'lora').map(file => ({ role: file.role, localFilename: file.filename, bytes: file.bytes.length,
+            sha256: crypto.createHash('sha256').update(file.bytes).digest('hex') })),
+    }, {
+        id: 'kromoss-dmd2', label: 'Kromoss 8-Step DMD2', modelKind: 5, license: 'Apache-2.0',
+        licenseUrl: 'https://huggingface.co/lodestones/Kromoss', requiresPublisherAccess: false,
+        defaults: { width: 64, height: 64, steps: 8, cfg: 1.0, flowShift: 5.0 },
         components: files.map(file => ({ role: file.role, localFilename: file.filename, bytes: file.bytes.length,
             sha256: crypto.createHash('sha256').update(file.bytes).digest('hex') })),
     }] };
-    const pngModule = pathToFileURL(path.resolve('node_modules/pngjs/lib/png.js')).href;
+    const pngModule = pathToFileURL(require.resolve('pngjs')).href;
     await fs.promises.writeFile(runtime, `import fs from 'node:fs';
 import { PNG } from ${JSON.stringify(pngModule)};
 const args = process.argv.slice(2); const mode = args.shift();
 if (args.includes('--version')) {
     if (mode === 'bad-version') console.log(JSON.stringify({abiVersion: 0, revision: ${JSON.stringify(REVISION)}}));
-    else console.log(JSON.stringify({abiVersion: 1, revision: ${JSON.stringify(REVISION)}}));
+    else console.log(JSON.stringify({abiVersion: 2, revision: ${JSON.stringify(REVISION)}}));
 } else {
     const options = Object.fromEntries(Array.from({length: args.length / 2}, (_, i) => [args[i * 2], args[i * 2 + 1]]));
     if (mode === 'cancel') process.on('SIGINT', () => process.exit(0));
@@ -152,6 +161,17 @@ describe('bounded local image generation', () => {
         expect(calls[1].args).toContain('--tokenizer');
         expect(progress).toHaveBeenCalledWith({ step: 1, steps: 50 });
         expect((await fs.promises.readFile(output)).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    });
+
+    it('invokes Kromoss 8-Step DMD2 with explicit LoRA, cfg 1 and flow-shift 5', async () => {
+        const result = await service().generate({ ...request(), model: 'kromoss-dmd2' });
+        expect(result).toEqual({ path: output, width: 64, height: 64 });
+        const argv = calls[1].args;
+        expect(argv).toContain('--lora');
+        expect(argv[argv.indexOf('--lora') + 1]).toMatch(/dmd2-lora\.safetensors$/);
+        expect(argv[argv.indexOf('--steps') + 1]).toBe('8');
+        expect(argv[argv.indexOf('--cfg') + 1]).toBe('1');
+        expect(argv[argv.indexOf('--flow-shift') + 1]).toBe('5');
     });
 
     it('blocks the complete pipeline below 24 GiB available memory or insufficient disk', async () => {

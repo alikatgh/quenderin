@@ -39,7 +39,8 @@ struct Fixture {
     quenderin_diffusion_status generate(const fs::path&output,quenderin_diffusion_progress callback=nullptr,void*user=nullptr,const fs::path*source_root=nullptr){
         const fs::path&source=source_root?*source_root:root;
         std::array<std::string,4>paths={(source/L"model.safetensors").u8string(),(source/L"encoder.gguf").u8string(),(source/L"vae.safetensors").u8string(),output.u8string()};
-        quenderin_diffusion_request request{};request.abi_version=1;request.struct_size=sizeof(request);request.model=QUENDERIN_DIFFUSION_FLUX3_KLEIN;
+        quenderin_diffusion_request request{};request.abi_version=2;request.struct_size=sizeof(request);request.model=QUENDERIN_DIFFUSION_FLUX3_KLEIN;
+        request.cfg=1.0f;request.flow_shift=6.93f;
         request.diffusion_path=paths[0].c_str();request.text_encoder_path=paths[1].c_str();request.vae_path=paths[2].c_str();request.output_path=paths[3].c_str();request.prompt="fixture:success";
         request.width=64;request.height=64;request.steps=16;request.threads=2;request.seed=42;
         auto*engine=quenderin_diffusion_create();require(engine!=nullptr,"Fixture engine creation failed");char error[512]{};
