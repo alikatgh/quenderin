@@ -17,7 +17,7 @@
 <link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="../styles.css?v=20261122-polish" />
 <link rel="stylesheet" href="../lucide-icons.css?v=20261122-polish" />
-<link rel="stylesheet" href="docs.css?v=20261122-polish" />
+<link rel="stylesheet" href="docs.css?v=20261122-pacing" />
 </head>
 <body class="docs-page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -189,7 +189,10 @@ perception   LLM as     deterministic  uiVerifier confirms the
                                               ggml (tensor math, Metal GPU)
                                                    ▲
                                           a .gguf model file            ← downloaded in-app</code></pre></div>
-<p><strong>In plain terms:</strong> llama.cpp is the part that actually <em>thinks</em>. Everything in QuenderinKit is the scaffolding that makes that engine usable by a real person — picking a model that fits their device, downloading it survivably, proving it's ready before they go offline, and turning it into a chat and a tool-using agent.</p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">In plain terms</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">llama.cpp is the part that actually <em>thinks</em>. Everything in QuenderinKit is the scaffolding that makes that engine usable by a real person — picking a model that fits their device, downloading it survivably, proving it's ready before they go offline, and turning it into a chat and a tool-using agent.</p></div>
+</div>
 <h4 id="the-user-lifecycle">The user lifecycle<a class="docs-heading-anchor" href="#the-user-lifecycle" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ol>
 <li><strong>Install</strong> Quenderin (App Store) — small; engine baked in.</li>

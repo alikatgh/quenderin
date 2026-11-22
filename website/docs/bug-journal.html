@@ -17,7 +17,7 @@
 <link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="../styles.css?v=20261122-polish" />
 <link rel="stylesheet" href="../lucide-icons.css?v=20261122-polish" />
-<link rel="stylesheet" href="docs.css?v=20261122-polish" />
+<link rel="stylesheet" href="docs.css?v=20261122-pacing" />
 </head>
 <body class="docs-page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -400,7 +400,8 @@
 <li>exporter branch; <code>AgentLoop.run</code> takes an <code>isCancelled</code> checked at each step boundary → halts with</li>
 </ul></li>
 </ul>
-<p><code>.cancelled</code>; <code>AgentSession.cancel()</code> flips a per-run Sendable/@Volatile flag AND <code>engine.requestCancel()</code> (interrupts the in-flight decode). Kept the enums in lockstep (parity). NB: Kotlin needs <code>onStep</code> LAST (trailing-lambda binds to the last param, unlike Swift's forward scan) so the param order differs by platform — behavior identical. Verified: swift test 289 (+2), CoreVerify 252 (+1). (A UI stop button wiring <code>session.cancel()</code> is the remaining device-side follow-on.)</p>
+<p><code>.cancelled</code>; <code>AgentSession.cancel()</code> flips a per-run Sendable/@Volatile flag AND <code>engine.requestCancel()</code> (interrupts the in-flight decode). Kept the enums in lockstep (parity). NB: Kotlin needs <code>onStep</code> LAST (trailing-lambda binds to the last param, unlike Swift's forward scan) so the param order differs by platform — behavior identical.</p>
+<p class="docs-status-note docs-status-note--verified"><strong>Verified:</strong> swift test 289 (+2), CoreVerify 252 (+1). (A UI stop button wiring <code>session.cancel()</code> is the remaining device-side follow-on.)</p>
 <ul>
 <li>2026-07-06 (audit R23 — Q-539 concurrent start) — a second <code>start</code> while an agent was running was SILENTLY ignored server-side (runAgentLoop's <code>_isRunning</code> guard just returns), yet the client had already optimistically flipped to "running" and wiped the in-flight mission's logs → a phantom UI. Fixed both sides: the WS <code>start</code> handler now rejects a concurrent start with a clear error (and NO 'done' — the first mission is still live); <code>sendGoal</code> bails early when <code>status === &#x27;running&#x27;</code>, adding a "already running — stop it first" note instead of clobbering. typecheck:src/ui + lint:src/ui clean, 449 tests.</li>
 <li>2026-07-06 (audit R26 — Q-578 iOS cellular opt-in) — the DownloadPolicy reason string tells the user to "allow cellular downloads in settings", but no such setting existed (the escape hatch was advertised-but-unimplemented). Added <code>AppSettings.allowCellularDownloads</code> (UserDefaults, default OFF)

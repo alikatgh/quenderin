@@ -497,13 +497,17 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
 /* ---------- Rendered Prose ---------- */
 .docs-prose {
   font-size: 1rem;
-  line-height: 1.72;
+  line-height: 1.76;
   color: var(--text);
-  max-width: 72ch;
+  max-width: 68ch;
 }
 
 .docs-prose > * + * {
-  margin-top: 1.05rem;
+  margin-top: 1.15rem;
+}
+
+.docs-prose > p + p {
+  margin-top: 1.3rem;
 }
 
 .docs-prose h2 {
@@ -512,8 +516,8 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   font-size: clamp(1.45rem, 2.3vw, 1.85rem);
   line-height: 1.18;
   letter-spacing: -0.018em;
-  margin-top: 2.6rem;
-  padding-top: 1.25rem;
+  margin-top: 2.9rem;
+  padding-top: 1.4rem;
   border-top: 1px solid var(--border);
   color: var(--text);
   scroll-margin-top: calc(var(--doc-header-h) + 20px);
@@ -528,7 +532,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   font-weight: 600;
   font-size: 1.22rem;
   line-height: 1.26;
-  margin-top: 1.85rem;
+  margin-top: 2.05rem;
   color: var(--text);
   scroll-margin-top: calc(var(--doc-header-h) + 20px);
 }
@@ -599,7 +603,8 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
 }
 
 .docs-prose li {
-  margin-top: 0.35rem;
+  margin-top: 0.5rem;
+  line-height: 1.72;
 }
 
 .docs-prose li > ul,
@@ -735,6 +740,11 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   font-weight: 500;
 }
 
+.docs-table-wrap code {
+  white-space: nowrap;
+  word-break: normal;
+}
+
 /* Blockquotes & Admonitions */
 .docs-prose blockquote {
   margin: 1.25rem 0;
@@ -798,6 +808,87 @@ html[data-theme-mode="dark"] .docs-callout--important .docs-callout-title {
 
 .docs-callout-body > :first-child { margin-top: 0; }
 .docs-callout-body > :last-child { margin-bottom: 0; }
+
+/* Structured log / milestone entries & status notes compiled from dense Markdown paragraphs */
+.docs-entry {
+  margin-block: 1.5rem;
+  padding: 1.15rem 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface-tint) 65%, var(--canvas));
+}
+
+.docs-entry-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+}
+
+.docs-entry-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.03rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.docs-entry-date {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--brand);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
+  padding: 0.14rem 0.52rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.docs-entry-body > p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.docs-entry-body > p + p {
+  margin-top: 0.9rem;
+}
+
+.docs-entry-body > p.is-cap-first::first-letter {
+  text-transform: uppercase;
+}
+
+.docs-prose .docs-status-note {
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: var(--surface);
+  font-size: 0.94rem;
+  line-height: 1.66;
+  color: var(--text-secondary);
+}
+
+.docs-prose .docs-status-note--verified > strong:first-child {
+  color: var(--doc-tip-border);
+}
+
+.docs-prose .docs-status-note--remaining > strong:first-child {
+  color: var(--copper);
+}
+
+html[data-theme-mode="dark"] .docs-prose .docs-status-note--remaining > strong:first-child {
+  color: var(--copper-bright);
+}
+
+@media (max-width: 600px) {
+  .docs-entry {
+    padding: 1rem 1.05rem;
+  }
+}
 
 /* Sub-document divider inside merged guides */
 .docs-subdoc {

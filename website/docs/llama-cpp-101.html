@@ -17,7 +17,7 @@
 <link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="../styles.css?v=20261122-polish" />
 <link rel="stylesheet" href="../lucide-icons.css?v=20261122-polish" />
-<link rel="stylesheet" href="docs.css?v=20261122-polish" />
+<link rel="stylesheet" href="docs.css?v=20261122-pacing" />
 </head>
 <body class="docs-page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -109,7 +109,10 @@
 <li><strong><code>n_kv</code> is padded to a multiple of 256</strong> so the mask/cache tensor <em>shapes</em> stay constant as the cache grows — which is what <em>keeps</em> the graph reusable (step 3). Padded cells get <code>-inf</code> in the mask. (Clever, and the reason trimming the cache mid-gen costs a ~1ms rebuild.)</li>
 <li><strong>Compute + extract logits</strong> via the backend scheduler (async on GPU).</li>
 </ol>
-<p><strong>Ties to your code:</strong> this is the deep version of <code>INFERENCE_101</code> §3. Your <code>KVCacheReuse</code> (decode only the new suffix) is the app-level mirror of <code>llama_memory_seq_rm</code> — keep the system-prompt cells, evict the user turn, re-decode. Return <code>1</code> is the "context full" signal your wrapper should handle by evicting old turns.</p>
+<div class="docs-entry">
+  <div class="docs-entry-header"><span class="docs-entry-title">Ties to your code</span></div>
+  <div class="docs-entry-body"><p class="is-cap-first">this is the deep version of <code>INFERENCE_101</code> §3. Your <code>KVCacheReuse</code> (decode only the new suffix) is the app-level mirror of <code>llama_memory_seq_rm</code> — keep the system-prompt cells, evict the user turn, re-decode. Return <code>1</code> is the "context full" signal your wrapper should handle by evicting old turns.</p></div>
+</div>
 <h3 id="e-quantization-why-the-model-is-2-4-gb-and-the-bandwidth-ceiling">E. Quantization — why the model is 2.4 GB (and the bandwidth ceiling)<a class="docs-heading-anchor" href="#e-quantization-why-the-model-is-2-4-gb-and-the-bandwidth-ceiling" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
 <p>(<code>ggml/src/ggml-quants.c</code>, <code>ggml-common.h</code>.) <code>QK_K = 256</code> weights per k-quant superblock.</p>
 <ul>
@@ -120,7 +123,8 @@
 </ul>
 <h3 id="f-backends-the-prefill-decode-split-the-concrete-mechanism">F. Backends + the prefill/decode split (the concrete mechanism)<a class="docs-heading-anchor" href="#f-backends-the-prefill-decode-split-the-concrete-mechanism" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
 <p><code>ggml-backend.cpp</code> schedules one graph across devices. The key heuristic (<code>ggml_backend_sched_split_graph</code>): <strong>weights on GPU → that layer's matmul runs on GPU</strong>; the input layer + anything unclaimed falls to <strong>CPU (always registered last, the fallback)</strong>.</p>
-<p><strong>The punchline you've been circling</strong> (<code>ggml-metal.cpp:757</code>, <code>ggml_backend_metal_device_offload_op</code>): a matmul is offloaded to the GPU only when <code>batch_size &gt;= 32</code> (env-tunable). During <strong>prefill</strong> the batch = prompt length (large) → matmuls go to Metal. During <strong>single-token decode</strong> <code>ne[1] == 1</code> → <em>below the threshold</em> → the matmul routes <strong>back to CPU</strong>. That's the exact code-level reason "<code>n_gpu_layers = 999</code> but the GPU barely helps decode" — not a vibe, a <code>&gt;= 32</code> check. On Apple's unified memory there's no transfer penalty; a 1-row matmul is just faster on CPU SIMD than via GPU dispatch.</p>
+<p><strong>The punchline you've been circling</strong> (<code>ggml-metal.cpp:757</code>, <code>ggml_backend_metal_device_offload_op</code>): a matmul is offloaded to the GPU only when <code>batch_size &gt;= 32</code> (env-tunable). During <strong>prefill</strong> the batch = prompt length (large) → matmuls go to Metal. During <strong>single-token decode</strong> <code>ne[1] == 1</code> → <em>below the threshold</em> → the matmul routes <strong>back to CPU</strong>.</p>
+<p>That's the exact code-level reason "<code>n_gpu_layers = 999</code> but the GPU barely helps decode" — not a vibe, a <code>&gt;= 32</code> check. On Apple's unified memory there's no transfer penalty; a 1-row matmul is just faster on CPU SIMD than via GPU dispatch.</p>
 <h3 id="g-threading-what-llama-set-n-threads-actually-does">G. Threading — what <code>llama_set_n_threads</code> actually does<a class="docs-heading-anchor" href="#g-threading-what-llama-set-n-threads-actually-does" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
 <p>(<code>ggml-cpu/ggml-cpu.c</code>.) The CPU backend runs a persistent <strong>threadpool</strong>; workers sleep on a condvar and wake via a single atomic (<code>n_graph</code> packs a graph counter + active-thread count). Matmul work is <strong>chunk-stolen</strong>: each worker <code>atomic_fetch_add</code>s a shared counter to claim the next row-block — dynamic load balance, no pre-assignment.</p>
 <p>Two things that matter for your governor:</p>
@@ -155,7 +159,8 @@
 <li>⚠️ <strong>Hazard 2 — <code>llama_vocab_is_eog()</code> is heuristic.</strong> The end-of-generation set is built by name matching, with explicit workarounds for models where <code>&lt;|end|&gt;</code> is <em>both</em> a tool-call and an EOG token ("we don't have a good way to detect this"). Your stop-condition (<code>LlamaEngine.swift:262</code>) relies on this — worth a guard/test per model family, because a wrong EOG classification means either runaway generation or premature stop.</li>
 </ul>
 <h3 id="k-whats-churning-so-you-read-the-source-correctly">K. What's churning (so you read the source correctly)<a class="docs-heading-anchor" href="#k-whats-churning-so-you-read-the-source-correctly" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
-<p>There's an active <strong>rename sweep</strong>: <code>llama_free_model → llama_model_free</code>, <code>llama_new_context_with_model → llama_init_from_model</code>, <code>llama_token_bos → llama_vocab_bos</code>, etc. The old names still compile (deprecated aliases) — make sure your Swift/JNI shim uses the <strong>new</strong> names. The KV cache is now behind a <code>llama_memory_t</code> interface (to support recurrent models like Mamba alongside transformers). And there's early wiring for <strong>multi-token / speculative decode</strong> (<code>LLAMA_CONTEXT_TYPE_MTP</code>) — the thing to watch for your "beat the decode ceiling" question.</p>
+<p>There's an active <strong>rename sweep</strong>: <code>llama_free_model → llama_model_free</code>, <code>llama_new_context_with_model → llama_init_from_model</code>, <code>llama_token_bos → llama_vocab_bos</code>, etc. The old names still compile (deprecated aliases) — make sure your Swift/JNI shim uses the <strong>new</strong> names.</p>
+<p>The KV cache is now behind a <code>llama_memory_t</code> interface (to support recurrent models like Mamba alongside transformers). And there's early wiring for <strong>multi-token / speculative decode</strong> (<code>LLAMA_CONTEXT_TYPE_MTP</code>) — the thing to watch for your "beat the decode ceiling" question.</p>
 <hr />
 <h3 id="l-the-five-things-that-connect-straight-back-to-quenderin">L. The five things that connect straight back to Quenderin<a class="docs-heading-anchor" href="#l-the-five-things-that-connect-straight-back-to-quenderin" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
 <ol>
