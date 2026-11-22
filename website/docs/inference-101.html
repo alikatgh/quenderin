@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inference 101: Quenderin Pipeline — Quenderin Docs</title>
+<meta name="description" content="How local LLM inference works end-to-end inside Quenderin: GGUF weights, tokenization, prefill vs decode, KV cache, and sampling." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/inference-101" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101" class="is-active" aria-current="page"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Inference Internals</span></div><div class="docs-kicker"><span class="qi qi-flame" aria-hidden="true"></span>101 Series · Foundations</div><h1>Inference 101: Quenderin Pipeline</h1><p class="docs-lead">How local LLM inference works end-to-end inside Quenderin: GGUF weights, tokenization, prefill vs decode, KV cache, and sampling.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>7 min read (1,643 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>1 source doc</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 1 canonical source file</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/INFERENCE_101.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/INFERENCE_101.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-3" href="#0-the-one-equation-memorize-this-everything-else-hangs-off-it">0. The one equation (memorize this — everything else hangs off it)</a></li><li><a class="is-depth-3" href="#1-what-a-model-file-actually-is">1. What a model file actually is</a></li><li><a class="is-depth-3" href="#2-the-two-phases-and-why-gpu-helps-only-one">2. The two phases — and why GPU helps only one</a></li><li><a class="is-depth-3" href="#3-the-generation-loop-line-by-line-llamaengine-swift-rungeneration">3. The generation loop, line by line (LlamaEngine.swift:runGeneration)</a></li><li><a class="is-depth-3" href="#4-the-kv-cache-why-context-costs-memory-and-why-reuse-matters">4. The KV cache — why context costs memory and why reuse matters</a></li><li><a class="is-depth-3" href="#5-threads-why-use-all-the-cores-is-wrong-here">5. Threads — why &quot;use all the cores&quot; is wrong here</a></li><li><a class="is-depth-3" href="#6-the-ceiling-you-emailed-georgi-about-now-derive-it-yourself">6. The ceiling you emailed Georgi about — now derive it yourself</a></li><li><a class="is-depth-3" href="#7-where-each-concept-lives-the-code-map">7. Where each concept lives (the code map)</a></li><li><a class="is-depth-3" href="#8-prove-it-to-yourself-do-these-dont-just-nod">8. Prove it to yourself (do these, don&#x27;t just nod)</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <blockquote><p>Goal of this doc: close the gap between <em>"I shipped this"</em> and <em>"I understand this."</em> By the end you should be able to <strong>derive Quenderin's mobile speed ceiling from scratch</strong> and explain every line of the real decode loop. It's grounded in your actual code (real files + line numbers) and your actual model catalog — not generic theory. Read it twice; the second time, open the cited files alongside.</p></blockquote>
+<hr />
+<h3 id="0-the-one-equation-memorize-this-everything-else-hangs-off-it">0. The one equation (memorize this — everything else hangs off it)<a class="docs-heading-anchor" href="#0-the-one-equation-memorize-this-everything-else-hangs-off-it" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Generating <strong>one token</strong> requires a forward pass that reads <strong>~every weight in the model from memory, once.</strong> So:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>tokens/sec  ≈   memory_bandwidth  ÷  bytes_read_per_token
+                                       └─ ≈ the model&#x27;s on-disk size (the weights)</code></pre></div>
+<p>That's the whole story of why phones are slow at this. It is <strong>not</strong> about how fast the chip can multiply (FLOPs) — it's about how fast it can <em>read the weights out of RAM</em>. This is what "decode is <strong>memory-bandwidth-bound</strong>" means, and it's the sentence you put in your email to Georgi.</p>
+<p><strong>Work it with your own catalog</strong> (<code>shared/model-catalog.json</code>):</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Model</th><th>Weights (Q4)</th><th>Phone RAM bandwidth</th><th>Ceiling = BW ÷ weights</th><th>Real-world (~30–50%)</th></tr></thead><tbody><tr><td>Llama 3.2 1B</td><td>~0.8 GB</td><td>~60 GB/s (LPDDR5)</td><td>~75 tok/s</td><td><strong>~20</strong> (matches <code>REALITY.md</code> A16)</td></tr><tr><td>Qwen3 4B</td><td>~2.4 GB</td><td>~60 GB/s</td><td>~25 tok/s</td><td><strong>~10–13</strong> (matches <code>REALITY.md</code>)</td></tr><tr><td>Qwen3 14B</td><td>~9 GB</td><td>~60 GB/s</td><td>~7 tok/s</td><td>~3–5 (and barely fits)</td></tr><tr><td>(same 4B on an M-series Mac)</td><td>~2.4 GB</td><td>~200–400 GB/s</td><td>~80–160 tok/s</td><td><strong>~157–177</strong> (your <code>verify-llama-link.sh</code>)</td></tr></tbody></table></div>
+<p>Two things fall out immediately:</p>
+<ol>
+<li><strong>A Mac is fast only because it has 3–6× the memory bandwidth</strong> — <em>not</em> because its CPU is smarter. Same model, same code; the bandwidth column is the whole difference. That's why your Mac/sim numbers are a <em>ceiling</em>, not a phone result.</li>
+<li><strong>The biggest lever to go faster is to read fewer bytes per token</strong> — i.e. a smaller or more-quantized model. Everything else is at the margins.</li>
+</ol>
+<p>Real-world lands at ~30–50% of the ceiling because you never perfectly saturate bandwidth (overhead, the KV cache also gets read, the chip isn't at max clock). Keep that "efficiency factor" in mind — the equation gives you the <strong>upper bound</strong>.</p>
+<hr />
+<h3 id="1-what-a-model-file-actually-is">1. What a model file actually is<a class="docs-heading-anchor" href="#1-what-a-model-file-actually-is" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>A <code>.gguf</code> file is just <strong>the weights</strong> (billions of numbers) + a header of metadata (architecture, tokenizer, etc.). Two facts that matter:</p>
+<ul>
+<li><strong>Quantization</strong> = how many bits per weight. <code>Q4_K_M</code> (your default) ≈ 4.5 bits/weight instead of 16. That's why a 4-billion-param model is ~2.4 GB instead of ~8 GB — and, per the equation above, <strong>why it's ~3× faster to decode.</strong> The cost is a small quality drop. Quant is the dial between speed/size and quality.</li>
+<li>The first 4 bytes are the magic string <code>GGUF</code>. That's literally what <code>ModelIntegrity.verify</code> (<code>src/services/modelIntegrity.ts</code>, <code>apple/.../ModelIntegrity.swift</code>) checks before trusting a download — a corrupted/MITM'd file fails the magic check or the sha256.</li>
+</ul>
+<p>The catalog (<code>ModelCatalog.swift</code> / <code>src/constants.ts</code> / Android <code>ModelCatalog.kt</code>, kept in sync by <code>scripts/check_catalog_parity.py</code>) is just a table of these files + their sizes + RAM needs.</p>
+<hr />
+<h3 id="2-the-two-phases-and-why-gpu-helps-only-one">2. The two phases — and why GPU helps only one<a class="docs-heading-anchor" href="#2-the-two-phases-and-why-gpu-helps-only-one" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Every request has two phases, and they have <strong>opposite</strong> performance characters:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Phase</th><th>What it does</th><th>Bound by</th><th>Does the GPU/Metal help?</th></tr></thead><tbody><tr><td><strong>Prefill</strong></td><td>Reads your prompt, fills the KV cache</td><td><strong>Compute</strong> (all prompt tokens in parallel)</td><td><strong>Yes</strong> — lots of parallel math</td></tr><tr><td><strong>Decode</strong></td><td>Generates the reply, one token at a time</td><td><strong>Memory bandwidth</strong> (one token at a time, reads all weights each time)</td><td><strong>Barely</strong> — it's waiting on RAM, not math</td></tr></tbody></table></div>
+<p>This is the single most important thing most people get wrong. It's why:</p>
+<ul>
+<li><code>LlamaEngine.swift:131</code> sets <code>n_gpu_layers = 999</code> (offload everything to Metal) — it helps prefill and is free on Apple's unified memory.</li>
+<li>But on Android, <code>GpuOffloadPlanner</code> is <strong>conservative</strong> — because for a single user's <em>decode</em>, Vulkan offload often doesn't help (decode is bandwidth-bound, and the GPU shares the same RAM bus), so it only offloads where it's been shown to win.</li>
+</ul>
+<hr />
+<h3 id="3-the-generation-loop-line-by-line-llamaengine-swift-rungeneration">3. The generation loop, line by line (<code>LlamaEngine.swift:runGeneration</code>)<a class="docs-heading-anchor" href="#3-the-generation-loop-line-by-line-llamaengine-swift-rungeneration" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>This ~40-line function is the entire product. Open <code>apple/QuenderinKit/Sources/QuenderinKit/LlamaEngine.swift:196</code> and read it with this map:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>1) tokenize(prompt)            → text becomes a list of integer token ids        (:210)
+2) build a sampler chain       → top-p → temperature → distribution               (:217-220)
+3) KV-reuse plan               → decode ONLY the tokens not already cached        (:236)   ← §4
+4) decode(prompt tokens)       → llama_decode(...) fills the KV cache (prefill)    (:242)
+5) loop until maxTokens or EOG:
+     - every 32 tokens, ask the thermal governor for a new thread count           (:257-260) ← §6
+     - llama_sampler_sample(...) → pick the next token                            (:261)
+     - if it&#x27;s the end-of-generation token, stop                                  (:262)
+     - turn the token back into text, yield it to the UI                          (:264-265)
+     - decode(that one token) → advances the KV cache by one                      (:269)
+     - append it to our token mirror                                              (:273)</code></pre></div>
+<p>That's it. "An LLM generating text" is: <strong>sample one token, feed it back in, repeat.</strong> <code>llama_decode</code> (:229) is the one expensive call — it's the forward pass from §0 that reads all the weights. Everything else (sampling, detokenizing) is cheap. So the loop runs at exactly the tok/s the equation predicts.</p>
+<blockquote><p><strong>Sampling</strong>, briefly (<code>:217-220</code>): the model outputs a probability for <em>every</em> word in its vocabulary. <code>temperature</code> flattens/sharpens those probabilities (higher = more random), <code>top-p</code> keeps only the most-likely set, and <code>dist</code> rolls the dice among them. That's "creativity" — it's just how you pick from the probability list.</p></blockquote>
+<hr />
+<h3 id="4-the-kv-cache-why-context-costs-memory-and-why-reuse-matters">4. The KV cache — why context costs memory and why reuse matters<a class="docs-heading-anchor" href="#4-the-kv-cache-why-context-costs-memory-and-why-reuse-matters" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>When the model processes tokens, it stores intermediate results (the "keys" and "values") so it doesn't recompute them every step. This is the <strong>KV cache</strong>, and it has two consequences you've already engineered around:</p>
+<ul>
+<li><strong>It grows with context length</strong> and sits <em>on top of</em> the model weights in RAM. A fixed huge <code>n_ctx</code> can push a memory-tight phone over its budget and get the app jetsam-killed. So <code>ContextWindow.recommend(...)</code> (<code>:149</code>) sizes <code>n_ctx</code> from the <strong>real app-memory budget − the model's footprint</strong>. A 1B gets a big context; a 7B on the same phone gets a tight one.</li>
+<li><strong>Quantizing the cache</strong> (<code>KVCachePolicy.recommend</code>, <code>:146</code>) to <code>q8_0</code> roughly halves its per-token memory → the cache-aware <code>n_ctx</code> turns that into ~2× the usable context, near-losslessly.</li>
+<li><strong>Reuse</strong> (<code>KVCacheReuse.plan</code>, <code>:236</code>): on turn 2 of a chat, the prompt is "turn-1 + new stuff." Re-prefilling the whole thing every turn would make replies get slower as the conversation grows. So Quenderin decodes <strong>only the new suffix</strong> and keeps the rest cached — time-to-first-token stays flat. (Fail-safe: any divergence wipes the cache and reprefills — correct, just no speedup.)</li>
+</ul>
+<hr />
+<h3 id="5-threads-why-use-all-the-cores-is-wrong-here">5. Threads — why "use all the cores" is wrong here<a class="docs-heading-anchor" href="#5-threads-why-use-all-the-cores-is-wrong-here" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><code>ThreadPlanner.swift</code> (15 lines — read it) targets the <strong>performance cores only</strong>, not all cores. Why? Two reasons, both from §0:</p>
+<ol>
+<li>On a phone's big.LITTLE / P+E core layout, scheduling matmul-heavy decode onto the slow <strong>efficiency cores bottlenecks the fast ones and adds heat</strong> — net negative.</li>
+<li>Because decode is <strong>bandwidth-bound</strong>, once you have enough threads to saturate the memory bus, <strong>more threads do nothing but generate heat.</strong> You can't multiply your way past a memory wall.</li>
+</ol>
+<p>So "more threads = faster" is false past a small number. This is set at <code>LlamaEngine.swift:165</code> (<code>n_threads</code>) and — crucially — <em>re-tuned during generation</em>, which brings us to the ceiling.</p>
+<hr />
+<h3 id="6-the-ceiling-you-emailed-georgi-about-now-derive-it-yourself">6. The ceiling you emailed Georgi about — now derive it yourself<a class="docs-heading-anchor" href="#6-the-ceiling-you-emailed-georgi-about-now-derive-it-yourself" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Put §0 and §5 together:</p>
+<ul>
+<li><strong>Sustained speed is capped by bandwidth</strong> (§0), and a phone's effective bandwidth <strong>drops as it heats</strong> (thermal throttling cuts clocks <em>and</em> memory speed). Your <code>REALITY.md</code> measured 10–44% loss on multi-minute runs. So a long agent loop doesn't run at the cold-start tok/s — it decays toward a hot-steady-state.</li>
+<li>Quenderin's answer is the <strong>in-flight thermal governor</strong> (<code>LlamaEngine.swift:251-260</code> + <code>ThermalMonitor.swift</code>): every 32 tokens it reads the thermal level and, if it changed, calls <code>llama_set_n_threads(...)</code> to <strong>shed threads as the chip heats</strong> — trading peak tok/s for a <em>sustainable</em> rate instead of spiking and getting throttled (or jetsam-killed). That's exactly "power-aware decode."</li>
+</ul>
+<p>Now you can answer your own email. <strong>Are there llama.cpp-level levers, or is the ceiling fundamental?</strong></p>
+<ul>
+<li>The <strong>bandwidth + thermal ceiling is largely fundamental</strong> for a given model on a given phone — thread/batch scheduling can't beat a memory wall, and you're already self-throttling optimally.</li>
+<li>The levers that <em>actually</em> move it, in order of impact:
+<ol>
+<li><strong>Smaller / more-quantized model</strong> — fewer bytes/token (direct, from §0).</li>
+<li><strong>KV-cache quant</strong> — fewer bytes read at long context (you do this).</li>
+<li><strong>Speculative decoding</strong> — a tiny "draft" model proposes several tokens, the big model <em>verifies</em> them in one pass. This is the one trick that beats the single-stream bandwidth wall — memory permitting. <strong>This is the thing to ask Georgi about next.</strong></li>
+</ol></li>
+<li><code>batch scheduling</code> is a non-lever here: it helps throughput across <em>many parallel users</em>, not one person's reply.</li>
+</ul>
+<p>If you can explain that paragraph from memory, the gap is closed.</p>
+<hr />
+<h3 id="7-where-each-concept-lives-the-code-map">7. Where each concept lives (the code map)<a class="docs-heading-anchor" href="#7-where-each-concept-lives-the-code-map" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<div class="docs-table-wrap"><table><thead><tr><th>Concept</th><th>Desktop (TS)</th><th>iOS (Swift)</th><th>Android (Kotlin/JNI)</th></tr></thead><tbody><tr><td>The decode loop</td><td><code>node-llama-cpp</code> via <code>src/services/llm.service.ts</code></td><td><code>LlamaEngine.swift:196</code></td><td><code>android/jni/llama_jni.cpp</code></td></tr><tr><td>Context (<code>n_ctx</code>) sizing</td><td>hardware tier in <code>health.ts</code></td><td><code>ContextWindow.swift</code></td><td><code>ContextWindow.kt</code></td></tr><tr><td>KV cache quant / reuse</td><td>(engine-managed)</td><td><code>KVCachePolicy</code> / <code>KVCacheReuse.swift</code></td><td>core twins</td></tr><tr><td>Thread count</td><td>hardware profile</td><td><code>ThreadPlanner.swift</code></td><td><code>ThreadPlanner.kt</code></td></tr><tr><td>Thermal governor</td><td>n/a (desktop = plugged in)</td><td><code>ThermalMonitor</code> + governor in <code>LlamaEngine</code></td><td><code>ThermalMonitor.kt</code> + JNI loop</td></tr><tr><td>GPU offload</td><td>—</td><td><code>n_gpu_layers=999</code> (Metal)</td><td><code>GpuOffloadPlanner.kt</code> (conservative)</td></tr><tr><td>Model integrity</td><td><code>modelIntegrity.ts</code></td><td><code>ModelIntegrity.swift</code></td><td><code>ModelDownloadEngine</code></td></tr></tbody></table></div>
+<p>The desktop, iOS, and Android engines all implement the <strong>same loop</strong> — only the language and the device tuning differ. Read the Swift one (it's the clearest); the others will then make sense.</p>
+<hr />
+<h3 id="8-prove-it-to-yourself-do-these-dont-just-nod">8. Prove it to yourself (do these, don't just nod)<a class="docs-heading-anchor" href="#8-prove-it-to-yourself-do-these-dont-just-nod" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<ol>
+<li><strong>Run real inference</strong> (5 min, your hardware): <code>apple/verify-llama-link.sh</code>. Watch it print tokens at ~160 tok/s on the Mac. That number <em>is</em> <code>bandwidth ÷ weights</code> for that tiny model.</li>
+<li><strong>Predict before you measure:</strong> a Qwen3 4B on a phone with ~50 GB/s and ~35% efficiency — what tok/s do you expect? (Answer: <code>50 ÷ 2.4 × 0.35 ≈ 7 tok/s</code>. Then check it against <code>REALITY.md</code>.)</li>
+<li><strong>Explain, out loud, without notes:</strong> why does Metal make prefill fast but not decode? (§2) Why does q8_0 KV cache buy you 2× context? (§4) Why does the governor <em>remove</em> threads when the phone is hot instead of adding them? (§5–6)</li>
+<li><strong>The Georgi follow-up:</strong> if speculative decoding 1.5–3×'s decode, what's the catch on a phone? (Answer: you need <em>both</em> the draft and the target model resident in memory at once — and phone memory is the tight constraint, §4.)</li>
+</ol>
+<p>When #3 and #4 come out fluently, you don't just have the repo — you have the knowledge. That's the level where you stop needing me to draft the email.</p>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="benchmarks-reality"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Inference SLOs, Baselines &amp; Reality</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="mobile-performance-101"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Mobile Performance &amp; KV-Cache Tuning</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-3" href="#0-the-one-equation-memorize-this-everything-else-hangs-off-it">0. The one equation (memorize this — everything else hangs off it)</a></li><li><a class="is-depth-3" href="#1-what-a-model-file-actually-is">1. What a model file actually is</a></li><li><a class="is-depth-3" href="#2-the-two-phases-and-why-gpu-helps-only-one">2. The two phases — and why GPU helps only one</a></li><li><a class="is-depth-3" href="#3-the-generation-loop-line-by-line-llamaengine-swift-rungeneration">3. The generation loop, line by line (LlamaEngine.swift:runGeneration)</a></li><li><a class="is-depth-3" href="#4-the-kv-cache-why-context-costs-memory-and-why-reuse-matters">4. The KV cache — why context costs memory and why reuse matters</a></li><li><a class="is-depth-3" href="#5-threads-why-use-all-the-cores-is-wrong-here">5. Threads — why &quot;use all the cores&quot; is wrong here</a></li><li><a class="is-depth-3" href="#6-the-ceiling-you-emailed-georgi-about-now-derive-it-yourself">6. The ceiling you emailed Georgi about — now derive it yourself</a></li><li><a class="is-depth-3" href="#7-where-each-concept-lives-the-code-map">7. Where each concept lives (the code map)</a></li><li><a class="is-depth-3" href="#8-prove-it-to-yourself-do-these-dont-just-nod">8. Prove it to yourself (do these, don&#x27;t just nod)</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

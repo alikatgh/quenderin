@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apple Native: macOS, iOS &amp; QuenderinKit — Quenderin Docs</title>
+<meta name="description" content="Universal SwiftUI app, QuenderinKit SPM package, llama.cpp xcframework integration, Xcode Cloud bounded tests, and MLX comparison." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/apple-native" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native" class="is-active" aria-current="page"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Platforms &amp; Releases</span></div><div class="docs-kicker"><span class="qi qi-apple" aria-hidden="true"></span>Platforms · Apple</div><h1>Apple Native: macOS, iOS &amp; QuenderinKit</h1><p class="docs-lead">Universal SwiftUI app, QuenderinKit SPM package, llama.cpp xcframework integration, Xcode Cloud bounded tests, and MLX comparison.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>20 min read (4,554 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>6 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 6 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinKit/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>apple/QuenderinKit/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinKit/INTEGRATION.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>apple/QuenderinKit/INTEGRATION.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinApp/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>apple/QuenderinApp/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinApp/Tests/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>apple/QuenderinApp/Tests/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/apple/ROADMAP.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>apple/ROADMAP.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/audits/2026-07-02-oss-audit-mlx-swift.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/audits/2026-07-02-oss-audit-mlx-swift.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-apple-quenderinkit-readme-md">apple/QuenderinKit/README.md</a></li><li><a class="is-depth-3" href="#quenderinkit">QuenderinKit</a></li><li><a class="is-depth-2" href="#src-apple-quenderinkit-integration-md">apple/QuenderinKit/INTEGRATION.md</a></li><li><a class="is-depth-3" href="#linking-llama-cpp-into-quenderinkit">Linking llama.cpp into QuenderinKit</a></li><li><a class="is-depth-2" href="#src-apple-quenderinapp-readme-md">apple/QuenderinApp/README.md</a></li><li><a class="is-depth-3" href="#quenderin-ios-app-target">Quenderin iOS app target</a></li><li><a class="is-depth-2" href="#src-apple-quenderinapp-tests-readme-md">apple/QuenderinApp/Tests/README.md</a></li><li><a class="is-depth-3" href="#bounded-xcode-cloud-checks">Bounded Xcode Cloud checks</a></li><li><a class="is-depth-2" href="#src-apple-roadmap-md">apple/ROADMAP.md</a></li><li><a class="is-depth-3" href="#quenderin-apple-roadmap">Quenderin Apple — Roadmap</a></li><li><a class="is-depth-2" href="#src-docs-audits-2026-07-02-oss-audit-mlx-swift-md">docs/audits/2026-07-02-oss-audit-mlx-swift.md</a></li><li><a class="is-depth-3" href="#oss-audit-apple-mlx-swift-llm-stack-vs-llama-cpp-for-quenderin-ios-macos">OSS Audit — Apple MLX Swift LLM stack vs llama.cpp for Quenderin (iOS/macOS)</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-apple-quenderinkit-readme-md"><h2 id="src-apple-quenderinkit-readme-md-heading">QuenderinKit</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>apple/QuenderinKit/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinKit/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderinkit">QuenderinKit<a class="docs-heading-anchor" href="#quenderinkit" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The portable <strong>"brain"</strong> of Quenderin's offline-autonomy vision, in pure Swift.</p>
+<blockquote><p><strong>New here?</strong> Read <a href="architecture#src-apple-architecture-md"><code>../ARCHITECTURE.md</code></a> first — what llama.cpp is, the engine-vs-model distinction (users download the <em>model</em>, never the engine), and how the whole stack fits together.</p></blockquote>
+<p>Quenderin's destination is a native mobile app (Swift on iOS, native on Android) that, on first launch, <strong>probes the device's hardware</strong> and <strong>auto-downloads the right model "modules"</strong> so the user goes from <em>install → ready-to-use local AI</em> with zero configuration. This package is step one of that: the device-detection → module-selection layer, lifted out of the Electron/TypeScript prototype and ported to Swift so it compiles into the iOS app and unit-tests on macOS.</p>
+<h4 id="whats-here">What's here<a class="docs-heading-anchor" href="#whats-here" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>HardwareProbe.swift</code></td><td>Reads RAM / cores / chip / Apple-Silicon via Foundation + <code>sysctl</code>. Works on macOS and iOS.</td></tr><tr><td><code>ModelCatalog.swift</code></td><td>The downloadable modules, quantization table, and RAM-tier bands. Mirrors <code>quenderin/src/constants.ts</code>.</td></tr><tr><td><code>ModelRecommender.swift</code></td><td><code>device RAM → recommended module</code>. 1:1 port of <code>getRecommendedModelIdForTotalRam</code> / <code>getHardwareRecommendation</code>.</td></tr><tr><td><code>MemoryFitness.swift</code></td><td>"Can this device load this model?" with the same 0.85 / 0.65 budgets and size-scaled overhead as desktop.</td></tr></tbody></table></div>
+<h4 id="provenance-keep-in-sync-with-desktop">Provenance — keep in sync with desktop<a class="docs-heading-anchor" href="#provenance-keep-in-sync-with-desktop" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The catalog, RAM tiers, and recommendation thresholds are a direct port of the TypeScript app. The boundary tests in <code>Tests/QuenderinKitTests/ModelRecommenderTests.swift</code> mirror <code>quenderin/tests/recommended-model.test.ts</code> exactly (1.5 / 3 / 6 GB thresholds), so the desktop and mobile clients recommend the <strong>same</strong> model for the <strong>same</strong> hardware. If you change one catalog, change the other.</p>
+<h4 id="build-test">Build &amp; test<a class="docs-heading-anchor" href="#build-test" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>swift build      # compiles for the host (macOS) — warning-free
+swift test       # 153 tests, runs in milliseconds, no simulator needed</code></pre></div>
+<h4 id="inference">Inference<a class="docs-heading-anchor" href="#inference" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><code>InferenceEngine</code> is the runtime-agnostic seam. Two conformers ship today:</p>
+<ul>
+<li><code>MockInferenceEngine</code> — canned streaming, for previews/tests/app bring-up.</li>
+<li><code>LlamaEngine</code> — the real <strong>llama.cpp</strong> adapter. llama.cpp stays C/C++; this is the thin Swift layer that calls its C API. The C calls live behind <code>#if canImport(llama)</code>, so the package builds <strong>now</strong> and the engine fails cleanly until you link llama.cpp (see the wiring notes in <code>LlamaEngine.swift</code>). The C path is a verified-on-device starting point — <code>swift test</code> covers only the fallback, not real inference (which needs the <code>llama</code> module + a GGUF model
+<ul>
+<li>a device/simulator).</li>
+</ul></li>
+</ul>
+<h4 id="onboarding-milestone-m1">Onboarding (Milestone M1)<a class="docs-heading-anchor" href="#onboarding-milestone-m1" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The "download → ready" spine, fully wired against the seams:</p>
+<ul>
+<li><code>ModelDownloader</code> (+ <code>URLSessionModelDownloader</code>, <code>MockModelDownloader</code>) — streamed-progress download to disk.</li>
+<li><code>OnboardingModel</code> — <code>@MainActor</code> state machine: probe → recommend → download → load → ready (or failed). Depends only on the downloader + engine protocols, so it's unit-tested end-to-end with mocks.</li>
+<li><code>OnboardingView</code> — SwiftUI screen rendering each phase.</li>
+</ul>
+<p>See <code>../ROADMAP.md</code> for the goal, status table, and the app-target snippet.</p>
+<h4 id="also-here-m2">Also here (M2)<a class="docs-heading-anchor" href="#also-here-m2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><code>ChatModel</code> + <code>ChatView</code> — streaming chat against any <code>InferenceEngine</code>.</li>
+<li><code>ModelPickerView</code> + <code>ModelCatalog.optionsWithFitness(...)</code> — Tier-2 "choose a model" screen that grays out models that won't fit the device.</li>
+<li><code>SafetyBlocklist</code> — the agent's hard sandbox (Pay/Delete/Password…).</li>
+<li><code>ModelManifest</code> — versioned Codable JSON, the seed of a cross-platform catalog.</li>
+<li><code>RootView</code> — onboarding → chat. The <code>../QuenderinApp</code> target wires <code>@main</code>.</li>
+</ul>
+<p>The whole flow runs today on <code>MockInferenceEngine</code> + <code>MockModelDownloader</code>.</p>
+<h4 id="offline-ready-m3">Offline-Ready (M3)<a class="docs-heading-anchor" href="#offline-ready-m3" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>For someone about to lose internet, the <em>download</em> is the make-or-break moment:</p>
+<ul>
+<li><code>DiskSpace</code> — will the model fit? (size estimated from params × quant bits, 300 MB margin)</li>
+<li><code>DownloadPolicy</code> + <code>NetworkStatus</code> — Wi-Fi-only guard; never start on no connection.</li>
+<li><code>BackgroundModelDownloader</code> + <code>DownloadStore</code> — a <strong>background</strong> URLSession that survives the app being suspended, with persisted progress that resumes after relaunch (the foreground downloader's fatal flaw, fixed).</li>
+<li><code>OfflineReadiness</code> / <code>Preflight</code> + <code>OfflineReadinessView</code> — a verifiable <strong>✅ "safe to go offline"</strong> signal: model fully downloaded + disk OK, with a plain-language list of any remaining blockers.</li>
+</ul>
+<p>Logic fully tested; live background download + real connectivity need a device.</p>
+<h4 id="agent-core-m4">Agent Core (M4)<a class="docs-heading-anchor" href="#agent-core-m4" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The vision's perceive → plan → execute loop, in the form iOS allows — a <strong>tool-use</strong> agent, not an OS driver:</p>
+<ul>
+<li><code>AgentTool</code> (+ <code>CalculatorTool</code>, <code>EchoTool</code>) — capabilities the agent owns.</li>
+<li><code>AgentDecision</code> / <code>AgentDecisionParser</code> — the planner's JSON (<code>{&quot;tool&quot;:..}</code> or <code>{&quot;answer&quot;:..}</code>), tolerant of surrounding prose.</li>
+<li><code>AgentLoop</code> — plan (<code>InferenceEngine</code>) → <strong>safety-gate every tool call</strong> (<code>SafetyBlocklist</code>) → run → feed the observation back → repeat → answer, with a step cap. Returns an <code>AgentRun</code> (steps, answer, halt reason).</li>
+<li><code>ScriptedInferenceEngine</code> — deterministic multi-turn engine for tests/previews.</li>
+</ul>
+<blockquote><p>Driving <em>other apps</em> is deliberately excluded — iOS sandboxes it. Real planning quality arrives when llama.cpp is linked; the loop itself is engine-agnostic.</p></blockquote>
+<h4 id="not-yet-here-next-steps">Not yet here (next steps)<a class="docs-heading-anchor" href="#not-yet-here-next-steps" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Link llama.cpp + run on device</strong> — add the <code>llama</code> SwiftPM product / xcframework, run <code>LlamaEngine</code> on a simulator with a small GGUF. The only piece that can't be proven headlessly. <strong>Step-by-step: <a href="#src-apple-quenderinkit-integration-md"><code>INTEGRATION.md</code></a>.</strong></li>
+<li><strong>Generate the app project</strong> — <code>brew install xcodegen &amp;&amp; cd ../QuenderinApp &amp;&amp; xcodegen</code>.</li>
+<li><strong>Real-device perf + battery</strong> — measure tok/s + power on devices; recommend <em>usable</em> models, not just loadable ones.</li>
+<li><strong>Ship it</strong> — Apple Developer account, signing, TestFlight, App Store review.</li>
+<li><strong>M4 agent loop</strong> — perception → plan → execute (safety blocklist already done).</li>
+</ul></section><details class="docs-fold docs-subdoc" id="src-apple-quenderinkit-integration-md"><summary><span><strong>Linking llama.cpp into QuenderinKit</strong> &mdash; <code>apple/QuenderinKit/INTEGRATION.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>apple/QuenderinKit/INTEGRATION.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinKit/INTEGRATION.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="linking-llama-cpp-into-quenderinkit">Linking llama.cpp into QuenderinKit<a class="docs-heading-anchor" href="#linking-llama-cpp-into-quenderinkit" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><code>LlamaEngine.swift</code> already contains the full inference path, gated behind <code>#if canImport(llama)</code>. It compiles to a clean "not linked" fallback until an importable module named <strong><code>llama</code></strong> exists. This guide gives that module.</p>
+<blockquote><p><strong>The one rule:</strong> the module must be named <code>llama</code> — that's what <code>LlamaEngine.swift</code> does <code>import llama</code>.</p></blockquote>
+<blockquote><p><strong>⚠️ Reality check (verified 2026-06-07):</strong> upstream llama.cpp <strong>removed its SwiftPM <code>Package.swift</code> from <code>master</code>.</strong> A plain <code>.package(url:)</code> dependency (the old "easy" route) therefore works <strong>only against an old pinned tag</strong>, and that older tag mismatches the current C API. <strong>The supported path today is the prebuilt xcframework (Route A below).</strong></p></blockquote>
+<blockquote><p><strong>✅ PROVEN BY EXECUTION (2026-06-07, macOS / Xcode 16.2):</strong> not just "the calls match the header" — the exact <code>LlamaEngine</code> sequence was <strong>compiled, linked, and run against a real llama.cpp build with the Metal GPU backend</strong>, producing coherent output ("the sky is blue because tiny particles of gas… scatter light…") at <strong>prefill ~3,800 tok/s · decode ~177 tok/s</strong> for Qwen2.5‑0.5B Q4_K_M on an M‑series Mac. Reproduce it:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>apple/verify-llama-link.sh      # clones+builds llama.cpp, fetches a tiny model, runs inference</code></pre></div>
+<p>It builds <code>apple/tools/llama-smoketest.swift</code> (a standalone mirror of <code>LlamaEngine</code>'s load → tokenize → decode → sample → detokenize) with this module map + flags — the recipe for the system-library target in Route B:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>module llama { header &quot;.../llama.cpp/include/llama.h&quot;  export * }
+swiftc … -Xcc -fmodule-map-file=cllama/module.modulemap \
+         -Xcc -I…/include -Xcc -I…/ggml/include -I cllama -L…/build/bin -lllama</code></pre></div>
+<p><strong>And it runs on iOS too:</strong> the same code was rebuilt for the <strong>iOS simulator arch</strong> and run <strong>on a booted iPhone 16 simulator</strong> via <code>simctl spawn</code> — coherent output, ~160 tok/s (CPU). ⚠️ The iOS <em>simulator's</em> Metal <strong>compute</strong> path is broken (it emits garbage with GPU layers on), so the smoke test forces CPU there (<code>QUENDERIN_NGL=0</code>); <strong>real devices use Metal</strong> (proven on the Mac above). <code>apple/verify-llama-link.sh</code> now does the simulator stage automatically when a simulator is available.</p>
+<p>So the cliff is <strong>crossed</strong>, not just de-risked: the integration compiles, links, and runs both on macOS-Metal and on a simulated iPhone. What genuinely still needs <strong>physical hardware</strong>: the iOS-device xcframework (Route A) and real on-<em>phone</em> tok/s/battery (the Mac/sim numbers are CPU/host ceilings, not a phone result). Every C call matches current <code>master</code> (<code>llama_model_load_from_file</code>, <code>llama_init_from_model</code>, vocab-based <code>llama_tokenize</code>/<code>llama_token_to_piece</code>, the <code>llama_sampler_*</code> chain, 2-arg <code>llama_batch_get_one</code>, <code>llama_vocab_is_eog</code>).</p></blockquote>
+<hr />
+<h4 id="route-a-prebuilt-xcframework-the-supported-path">Route A — Prebuilt xcframework (the supported path) ✅<a class="docs-heading-anchor" href="#route-a-prebuilt-xcframework-the-supported-path" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>1. Build the framework</strong> (one-time, ~minutes; needs Xcode):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>git clone https://github.com/ggml-org/llama.cpp
+cd llama.cpp
+./build-xcframework.sh             # → build-apple/llama.xcframework</code></pre></div>
+<p><strong>2. Place it</strong> under the package and ignore the large binary:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>mkdir -p apple/QuenderinKit/Frameworks
+cp -R build-apple/llama.xcframework apple/QuenderinKit/Frameworks/
+echo &quot;Frameworks/*.xcframework&quot; &gt;&gt; apple/QuenderinKit/.gitignore   # or use Git LFS</code></pre></div>
+<p><strong>3. Edit <code>apple/QuenderinKit/Package.swift</code>:</strong></p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>diff</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>     targets: [
+-        .target(name: &quot;QuenderinKit&quot;),
++        .target(name: &quot;QuenderinKit&quot;, dependencies: [&quot;llama&quot;]),
++        .binaryTarget(name: &quot;llama&quot;, path: &quot;Frameworks/llama.xcframework&quot;),
+         .testTarget(name: &quot;QuenderinKitTests&quot;, dependencies: [&quot;QuenderinKit&quot;]),
+     ]</code></pre></div>
+<p><strong>4. Build</strong> — <code>canImport(llama)</code> flips true, Metal GPU included:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd apple/QuenderinKit &amp;&amp; swift build</code></pre></div>
+<p>The xcframework has a macOS slice, so you can even <code>swift test</code> real inference on your Mac with a small GGUF before touching a simulator.</p>
+<hr />
+<h4 id="route-b-swiftpm-dependency-legacy-old-tags-only">Route B — SwiftPM dependency (legacy, old tags only) ⚠️<a class="docs-heading-anchor" href="#route-b-swiftpm-dependency-legacy-old-tags-only" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Only viable pinned to a tag from <strong>before</strong> the manifest was removed, e.g. a <code>b3xxx</code> build. Not recommended: that older API will differ from <code>LlamaEngine</code>'s current calls, so you'd be fixing drift the xcframework avoids.</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>swift</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>dependencies: [
+    .package(url: &quot;https://github.com/ggml-org/llama.cpp&quot;, exact: &quot;b3600&quot;), // pre-removal
+],
+targets: [
+    .target(name: &quot;QuenderinKit&quot;,
+            dependencies: [.product(name: &quot;llama&quot;, package: &quot;llama.cpp&quot;)]),
+    ...
+]</code></pre></div>
+<p>If <code>swift build</code> fails with "no Package.swift in repository", the tag is past the removal point — bump <em>down</em> to an older one, or just use Route A.</p>
+<hr />
+<h4 id="route-c-headless-source-build-via-quenderin-llama-dir-fastest-to-verify">Route C — Headless source build via <code>$QUENDERIN_LLAMA_DIR</code> (fastest to verify) ✅<a class="docs-heading-anchor" href="#route-c-headless-source-build-via-quenderin-llama-dir-fastest-to-verify" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>For compiling/running the <strong>real</strong> engine on a Mac with no xcframework — and the path the committed regression test (<code>LlamaEngineRealInferenceTests</code>) uses — point the package at a built llama.cpp checkout:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>git clone --depth 1 https://github.com/ggml-org/llama.cpp /tmp/llama.cpp
+cmake -S /tmp/llama.cpp -B /tmp/llama.cpp/build -DBUILD_SHARED_LIBS=ON -DGGML_METAL=ON \
+      -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF \
+      -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
+cmake --build /tmp/llama.cpp/build --target llama -j
+
+# the real LlamaEngine actor compiles + links (#if canImport(llama) goes true):
+QUENDERIN_LLAMA_DIR=/tmp/llama.cpp swift build
+# …and runs end to end against any small GGUF:
+QUENDERIN_LLAMA_DIR=/tmp/llama.cpp QUENDERIN_LLAMA_MODEL=/path/model.gguf \
+  DYLD_LIBRARY_PATH=/tmp/llama.cpp/build/bin \
+  swift test --filter LlamaEngineRealInferenceTests</code></pre></div>
+<p>With <code>QUENDERIN_LLAMA_DIR</code> <strong>unset</strong>, the package is byte-for-byte the mock-only build <code>main</code> always shipped — no dependency, <code>canImport(llama)</code> false. <code>Package.swift</code> adds a <code>llama</code> system-library target (<code>Sources/llama/</code>) plus the <code>-I</code> / <code>-L</code> / <code>-rpath</code> flags <strong>only when it is set</strong>. This links dynamically against a <em>dev</em> build — for a shippable app use the xcframework (Route A); Route C is the fastest path for headless CI/verification on macOS.</p>
+<blockquote><p><strong>Verified 2026-06-07:</strong> with <code>QUENDERIN_LLAMA_DIR</code> set, <code>swift build</code> compiles <code>LlamaEngine</code>'s <code>#if canImport(llama)</code> path (warning-free); <code>swift test</code> runs 153 tests with the gated real-inference test skipping cleanly when the env vars are absent.</p></blockquote>
+<hr />
+<h4 id="authoritative-reference">Authoritative reference<a class="docs-heading-anchor" href="#authoritative-reference" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>llama.cpp ships an official SwiftUI example you can mirror for the binding: <strong><code>examples/llama.swiftui/</code></strong> in the repo, especially its <code>LibLlama.swift</code> wrapper. It's kept in sync with the C API, so if anything in <code>LlamaEngine.swift</code> ever drifts, diff against <code>LibLlama.swift</code> for the current call shape.</p>
+<hr />
+<h4 id="after-linking">After linking<a class="docs-heading-anchor" href="#after-linking" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="1-get-a-model-onto-the-device">1. Get a model onto the device<a class="docs-heading-anchor" href="#1-get-a-model-onto-the-device" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p><code>OnboardingModel</code> downloads to <code>ApplicationSupport/Quenderin/models/&lt;filename&gt;</code>. Start with the smallest catalog entry — <strong><code>llama32-1b-q2</code>, 0.4 GB</strong> (<code>llama-3.2-1b-instruct.Q2_K.gguf</code>). Let the app fetch it via <code>URLSessionModelDownloader</code>, or side-load it into the simulator container.</p>
+<h5 id="2-flip-the-app-to-real">2. Flip the app to real<a class="docs-heading-anchor" href="#2-flip-the-app-to-real" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>In <code>apple/QuenderinApp/Sources/QuenderinApp.swift</code>, swap the two <code>init()</code> lines:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>diff</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>-        let engine: InferenceEngine = MockInferenceEngine()
+-        let downloader: ModelDownloader = MockModelDownloader()
++        let engine: InferenceEngine = LlamaEngine()
++        let downloader: ModelDownloader = URLSessionModelDownloader()</code></pre></div>
+<p>Run on a simulator/device → onboarding downloads + loads the GGUF, chat streams <strong>real</strong> tokens.</p>
+<h5 id="3-optional-prove-it-headlessly-first">3. (Optional) Prove it headlessly first<a class="docs-heading-anchor" href="#3-optional-prove-it-headlessly-first" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>With Route A on macOS, a one-off integration test (not committed — needs a real model file):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>swift</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>func testRealInferenceSmoke() async throws {
+    let engine = LlamaEngine()
+    let url = URL(fileURLWithPath: &quot;/path/to/llama-3.2-1b-instruct.Q2_K.gguf&quot;)
+    try await engine.load(model: ModelCatalog.entry(id: &quot;llama32-1b-q2&quot;)!, at: url)
+    let reply = try await engine.complete(prompt: &quot;Say hello in one word.&quot;)
+    XCTAssertFalse(reply.isEmpty)
+}</code></pre></div>
+<hr />
+<h4 id="troubleshooting">Troubleshooting<a class="docs-heading-anchor" href="#troubleshooting" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong><code>no such module &#x27;llama&#x27;</code></strong> — the binary target isn't in <code>QuenderinKit</code>'s <code>dependencies</code>. Re-check the Package.swift diff.</li>
+<li><strong><code>no Package.swift in repository</code> (Route B)</strong> — your tag is past the manifest removal; pin an older <code>b3xxx</code> tag, or use Route A.</li>
+<li><strong>Linker errors about <code>ggml_*</code></strong> — the xcframework bundles ggml; a hand-built static lib would need ggml linked separately. Route A handles this.</li>
+<li><strong>Metal "default.metallib not found" at runtime</strong> — use Route A; it embeds the Metal library. A bare source build may not.</li>
+<li><strong>App Store / code signing</strong> — a <code>.binaryTarget</code> xcframework links fine; ensure it's an xcframework (multi-slice), not a bare <code>.framework</code>.</li>
+</ul>
+<hr />
+<h4 id="why-main-stays-green-without-any-of-this">Why <code>main</code> stays green without any of this<a class="docs-heading-anchor" href="#why-main-stays-green-without-any-of-this" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><code>LlamaEngine.swift</code> keeps every real call inside <code>#if canImport(llama)</code>. With no <code>llama</code> module that code is skipped and the engine returns a clean <code>.loadFailed</code> (verified by <code>LlamaEngineTests</code>). So the package builds and all 153 tests pass <strong>before</strong> you do any of the above — and the app runs on <code>MockInferenceEngine</code> meanwhile.</p></div></details><details class="docs-fold docs-subdoc" id="src-apple-quenderinapp-readme-md"><summary><span><strong>Quenderin iOS app target</strong> &mdash; <code>apple/QuenderinApp/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>apple/QuenderinApp/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinApp/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-ios-app-target">Quenderin iOS app target<a class="docs-heading-anchor" href="#quenderin-ios-app-target" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The thin SwiftUI app that hosts <code>QuenderinKit</code>. All the logic lives in the package; this is just the <code>@main</code> entry point + Xcode project.</p>
+<h4 id="build-run">Build &amp; run<a class="docs-heading-anchor" href="#build-run" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>brew install xcodegen        # one-time
+cd apple/QuenderinApp
+xcodegen                     # generates Quenderin.xcodeproj from project.yml
+open Quenderin.xcodeproj     # then Run on an iOS Simulator</code></pre></div>
+<p>On launch you'll see the onboarding flow (probe → recommend → download → ready), then the chat screen — all on the <strong>mock</strong> engine, so it works with no model file and no llama.cpp.</p>
+<h4 id="going-real">Going real<a class="docs-heading-anchor" href="#going-real" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>In <code>Sources/QuenderinApp.swift</code>, swap the two lines in <code>init()</code>:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Mock (today)</th><th>Real</th></tr></thead><tbody><tr><td><code>MockInferenceEngine()</code></td><td><code>LlamaEngine()</code> — after linking llama.cpp (see <code>../QuenderinKit/Sources/QuenderinKit/LlamaEngine.swift</code>)</td></tr><tr><td><code>MockModelDownloader()</code></td><td><code>URLSessionModelDownloader()</code></td></tr></tbody></table></div>
+<p>Nothing else changes — both are behind protocol seams, and onboarding + chat share one engine instance.</p>
+<blockquote><p>The <code>.xcodeproj</code> is generated, not committed (see <code>.gitignore</code>). Run <code>xcodegen</code> to (re)create it.</p></blockquote></div></details><details class="docs-fold docs-subdoc" id="src-apple-quenderinapp-tests-readme-md"><summary><span><strong>Bounded Xcode Cloud checks</strong> &mdash; <code>apple/QuenderinApp/Tests/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>apple/QuenderinApp/Tests/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/apple/QuenderinApp/Tests/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="bounded-xcode-cloud-checks">Bounded Xcode Cloud checks<a class="docs-heading-anchor" href="#bounded-xcode-cloud-checks" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The shared <code>Quenderin</code> and <code>QuenderinMac</code> schemes reference the iOS and macOS Cloud test plans. Use <strong>Debug</strong> Test actions on one supported iPhone simulator and one supported macOS destination, one worker each, without repetitions or automatic retries. The iOS app supports iPhone only. These tests require a fresh, ephemeral Cloud install/user; they never reset an existing app profile. An unexpected welcome, saved connection, or conversation state fails the journey. Never execute these plans on a personal Mac or an existing simulator/device. Fresh-state assertions run after the app initializes; they do not prevent its startup persistence access. The execution boundary is the verified ephemeral Xcode Cloud environment, not an asserted test sandbox. A scheme pre-action is not installed as a fail-closed guard because its abort-before-host-launch and build-for-testing semantics have not been verified. Hosted <code>build-for-testing</code> may compile these targets without launching the app or executing the plans.</p>
+<p><code>CloudCredentialStoreTests</code> runs in the actual app test host and checks the production DeepSeek and computer credential stores against the real Keychain. Every item uses a new UUID account, is asserted absent before creation, and gets an exact service/account cleanup registered only after creation. No existing credential is queried. DeepSeek load, update, recreated-store reload, removal, and an older accessibility variant are covered. The computer store has no public removal API, so its test uses an exact Security deletion of its own synthetic item and then verifies absence through a recreated production store.</p>
+<p><code>CloudJourneyTests</code> keeps passing screenshots for first entry and AI consent, the default local route, disconnected DeepSeek/computer forms, opt-in validation consent, locally rejected input and recovery, local draft navigation, a canned reply, settings, saved history and relaunch. On Mac it checks both last-window paths: main alone, and Settings remaining after main closes. Closing the final window must quit, and relaunch must restore a usable main window and saved chat. With Settings alone, Window &gt; Show Main Window and Command-0 must recover the same saved conversation without duplicate main windows. Command-N must recover one main window with an empty, focused composer and retain the previous chat. The app-hosted Mac delegate tests check reopen dispatch intent; the UI journey does not label application activation or that dispatch test as a real Dock click. The form submissions contain deliberate invalid syntax rejected before HTTP; the tests never authorize a provider, pair a Host, or send a cloud inference call. The secure runtime's connection form is required; a missing SDK is a failure.</p>
+<p>The app's existing <strong>Debug-only</strong> <code>QUENDERIN_MOCK_UI=1</code> seam supplies the fake downloader/engine. Its empty model placeholder is not model-weight evidence, and its canned reply identifies itself. The mock completes synchronously, so these journeys cannot reliably assert streaming Stop/Continue. They do not establish real model inference, external provider/Host connectivity, Dock activation, physical hardware behavior, or exact signed Release authentication. No production source, entitlement, Keychain group, or signing permission is changed for tests.</p>
+<p>Preparation is source-only until the bounded Cloud execution exception is authorized. A generated project and parse/configuration checks are not a Cloud build, executed XCTest result, rendered screenshot review, or signed release check.</p></div></details><details class="docs-fold docs-subdoc" id="src-apple-roadmap-md"><summary><span><strong>Quenderin Apple — Roadmap</strong> &mdash; <code>apple/ROADMAP.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>apple/ROADMAP.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/apple/ROADMAP.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-apple-roadmap">Quenderin Apple — Roadmap<a class="docs-heading-anchor" href="#quenderin-apple-roadmap" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<h4 id="goal-milestone-m1-first-run-onboarding">🎯 Goal: Milestone M1 — First-Run Onboarding<a class="docs-heading-anchor" href="#goal-milestone-m1-first-run-onboarding" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<blockquote><p>A fresh install <strong>probes the device → recommends a model → downloads it → loads it → reaches "Ready"</strong> — fully on-device, zero configuration.</p></blockquote>
+<p>This is the smallest end-to-end slice of the vision: <em>download the app, and it just works on your hardware.</em> Everything else (chat UI, agent loop, Android) builds on this spine.</p>
+<h4 id="status">Status<a class="docs-heading-anchor" href="#status" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Piece</th><th>State</th></tr></thead><tbody><tr><td>Hardware probe (RAM / chip)</td><td>✅ <code>HardwareProbe</code>, tested</td></tr><tr><td>Model catalog + RAM tiers</td><td>✅ <code>ModelCatalog</code>, tested</td></tr><tr><td>Recommendation (device → model)</td><td>✅ <code>ModelRecommender</code>, tested (matches desktop)</td></tr><tr><td>Memory fitness check</td><td>✅ <code>MemoryFitness</code>, tested</td></tr><tr><td>Inference seam</td><td>✅ <code>InferenceEngine</code> + <code>MockInferenceEngine</code>, tested</td></tr><tr><td>llama.cpp adapter</td><td>✅ <code>LlamaEngine</code> — <strong>C path PROVEN</strong>: type-checks vs real llama.cpp + runs inference on Mac Metal &amp; iPhone sim (<code>apple/verify-llama-link.sh</code>)</td></tr><tr><td>Model downloader</td><td>✅ <code>ModelDownloader</code> + URLSession impl + mock, mock tested</td></tr><tr><td>Onboarding orchestration</td><td>✅ <code>OnboardingModel</code> state machine, tested</td></tr><tr><td>SwiftUI onboarding shell</td><td>✅ <code>OnboardingView</code> (compiles; render needs simulator)</td></tr><tr><td>Safety blocklist</td><td>✅ <code>SafetyBlocklist</code> (Pay/Delete/Password…), tested</td></tr><tr><td>Shared manifest schema</td><td>✅ <code>ModelManifest</code> (Codable JSON), round-trip tested</td></tr><tr><td><strong>Tier-2 model picker</strong></td><td>✅ <code>ModelPickerView</code> + fitness gating, tested</td></tr><tr><td><strong>Streaming chat (M2)</strong></td><td>✅ <code>ChatModel</code> + <code>ChatView</code>, tested on mock</td></tr><tr><td><strong>App shell</strong></td><td>✅ <code>RootView</code> + <code>QuenderinApp</code> target + xcodegen spec</td></tr><tr><td>Link llama.cpp + run inference</td><td>✅ <strong>PROVEN</strong> — real llama.cpp, Mac Metal (~177 tok/s) + iPhone 16 simulator (~160 tok/s); coherent output</td></tr><tr><td>Real on-<em>phone</em> tok/s + battery</td><td>⛔ <strong>needs you</strong> — a physical iPhone (Mac/sim numbers are a ceiling)</td></tr><tr><td>Generate .xcodeproj + run the app</td><td>⛔ needs you — <code>brew install xcodegen &amp;&amp; xcodegen</code></td></tr></tbody></table></div>
+<h4 id="the-verification-cliff-crossed">The verification cliff — crossed<a class="docs-heading-anchor" href="#the-verification-cliff-crossed" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Everything marked ✅ is proven by <code>swift test</code> on a Mac. The llama.cpp link — long <em>the</em> "needs a device" cliff — is now <strong>proven by execution</strong>: <code>apple/verify-llama-link.sh</code> builds real llama.cpp, type-checks <code>LlamaEngine</code>'s real <code>#if canImport(llama)</code> path against current master, and runs <strong>coherent inference on Mac Metal and a booted iPhone 16 simulator</strong>. It even caught + fixed a real dangling-pointer bug in that path. What genuinely still needs <em>you</em>: a real iPhone for on-phone tok/s/battery, the xcframework packaging (Route A in INTEGRATION.md), and the App Store. The app runs on <code>MockInferenceEngine</code> until you flip the two lines in <code>QuenderinApp.init()</code>.</p>
+<h4 id="running-the-onboarding-flow-today-on-the-mock-engine">Running the onboarding flow today (on the mock engine)<a class="docs-heading-anchor" href="#running-the-onboarding-flow-today-on-the-mock-engine" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><code>OnboardingModel</code> + <code>OnboardingView</code> are usable right now from an Xcode app target:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>swift</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>import SwiftUI
+import QuenderinKit
+
+@main
+struct QuenderinApp: App {
+    @StateObject private var model = OnboardingModel(
+        downloader: MockModelDownloader(),   // swap for URLSessionModelDownloader for real downloads
+        engine: MockInferenceEngine()        // swap for LlamaEngine() once llama.cpp is linked
+    )
+    var body: some Scene {
+        WindowGroup { OnboardingView(model: model) }
+    }
+}</code></pre></div>
+<p>Swap the two mocks for <code>URLSessionModelDownloader()</code> and <code>LlamaEngine()</code> to go real — no other code changes, because both sit behind protocol seams.</p>
+<h4 id="milestones">Milestones<a class="docs-heading-anchor" href="#milestones" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>✅ <strong>M1 — Onboarding:</strong> probe → recommend → download → load → ready.</li>
+<li>✅ <strong>M2 — Chat:</strong> stream tokens from the loaded model into a SwiftUI chat view.</li>
+<li>✅ <strong>M3 — Offline-Ready:</strong> make the pre-trip download trustworthy for someone about to lose internet — <code>DiskSpace</code> (room check), <code>DownloadPolicy</code> (Wi-Fi-only guard), <code>BackgroundModelDownloader</code> + <code>DownloadStore</code> (survives suspension / resumes after relaunch), and <code>OfflineReadiness</code> / <code>Preflight</code> (a verifiable "✅ safe to go offline" signal). Logic all tested; live background download + real connectivity need a device.</li>
+<li>✅ <strong>M4 — Agent core:</strong> an on-device <strong>tool-use</strong> loop (<code>AgentLoop</code>): plan (via <code>InferenceEngine</code>) → safety-gate (<code>SafetyBlocklist</code>) → run a tool → observe → repeat → answer. Ships <code>CalculatorTool</code>/<code>EchoTool</code>, lenient JSON planner parsing (<code>AgentDecision</code>), and <code>ScriptedInferenceEngine</code> for deterministic tests. Fully tested. (Driving <em>other apps</em> is intentionally out of scope — iOS sandboxes that; the agent acts through tools it owns. Real planning quality needs llama.cpp linked.)</li>
+<li><strong>M5 — Android:</strong> Kotlin app + JNI adapter over the <em>same</em> llama.cpp.</li>
+<li><strong>Shared manifest:</strong> <code>ModelManifest</code> schema is done; next, emit it from the desktop TS app so all three platforms read one JSON instead of hand-syncing.</li>
+</ul>
+<blockquote><p>The whole onboarding → chat flow runs <strong>today</strong> on <code>MockInferenceEngine</code> + <code>MockModelDownloader</code> (see <code>RootView</code> / <code>QuenderinApp</code>). Only real on-device inference is gated on linking llama.cpp.</p></blockquote></div></details><details class="docs-fold docs-subdoc" id="src-docs-audits-2026-07-02-oss-audit-mlx-swift-md"><summary><span><strong>OSS Audit — Apple MLX Swift LLM stack vs llama.cpp for Quenderin (iOS/macOS)</strong> &mdash; <code>docs/audits/2026-07-02-oss-audit-mlx-swift.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/audits/2026-07-02-oss-audit-mlx-swift.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/audits/2026-07-02-oss-audit-mlx-swift.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="oss-audit-apple-mlx-swift-llm-stack-vs-llama-cpp-for-quenderin-ios-macos">OSS Audit — Apple MLX Swift LLM stack vs llama.cpp for Quenderin (iOS/macOS)<a class="docs-heading-anchor" href="#oss-audit-apple-mlx-swift-llm-stack-vs-llama-cpp-for-quenderin-ios-macos" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Date:</strong> 2026-07-02 <strong>Auditor:</strong> automated code audit (scratchpad clones, no Quenderin repo access) <strong>Repos audited (shallow clones):</strong></p>
+<ul>
+<li><code>ml-explore/mlx-swift-examples</code> (example apps only — LLM libs moved out)</li>
+<li><code>ml-explore/mlx-swift-lm</code> (<strong>the real target</strong> — <code>MLXLLM</code> + <code>MLXLMCommon</code> live here now)</li>
+<li><code>ml-explore/mlx-swift</code> (grep-only — MLX core + Metal)</li>
+</ul>
+<blockquote><p><strong>Structural note that changes the whole picture:</strong> the LLM libraries <code>MLXLLM</code> / <code>MLXLMCommon</code> are <strong>no longer in <code>mlx-swift-examples</code></strong>. They were extracted into a standalone package <strong><code>mlx-swift-lm</code></strong> (<code>mlx-swift-examples.xcodeproj/project.pbxproj:3915</code> → <code>https://github.com/ml-explore/mlx-swift-lm.git</code>). <code>mlx-swift-examples</code> now only carries the sample apps (LLMEval, MLXChatExample, LLMBasic, …) which <code>import MLXLLM</code> / <code>import MLXLMCommon</code> from that package. All file:line cites below are in <code>mlx-swift-lm</code> unless prefixed with <code>mlx-swift-examples/</code>.</p></blockquote>
+<hr />
+<h4 id="1-tl-dr-verdict">1. TL;DR — verdict<a class="docs-heading-anchor" href="#1-tl-dr-verdict" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>Recommendation: stay on llama.cpp for the shipping engine. Adopt MLX only as an optional, macOS-first <em>second backend</em> behind the same engine seam, if and when a measured win justifies it. Do NOT rip out llama.cpp.</strong></p>
+<p>Rationale, evidence-first:</p>
+<ol>
+<li><strong>MLX cannot load our GGUF catalog. Safetensors only.</strong> <code>Load.swift:25</code> handles only <code>url.pathExtension == &quot;safetensors&quot;</code>; PyTorch <code>.bin</code> is explicitly rejected (<code>ModelConversion.swift:165</code>). The single "gguf" string in the repo is a wired-memory doc listing file extensions to lock in RAM (<code>Documentation.docc/wired-memory.md:39</code>), <strong>not a loader</strong>. Adopting MLX means a <strong>parallel model catalog</strong> (MLX-format safetensors from <code>mlx-community/*</code> on HF), parallel sha256 pins, and parallel download/verify — our entire GGUF acquisition layer does not transfer.</li>
+<li><strong>No published perf numbers in-repo to justify a switch.</strong> There is a benchmark <em>harness</em> (<code>Libraries/BenchmarkHelpers/BenchmarkHelpers.swift</code>, fetches Pride &amp; Prejudice and measures load/prefill/decode) but <strong>zero committed tok/s figures</strong> anywhere in the tree (grep for <code>tok/s</code>, <code>tokens per second</code>, hard numbers → none in READMEs or source). So the core "is MLX faster?" question <strong>is not answered by this repo</strong> — it would need our own on-device A/B. Do not switch on faith.</li>
+<li><strong>Platform floor is higher than ours.</strong> MLX-swift-lm requires <strong>iOS 17 / macOS 14 / visionOS 1 / tvOS 17</strong> (<code>Package.swift:9-13</code>). Our llama.cpp build presumably reaches older iOS. For the <strong>macOS client</strong> this is a non-issue (macOS 14 is fine); for <strong>iOS</strong> it raises the floor.</li>
+<li><strong>Where MLX plausibly wins is exactly our upcoming macOS client</strong>: plentiful unified RAM, MLX's native 4/8-bit weights + quantized KV, and a genuinely nice <code>AsyncStream&lt;Generation&gt;</code> + <code>ChatSession</code> API. That's the hybrid: <strong>MLX as an experimental macOS backend, llama.cpp everywhere we already ship (iOS + the Android side stays llama.cpp regardless — MLX is Apple-only).</strong></li>
+</ol>
+<p><strong>Net:</strong> hybrid, conservatively. The engine seam (<code>#if canImport(llama)</code>) is already the right shape to host a second <code>#if canImport(MLX)</code> backend. Keep llama.cpp as the default; prototype MLX on macOS behind a flag; only promote it if our own benchmark shows a real tok/s or memory win on target hardware.</p>
+<hr />
+<h4 id="2-capability-table-mlx-swift-lm-vs-llama-cpp-for-our-needs">2. Capability table — MLX-swift-lm vs llama.cpp for OUR needs<a class="docs-heading-anchor" href="#2-capability-table-mlx-swift-lm-vs-llama-cpp-for-our-needs" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Need</th><th>MLX-swift-lm</th><th>llama.cpp (our current)</th><th>Winner for us</th></tr></thead><tbody><tr><td><strong>Load GGUF</strong></td><td>❌ No. safetensors only (<code>Load.swift:25</code>; <code>.bin</code> rejected <code>ModelConversion.swift:165</code>)</td><td>✅ Native GGUF</td><td><strong>llama.cpp</strong></td></tr><tr><td><strong>Reuse our HF GGUF catalog / sha256 pins</strong></td><td>❌ Needs MLX-format safetensors (<code>mlx-community/*</code>); new catalog + new pins</td><td>✅ Already ours</td><td><strong>llama.cpp</strong></td></tr><tr><td><strong>Quantized weights</strong></td><td>✅ Group-wise 4/8-bit, affine mode (<code>BaseConfiguration.swift:22-29</code>)</td><td>✅ Q4_K_M etc.</td><td>tie</td></tr><tr><td><strong>Quantized KV cache</strong></td><td>✅ <code>QuantizedKVCache(groupSize:64, bits:8)</code> default (<code>KVCache.swift:821,828</code>) + native quantized SDPA</td><td>✅ (<code>cache-type-k/v</code>)</td><td>tie</td></tr><tr><td><strong>Sliding-window / rotating KV</strong></td><td>✅ <code>RotatingKVCache(maxSize:keep:step:)</code> (<code>KVCache.swift:518,528</code>) — keep-prefix + rotate</td><td>✅ context-shift (ours)</td><td>tie</td></tr><tr><td><strong>Prompt-cache persist to disk</strong></td><td>✅ <code>savePromptCache</code>/<code>loadPromptCache</code> to <code>.safetensors</code>, Python-compatible (<code>KVCache.swift:1591,1637</code>)</td><td>partial (in-mem KV reuse)</td><td><strong>MLX</strong></td></tr><tr><td><strong>Streaming API shape</strong></td><td>✅ <code>AsyncStream&lt;Generation&gt;</code> (<code>.chunk</code>/<code>.info</code>/<code>.toolCall</code>) <code>Evaluate.swift:2052</code>; <code>ChatSession.streamResponse → AsyncThrowingStream&lt;String&gt;</code> (<code>ChatSession.swift:479</code>)</td><td>C callback loop we wrap</td><td><strong>MLX</strong> (ergonomics)</td></tr><tr><td><strong>Chat templates</strong></td><td>✅ <code>applyChatTemplate(messages:tools:)</code> via swift-transformers + <strong>swift-jinja</strong> (<code>Tokenizer.swift:16</code>) — real Jinja, tools supported</td><td><code>llama_chat_apply_template</code> (built-in templates)</td><td>MLX (Jinja is a superset)</td></tr><tr><td><strong>Prefill batching</strong></td><td>✅ <code>prefillStepSize</code> default 512 (<code>Evaluate.swift:134</code>)</td><td>✅ n_batch</td><td>tie</td></tr><tr><td><strong>Speculative / draft decoding</strong></td><td>✅ <code>SpeculativeTokenIterator</code>, draft model, MTP drafter (<code>Evaluate.swift:771</code>; <code>MTPDrafterModel.swift</code>)</td><td>✅ (llama.cpp has it)</td><td>tie</td></tr><tr><td><strong>Memory controls</strong></td><td>✅ <code>Memory.cacheLimit</code> + <strong>wired-limit ticket/policy system</strong> tied to <code>GPU.maxRecommendedWorkingSetBytes()</code> (<code>WiredMemoryPolicies.swift</code>)</td><td>metal offload flags</td><td><strong>MLX</strong> (richer)</td></tr><tr><td><strong>Thermal-adaptive threading</strong></td><td>n/a (GPU/Metal, unified)</td><td>✅ ours</td><td>llama.cpp (our lever)</td></tr><tr><td><strong>OS floor</strong></td><td>iOS 17 / macOS 14 (<code>Package.swift:9-13</code>)</td><td>lower</td><td><strong>llama.cpp</strong></td></tr><tr><td><strong>Binary/dep weight</strong></td><td>Heavy: bundles MLX C++/Metal core + swift-transformers + swift-huggingface + swift-syntax macros</td><td>Single prebuilt <code>llama.xcframework</code>, zero SPM deps</td><td><strong>llama.cpp</strong></td></tr><tr><td><strong>Model catalog (Qwen3?)</strong></td><td>✅ Qwen3 dense/MoE/3.5, Qwen2.5, Llama3, Gemma2/3/3n/4, Phi3.5, Mistral, DeepseekV3 (<code>LLMModelFactory.swift:41-83</code>)</td><td>✅ any GGUF</td><td>tie (both have Qwen3)</td></tr><tr><td><strong>Licensing</strong></td><td>MIT (<code>LICENSE:1</code>)</td><td>MIT</td><td>tie</td></tr><tr><td><strong>Android</strong></td><td>❌ Apple-only (Metal)</td><td>✅</td><td><strong>llama.cpp</strong></td></tr></tbody></table></div>
+<p><strong>Bottom line of the table:</strong> MLX wins on API ergonomics, prompt-cache persistence, and memory-limit machinery. llama.cpp wins on the two things that actually gate a migration for <em>us</em>: <strong>GGUF catalog reuse</strong> and <strong>lower OS floor + tiny dependency footprint + cross-platform (Android)</strong>.</p>
+<hr />
+<h4 id="3-migration-cost-estimate-what-in-quenderinkit-would-change">3. Migration cost estimate — what in QuenderinKit would change<a class="docs-heading-anchor" href="#3-migration-cost-estimate-what-in-quenderinkit-would-change" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The engine seam is <strong>not</strong> the expensive part. The model-acquisition layer is.</p>
+<div class="docs-table-wrap"><table><thead><tr><th>QuenderinKit layer</th><th>Change under MLX adoption</th><th>Cost</th></tr></thead><tbody><tr><td><strong>Engine seam</strong> (<code>#if canImport(llama)</code>)</td><td>Add a parallel <code>#if canImport(MLX)</code> backend; both conform to a common <code>InferenceEngine</code> protocol. MLX's <code>generate(...) -&gt; AsyncStream&lt;Generation&gt;</code> maps cleanly to a token stream.</td><td><strong>Low–Med</strong> — the seam already exists</td></tr><tr><td><strong>Model catalog / registry</strong></td><td><strong>Rewrite.</strong> MLX wants MLX-format safetensors (<code>mlx-community/…-4bit</code>), not our GGUF ids. New entries, new HF repos, new quant naming. Our Qwen3 4B Q4_K_M ≠ <code>mlx-community/Qwen3-4B-4bit</code>.</td><td><strong>High</strong> — parallel catalog</td></tr><tr><td><strong>Download + sha256 pinning</strong></td><td>Rewrite. MLX pulls a <strong>snapshot of many files</strong> (<code>*.safetensors</code> + tokenizer + config, <code>ModelFactory.swift:7</code>) via swift-huggingface's hub downloader, not our single-GGUF + single-sha256 flow. Pin the whole snapshot or per-shard.</td><td><strong>High</strong> — different acquisition model</td></tr><tr><td><strong>Chat templating</strong></td><td>Small. Move from <code>llama_chat_apply_template</code> to <code>applyChatTemplate</code> (Jinja via swift-transformers). Behaviorally equivalent-or-better, but a code path swap.</td><td><strong>Low</strong></td></tr><tr><td><strong>KV-cache / context-shift</strong></td><td>Re-map our context-shift onto <code>RotatingKVCache</code> (<code>maxSize</code>/<code>keep</code>/<code>step</code>). Concepts align. Optionally gain disk prompt-cache.</td><td><strong>Low–Med</strong></td></tr><tr><td><strong>Memory / thermal policy</strong></td><td>Our thermal thread-count lever is llama.cpp-specific and doesn't apply to MLX (GPU/unified). Under MLX we'd adopt <code>Memory.cacheLimit</code> + wired-limit policies instead. Two different tuning models to maintain.</td><td><strong>Med</strong></td></tr><tr><td><strong>Dependencies</strong></td><td>Currently <em>zero</em> external SPM deps. MLX adds: <code>mlx-swift</code>, <code>swift-transformers</code>, <code>swift-huggingface</code>, <code>swift-syntax</code> (macros) + transitive (swift-nio, swift-crypto, yyjson, swift-jinja…). Big footprint jump.</td><td><strong>Med</strong> — violates the "zero deps" property</td></tr></tbody></table></div>
+<p><strong>Verdict on cost:</strong> the engine seam alone is a weekend. But MLX drags in a <strong>whole parallel model-acquisition + catalog + pinning subsystem</strong> because it is safetensors/HF-snapshot-native. That is the real bill, and it's why a <em>hybrid</em> (MLX as an optional macOS backend, gated, with its own small MLX catalog) is far cheaper than a <em>migration</em>.</p>
+<hr />
+<h4 id="4-performance-evidence-found-in-repo">4. Performance evidence found in-repo<a class="docs-heading-anchor" href="#4-performance-evidence-found-in-repo" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>None quantitative.</strong> This is important and I will not invent numbers.</p>
+<ul>
+<li>A benchmark <strong>harness</strong> exists — <code>Libraries/BenchmarkHelpers/BenchmarkHelpers.swift</code> (<code>BenchmarkStats</code>, <code>BenchmarkTextSource.prideAndPrejudice</code>) measures model load, tokenizer, prefill, and decode timings.</li>
+<li>Runtime metrics are computed and exposed: <code>GenerateCompletionInfo.tokensPerSecond</code> / <code>.promptTokensPerSecond</code> (<code>Evaluate.swift:1082-1094</code>, <code>2007-2012</code>), surfaced through the <code>Generation.info</code> stream case.</li>
+<li><strong>But there are no committed tok/s results</strong> in any README or source file (grep for <code>tok/s</code>, <code>tokens per second</code>, and bare numeric <code>tok</code> across <code>*.md</code>/<code>*.swift</code> → zero hits with actual figures).</li>
+</ul>
+<p><strong>Consequence:</strong> the headline question — "is MLX faster / lower-memory than llama.cpp on A17+/M-series?" — <strong>cannot be answered from this repo</strong>. It must be measured on our own hardware with our own models before any adoption decision. The harness above is a good starting point for that A/B.</p>
+<hr />
+<h4 id="5-cleverness-worth-stealing-regardless-of-adoption">5. Cleverness worth stealing regardless of adoption<a class="docs-heading-anchor" href="#5-cleverness-worth-stealing-regardless-of-adoption" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>These are portable ideas we can bring into the llama.cpp path today:</p>
+<ol>
+<li><strong>Disk-persisted prompt cache</strong> (<code>KVCache.swift:1591 savePromptCache</code>, <code>1637 loadPromptCache</code>; <code>ChatSession.swift:306</code> "prefix caching"). Prefill a long shared context (system prompt + pinned document) <strong>once</strong>, serialize the KV state to a file, and restore it across app launches — skipping re-prefill entirely. llama.cpp has <code>llama_state_seq_save_file</code>/<code>load_file</code>; we likely don't use it yet. Big latency win for a fixed system prompt. <strong>Steal this.</strong></li>
+<li><strong>Wired-memory ticket/policy system</strong> (<code>WiredMemoryPolicies.swift</code> — <code>WiredSumPolicy</code>, <code>WiredMaxPolicy</code>, <code>WiredFixedPolicy</code>, <code>WiredBudgetPolicy</code>; <code>WiredMemoryUtils.tune(...)</code> measures weights + KV + prefill workspace, <code>WiredMemoryUtils.swift:145-175</code>). It clamps wired RAM to <code>GPU.maxRecommendedWorkingSetBytes()</code> and does <strong>admission control</strong> (<code>canAdmit</code>) before starting work. The <em>pattern</em> — measure weights+KV+workspace, set a budget, refuse work that won't fit — is exactly the memory-pressure discipline we want on iOS regardless of engine.</li>
+<li><strong><code>AsyncStream&lt;Generation&gt;</code> with a 3-case enum</strong> (<code>.chunk</code> / <code>.info</code> / <code>.toolCall</code>, <code>Evaluate.swift:2052</code>). Clean model for our SwiftUI layer: text deltas, a terminal metrics payload, and tool calls on one stream. Worth mirroring in our engine wrapper's public API even over llama.cpp.</li>
+<li><strong><code>ChatSession</code> façade</strong> (<code>ChatSession.swift</code>): <code>respond(to:) async -&gt; String</code> and <code>streamResponse(to:) -&gt; AsyncThrowingStream&lt;String&gt;</code> that internally own the KV cache across turns, support tool dispatch, and can be seeded from a loaded prompt cache. A tidy conversation-state abstraction to emulate.</li>
+<li><strong><code>prefillStepSize</code> (default 512)</strong> batched prefill (<code>Evaluate.swift:134</code>) — confirm our llama.cpp <code>n_batch</code> for prompt ingestion is tuned similarly; cheap throughput on long prompts.</li>
+</ol></div></details>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="cross-platform-parity"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Cross-Platform Parity &amp; Verification</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="android-mobile"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Android Native &amp; Mobile Build</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-apple-quenderinkit-readme-md">apple/QuenderinKit/README.md</a></li><li><a class="is-depth-3" href="#quenderinkit">QuenderinKit</a></li><li><a class="is-depth-2" href="#src-apple-quenderinkit-integration-md">apple/QuenderinKit/INTEGRATION.md</a></li><li><a class="is-depth-3" href="#linking-llama-cpp-into-quenderinkit">Linking llama.cpp into QuenderinKit</a></li><li><a class="is-depth-2" href="#src-apple-quenderinapp-readme-md">apple/QuenderinApp/README.md</a></li><li><a class="is-depth-3" href="#quenderin-ios-app-target">Quenderin iOS app target</a></li><li><a class="is-depth-2" href="#src-apple-quenderinapp-tests-readme-md">apple/QuenderinApp/Tests/README.md</a></li><li><a class="is-depth-3" href="#bounded-xcode-cloud-checks">Bounded Xcode Cloud checks</a></li><li><a class="is-depth-2" href="#src-apple-roadmap-md">apple/ROADMAP.md</a></li><li><a class="is-depth-3" href="#quenderin-apple-roadmap">Quenderin Apple — Roadmap</a></li><li><a class="is-depth-2" href="#src-docs-audits-2026-07-02-oss-audit-mlx-swift-md">docs/audits/2026-07-02-oss-audit-mlx-swift.md</a></li><li><a class="is-depth-3" href="#oss-audit-apple-mlx-swift-llm-stack-vs-llama-cpp-for-quenderin-ios-macos">OSS Audit — Apple MLX Swift LLM stack vs llama.cpp for Quenderin (iOS/macOS)</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

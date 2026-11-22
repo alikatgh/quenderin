@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Brand, Design System &amp; Visual Assets — Quenderin Docs</title>
+<meta name="description" content="Quenderin brand rules, anti-slop criteria, paper/teal/copper tokens, DINish + ChunkFive + Lucide typography, and icon pipeline." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/brand-design" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design" class="is-active" aria-current="page"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Quality, Research &amp; Evolution</span></div><div class="docs-kicker"><span class="qi qi-award" aria-hidden="true"></span>Design · Typography &amp; Tokens</div><h1>Brand, Design System &amp; Visual Assets</h1><p class="docs-lead">Quenderin brand rules, anti-slop criteria, paper/teal/copper tokens, DINish + ChunkFive + Lucide typography, and icon pipeline.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>12 min read (2,805 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>5 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 5 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/BRAND.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/BRAND.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/DESIGN_SYSTEM.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/DESIGN_SYSTEM.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/ICON_EXTRACTION.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/ICON_EXTRACTION.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/website/icons/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>website/icons/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/audits/2026-07-11-website-audit.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/audits/2026-07-11-website-audit.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-brand-md">docs/BRAND.md</a></li><li><a class="is-depth-3" href="#quenderin-brand-anti-slop-guide">Quenderin brand &amp; anti-slop guide</a></li><li><a class="is-depth-2" href="#src-docs-design-system-md">docs/DESIGN_SYSTEM.md</a></li><li><a class="is-depth-3" href="#quenderin-design-system">Quenderin Design System</a></li><li><a class="is-depth-2" href="#src-docs-icon-extraction-md">docs/ICON_EXTRACTION.md</a></li><li><a class="is-depth-3" href="#cutting-a-perfect-app-icon-out-of-ai-generated-artwork">Cutting a perfect app icon out of AI-generated artwork</a></li><li><a class="is-depth-2" href="#src-website-icons-readme-md">website/icons/README.md</a></li><li><a class="is-depth-3" href="#model-discovery-marks">Model discovery marks</a></li><li><a class="is-depth-2" href="#src-docs-audits-2026-07-11-website-audit-md">docs/audits/2026-07-11-website-audit.md</a></li><li><a class="is-depth-3" href="#website-audit-2026-07-11">website/ audit — 2026-07-11</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-docs-brand-md"><h2 id="src-docs-brand-md-heading">Quenderin brand &amp; anti-slop guide</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/BRAND.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/BRAND.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-brand-anti-slop-guide">Quenderin brand &amp; anti-slop guide<a class="docs-heading-anchor" href="#quenderin-brand-anti-slop-guide" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Written 2026-07-03, after the owner's verdict on the previous design: <em>"total AI-slop."</em> The diagnosis and the plan below drove the redesign shipped that day (commits <code>caecb4f</code>, <code>9b109fb</code>). This is the living reference for future design work — check new UI, pages, and copy against it before shipping.</p>
+<h4 id="the-diagnosis">The diagnosis<a class="docs-heading-anchor" href="#the-diagnosis" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The individual pieces were competently executed, but the <em>choices</em> were all median choices — and that's what reads as AI-slop. <strong>Slop isn't sloppiness; it's the absence of decisions only we would make.</strong> The test: remove the elf and the word "Quenderin" — if what remains could be any of fifty local-LLM projects, it's slop.</p>
+<h5 id="the-tells-banned-check-every-new-page-screen-against-this-list">The tells (banned — check every new page/screen against this list)<a class="docs-heading-anchor" href="#the-tells-banned-check-every-new-page-screen-against-this-list" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Template genetics.</strong> The old palette was literally Stripe's <code>#635BFF</code> on the Stripe-pattern hero (animated blob gradient, eyebrow → huge headline → lede → CTA pair → spec strip). Every AI-generated landing page converges on exactly this because it's the median of the training data. Banned: purple <code>#635BFF</code>/<code>#8B83FF</code>, animated/mesh gradient backgrounds, bento-for-bento's-sake.</li>
+<li><strong>AI cadence in copy.</strong> "Offline · Private · Yours." "Download once. Run forever." "No internet, no API keys, no telemetry." Triplets, mirrored aphorisms, zero risk. No human wrote those sentences angry or excited. Banned: rule-of-three slogans, "forever", mirrored aphorisms, unmeasured superlatives.</li>
+<li><strong>Uniform glossiness, zero specificity.</strong> No dates, no device names, no measured numbers, no admitted trade-offs, no opinions. Uniform polish is the texture of generated work. Required instead: at least one real number with a source, per page.</li>
+<li><strong>Fake product imagery.</strong> Hand-built CSS mockups of the app drift from the product and read as generated. Product images are RENDERED FROM THE REAL UI via <code>WebsiteAssetRenderTests</code> (<code>QUENDERIN_RENDER_ASSETS=&lt;dir&gt; swift test --filter WebsiteAssetRender</code>) — regenerate when the UI changes.</li>
+</ul>
+<h4 id="the-three-genuine-assets-nobody-can-fake-these-lean-on-them">The three genuine assets (nobody can fake these — lean on them)<a class="docs-heading-anchor" href="#the-three-genuine-assets-nobody-can-fake-these-lean-on-them" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li><strong>The elf.</strong> Distinctive, slightly weird, memorable — and the name <em>Quenderin</em> is straight out of Tolkien's <em>Quendi</em>, "the speakers." An AI that <em>speaks</em>, living quietly in your pocket, off the grid. The artwork carries motifs (the Tengwar-style script on her face, the knotwork on the choker) usable as dividers, borders, loading states. No template has those.</li>
+<li><strong>Our honesty.</strong> <code>apple/REALITY.md</code> says "~3.8 tok/s on an S23 before tuning" and "treat these columns as estimates"; the app ships a model graded quality <strong>Low</strong>. No marketing site admits that — which is exactly why publishing it is instantly, recognizably human. Claims are slop; evidence is genuine. (Shipped as <code>website/reality.html</code> — keep it current.)</li>
+<li><strong>The voice we already write in privately.</strong> Commit messages and docs here have opinions ("a hash you can't copy is decoration"). Public copy should sound like that: <em>"It's a 1B model. It will sometimes be confidently wrong. It will also answer you three days into a hike."</em> First person, specific, trade-offs included.</li>
+</ol>
+<h4 id="the-plan-and-where-it-stands">The plan, and where it stands<a class="docs-heading-anchor" href="#the-plan-and-where-it-stands" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>#</th><th>Change</th><th>Status</th></tr></thead><tbody><tr><td>1</td><td><strong>Palette derived from the elf artwork, not Stripe</strong> — teal braids <code>#52939A</code>/<code>#2E7680</code>, copper pendant <code>#EDA04F</code>/<code>#C46B2C</code>, gold engraving <code>#F7C259</code>, warm paper, teal-ink. Token sources: <code>apple/.../Theme.swift</code>, <code>android/.../ui/Theme.kt</code>, <code>website/styles.css :root</code>, documented in <code>docs/DESIGN_SYSTEM.md</code>. If the art changes, RESAMPLE (PIL hue-band sampling) — don't guess.</td><td>✅ shipped <code>9b109fb</code></td></tr><tr><td>2</td><td><strong>Kill the blob-gradient hero</strong> — still teal-ink + two quiet glows, real screenshot, restraint over spectacle. Removed site-wide.</td><td>✅ shipped <code>9b109fb</code></td></tr><tr><td>3</td><td><strong>Copy in dev-log voice</strong> — measured numbers ("~15 tok/s on an iPhone 12, measured"), first person, admitted limits. English done; <strong>the 11 non-EN translations still carry the old copy</strong> (i18n keys override the new English).</td><td>🟡 EN done; retranslation open</td></tr><tr><td>4</td><td><strong>Publish the homework</strong> — <code>website/reality.html</code>: measured decode table (interpolations labeled), the honesty list, links to REALITY.md / research / bug journal.</td><td>✅ shipped <code>9b109fb</code></td></tr><tr><td>5</td><td><strong>Typography with a point of view</strong> — Bricolage Grotesque (self-hosted, OFL) already carries headlines. Still open: the artwork motifs (facial script, knotwork) as section dividers / borders / a loading state; consider a storybook-leaning display refinement.</td><td>🟡 partly; motifs unexplored</td></tr></tbody></table></div>
+<h4 id="still-open-future-work">Still open (future work)<a class="docs-heading-anchor" href="#still-open-future-work" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Retranslate the rewritten strings for the 11 non-English locales (<code>website/i18n/*.json</code>).</li>
+<li>Extract the engraving/knotwork motifs from <code>brand/icon-source.png</code> into SVG accents (section dividers, empty states, a loading spinner with the choker knot).</li>
+<li>Sweep the marketing subpages (<code>features.html</code>, <code>how-it-works.html</code>, <code>models.html</code>, <code>faq.html</code>) for leftover AI-cadence copy — the token/palette cascade already restyled them, but the words haven't had the voice pass.</li>
+<li>The elf could earn a name and a one-paragraph lore note (Quendi, "the speakers") on an about page — quiet, not cosplay.</li>
+<li>OG image (<code>og-image.png</code>) still shows the old branding — regenerate from the new identity.</li>
+</ul></section><details class="docs-fold docs-subdoc" id="src-docs-design-system-md"><summary><span><strong>Quenderin Design System</strong> &mdash; <code>docs/DESIGN_SYSTEM.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/DESIGN_SYSTEM.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/DESIGN_SYSTEM.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-design-system">Quenderin Design System<a class="docs-heading-anchor" href="#quenderin-design-system" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The bar (owner's words): <strong>world-class UI on all three clients — Android, iOS, macOS — each in its platform's native idiom.</strong> The UI <em>is</em> the product; "private on-device AI" earns trust through composure and polish. This doc extends <code>~/.claude/UI_DESIGN_RULES.md</code> (which always wins on conflict) with Quenderin's tokens, components, and per-platform idioms.</p>
+<h4 id="1-token-twins-one-source-of-truth-per-platform-kept-in-lockstep">1. Token twins — ONE source of truth per platform, kept in lockstep<a class="docs-heading-anchor" href="#1-token-twins-one-source-of-truth-per-platform-kept-in-lockstep" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Tokens</th><th>Android</th><th>Apple</th></tr></thead><tbody><tr><td>Colors, bubble colors, status accent</td><td><code>android/.../ui/Theme.kt</code> (<code>QuenderinColors</code>, <code>DarkScheme</code>)</td><td><code>apple/.../Theme.swift</code> (<code>QuenderinPalette</code>)</td></tr><tr><td>Shapes (bubble tails, cards, pills)</td><td><code>QuenderinShapes</code></td><td><code>BubbleShape</code> + per-view corner radii</td></tr><tr><td>Device noun in copy ("phone"/"Mac")</td><td>n/a (phone-only)</td><td><code>deviceNoun</code> (Theme.swift)</td></tr></tbody></table></div>
+<p>Key values (change BOTH files or neither). <strong>The palette is derived from the brand artwork</strong> (<code>brand/icon-square-1024.png</code>): teal = her braids/eyes/choker, copper = the "Q" pendant, warm paper for light surfaces. Sampled 2026-07-03 — if the art changes, resample; don't guess:</p>
+<ul>
+<li>Brand teal <code>#2E7680</code> (light primary), bright <code>#52939A</code> (dark primary), deep <code>#1C4E5D</code> · copper accent <code>#EDA04F</code> (numbers/warm highlights; site CTAs <code>#C46B2C</code>)</li>
+<li>Dark bg <code>#0B0F10</code> · surface <code>#141A1B</code> · surfaceVariant <code>#1C2426</code> · light bg <code>#F5F4EF</code> (paper)</li>
+<li>Status green <code>#37C98B</code> (dot) / <code>#8FE8C4</code> (text) — the "on-device · private" accent</li>
+<li>Bubbles: user <code>#245A62</code> dark / <code>#2E7680</code> light, assistant = surfaceVariant; 18dp corners, 4dp tail toward the speaker</li>
+<li>Cards: 16dp radius (12 on Apple picker/shortfall cards), hairline borders, <strong>no shadows</strong></li>
+</ul>
+<h4 id="2-component-language">2. Component language<a class="docs-heading-anchor" href="#2-component-language" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Status dot + word</strong> is the universal state badge: green "Fits"/"on-device", orange "Tight"/ "Not enough free space", red "Too big". Never a bare unexplained checkmark.</li>
+<li><strong>Structured warning card</strong>, never a wall of colored text: status dot + short semibold headline + ONE plain-toned sentence carrying the two numbers that matter. (<code>StorageShortfallCard</code>, both platforms.)</li>
+<li><strong>Model picker rows</strong>: title (semibold) · one-line family blurb (<code>modelBlurb</code>) · monospaced-digit meta ("4.7 GB · Q4_K_M · needs ~6.5 GB RAM") · fit badge right · recommended row gets a brand-tinted hairline + "RECOMMENDED FOR THIS DEVICE" tag · ineligible rows dimmed + the reason.</li>
+<li><strong>Selection reads through COLOR only</strong> — geometry (padding, size, borders-width) is identical in every state (speed-dial chips, nav tabs).</li>
+<li><strong>Markdown in assistant bubbles</strong> (headings, bold, lists, code blocks); user messages stay literal.</li>
+<li>Drawn (Canvas/SF-Symbol) icons only; no icon-font/emoji glyphs in chrome.</li>
+</ul>
+<h4 id="3-flow-rules-learned-enforced">3. Flow rules (learned, enforced)<a class="docs-heading-anchor" href="#3-flow-rules-learned-enforced" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>No dead-end states.</strong> Every screen state has exactly ONE enabled primary action. If the recommended model doesn't fit → the primary action <em>becomes</em> "Choose a smaller model" (never a disabled hero button). Failure states carry "Try again"/"Back to model choice".</li>
+<li><strong>Downloads are never a trap</strong>: Cancel is always visible; cancel returns to the recommendation (a change of mind, not a failure); the <code>.part</code> resumes later.</li>
+<li><strong>Disk preflight before the tap</strong>, not at 95%: <code>DiskSpace.check</code> gates the CTA on both platforms.</li>
+<li><strong>The recommendation is a default, not a cage</strong>: full catalog one tap away everywhere a model is chosen.</li>
+<li><strong>Speed dial</strong> (Fast/Balanced/Quality → <code>SpeedPresets</code>, identical RAM bands in both cores): quality = device recommendation; never upside-down (clamped on tiny devices).</li>
+</ul>
+<h4 id="4-per-platform-idiom">4. Per-platform idiom<a class="docs-heading-anchor" href="#4-per-platform-idiom" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Android / iOS (phones)</strong>: WhatsApp-density chat. Conversation LIST is the landing screen (avatar + title + relative time; swipe/long-press delete; "+" compose) → tap into the conversation (back returns). Composer docks ON the keyboard (<code>imePadding</code> + <code>consumeWindowInsets</code>); bottom nav is a 56dp band, not Material's 80dp default.</li>
+<li><strong>macOS</strong>: a REAL Mac app, not a phone in a window — <code>NavigationSplitView</code> (chats sidebar → detail), model identity in the title bar, ⌘N New Chat in the File menu, standard ⌘, Settings scene, right-click context menus. Transcript + composer read as a centered ≤760pt column; bubbles 460pt (vs 300 on phones).</li>
+</ul>
+<h4 id="5-verification-protocol-what-done-means-for-ui">5. Verification protocol (what "done" means for UI)<a class="docs-heading-anchor" href="#5-verification-protocol-what-done-means-for-ui" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Compile-clean is NOT done. Verify visually on the real target before claiming done: S23 screenshots over adb (guard EVERY injected tap with a frontmost-window check — the phone is shared across sessions), macOS <code>screencapture</code> of the app window (never click unless Quenderin is verifiably frontmost), iOS simulator screenshots. Engine truths surface in UI review — the flat "User:/Assistant:" prompt bug was caught by <em>looking</em> at a Mac reply, not by tests.</p></div></details><details class="docs-fold docs-subdoc" id="src-docs-icon-extraction-md"><summary><span><strong>Cutting a perfect app icon out of AI-generated artwork</strong> &mdash; <code>docs/ICON_EXTRACTION.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/ICON_EXTRACTION.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/ICON_EXTRACTION.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="cutting-a-perfect-app-icon-out-of-ai-generated-artwork">Cutting a perfect app icon out of AI-generated artwork<a class="docs-heading-anchor" href="#cutting-a-perfect-app-icon-out-of-ai-generated-artwork" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Audience: a future agent session</strong> (written for Opus 4.8, works for anyone) that needs to extract an icon plate from a generated image — here or in another project — without the half-rim slivers and off-center crops that scream "automated". The working implementation is <a href="https://github.com/alikatgh/quenderin/blob/main/scripts/generate_icons.py" rel="noopener" target="_blank"><code>scripts/generate_icons.py</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>; this file is the reasoning, so you can re-derive the technique instead of cargo-culting it.</p>
+<h4 id="the-setup">The setup<a class="docs-heading-anchor" href="#the-setup" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The source (<code>brand/icon-source.png</code>) is a full Gemini artwork: a crisp <strong>rounded-square icon plate</strong> (the elf) sitting on a <strong>blurred decorative backdrop</strong>, with a thin bright rim around the plate. The goal is a clean, full-bleed, exactly-square 1024px master with <strong>zero rim and zero backdrop</strong> in any corner — every platform asset derives from that one master.</p>
+<h4 id="step-1-find-the-plate-by-sharpness-not-brightness">Step 1 — find the plate by SHARPNESS, not brightness<a class="docs-heading-anchor" href="#step-1-find-the-plate-by-sharpness-not-brightness" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The obvious approach — scan for bright pixels to find the plate edges — <strong>fails on this kind of art</strong>: the subject's skin and hair are brighter than the rim, so a brightness scan latches onto the face and crops a portrait, not the plate. (We shipped that mistake first. It looked insane.)</p>
+<p>The property that actually separates plate from backdrop is <strong>focus</strong>: the backdrop is heavily blurred, the plate is crisp. So measure per-column and per-row <em>high-frequency energy</em> — the sum of absolute differences between neighboring pixels:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>python</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>small = img.convert(&quot;L&quot;).resize((512, 512), Image.BILINEAR)   # cheap + denoised
+col = [sum(abs(px[x, y] - px[x, y-1]) for y in range(1, h, 2)) for x in range(w)]
+row = [sum(abs(px[x, y] - px[x-1, y]) for x in range(1, w, 2)) for y in range(h)]</code></pre></div>
+<p>Blur means small neighbor differences; crisp detail means large ones. The profiles are near-flat over the backdrop and spike across the plate. Take the band where the profile exceeds <strong>22% of its own maximum</strong> (a <em>relative</em> threshold — absolute thresholds break when the artwork changes), first-index to last-index, on both axes. That's the plate's bounding box. Scale back up to full resolution.</p>
+<ul>
+<li>Work at 512×512: fast, and the downsample itself suppresses backdrop noise.</li>
+<li>Stride 2 in the inner loops: half the work, no measurable loss.</li>
+<li>If <code>band()</code> finds nothing above threshold, <strong>fail loudly</strong> — a wrong crop shipped silently is far worse than a script that stops.</li>
+</ul>
+<h4 id="step-2-the-inset-geometry-not-taste">Step 2 — the inset: geometry, not taste<a class="docs-heading-anchor" href="#step-2-the-inset-geometry-not-taste" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The bounding box hugs the plate's <strong>outer</strong> edge, which includes the bright rim — and the plate has rounded corners, so a square crop at the box edge puts <strong>backdrop in all four corners</strong>. Inset the crop so the square's corners land inside the rounded corner arc:</p>
+<ul>
+<li>For corner radius <code>r</code> (as a fraction of plate width), a square corner intrudes past the arc by <code>r · (1 − 1/√2)</code> ≈ <code>0.293 · r</code>. This plate's radius ≈ 12% → <strong>≈3.5%</strong>.</li>
+<li>Add the rim's own thickness (≈2.3% here).</li>
+<li>Total: <strong>5.8% inset</strong> from each side of the detected box.</li>
+</ul>
+<p>We got there empirically too — 1.5% left rim slivers in the corners, 4.5% still clipped the arc on one side — but compute the geometric floor first and you start one iteration from done, not four.</p>
+<p>Then <strong>force the crop square around the box center</strong> (<code>half = min(w, h) / 2</code>): detection can read a few pixels non-square, and resizing a 1017×1024 "square" smears the art. Resize with <code>LANCZOS</code> to 1024.</p>
+<h4 id="step-3-verify-like-a-user-not-like-a-script">Step 3 — verify like a user, not like a script<a class="docs-heading-anchor" href="#step-3-verify-like-a-user-not-like-a-script" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The script printing <code>1024x1024</code> proves nothing. Render the actual outputs and look:</p>
+<ol>
+<li>Zoom into <strong>all four corners</strong> of the master — any bright arc = rim residue, increase inset.</li>
+<li>Check the <strong>smallest</strong> favicon (16px) — off-center crops that are invisible at 1024 are glaring at 16.</li>
+<li>On-device/in-simulator if you can: macOS docks and Android launchers apply their own masks, which is where margin mistakes appear.</li>
+</ol>
+<h4 id="step-4-one-master-many-shapes-never-re-cut-per-platform">Step 4 — one master, many shapes (never re-cut per platform)<a class="docs-heading-anchor" href="#step-4-one-master-many-shapes-never-re-cut-per-platform" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Every platform asset is a <em>transform of the master</em>, so a better cut later fixes everything by re-running one script:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Target</th><th>Transform</th></tr></thead><tbody><tr><td>iOS</td><td>the master, full-bleed 1024 (Apple rounds it)</td></tr><tr><td>macOS</td><td>Big-Sur squircle: master → 824×824 rounded-rect (r=186) centered on transparent 1024 — Apple's grid margins</td></tr><tr><td>Android adaptive</td><td>master at <strong>70%</strong> of the 108dp canvas, centered (launcher masks to ~72dp circle); background color = <strong>median of the art's top/bottom border bands</strong> (median ignores motif outliers; mean doesn't)</td></tr><tr><td>Android legacy</td><td>rounded (r=15%) + circle mipmaps per density</td></tr><tr><td>Electron/Windows/Linux</td><td>rounded (r=10%) → multi-size <code>.ico</code> via Pillow, <code>.icns</code> via macOS <code>iconutil</code></td></tr><tr><td>Web favicons</td><td>rounded (r=20%) 32/16px; <code>favicon.svg</code> is an <strong>SVG wrapper embedding the 64px PNG base64</strong> — keeps an existing <code>&lt;link type=&quot;image/svg+xml&quot;&gt;</code> working with raster art</td></tr></tbody></table></div>
+<h4 id="pitfalls-that-cost-us-real-time">Pitfalls that cost us real time<a class="docs-heading-anchor" href="#pitfalls-that-cost-us-real-time" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Brightness-based detection</strong> → crops the subject's face. Sharpness is the signal.</li>
+<li><strong>Too-small inset</strong> → backdrop slivers in corners, visible only when zoomed or masked.</li>
+<li><strong>Trusting the box to be square</strong> → 7px of anisotropic smear after resize.</li>
+<li><strong>Per-platform manual crops</strong> → drift; the second platform never matches the first.</li>
+<li><strong>Skipping the 16px check</strong> → the favicon is where every error is loudest.</li>
+</ul>
+<p>Regenerate everything: <code>python3 scripts/generate_icons.py</code> (Pillow required; <code>iconutil</code> needs macOS). Companion for the in-app vendor logos: <code>scripts/generate_model_logos.py</code>. Brand rules: <a href="#src-docs-brand-md">BRAND.md</a>.</p></div></details><details class="docs-fold docs-subdoc" id="src-website-icons-readme-md"><summary><span><strong>Model discovery marks</strong> &mdash; <code>website/icons/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>website/icons/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/website/icons/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="model-discovery-marks">Model discovery marks<a class="docs-heading-anchor" href="#model-discovery-marks" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The 28 October 2026 discovery-card update reuses the existing local SVGs and CSS family colors. No artwork was downloaded, regenerated or represented as newly licensed. Marks identify the original model namespace in <code>baseModel</code>; the GGUF publisher is separately named in text. They do not describe a partnership or endorsement. Unknown authors retain their model names without a guessed mark.</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Model origin</th><th>Existing asset</th><th>Recorded provenance</th></tr></thead><tbody><tr><td>Microsoft</td><td><code>phi.svg</code></td><td>Existing Microsoft four-square geometry, introduced by repository commit <code>6092cca2edb9eac064d6eb9fee5cf05abe83c48b</code> on 8 June 2026. That commit does not record a download URL or a logo license.</td></tr><tr><td>Liquid AI</td><td><code>lfm.svg</code></td><td>SVG source comment: <a href="https://www.liquid.ai/logos/liquid-ai-black.svg" rel="noopener" target="_blank">official wordmark<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, retrieved 19 October 2026, symbol extracted with unchanged geometry.</td></tr><tr><td>NVIDIA</td><td><code>nemotron.svg</code></td><td>SVG source comment: <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/logo-brand-usage/" rel="noopener" target="_blank">NVIDIA brand page<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, retrieved 19 October 2026, navigation eye mark with wordmark omitted. This pre-existing asset is an eye-only mark, not the complete canonical NVIDIA logo.</td></tr><tr><td>OpenBMB</td><td><code>minicpm.svg</code></td><td>SVG source comment: <a href="https://openbmb.cn/favicon.svg" rel="noopener" target="_blank">official site mark<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, retrieved 19 October 2026, unchanged geometry.</td></tr><tr><td>PrismML / Bonsai</td><td><code>bonsai.svg</code></td><td>SVG source comment records the official Bonsai asset linked from <a href="https://prismml.com" rel="noopener" target="_blank">PrismML<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, retrieved 19 October 2026, unchanged geometry.</td></tr></tbody></table></div>
+<p>Other recognized namespaces reuse the same family mapping as the existing curated catalog: Qwen, DeepSeek, Meta, Google, Mistral AI and Jais. No external image service or runtime logo lookup is used. SVGs are decorative; model names and source labels remain readable if a mark fails to load.</p>
+<h4 id="guideline-qualification-checked-28-october-2026">Guideline qualification, checked 28 October 2026<a class="docs-heading-anchor" href="#guideline-qualification-checked-28-october-2026" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><a href="https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks" rel="noopener" target="_blank">Microsoft's guidelines<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> distinguish truthful name references from logos, which require express licensing. <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/logo-brand-usage/" rel="noopener" target="_blank">NVIDIA's guidelines<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> also require written authorization, describe identification/educational uses among approved examples, and prohibit separating the eye mark from the wordmark. Those restrictions are not limited to paid advertising; model identification on this marketing site does not itself prove permission. Existing repository provenance is not a trademark license. The release review must assess the actual composition and these qualifications, particularly the pre-existing eye-only NVIDIA asset. This update does not modify any SVG geometry or add endorsement claims.</p></div></details><details class="docs-fold docs-subdoc" id="src-docs-audits-2026-07-11-website-audit-md"><summary><span><strong>website/ audit — 2026-07-11</strong> &mdash; <code>docs/audits/2026-07-11-website-audit.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/audits/2026-07-11-website-audit.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/audits/2026-07-11-website-audit.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="website-audit-2026-07-11">website/ audit — 2026-07-11<a class="docs-heading-anchor" href="#website-audit-2026-07-11" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Scope:</strong> the marketing/docs site that landed on main 2026-07-10 (<code>website/</code> + <code>wrangler.site.jsonc</code>) — a surface no round of the 50-round plan ever covered. <strong>Method:</strong> scripted link/asset/meta/sitemap/SW checks over all 21 pages + live preview.</p>
+<h4 id="findings">Findings<a class="docs-heading-anchor" href="#findings" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="w1-sitemap-xml-was-missing-11-of-20-indexable-pages-fixed-medium-seo">W1 — sitemap.xml was missing 11 of 20 indexable pages — <strong>FIXED</strong> (Medium, SEO)<a class="docs-heading-anchor" href="#w1-sitemap-xml-was-missing-11-of-20-indexable-pages-fixed-medium-seo" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Absent: the whole blog (index + 3 posts), <code>download</code>, <code>changelog</code>, <code>help</code>, <code>reality</code>, <code>research</code>, <code>roadmap</code>, <code>why-local-agent</code> — i.e. most of the newer content, including the page conversions care about most (<code>download</code>). Regenerated with all 20 pages, priorities consistent with the existing scheme (404 excluded).</li>
+</ul>
+<h5 id="w2-the-website-preview-launch-config-was-broken-on-this-machine-fixed-tooling">W2 — the <code>website</code> preview launch config was broken on this machine — <strong>FIXED</strong> (tooling)<a class="docs-heading-anchor" href="#w2-the-website-preview-launch-config-was-broken-on-this-machine-fixed-tooling" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Xcode's python3 dies with a sandbox <code>PermissionError</code> under the preview harness. Replaced with a dependency-free node static server (<code>scripts/serve_website.mjs</code>, traversal-guarded, 404-page-aware) and pointed <code>.claude/launch.json</code> at it.</li>
+</ul>
+<h4 id="verified-good-no-action">Verified good (no action)<a class="docs-heading-anchor" href="#verified-good-no-action" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>All 21 pages</strong>: <code>&lt;title&gt;</code> + meta description present (404 conventionally exempt); zero broken internal links; zero missing assets; all sitemap URLs resolve; SW precache list references only existing files.</li>
+<li><strong>Headers posture</strong> (<code>_headers</code>): nosniff, no-referrer, DENY framing, tight CSP, <code>sw.js</code> no-cache (a pinned stale service worker can't hold the origin hostage — commented inline). Netlify/Vercel configs mirror it; Cloudflare Pages honors <code>_headers</code> natively.</li>
+<li><strong>Live</strong>: homepage renders with zero console errors; i18n selector + theme toggle present; key pages (download/blog/roadmap/reality/research/models/faq/help/changelog) all 200 with correct titles.</li>
+</ul>
+<h4 id="open">Open<a class="docs-heading-anchor" href="#open" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>None. (If the blog grows, consider generating sitemap.xml the way FEATURES.md's table is generated — same drift class as W1.)</li>
+</ul></div></details>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="bug-journal"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Engineering Bug Journal</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="research-survey"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">On-Device AI Research Survey</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-brand-md">docs/BRAND.md</a></li><li><a class="is-depth-3" href="#quenderin-brand-anti-slop-guide">Quenderin brand &amp; anti-slop guide</a></li><li><a class="is-depth-2" href="#src-docs-design-system-md">docs/DESIGN_SYSTEM.md</a></li><li><a class="is-depth-3" href="#quenderin-design-system">Quenderin Design System</a></li><li><a class="is-depth-2" href="#src-docs-icon-extraction-md">docs/ICON_EXTRACTION.md</a></li><li><a class="is-depth-3" href="#cutting-a-perfect-app-icon-out-of-ai-generated-artwork">Cutting a perfect app icon out of AI-generated artwork</a></li><li><a class="is-depth-2" href="#src-website-icons-readme-md">website/icons/README.md</a></li><li><a class="is-depth-3" href="#model-discovery-marks">Model discovery marks</a></li><li><a class="is-depth-2" href="#src-docs-audits-2026-07-11-website-audit-md">docs/audits/2026-07-11-website-audit.md</a></li><li><a class="is-depth-3" href="#website-audit-2026-07-11">website/ audit — 2026-07-11</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

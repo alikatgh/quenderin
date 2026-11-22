@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>System Architecture — Quenderin Docs</title>
+<meta name="description" content="Layered TypeScript, Swift, and Kotlin architecture across chat, model management, shared contracts, and governed OS execution." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/architecture" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture" class="is-active" aria-current="page"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Architecture &amp; API</span></div><div class="docs-kicker"><span class="qi qi-layers" aria-hidden="true"></span>Architecture · Core Design</div><h1>System Architecture</h1><p class="docs-lead">Layered TypeScript, Swift, and Kotlin architecture across chat, model management, shared contracts, and governed OS execution.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>7 min read (1,525 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>2 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 2 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/ARCHITECTURE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/ARCHITECTURE.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/apple/ARCHITECTURE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>apple/ARCHITECTURE.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-architecture-md">docs/ARCHITECTURE.md</a></li><li><a class="is-depth-3" href="#architecture">Architecture</a></li><li><a class="is-depth-2" href="#src-apple-architecture-md">apple/ARCHITECTURE.md</a></li><li><a class="is-depth-3" href="#quenderin-architecture">Quenderin Architecture</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-docs-architecture-md"><h2 id="src-docs-architecture-md-heading">Architecture</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/ARCHITECTURE.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/ARCHITECTURE.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="architecture">Architecture<a class="docs-heading-anchor" href="#architecture" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<h4 id="the-thesis">The thesis<a class="docs-heading-anchor" href="#the-thesis" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>Offline, on-device AI.</strong> The model runs on the user's machine — not in a data center. No API keys, no accounts, no telemetry, no per-token cost. Everything in this codebase exists to make that practical, reliable, and usable.</p>
+<h4 id="two-products-one-vision">Two products, one vision<a class="docs-heading-anchor" href="#two-products-one-vision" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th></th><th><strong>Desktop</strong> (this repo's <code>src/</code> + <code>ui/</code>)</th><th><strong>Mobile</strong> (<code>apple/</code>)</th></tr></thead><tbody><tr><td>Status</td><td>Shipping prototype</td><td>In active development</td></tr><tr><td>Stack</td><td>Electron + TypeScript + React/Vite</td><td>Native Swift (iOS), Kotlin (Android)</td></tr><tr><td>Engine</td><td><code>node-llama-cpp</code> (Node binding to llama.cpp)</td><td><code>LlamaEngine</code> (Swift → llama.cpp C API)</td></tr><tr><td>Role</td><td>Proves the concept; the testbed</td><td>The real destination — AI in your pocket</td></tr></tbody></table></div>
+<p>This document covers the <strong>desktop</strong> system. For the native stack and the all-important <em>engine-vs-model</em> distinction, see <a href="#src-apple-architecture-md"><code>../apple/ARCHITECTURE.md</code></a>.</p>
+<h4 id="high-level-shape-desktop">High-level shape (desktop)<a class="docs-heading-anchor" href="#high-level-shape-desktop" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>┌─────────────────────────── Electron app ───────────────────────────┐
+│                                                                     │
+│  electron/main.ts ──► spawns/owns the dashboard server              │
+│                                                                     │
+│  ┌───────────────┐     WebSocket      ┌──────────────────────────┐  │
+│  │  React UI      │◄──────────────────►│  Express + ws server      │  │
+│  │  (ui/, Vite)   │     REST (/api/*)  │  (src/server.ts,          │  │
+│  │                │◄──────────────────►│   src/websocket/,         │  │
+│  └───────────────┘                    │   src/routes/)            │  │
+│         ▲                              └──────────┬───────────────┘  │
+│         │ contextBridge (preload)                 │                   │
+│         ▼                                         ▼                   │
+│  Renderer (no nodeIntegration)        Services (src/services/)        │
+│                                       LLM · Agent · Session · Memory  │
+│                                       Voice · OCR · Daemons · Tools   │
+│                                                   │                   │
+│                                                   ▼                   │
+│                                    Device provider (desktop/android)  │
+│                                    + local GGUF model (node-llama-cpp)│
+└─────────────────────────────────────────────────────────────────────┘</code></pre></div>
+<ul>
+<li><strong>Entry points:</strong> <code>src/index.ts</code> is a CLI (<code>commander</code>) with two commands — <code>dashboard</code> (start the server + UI) and <code>agent</code> (run the agent loop headless). <code>src/electron/main.ts</code> is the Electron main process that wraps the dashboard in a desktop window.</li>
+<li><strong>Server:</strong> <code>src/server.ts</code> boots an Express app (<code>src/app.ts</code>) + a WebSocket manager (<code>src/websocket/index.ts</code>), wires up all services via dependency injection, serves the built UI from <code>public/</code>, and handles graceful shutdown.</li>
+<li><strong>UI:</strong> <code>ui/</code> is a React + Vite + Tailwind app. In dev it runs on Vite (<code>localhost:5173</code>); in production it's built to <code>public/</code> and served by Express.</li>
+<li><strong>Security:</strong> Electron uses <code>contextBridge</code> via <code>src/electron/preload.ts</code> — no <code>nodeIntegration</code>. The renderer talks to the backend only over WebSocket/REST.</li>
+</ul>
+<h4 id="the-two-loops">The two loops<a class="docs-heading-anchor" href="#the-two-loops" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Quenderin has <strong>two distinct agent loops</strong> — don't confuse them:</p>
+<h5 id="1-the-os-agent-loop-src-services-agent-service-ts">1. The OS agent loop (<code>src/services/agent.service.ts</code>)<a class="docs-heading-anchor" href="#1-the-os-agent-loop-src-services-agent-service-ts" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The vision's <em>perception → planning → execution</em> cycle, for driving a real device's UI. Each turn emits a WebSocket event the UI renders live:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>observe ──► decide ──► action ──► (verify) ──► observe ...
+   │           │          │            │
+perception   LLM as     deterministic  uiVerifier confirms the
+(screenshot/ symbolic    executor       UI changed as intended
+ UI tree via planner    (actionExecutor)
+ provider +  → JSON
+ uiParser)   {action,id}</code></pre></div>
+<ul>
+<li><strong>Perception:</strong> the device provider (<code>providers/desktop.provider.ts</code> or <code>android.provider.ts</code>) captures the screen; <code>uiParser.service.ts</code> turns it into a compact, LLM-readable structure (OCR via <code>ocr.service.ts</code> fills gaps).</li>
+<li><strong>Planning:</strong> <code>agent/promptBuilder.ts</code> assembles context; the LLM returns a <strong>symbolic</strong> action (e.g. <code>{&quot;action&quot;:&quot;click&quot;,&quot;id&quot;:5}</code>), never raw coordinates.</li>
+<li><strong>Execution:</strong> <code>agent/actionExecutor.ts</code> maps the symbolic id to real bounds and performs the input.</li>
+<li><strong>Verification:</strong> <code>agent/uiVerifier.ts</code> checks the result, so divergence is caught instead of silently compounding.</li>
+<li><strong>Safety:</strong> a hardcoded blocklist (Pay/Delete/Password/…) prevents the agent from autonomously touching destructive or sensitive elements.</li>
+</ul>
+<h5 id="2-the-chat-tool-loop-src-services-tools-toolloop-ts">2. The chat tool loop (<code>src/services/tools/toolLoop.ts</code>)<a class="docs-heading-anchor" href="#2-the-chat-tool-loop-src-services-tools-toolloop-ts" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>A modern <em>tool-use</em> loop for the chat assistant: the model plans a tool call, a handler runs it, the observation feeds back, repeat. Tools live in <code>src/services/tools/registry.ts</code> (calculator, datetime, system_info, read_file, note_save, note_list, …). This is the on-device-friendly form of "agency" — it acts through tools, not by driving the OS.</p>
+<blockquote><p>The native mobile <code>AgentLoop</code> (<code>apple/</code>) is a clean re-implementation of loop #2.</p></blockquote>
+<h4 id="service-map">Service map<a class="docs-heading-anchor" href="#service-map" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Service</th><th>Responsibility</th></tr></thead><tbody><tr><td><code>llm.service.ts</code></td><td>Loads/unloads GGUF models, runs inference (abort-based timeouts, GPU diagnostics), model catalog + downloads, memory-fitness checks</td></tr><tr><td><code>agent.service.ts</code></td><td>The OS agent loop (observe→decide→action→verify)</td></tr><tr><td><code>session.service.ts</code></td><td>Conversation persistence, history, export</td></tr><tr><td><code>memory.service.ts</code></td><td>RAG over past trajectories + corrections (Xenova embeddings)</td></tr><tr><td><code>metrics.service.ts</code></td><td>tok/s, TTFT, RAM, model-loaded telemetry</td></tr><tr><td><code>voice.service.ts</code></td><td>Wake-word + speech (Picovoice), pipes commands into the agent</td></tr><tr><td><code>ocr.service.ts</code></td><td>Text extraction from screenshots (perception)</td></tr><tr><td><code>uiParser.service.ts</code></td><td>Screen → compact LLM-readable UI tree</td></tr><tr><td><code>backgroundDaemon.service.ts</code></td><td>Passive observation; triggers on visual change</td></tr><tr><td><code>readiness.service.ts</code></td><td>Server readiness state (<code>/ready</code>, <code>/health</code>)</td></tr><tr><td><code>intentClassifier.ts</code></td><td>Routes input (chat vs. agent objective)</td></tr><tr><td><code>presets.ts</code></td><td>Assistant personas (General/Code/Writer/Tutor/Summary)</td></tr><tr><td><code>tools/*</code></td><td>The chat tool-use loop + registry + handlers</td></tr><tr><td><code>providers/*</code></td><td>Device abstraction (desktop screen/input, Android ADB)</td></tr></tbody></table></div>
+<h4 id="data-flow-a-chat-message">Data flow (a chat message)<a class="docs-heading-anchor" href="#data-flow-a-chat-message" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>UI sends a <code>chat</code> message over WebSocket (<code>useAgentSocket.ts</code>).</li>
+<li><code>websocket/index.ts</code> validates it (length caps, attachment limits), picks the active preset, and calls into the LLM / tool loop.</li>
+<li>Tokens stream back as <code>chat_stream</code> events; a final <code>chat_response</code> closes it.</li>
+<li><code>metrics.service</code> records tok/s; <code>session.service</code> persists the exchange.</li>
+</ol>
+<h4 id="data-flow-an-agent-objective">Data flow (an agent objective)<a class="docs-heading-anchor" href="#data-flow-an-agent-objective" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>UI sends a <code>start</code> message with a goal.</li>
+<li><code>agent.service.runAgentLoop(goal, emitter, attachments, maxSteps, maxWallClockMs)</code> begins.</li>
+<li>Each turn emits <code>observe</code> → <code>decide</code> → <code>action</code>; the Inspector panel renders them. <code>action_required</code> pauses for human confirmation when needed.</li>
+<li><code>done</code> (or <code>error</code>) ends the run.</li>
+</ol>
+<p>See <strong><a href="api-reference">API.md</a></strong> for the full message catalog and <strong><a href="backend-frontend#src-docs-backend-md">BACKEND.md</a></strong> for service internals.</p></section><section class="docs-subdoc" id="src-apple-architecture-md"><h2 id="src-apple-architecture-md-heading">Quenderin Architecture</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>apple/ARCHITECTURE.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/apple/ARCHITECTURE.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-architecture">Quenderin Architecture<a class="docs-heading-anchor" href="#quenderin-architecture" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The concepts under the code — what the pieces <em>are</em> and how they fit. For the how-to (linking llama.cpp, deploying), see <code>QuenderinKit/INTEGRATION.md</code> and <code>ROADMAP.md</code>. For the module-by-module catalog, see <code>QuenderinKit/README.md</code>.</p>
+<h4 id="the-thesis-2">The thesis<a class="docs-heading-anchor" href="#the-thesis-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>Offline, on-device AI.</strong> The language model runs on the phone in the user's hand — not in a data center. After a one-time model download there are no network calls, no API keys, no accounts, no telemetry. The whole architecture exists to make that real, reliable, and usable by a non-technical person.</p>
+<h4 id="the-two-layers-you-must-never-conflate">The two layers you must never conflate<a class="docs-heading-anchor" href="#the-two-layers-you-must-never-conflate" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The single most common confusion. There are <strong>two</strong> completely different things:</p>
+<div class="docs-table-wrap"><table><thead><tr><th></th><th><strong>The engine</strong> (llama.cpp)</th><th><strong>The model</strong> (GGUF weights)</th></tr></thead><tbody><tr><td>What it is</td><td>A C/C++ program that runs models</td><td>A data file: the trained weights</td></tr><tr><td>Size</td><td>A few MB of compiled code</td><td>0.4 – 4.7 GB</td></tr><tr><td>How it reaches the phone</td><td><strong>Compiled into the app</strong> → ships via the App Store</td><td><strong>Downloaded in-app</strong>, over Wi-Fi</td></tr><tr><td>Does the user see it?</td><td>No — it's invisible, baked in</td><td>Yes — it's "the download"</td></tr><tr><td>Who provides it</td><td>The developer, at build time</td><td>The user picks one; the app fetches it</td></tr></tbody></table></div>
+<p><strong>Analogy:</strong> llama.cpp is the <em>music player</em>; the model is the <em>songs</em>. You install the player once (engine included), then download songs into it. Users never "download the engine" — they download content for it.</p>
+<p>So: a user installs Quenderin (small — app + engine), then the app downloads <strong>one model</strong> (the gigabytes). That model download is what the M3 "offline-ready" machinery is all about.</p>
+<h4 id="the-pieces-bottom-to-top">The pieces, bottom to top<a class="docs-heading-anchor" href="#the-pieces-bottom-to-top" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="ggml">ggml<a class="docs-heading-anchor" href="#ggml" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The low-level tensor math library (by Georgi Gerganov, org <code>ggml-org</code>). Does the actual numeric work, with hardware backends: CPU SIMD, Apple <strong>Metal</strong> (GPU), CUDA, Vulkan. llama.cpp is built on it.</p>
+<h5 id="llama-cpp">llama.cpp<a class="docs-heading-anchor" href="#llama-cpp" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The inference <strong>engine</strong> — open-source C/C++ that loads a model and generates text efficiently on consumer hardware. It's the de facto standard for local LLMs (Ollama, LM Studio, Jan, GPT4All all build on it). Ships <strong>inside</strong> the app.</p>
+<h5 id="gguf-quantization">GGUF + quantization<a class="docs-heading-anchor" href="#gguf-quantization" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>A model's weights are normally 16-bit floats (an 8B model ≈ 16 GB — too big for a phone). <strong>Quantization</strong> squeezes each weight to ~4 bits (<code>Q4_K_M</code>) or fewer (<code>Q2_K</code>), shrinking it to ~4.5 GB with little quality loss. The quantized file format is <strong><code>.gguf</code></strong> — that's exactly what the user downloads. Quenderin's catalog (<code>ModelCatalog</code>) lists four GGUF builds from 0.4 to 4.7 GB.</p>
+<h5 id="llamaengine-the-swift-adapter">LlamaEngine (the Swift adapter)<a class="docs-heading-anchor" href="#llamaengine-the-swift-adapter" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>llama.cpp stays C/C++; <code>LlamaEngine.swift</code> is the ~30-line-loop Swift wrapper that calls its C API (tokenize → decode → sample → detokenize → stream). The heavy lifting is all in the C++; this just steers it. (Android will get a Kotlin/JNI adapter over the <em>same</em> C++.)</p>
+<h5 id="the-seams-inferenceengine-and-modeldownloader">The seams: <code>InferenceEngine</code> and <code>ModelDownloader</code><a class="docs-heading-anchor" href="#the-seams-inferenceengine-and-modeldownloader" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Two protocols the rest of the app depends on, never the concretes:</p>
+<ul>
+<li><code>InferenceEngine</code> — anything that can load a model and stream tokens. Conformers: <code>LlamaEngine</code> (real), <code>MockInferenceEngine</code> (canned), <code>ScriptedInferenceEngine</code> (deterministic, for tests).</li>
+<li><code>ModelDownloader</code> — anything that can fetch a model. Conformers: <code>URLSessionModelDownloader</code>, <code>BackgroundModelDownloader</code> (survives app suspension), <code>MockModelDownloader</code>.</li>
+</ul>
+<p>These seams are why the entire app runs and is <strong>fully tested today on mocks</strong>, with no llama.cpp and no model file — and why swapping in the real engine is a two-line change in <code>QuenderinApp.init()</code>.</p>
+<h5 id="quenderinkit-the-brain">QuenderinKit (the brain)<a class="docs-heading-anchor" href="#quenderinkit-the-brain" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The pure-Swift package with everything above the engine: hardware probe, model catalog + recommendation, memory/disk fitness, the download + offline-readiness machinery, onboarding/chat state, and the agent loop. Compiles + unit-tests on a Mac (no simulator). See <code>QuenderinKit/README.md</code> for the full module list.</p>
+<h4 id="the-stack">The stack<a class="docs-heading-anchor" href="#the-stack" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Quenderin (the app the user installs)
+  └─ QuenderinApp        SwiftUI @main → RootView (onboarding → chat)
+      └─ QuenderinKit    the brain: probe, recommend, download, readiness, chat, agent
+          ├─ InferenceEngine seam ── LlamaEngine ──┐
+          └─ ModelDownloader seam                  │
+                                                   ▼
+                                            llama.cpp (C/C++ engine)   ← compiled in
+                                                   ▼
+                                              ggml (tensor math, Metal GPU)
+                                                   ▲
+                                          a .gguf model file            ← downloaded in-app</code></pre></div>
+<p><strong>In plain terms:</strong> llama.cpp is the part that actually <em>thinks</em>. Everything in QuenderinKit is the scaffolding that makes that engine usable by a real person — picking a model that fits their device, downloading it survivably, proving it's ready before they go offline, and turning it into a chat and a tool-using agent.</p>
+<h4 id="the-user-lifecycle">The user lifecycle<a class="docs-heading-anchor" href="#the-user-lifecycle" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li><strong>Install</strong> Quenderin (App Store) — small; engine baked in.</li>
+<li><strong>Probe</strong> — the app reads RAM/chip and recommends the best model that fits.</li>
+<li><strong>Download</strong> — one GGUF, over Wi-Fi, resumable in the background.</li>
+<li><strong>Ready check</strong> — a verifiable "✅ safe to go offline" (downloaded + loads).</li>
+<li><strong>Use</strong> — chat or agent, 100% on-device. No further network, ever.</li>
+</ol>
+<h4 id="one-engine-three-clients">One engine, three clients<a class="docs-heading-anchor" href="#one-engine-three-clients" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The same llama.cpp/ggml core powers every platform; only the thin adapter differs:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Platform</th><th>Adapter</th><th>Status</th></tr></thead><tbody><tr><td>Desktop (Electron/TS)</td><td><code>node-llama-cpp</code> (Node binding)</td><td>shipping prototype</td></tr><tr><td>iOS (Swift)</td><td><code>LlamaEngine</code> (Swift → C API)</td><td>built; needs llama.cpp linked on-device</td></tr><tr><td>Android (Kotlin)</td><td><code>LlamaEngine</code> (Kotlin → JNI → C++)</td><td><strong>brain + UI built on mock</strong> (M1–M2): core tested (29 kotlinc checks), JNI bridge (<code>jni/llama_jni.cpp</code>) + Compose app (<code>android/app</code>) written; needs llama.cpp linked on-device (same cliff as iOS)</td></tr></tbody></table></div>
+<p>The durable, portable assets — the model catalog/recommendation logic and the symbolic protocols — are shared so all three clients agree on what to run.</p>
+<h4 id="see-also">See also<a class="docs-heading-anchor" href="#see-also" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><code>QuenderinKit/INTEGRATION.md</code> — how to link llama.cpp (xcframework) + run on device.</li>
+<li><code>QuenderinKit/README.md</code> — the module catalog.</li>
+<li><code>ROADMAP.md</code> — milestones (M1 onboarding → M4 agent core) and what's left.</li>
+</ul></section>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="npu-max-acceleration"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">NPU, Neural Engine &amp; MAX Acceleration</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="backend-frontend"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Backend, Dashboard UI &amp; Website Stack</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-architecture-md">docs/ARCHITECTURE.md</a></li><li><a class="is-depth-3" href="#architecture">Architecture</a></li><li><a class="is-depth-2" href="#src-apple-architecture-md">apple/ARCHITECTURE.md</a></li><li><a class="is-depth-3" href="#quenderin-architecture">Quenderin Architecture</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

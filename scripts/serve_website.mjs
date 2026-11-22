@@ -17,13 +17,36 @@ const MIME = {
 
 http.createServer(async (req, res) => {
     try {
-        const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-        let rel = urlPath === '/' ? 'index.html' : urlPath.slice(1);
-        const file = path.normalize(path.join(root, rel));
-        if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
-        const data = await fs.readFile(file);
-        res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream' });
-        res.end(data);
+        const parsed = new URL(req.url, 'http://x');
+        const urlPath = decodeURIComponent(parsed.pathname);
+        if (urlPath !== '/' && !urlPath.endsWith('/')) {
+            const dirCandidate = path.normalize(path.join(root, urlPath.slice(1)));
+            if (dirCandidate.startsWith(root)) {
+                try {
+                    const st = await fs.stat(dirCandidate);
+                    if (st.isDirectory()) {
+                        await fs.access(path.join(dirCandidate, 'index.html'));
+                        res.writeHead(308, { Location: `${urlPath}/${parsed.search}` }).end();
+                        return;
+                    }
+                } catch {}
+            }
+        }
+        let rel = urlPath === '/' ? 'index.html' : urlPath.slice(1).replace(/\/+$/, '');
+        const candidates = [rel, path.join(rel, 'index.html'), `${rel}.html`];
+        for (const candidate of candidates) {
+            const file = path.normalize(path.join(root, candidate));
+            if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
+            try {
+                const stat = await fs.stat(file);
+                if (!stat.isFile()) continue;
+                const data = await fs.readFile(file);
+                res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream' });
+                res.end(data);
+                return;
+            } catch {}
+        }
+        throw new Error('not found');
     } catch {
         try {
             const nf = await fs.readFile(path.join(root, '404.html'));

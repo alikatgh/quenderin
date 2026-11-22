@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Desktop Platforms &amp; Store Channels — Quenderin Docs</title>
+<meta name="description" content="Windows &amp; Linux desktop strategy, Mac App Store packaging, and Microsoft Store MSIX submission workflow." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/desktop-distribution" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution" class="is-active" aria-current="page"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Platforms &amp; Releases</span></div><div class="docs-kicker"><span class="qi qi-monitor" aria-hidden="true"></span>Platforms · Desktop</div><h1>Desktop Platforms &amp; Store Channels</h1><p class="docs-lead">Windows &amp; Linux desktop strategy, Mac App Store packaging, and Microsoft Store MSIX submission workflow.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>12 min read (2,787 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>3 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 3 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/WINDOWS_LINUX_STRATEGY.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/WINDOWS_LINUX_STRATEGY.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/MAC_APP_STORE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/MAC_APP_STORE.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/MICROSOFT_STORE.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-windows-linux-strategy-md">docs/WINDOWS_LINUX_STRATEGY.md</a></li><li><a class="is-depth-3" href="#windows-linux-strategy-full-platform-coverage-without-a-rewrite">Windows + Linux strategy — full-platform coverage without a rewrite</a></li><li><a class="is-depth-2" href="#src-docs-mac-app-store-md">docs/MAC_APP_STORE.md</a></li><li><a class="is-depth-3" href="#mac-app-store-step-by-step-native-macos-app">Mac App Store — step-by-step (native macOS app)</a></li><li><a class="is-depth-2" href="#src-docs-microsoft-store-md">docs/MICROSOFT_STORE.md</a></li><li><a class="is-depth-3" href="#microsoft-store-step-by-step-windows-desktop">Microsoft Store — step-by-step (Windows desktop)</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-docs-windows-linux-strategy-md"><h2 id="src-docs-windows-linux-strategy-md-heading">Windows + Linux strategy — full-platform coverage without a rewrite</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/WINDOWS_LINUX_STRATEGY.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/WINDOWS_LINUX_STRATEGY.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="windows-linux-strategy-full-platform-coverage-without-a-rewrite">Windows + Linux strategy — full-platform coverage without a rewrite<a class="docs-heading-anchor" href="#windows-linux-strategy-full-platform-coverage-without-a-rewrite" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Status:</strong> adopted 2026-07-04. Owner directive: cover macOS + Windows + Linux ASAP, easiest possible installation (Microsoft Store as free software), direct installation files on the website for everything except macOS.</p>
+<h4 id="the-one-sentence-strategy">The one-sentence strategy<a class="docs-heading-anchor" href="#the-one-sentence-strategy" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Ship the <strong>existing Electron desktop app</strong> (already cross-platform, already security-audited, already packaging-configured) as the Windows/Linux client <strong>today</strong>, distribute through <strong>GitHub Releases → website direct links now, stores next</strong>, and treat a native/Compose rewrite as a <em>later</em> optimization to make only if Electron's footprint measurably hurts adoption.</p>
+<h4 id="why-electron-is-the-right-v1-and-not-a-compromise-we-should-feel-bad-about">Why Electron is the right v1 (and not a compromise we should feel bad about)<a class="docs-heading-anchor" href="#why-electron-is-the-right-v1-and-not-a-compromise-we-should-feel-bad-about" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>It already exists.</strong> <code>src/electron/</code> + the React dashboard are a working app: window-security hardening (navigation pinning, contextIsolation, asar), tray, port discovery, dark chrome. It went through the 2026-06-27 adversarial deep-hunt.</li>
+<li><strong>Inference is solved.</strong> <code>node-llama-cpp</code> ships prebuilt llama.cpp binaries for win-x64 and linux-x64 — the same engine family as every other Quenderin platform, so the model catalog, SHA-256 pinning, and RAM-fit logic transfer unchanged (<code>src/constants.ts</code> IS the canonical catalog source).</li>
+<li><strong>One codebase, three desktop OSes.</strong> LM Studio, Ollama's UI, Jan — the entire local-LLM desktop category ships Electron or similar. Users accept it; disk-heavy GGUF files dwarf the runtime anyway.</li>
+<li><strong>The alternative burns the lead.</strong> A Compose Multiplatform port (attractive because <code>android/quenderin-core</code> is pure JVM and parity-enforced) is the <em>strategic</em> second step, not the first: it needs a new JNI llama.cpp build per OS/arch, a desktop UI port, and months. Do it if/when Electron's ~250 MB install proves to be a real objection — measure first.</li>
+</ul>
+<h4 id="distribution-ladder-easiest-trust-first">Distribution ladder (easiest-trust first)<a class="docs-heading-anchor" href="#distribution-ladder-easiest-trust-first" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Channel</th><th>Status</th><th>Trust/friction</th><th>Action</th></tr></thead><tbody><tr><td><strong>GitHub Releases</strong></td><td>✅ live via <code>desktop-release.yml</code></td><td>Devs trust it; SmartScreen may warn</td><td>Free public-repo runners build win+linux on every <code>v*</code> tag — <strong>keep forever</strong> alongside Store</td></tr><tr><td><strong>Website direct links</strong></td><td>✅ <code>website/download.html</code></td><td>Same files, friendlier storefront</td><td><code>releases/latest/download/&lt;stable-name&gt;</code> — links never go stale</td></tr><tr><td><strong>Microsoft Store</strong></td><td>🔧 ready to submit</td><td><strong>Best Windows trust</strong>: store-signed, no SmartScreen, auto-updates</td><td>Free listing. Owner playbook: <strong><a href="#src-docs-microsoft-store-md">MICROSOFT_STORE.md</a></strong>. Build: <code>npm run electron:build:win:store</code> → AppX</td></tr><tr><td><strong>winget</strong></td><td>cheap follow-up</td><td><code>winget install quenderin</code></td><td>One PR to microsoft/winget-pkgs pointing at the GitHub release</td></tr><tr><td><strong>Flathub</strong></td><td>next for Linux</td><td>The de-facto Linux app store; free</td><td>Submit a flatpak manifest wrapping the release; AppImage/deb remain for direct users</td></tr><tr><td><strong>Snap</strong></td><td>optional</td><td>Ubuntu default store</td><td>Only if users ask; Flathub covers most distros</td></tr></tbody></table></div>
+<p><strong>macOS is not on this ladder.</strong> Public Mac = <strong>native App Store only</strong> (<a href="#src-docs-mac-app-store-md">MAC_APP_STORE.md</a>). Electron mac is lab-only.</p>
+<p><strong>Code signing:</strong> unsigned GitHub <code>.exe</code> may trip SmartScreen. Tiers: live with the warning (v0.2 preview) → <strong>Microsoft Store</strong> (Microsoft signs — keep GitHub exe anyway) → optional Azure Trusted Signing for the direct <code>.exe</code> when volume justifies it. Linux needs no signing.</p>
+<h4 id="what-ships-free-vs-what-we-hold-back">What ships free vs. what we hold back<a class="docs-heading-anchor" href="#what-ships-free-vs-what-we-hold-back" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The desktop testbed contains the <strong>autonomous device-driver agent</strong> — per the monetization direction (2026-07-04), autonomy is the paid tier and must not become the free default. The Windows/Linux <strong>v0.2.x releases are labeled "preview"</strong>; before a 1.0 marketing push, split the build: chat + model library + task router free, autonomous computer use behind a Pro flag. (Tracked as a release-blocking product decision, not a nice-to-have.)</p>
+<h4 id="platform-parity-discipline-extends-not-bends">Platform-parity discipline extends, not bends<a class="docs-heading-anchor" href="#platform-parity-discipline-extends-not-bends" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Desktop TS is already the canonical catalog source; the router/agent/degeneration logic has parity vectors. Any new desktop-side logic that has a Swift/Kotlin twin gets vectors + a <code>check_*_parity.py</code> entry — no exceptions just because "it's only Electron."</p>
+<h4 id="the-agent-the-mission-on-windows-linux-started-2026-07-07">The agent (the mission) on Windows/Linux — started 2026-07-07<a class="docs-heading-anchor" href="#the-agent-the-mission-on-windows-linux-started-2026-07-07" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Chat always worked on win/linux (node-llama-cpp prebuilds); the AGENT was macOS-only because the capability library was. First port slice shipped: <code>platformAutomation.ts</code> (an argv-only <code>CommandRunner</code> — fixed commands; user values ride as their own argv elements or as environment variables read by fixed PowerShell scripts, so there is NO interpolation layer to escape) and <code>platformCapabilities.ts</code>: <strong>win.\</strong>* (clipboard.read, explorer.reveal · app.open via the <code>$env:</code> value channel, url.open via rundll32) and <strong>linux.\</strong>* (clipboard.read with wl-paste→xclip fallback, files.reveal · url.open via xdg-open, notify.send). Wired into <code>quenderin do</code> (the macOS-only guard is gone), <code>quenderin capabilities</code>, and the dashboard's governed Tasks service — same spine, per-run approval, ledger. Next capabilities to grow: front-window perception, a notifications twin on Windows, and app-launch on Linux (gtk-launch/.desktop resolution — needs care across distros).</p>
+<ol>
+<li><strong>Done (2026-07-04 → 0.2.0):</strong> CI builds Quenderin-Setup-x64.exe, Quenderin-Portable-x64.exe, AppImage, <code>.deb</code> on free runners; website download page; macOS excluded from Electron releases (native App Store). AppX packaging + Partner Center guide shipped (<a href="#src-docs-microsoft-store-md">MICROSOFT_STORE.md</a>); <code>npm run electron:build:win:store</code>.</li>
+<li><strong>Owner next:</strong> complete Microsoft Store submission (identity in <code>electron-builder.yaml</code> <code>appx.*</code>), winget manifest, Flathub. Optional electron-updater for direct installs.</li>
+<li><strong>Before 1.0:</strong> free/Pro split of the agent; Windows arm64 + Linux arm64 builds (node-llama-cpp prebuilds exist); signing decision by download volume.</li>
+<li><strong>Re-evaluate (data, not vibes):</strong> if install-size complaints or memory footprint show up in real feedback, prototype Compose Desktop on <code>quenderin-core</code>; the parity harness makes the port verifiable.</li>
+</ol></section><section class="docs-subdoc" id="src-docs-mac-app-store-md"><h2 id="src-docs-mac-app-store-md-heading">Mac App Store — step-by-step (native macOS app)</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/MAC_APP_STORE.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/MAC_APP_STORE.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="mac-app-store-step-by-step-native-macos-app">Mac App Store — step-by-step (native macOS app)<a class="docs-heading-anchor" href="#mac-app-store-step-by-step-native-macos-app" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Owner decision (2026-07):</strong> the <strong>public macOS product</strong> is the <strong>native Swift</strong> app (<code>apple/QuenderinApp</code> → target <strong>QuenderinMac</strong>), distributed <strong>only through the Mac App Store</strong>. It is <strong>free</strong> (Apple’s 30% is irrelevant for a free listing). Goal: branding + legitimacy (users trust “Get” on the App Store), not Electron DMG downloads.</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Channel</th><th>What</th><th>Public?</th></tr></thead><tbody><tr><td><strong>Mac App Store</strong></td><td>Native <code>QuenderinMac</code> (SwiftUI + QuenderinKit + llama.xcframework)</td><td><strong>Yes — only public Mac channel</strong></td></tr><tr><td>Electron <code>.dmg</code></td><td>Lab / R&amp;D (<code>npm run electron:build:mac</code>)</td><td><strong>No</strong> — do not link on the website</td></tr><tr><td>GitHub Releases</td><td>Windows + Linux installers only</td><td>Yes (desktop-release workflow)</td></tr></tbody></table></div>
+<p>iOS uses the same bundle id / universal-style identity where configured: <code>ai.quenderin.Quenderin</code>. Version <strong>0.2.0</strong> (build <strong>2</strong>).</p>
+<p>Last updated: 2026-07-09</p>
+<hr />
+<h4 id="0-prerequisites-you">0. Prerequisites (you)<a class="docs-heading-anchor" href="#0-prerequisites-you" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span><strong>Apple Developer Program</strong> membership (you indicated you have a license).</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Mac with recent <strong>Xcode</strong> (15+ recommended).</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>App Store Connect access for the same team.</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Privacy URL live: <strong>https://quenderin.org/privacy</strong></span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Support email: <strong>quenderin@aulenor.com</strong></span></li>
+</ul>
+<hr />
+<h4 id="1-build-the-inference-framework-once-per-machine-when-llama-cpp-updates">1. Build the inference framework (once per machine / when llama.cpp updates)<a class="docs-heading-anchor" href="#1-build-the-inference-framework-once-per-machine-when-llama-cpp-updates" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code># from repo root — first run is long
+./apple/build-xcframework.sh
+# → produces llama.xcframework used by QuenderinKit</code></pre></div>
+<p>See <code>apple/QuenderinApp/INTEGRATION.md</code> if the path layout differs on your machine.</p>
+<hr />
+<h4 id="2-generate-the-xcode-project">2. Generate the Xcode project<a class="docs-heading-anchor" href="#2-generate-the-xcode-project" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>brew install xcodegen   # once
+cd apple/QuenderinApp
+xcodegen generate
+open Quenderin.xcodeproj</code></pre></div>
+<p>Targets:</p>
+<ul>
+<li><strong>Quenderin</strong> — iOS</li>
+<li><strong>QuenderinMac</strong> — macOS (sandbox + hardened runtime already in <code>project.yml</code>)</li>
+</ul>
+<p>Version is set to <strong>0.2.0</strong> / build <strong>2</strong> in:</p>
+<ul>
+<li><code>Info-macOS.plist</code> / <code>Info.plist</code></li>
+<li><code>project.yml</code> (<code>MARKETING_VERSION</code> / <code>CURRENT_PROJECT_VERSION</code>)</li>
+</ul>
+<p>Bump both together for every Store submission.</p>
+<hr />
+<h4 id="3-signing-xcode">3. Signing (Xcode)<a class="docs-heading-anchor" href="#3-signing-xcode" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>Select target <strong>QuenderinMac</strong>.</li>
+<li><strong>Signing &amp; Capabilities</strong> → Team = your Apple Developer team.</li>
+<li>Confirm <strong>App Sandbox</strong> + <strong>Outgoing Connections (Client)</strong> (entitlements file <code>Quenderin-macOS.entitlements</code>).</li>
+<li>Bundle ID: <strong><code>ai.quenderin.Quenderin</code></strong> (must match App Store Connect record).</li>
+</ol>
+<p>For CLI export, copy <code>ExportOptions.plist</code> and set <code>teamID</code> to your 10-character Team ID (Membership details — not a secret). Method is already <code>app-store-connect</code>.</p>
+<hr />
+<h4 id="4-app-store-connect-create-the-mac-app-once">4. App Store Connect — create the Mac app (once)<a class="docs-heading-anchor" href="#4-app-store-connect-create-the-mac-app-once" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li><a href="https://appstoreconnect.apple.com" rel="noopener" target="_blank">App Store Connect<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> → <strong>My Apps</strong> → <strong>+</strong>.</li>
+<li>Platform: <strong>macOS</strong> (you can also add iOS to the same app record if you want a universal listing later; keep bundle id consistent).</li>
+<li>Name: <strong>Quenderin</strong>, primary language, SKU of your choice, bundle id <code>ai.quenderin.Quenderin</code>.</li>
+<li><strong>Pricing:</strong> Free.</li>
+<li><strong>Privacy Policy URL:</strong> <code>https://quenderin.org/privacy</code>.</li>
+<li><strong>Category:</strong> Productivity (matches <code>LSApplicationCategoryType</code>).</li>
+<li><strong>Age rating:</strong> <strong>17+</strong> — unrestricted local LLM output (same as iOS guidance).</li>
+<li><strong>Encryption:</strong> ITSAppUsesNonExemptEncryption = false already in Info plists (standard HTTPS + CryptoKit only) — answer the export compliance questionnaire accordingly.</li>
+</ol>
+<hr />
+<h4 id="5-archive-and-upload">5. Archive and upload<a class="docs-heading-anchor" href="#5-archive-and-upload" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="gui">GUI<a class="docs-heading-anchor" href="#gui" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ol>
+<li>Scheme <strong>QuenderinMac</strong> → <strong>Any Mac</strong> (or My Mac with “Release”).</li>
+<li><strong>Product → Archive</strong>.</li>
+<li>Organizer → <strong>Distribute App → App Store Connect → Upload</strong>.</li>
+</ol>
+<h5 id="cli-reproducible">CLI (reproducible)<a class="docs-heading-anchor" href="#cli-reproducible" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd apple/QuenderinApp
+# fill YOUR_TEAM_ID in ExportOptions.plist first
+xcodebuild -project Quenderin.xcodeproj -scheme QuenderinMac -configuration Release \
+  -archivePath build/QuenderinMac.xcarchive archive
+xcodebuild -exportArchive -archivePath build/QuenderinMac.xcarchive \
+  -exportOptionsPlist ExportOptions.plist -exportPath build/export
+# then upload via Transporter or:
+# xcrun altool / notarytool / App Store Connect API key</code></pre></div>
+<hr />
+<h4 id="6-listing-copy-accuracy">6. Listing copy (accuracy)<a class="docs-heading-anchor" href="#6-listing-copy-accuracy" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Mac App Store users get the <strong>native offline assistant</strong> — chat, models, local agent capabilities that <strong>compile into the sandboxed Mac app</strong>. Do <strong>not</strong> paste Electron desktop “drive any app / BlueStacks” claims if those capabilities are not in the MAS sandbox build.</p>
+<p>Use <a href="release-store#src-docs-store-listing-md">STORE_LISTING.md</a> as the base; strip any desktop-only automation claims that require full-disk Accessibility outside the sandbox.</p>
+<p>Screenshots: Mac window of chat + model library, dark UI preferred for brand consistency.</p>
+<hr />
+<h4 id="7-review-notes-paste-into-asc">7. Review notes (paste into ASC)<a class="docs-heading-anchor" href="#7-review-notes-paste-into-asc" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Suggested notes for App Review:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Quenderin is a free, offline AI chat app. On first launch the user downloads an open GGUF
+model (0.4–9 GB) over HTTPS (Hugging Face). Please use Wi-Fi.
+
+No account is required. No user content is uploaded to our servers for inference.
+
+Generative AI disclosure: responses are produced by an on-device model and may be wrong.
+In-app disclaimer + Report affordance are included.
+
+Sandbox: network client only (model download). No tracking SDKs.</code></pre></div>
+<hr />
+<h4 id="8-submit-for-review">8. Submit for Review<a class="docs-heading-anchor" href="#8-submit-for-review" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>Select the uploaded build.</li>
+<li>Complete <strong>App Privacy</strong> (“Data Not Collected” if still accurate).</li>
+<li><strong>Add for Review</strong> → <strong>Submit</strong>.</li>
+</ol>
+<p>After approval, the Mac app is available <strong>only</strong> via the App Store — do not publish a competing notarized DMG of the same product on the website.</p>
+<hr />
+<h4 id="9-website-github-alignment">9. Website / GitHub alignment<a class="docs-heading-anchor" href="#9-website-github-alignment" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><a href="../download">download.html</a>: macOS section points to <strong>App Store</strong> (or “coming soon” until live), <strong>not</strong> Electron DMG.</li>
+<li>GitHub Releases: Windows + Linux only (<code>desktop-release.yml</code>).</li>
+<li>Electron mac builds: keep for developers (<code>electron:build:mac</code>); label lab-only in README.</li>
+</ul>
+<hr />
+<h4 id="10-checklist">10. Checklist<a class="docs-heading-anchor" href="#10-checklist" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>xcframework built</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>xcodegen → QuenderinMac signs with your Team</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Version 0.2.0 (2) matches ASC</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Free price + privacy URL</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Age 17+</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Screenshots</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Review notes</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Submitted</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Website macOS = App Store only</span></li>
+</ul>
+<hr />
+<h4 id="related">Related<a class="docs-heading-anchor" href="#related" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><a href="release-store#src-docs-release-md">RELEASE.md</a> — shared signing notes (iOS section overlaps)</li>
+<li><a href="release-store#src-docs-ship-readiness-md">SHIP_READINESS.md</a> — software vs owner gates</li>
+<li><a href="#src-docs-microsoft-store-md">MICROSOFT_STORE.md</a> — Windows dual channel (Store + GitHub exe)</li>
+<li><a href="#src-docs-windows-linux-strategy-md">WINDOWS_LINUX_STRATEGY.md</a> — Electron on Win/Linux only</li>
+</ul></section><section class="docs-subdoc" id="src-docs-microsoft-store-md"><h2 id="src-docs-microsoft-store-md-heading">Microsoft Store — step-by-step (Windows desktop)</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/MICROSOFT_STORE.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="microsoft-store-step-by-step-windows-desktop">Microsoft Store — step-by-step (Windows desktop)<a class="docs-heading-anchor" href="#microsoft-store-step-by-step-windows-desktop" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Goal:</strong> list <strong>Quenderin</strong> (Electron desktop, free) on the Microsoft Store for trust/branding and SmartScreen-free installs, <strong>while keeping</strong> the same-version <strong>GitHub Releases</strong> <code>.exe</code> (installer + portable) for direct download on <a href="https://quenderin.org/download.html" rel="noopener" target="_blank">quenderin.org/download<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Channel</th><th>Artifact</th><th>Who signs</th><th>Auto-update</th></tr></thead><tbody><tr><td><strong>Microsoft Store</strong></td><td><code>.appx</code> / MSIX</td><td><strong>Microsoft</strong> (store)</td><td>Store updates</td></tr><tr><td><strong>GitHub Releases</strong></td><td><code>Quenderin-Setup-x64.exe</code>, portable</td><td>optional Authenticode; often unsigned in preview</td><td>You cut a new <code>v*</code> tag</td></tr></tbody></table></div>
+<p>This guide is the <strong>owner path</strong> — Partner Center clicks and publisher identity only you can do. Code already supports AppX via <code>electron-builder</code> (<code>npm run electron:build:win:store</code>).</p>
+<p>Last updated: 2026-07-09 · app version <strong>0.2.0</strong></p>
+<hr />
+<h4 id="0-what-you-need-before-day-one">0. What you need before day one<a class="docs-heading-anchor" href="#0-what-you-need-before-day-one" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>A Microsoft account (personal is fine for individual publishers).</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span><strong>Microsoft Partner Center</strong> enrollment — one-time fee for individual developers (historically ~US$19; confirm current fee at <a href="https://partner.microsoft.com/dashboard" rel="noopener" target="_blank">partner.microsoft.com/dashboard<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>).</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>A Windows 10/11 machine (or a Windows CI agent) with <strong>Node 20+</strong>, <strong>npm</strong>, and <strong>Windows SDK</strong> components electron-builder needs for AppX (Visual Studio Build Tools “Desktop development with C++” + Windows 10/11 SDK is the usual fix if pack fails).</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Store assets ready (see §5): icon 44/50/150, screenshots, description, privacy URL.</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Repo built cleanly: <code>npm ci &amp;&amp; npm run build</code> on that machine.</span></li>
+</ul>
+<p><strong>Do not</strong> put Partner Center secrets, PFX passwords, or publisher CNs into git.</p>
+<hr />
+<h4 id="1-create-the-partner-center-account-once">1. Create the Partner Center account (once)<a class="docs-heading-anchor" href="#1-create-the-partner-center-account-once" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>Open <a href="https://partner.microsoft.com/dashboard" rel="noopener" target="_blank">https://partner.microsoft.com/dashboard<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> and sign in with the Microsoft account that will <strong>own</strong> the listing.</li>
+<li>Enroll as an <strong>individual</strong> (or company if you have a D-U-N-S / org registration).</li>
+<li>Complete identity verification (ID / payment for the registration fee).</li>
+<li>Wait until the dashboard shows <strong>Apps and games</strong> is available.</li>
+</ol>
+<p>Checkpoint: you can open <strong>Apps and games → Overview</strong> without an enrollment banner.</p>
+<hr />
+<h4 id="2-reserve-the-app-name">2. Reserve the app name<a class="docs-heading-anchor" href="#2-reserve-the-app-name" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>Partner Center → <strong>Apps and games</strong> → <strong>New product</strong> → <strong>MSIX or PWA app</strong>.</li>
+<li>Reserve the name <strong>Quenderin</strong> (or the closest available; keep it consistent with branding).</li>
+<li>Note the <strong>Store ID</strong> / product page once created (you will need it for support links later).</li>
+</ol>
+<p>Checkpoint: the product appears under Apps and games with status <strong>Incomplete</strong> / draft.</p>
+<hr />
+<h4 id="3-copy-product-identity-into-electron-builder-yaml">3. Copy product identity into <code>electron-builder.yaml</code><a class="docs-heading-anchor" href="#3-copy-product-identity-into-electron-builder-yaml" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Partner Center → your app → <strong>Product management → Product identity</strong> (wording may be “App identity” / “Package identity”).</p>
+<p>You need four values:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Partner Center field</th><th>electron-builder key (<code>appx:</code>)</th><th>Example shape</th></tr></thead><tbody><tr><td>Package/Identity name</td><td><code>identityName</code></td><td><code>YourPublisher.Quenderin</code></td></tr><tr><td>Publisher (CN=…)</td><td><code>publisher</code></td><td><code>CN=A1B2C3D4-…</code></td></tr><tr><td>Publisher display name</td><td><code>publisherDisplayName</code></td><td><code>Your Name or Studio</code></td></tr><tr><td>(application id segment)</td><td><code>applicationId</code></td><td><code>Quenderin</code> (already set)</td></tr></tbody></table></div>
+<p>Edit <strong><code>electron-builder.yaml</code></strong> under <code>appx:</code>:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>yaml</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>appx:
+  applicationId: Quenderin
+  displayName: Quenderin
+  identityName: REPLACE.FROM.PARTNER.CENTER
+  publisher: CN=REPLACE-GUID-FROM-PARTNER-CENTER
+  publisherDisplayName: REPLACE Display Name
+  languages:
+    - en-US
+  artifactName: &quot;Quenderin-Store-${arch}.appx&quot;
+  backgroundColor: &quot;#0B0F14&quot;</code></pre></div>
+<p><strong>Critical:</strong> <code>publisher</code> must match Partner Center <strong>exactly</strong> (including <code>CN=</code>). A mismatch is the #1 reason Store packages fail validation on upload.</p>
+<p>Optional but recommended: set <code>appId</code> at the top of the same file to a stable reverse-DNS id (<code>com.quenderin.desktop</code> is already set) and do not change it between releases.</p>
+<hr />
+<h4 id="4-build-the-store-package-appx">4. Build the Store package (AppX)<a class="docs-heading-anchor" href="#4-build-the-store-package-appx" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>On <strong>Windows</strong>:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bat</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>git checkout main
+git pull
+npm ci
+npm run electron:build:win:store</code></pre></div>
+<p>Output (default):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>release/Quenderin-Store-x64.appx</code></pre></div>
+<p>If electron-builder errors about <code>makeappx</code> / Windows SDK:</p>
+<ol>
+<li>Install <strong>Visual Studio 2022 Build Tools</strong>.</li>
+<li>Workload: <strong>Desktop development with C++</strong>.</li>
+<li>Individual component: a current <strong>Windows 10/11 SDK</strong>.</li>
+<li>Re-open the terminal and rebuild.</li>
+</ol>
+<p><strong>Signing:</strong> for Store upload you typically submit an <strong>unsigned</strong> or <strong>test-signed</strong> AppX; Partner Center / the Store pipeline re-signs with the Microsoft distribution cert. Follow the upload wizard’s current guidance if it asks for a <code>.msixupload</code> / package flight.</p>
+<p>Also keep building the <strong>GitHub</strong> channel (CI does this on <code>v*</code> tags):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bat</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npm run electron:build:win
+REM → release/Quenderin-Setup-x64.exe
+REM → release/Quenderin-Portable-x64.exe</code></pre></div>
+<p>Do <strong>not</strong> replace GitHub artifacts with the AppX — ship <strong>both</strong>.</p>
+<hr />
+<h4 id="5-store-listing-content-copy-paste">5. Store listing content (copy paste)<a class="docs-heading-anchor" href="#5-store-listing-content-copy-paste" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Use accurate, <strong>desktop</strong> language. The free Store build is local chat + model library + governed tools that the desktop app actually ships. Do <strong>not</strong> claim iPhone control or features only in unreleased Pro autonomy if they are not in the binary.</p>
+<h5 id="privacy">Privacy<a class="docs-heading-anchor" href="#privacy" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Privacy policy URL: <strong>https://quenderin.org/privacy</strong> (already hosted).</li>
+</ul>
+<h5 id="age-content">Age / content<a class="docs-heading-anchor" href="#age-content" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Unrestricted local LLM → file for <strong>adult/mature</strong> audiences where the questionnaire asks (same posture as App Store 17+ / Play Mature). Do not under-rate.</li>
+</ul>
+<h5 id="short-description-example">Short description (example)<a class="docs-heading-anchor" href="#short-description-example" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Private offline AI chat on your PC. Download open models, run them locally — nothing leaves your machine.</code></pre></div>
+<h5 id="full-description-example-skeleton">Full description (example skeleton)<a class="docs-heading-anchor" href="#full-description-example-skeleton" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Quenderin is an offline AI assistant for Windows.
+
+• Chat with open models (Llama, Qwen, Mistral, Gemma, …) on your own hardware
+• Models download inside the app with integrity checks
+• Nothing is sent to our servers for inference — private by design
+• Free preview; large models need free disk space and a solid machine
+
+By using Quenderin you agree that model output is not professional advice and may be wrong.
+See https://quenderin.org/terms and https://quenderin.org/privacy.</code></pre></div>
+<h5 id="screenshots-icons">Screenshots / icons<a class="docs-heading-anchor" href="#screenshots-icons" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Partner Center lists exact sizes. Minimum practical set:</p>
+<ul>
+<li><strong>Store logo / tiles:</strong> 44×44, 50×50, 150×150 (and any required 300×300 / poster).</li>
+<li><strong>Screenshots:</strong> at least 1 desktop screenshot (1366×768 or higher is typical); 3–4 is better (chat empty state, model library, a short reply, settings).</li>
+<li>Source brand assets live under <code>brand/</code> / <code>brand/electron/</code> (icons). Export clean PNG without “Electron” chrome if possible.</li>
+</ul>
+<h5 id="support-contact">Support contact<a class="docs-heading-anchor" href="#support-contact" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Support email: <strong>quenderin@aulenor.com</strong> (same as mobile / site).</li>
+<li>Website: <strong>https://quenderin.org</strong></li>
+</ul>
+<hr />
+<h4 id="6-upload-the-package-and-submit">6. Upload the package and submit<a class="docs-heading-anchor" href="#6-upload-the-package-and-submit" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>Partner Center → your Quenderin product → <strong>Packages</strong>.</li>
+<li>Upload <code>Quenderin-Store-x64.appx</code> (or the <code>.msixupload</code> if you produce one).</li>
+<li>Fix any <strong>certification failures</strong> (common: wrong publisher CN, missing logos, capability declarations, or large unpackaged native binaries — see electron-builder AppX docs).</li>
+<li>Complete <strong>Properties</strong>, <strong>Age ratings</strong>, <strong>Store listings</strong>, <strong>Privacy</strong>, <strong>Pricing</strong> (<strong>Free</strong>).</li>
+<li><strong>Submission → Submit to the Store</strong>.</li>
+</ol>
+<p>Review can take from hours to several days. Certification notes go to the Partner Center inbox.</p>
+<hr />
+<h4 id="7-after-approval-dual-channel-discipline">7. After approval — dual channel discipline<a class="docs-heading-anchor" href="#7-after-approval-dual-channel-discipline" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Action</th><th>Store</th><th>GitHub</th></tr></thead><tbody><tr><td>Ship 0.2.0</td><td>Upload AppX built from tag <code>v0.2.0</code></td><td>Tag <code>v0.2.0</code> → <code>desktop-release.yml</code> publishes <code>.exe</code></td></tr><tr><td>Bump version</td><td>Partner Center package version must increase</td><td><code>package.json</code> version + git tag</td></tr><tr><td>Announce</td><td>Store listing auto-updates</td><td>website <code>download.html</code> always points at <code>releases/latest</code></td></tr></tbody></table></div>
+<p><strong>Version rule:</strong> keep <strong>marketing version aligned</strong> (<code>package.json</code> → 0.2.0, Store package version, and GitHub release title). Never ship Store 0.2.1 against GitHub still advertising 0.1.0 without updating the site.</p>
+<hr />
+<h4 id="8-pricing-free-listing">8. Pricing &amp; free listing<a class="docs-heading-anchor" href="#8-pricing-free-listing" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Price: <strong>Free</strong>.</li>
+<li>No IAP required for v0.2 preview.</li>
+<li>If Pro / autonomy becomes paid later, that is a <strong>product + package</strong> change — do not promise paid features in the free Store description until the binary gates them.</li>
+</ul>
+<hr />
+<h4 id="9-optional-ci-for-appx-later">9. Optional: CI for AppX later<a class="docs-heading-anchor" href="#9-optional-ci-for-appx-later" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Today AppX is <strong>manual on Windows</strong> so publisher identity stays local. Later you can add a <code>workflow_dispatch</code> job that:</p>
+<ol>
+<li>Runs on <code>windows-latest</code>.</li>
+<li>Injects <code>publisher</code> / <code>identityName</code> from GitHub <strong>Actions secrets</strong> (never the public log).</li>
+<li>Uploads <code>*.appx</code> as a release asset named <code>Quenderin-Store-x64.appx</code> <strong>or</strong> only as a private artifact for Partner Center upload.</li>
+</ol>
+<p>Do not auto-publish to the Store from CI until Partner Center API automation is set up deliberately.</p>
+<hr />
+<h4 id="10-checklist-print-this">10. Checklist (print this)<a class="docs-heading-anchor" href="#10-checklist-print-this" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Partner Center enrolled</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Name <strong>Quenderin</strong> reserved</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span><code>electron-builder.yaml</code> <code>appx.identityName</code> / <code>publisher</code> / <code>publisherDisplayName</code> filled</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span><code>npm run electron:build:win:store</code> → <code>release/Quenderin-Store-x64.appx</code></span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Screenshots + logos uploaded</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Privacy URL <code>https://quenderin.org/privacy</code></span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Age rating honest (mature LLM)</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Free price</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>Package uploaded + submission sent</span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>GitHub <code>v0.2.0</code> (or current) still has Setup + Portable <code>.exe</code></span></li>
+<li class="docs-task is-open"><span class="qi qi-square" aria-hidden="true"></span><span>download.html still links GitHub latest (Store badge can be added after live)</span></li>
+</ul>
+<hr />
+<h4 id="related-docs">Related docs<a class="docs-heading-anchor" href="#related-docs" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Doc</th><th>Role</th></tr></thead><tbody><tr><td><a href="#src-docs-windows-linux-strategy-md">WINDOWS_LINUX_STRATEGY.md</a></td><td>Why Electron on Win/Linux; channel ladder</td></tr><tr><td><a href="#src-docs-mac-app-store-md">MAC_APP_STORE.md</a></td><td><strong>macOS</strong> public path (native Swift, App Store only)</td></tr><tr><td><a href="release-store#src-docs-release-md">RELEASE.md</a></td><td>iOS / Android store + signing</td></tr><tr><td><a href="release-store#src-docs-store-listing-md">STORE_LISTING.md</a></td><td>Shared listing facts / accuracy guardrails</td></tr><tr><td><a href="release-store#src-docs-ship-readiness-md">SHIP_READINESS.md</a></td><td>What’s software-complete vs owner-only</td></tr></tbody></table></div>
+<hr />
+<h4 id="troubleshooting-quick">Troubleshooting (quick)<a class="docs-heading-anchor" href="#troubleshooting-quick" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Symptom</th><th>Likely cause</th></tr></thead><tbody><tr><td>“Publisher identity mismatch”</td><td><code>appx.publisher</code> ≠ Partner Center CN</td></tr><tr><td><code>makeappx</code> / MakePri not found</td><td>Windows SDK / VS Build Tools missing</td></tr><tr><td>Package too large</td><td>Expected for apps bundling node-llama-cpp; ensure Store allows size or use on-demand model download (already the product model)</td></tr><tr><td>SmartScreen still on GitHub exe</td><td>Normal until Authenticode or users install from Store</td></tr><tr><td>Users ask “which Windows build?”</td><td><strong>Store</strong> = auto-update + no SmartScreen; <strong>GitHub</strong> = portable / advanced / no Microsoft account</td></tr></tbody></table></div></section>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="android-mobile"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Android Native &amp; Mobile Build</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="release-store"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Release Status &amp; Store Submissions</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-windows-linux-strategy-md">docs/WINDOWS_LINUX_STRATEGY.md</a></li><li><a class="is-depth-3" href="#windows-linux-strategy-full-platform-coverage-without-a-rewrite">Windows + Linux strategy — full-platform coverage without a rewrite</a></li><li><a class="is-depth-2" href="#src-docs-mac-app-store-md">docs/MAC_APP_STORE.md</a></li><li><a class="is-depth-3" href="#mac-app-store-step-by-step-native-macos-app">Mac App Store — step-by-step (native macOS app)</a></li><li><a class="is-depth-2" href="#src-docs-microsoft-store-md">docs/MICROSOFT_STORE.md</a></li><li><a class="is-depth-3" href="#microsoft-store-step-by-step-windows-desktop">Microsoft Store — step-by-step (Windows desktop)</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

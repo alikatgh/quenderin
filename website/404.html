@@ -13,19 +13,20 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
 <style>
   .notfound { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1rem; }
-  .notfound .code { font-family: var(--font-mono); color: var(--brand); font-size: 0.9rem; letter-spacing: 0.1em; }
+  .notfound .code { font-family: var(--font-mono); color: var(--brand); font-size: 0.9rem; letter-spacing: 0.1em; display: inline-flex; align-items: center; gap: 0.45rem; }
 </style>
 </head>
 <body>
 <main class="container notfound">
-  <p class="code">404</p>
+  <p class="code"><span class="qi qi-wifi-off" aria-hidden="true"></span><span>404</span></p>
   <h1>This page went off-grid.</h1>
   <p style="color: var(--text-muted); max-width: 36ch;">The page you&rsquo;re looking for isn&rsquo;t here&mdash;but Quenderin still works without a signal.</p>
-  <a class="btn btn-primary" href="./">Back home</a>
-  <p style="margin-top:0.75rem; font-size:0.9rem;"><a href="how-it-works">How it works</a> &middot; <a href="features">Features</a> &middot; <a href="models">Models</a> &middot; <a href="faq">FAQ</a></p>
+  <a class="btn btn-primary nav-link-icon" href="./"><span class="qi qi-home" aria-hidden="true"></span><span>Back home</span></a>
+  <p style="margin-top:0.75rem; font-size:0.9rem;"><a href="docs/">Docs</a> &middot; <a href="how-it-works">How it works</a> &middot; <a href="features">Features</a> &middot; <a href="models">Models</a> &middot; <a href="faq">FAQ</a></p>
 </main>
 </body>
 </html>

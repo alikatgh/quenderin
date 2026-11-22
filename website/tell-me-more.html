@@ -16,10 +16,12 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=release-marks-20261028" />
-<link rel="stylesheet" href="detail-page.css?v=20261028-development" />
+<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="detail-page.css?v=20261122-fonts-docs" />
 <link rel="stylesheet" href="story-sections.css?v=20261028-visual" />
-<link rel="preload" href="fonts/ysabeau-office-latin-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <style>
   /* RTL content alignment (language-picker styling now lives in styles.css) */
   html[dir="rtl"] .spec-strip,html[dir="rtl"] .trust-list,html[dir="rtl"] .checklist,html[dir="rtl"] .steplist{text-align:right}
@@ -190,6 +192,7 @@
         <span class="nav-toggle-bar"></span>
       </button>
       <ul class="nav-menu" id="nav-menu">
+        <li><a class="nav-link-icon" href="docs/" data-language-link><span class="qi qi-book-open" aria-hidden="true"></span><span data-i18n="nav.docs">Docs</span></a></li>
         <li><a href="download" data-language-link data-i18n="nav.download">Download</a></li>
         <li><a href="#android-beta" data-i18n="beta.badge">Android · Closed beta</a></li>
         <li><a href="blog" data-i18n="nav.blog" data-language-link>Blog</a></li>
@@ -221,6 +224,7 @@
           </div>
           <div class="hero-secondary">
             <a class="detail-beta-link" href="#android-beta"><img src="icons/android.svg" width="20" height="20" alt="" /><span data-i18n="beta.badge">Android · Closed beta</span><span aria-hidden="true">↗</span></a>
+            <a class="nav-link-icon" href="docs/" data-language-link><span class="qi qi-book-open" aria-hidden="true"></span><span data-i18n="nav.docs">Docs</span></a>
             <a href="download" data-language-link data-i18n="hero.ctaDownload">Other platforms</a>
             <a href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View the source</a>
           </div>
@@ -426,7 +430,7 @@
            leave the hard-coded text (see i18n.js). -->
       <div class="bento" id="feat-acc">
         <article class="cell span-2 reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 3 18 18M8 8a7 7 0 0 0-5 2m9-7a18 18 0 0 1 10 4M5 15a10 10 0 0 1 10-2m-7 5a5 5 0 0 1 4-1"/><circle cx="12" cy="21" r="1"/></svg><span data-i18n="feat.offline.t">Offline chat</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><span class="qi qi-wifi-off detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.offline.t">Offline chat</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.offline.b">Once your model is installed, chat works without an internet connection. Model discovery and downloads need a connection.</p>
           <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> <span data-i18n="feat.offline.chip">Works in airplane mode</span></span></div>
           <div class="acc-panel" id="feat-more-offline" role="region" aria-label="More about offline chat"><div class="acc-inner">
@@ -435,14 +439,14 @@
         </article>
         <article class="cell reveal acc">
           <div class="bignum">$0</div>
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8m4-10v12"/></svg><span data-i18n="feat.free.t">Free to use</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><span class="qi qi-coins detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.free.t">Free to use</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.free.b.local" lang="en" dir="ltr">Local chat has no subscription or per-message charge.</p>
           <div class="acc-panel" id="feat-more-free" role="region" aria-label="More about cost"><div class="acc-inner">
             <p data-i18n="feat.free.m.local" lang="en" dir="ltr">Local replies are generated on your hardware. The source code is MIT licensed. Optional DeepSeek and a prepared computer, in the Mac and iPhone app, use your own accounts; provider charges may apply.</p>
           </div></div>
         </article>
         <article class="cell span-2 reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-agent"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 4 5 8-5 8m8 0h6"/></svg><span data-i18n="feat.agent.t">Local tools</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-agent"><span class="qi qi-terminal detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.agent.t">Local tools</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.agent.b">The apps include local tools. Broader Mac app control is available through the source CLI. Safety checks restrict sensitive actions involving:</p>
           <div class="cell-visual chips">
             <span class="chip chip-x" data-i18n="feat.agent.c1">Pay</span><span class="chip chip-x" data-i18n="feat.agent.c2">Delete</span><span class="chip chip-x" data-i18n="feat.agent.c3">Password</span><span class="chip chip-x" data-i18n="feat.agent.c4">Transfer</span>
@@ -452,14 +456,14 @@
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><span data-i18n="feat.priv.t">Local conversations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><span class="qi qi-lock detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.priv.t">Local conversations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.priv.b.local" lang="en" dir="ltr">Local conversations stay on your device and need no account.</p>
           <div class="acc-panel" id="feat-more-priv" role="region" aria-label="More about local conversations"><div class="acc-inner">
             <p data-i18n="feat.priv.m.local" lang="en" dir="ltr">Local chat does not send conversations to an inference service. Model downloads, search and release information use network requests. Optional DeepSeek and a prepared computer, in the Mac and iPhone app, send only the conversation you choose. An AI report sends a reviewed excerpt only when you submit it.</p>
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-hw"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4M10 10h4v4h-4z"/></svg><span data-i18n="feat.hw.t">Model recommendations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-hw"><span class="qi qi-cpu detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.hw.t">Model recommendations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.hw.b">Memory estimates help you choose a model for your device.</p>
           <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
           <div class="acc-panel" id="feat-more-hw" role="region" aria-label="More about model recommendations"><div class="acc-inner">
@@ -467,14 +471,14 @@
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-os"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6M14 4l-4 16"/></svg><span data-i18n="feat.os.t">Open source</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-os"><span class="qi qi-code-2 detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.os.t">Open source</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.os.b">The source code is available under the MIT license.</p>
           <div class="acc-panel" id="feat-more-os" role="region" aria-label="More about Open source"><div class="acc-inner">
             <p><span data-i18n="feat.os.m">The repository contains the app code, model integration, and tool safety checks, along with build instructions.</span> <a href="https://github.com/alikatgh/quenderin" rel="noopener">github.com/alikatgh/quenderin</a></p>
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-resume"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span data-i18n="feat.resume.t">Resumable downloads</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-resume"><span class="qi qi-download detail-feature-icon" aria-hidden="true"></span><span data-i18n="feat.resume.t">Resumable downloads</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.resume.b">Interrupted model downloads can be resumed.</p>
           <div class="acc-panel" id="feat-more-resume" role="region" aria-label="More about Resumable downloads"><div class="acc-inner">
             <p data-i18n="feat.resume.m">Quenderin supports resuming interrupted downloads and checks model files before loading them. Background download behavior depends on the platform.</p>
@@ -826,6 +830,7 @@
       </div>
       <div class="footer-col">
         <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="docs/" data-language-link data-i18n="nav.docs">Docs</a>
         <a href="reality" data-i18n="nav.reality" data-language-link>Measurements and limitations</a>
         <a href="roadmap" data-i18n="nav.roadmap" data-language-link>Roadmap</a>
         <a href="why-local-agent" data-i18n="nav.whylocal" data-language-link>Local agents</a>

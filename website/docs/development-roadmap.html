@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Development Guide, Contributing &amp; Roadmap — Quenderin Docs</title>
+<meta name="description" content="Repo conventions, parity-check commands, contribution workflow, and the 4-stage technical roadmap toward local computer usage." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/development-roadmap" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap" class="is-active" aria-current="page"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Quality, Research &amp; Evolution</span></div><div class="docs-kicker"><span class="qi qi-code-2" aria-hidden="true"></span>Contributors · Workflow</div><h1>Development Guide, Contributing &amp; Roadmap</h1><p class="docs-lead">Repo conventions, parity-check commands, contribution workflow, and the 4-stage technical roadmap toward local computer usage.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>9 min read (2,159 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>3 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 3 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/DEVELOPMENT.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/DEVELOPMENT.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/CONTRIBUTING.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>CONTRIBUTING.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/ROADMAP.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/ROADMAP.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-development-md">docs/DEVELOPMENT.md</a></li><li><a class="is-depth-3" href="#development">Development</a></li><li><a class="is-depth-2" href="#src-contributing-md">CONTRIBUTING.md</a></li><li><a class="is-depth-3" href="#contributing-to-quenderin">Contributing to Quenderin</a></li><li><a class="is-depth-2" href="#src-docs-roadmap-md">docs/ROADMAP.md</a></li><li><a class="is-depth-3" href="#quenderin-the-roadmap">Quenderin — the roadmap</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-docs-development-md"><h2 id="src-docs-development-md-heading">Development</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/DEVELOPMENT.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/DEVELOPMENT.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="development">Development<a class="docs-heading-anchor" href="#development" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<h4 id="prerequisites">Prerequisites<a class="docs-heading-anchor" href="#prerequisites" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>A recent <strong>Node.js LTS</strong> (18+) and npm.</li>
+<li>macOS, Linux, or Windows. (Native <code>node-llama-cpp</code> builds per-platform; on an unsupported platform the dashboard/API still run, only local inference is off.)</li>
+<li>Optional: a GGUF model — the setup wizard downloads one for you, or <code>POST /api/models/download</code>.</li>
+</ul>
+<h4 id="install">Install<a class="docs-heading-anchor" href="#install" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npm install            # backend + UI deps (postinstall runs `cd ui &amp;&amp; npm install`)</code></pre></div>
+<h4 id="run">Run<a class="docs-heading-anchor" href="#run" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>npm run dashboard</code></td><td>Start the server + UI → <code>http://localhost:3000</code></td></tr><tr><td><code>npm run electron:dev</code></td><td>Build TS, then launch the full Electron desktop app</td></tr><tr><td><code>npm run agent</code></td><td>Run the agent loop headless (no UI)</td></tr><tr><td><code>cd ui &amp;&amp; npm run dev</code></td><td>UI only with hot reload → <code>http://localhost:5173</code> (needs the backend on <code>:3000</code> for data)</td></tr></tbody></table></div>
+<h4 id="build">Build<a class="docs-heading-anchor" href="#build" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Command</th><th>Output</th></tr></thead><tbody><tr><td><code>npm run build:tsc</code></td><td>Compile <code>src/</code> → JS (required after changing <code>src/</code> or <code>electron/</code>)</td></tr><tr><td><code>cd ui &amp;&amp; npm run build</code></td><td>Build the UI → <code>public/</code> (served by Express)</td></tr><tr><td><code>npm run electron:build</code></td><td>Package the macOS app (<code>electron-builder</code>)</td></tr><tr><td><code>npm run electron:build:linux</code> / <code>:win</code> / <code>:all</code></td><td>Other targets</td></tr></tbody></table></div>
+<h4 id="quality-gates">Quality gates<a class="docs-heading-anchor" href="#quality-gates" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Command</th><th>Checks</th></tr></thead><tbody><tr><td><code>npm run check</code></td><td>typecheck + lint + <code>npm audit</code> (high) + recommendation test (the full gate)</td></tr><tr><td><code>npm run typecheck</code></td><td><code>tsc --noEmit</code> for both <code>src/</code> and <code>ui/</code></td></tr><tr><td><code>npm run lint</code></td><td>ESLint (<code>--max-warnings=0</code>) for <code>src/</code> and <code>ui/</code></td></tr><tr><td><code>npm run test:recommendation</code></td><td>The model-recommendation/parity test (<code>vitest</code>)</td></tr></tbody></table></div>
+<blockquote><p>ESLint runs automatically via a hook. Keep <code>npm run typecheck</code> green after every change — the project rule is no <code>any</code>/<code>@ts-ignore</code> without a comment.</p></blockquote>
+<h4 id="where-data-lives">Where data lives<a class="docs-heading-anchor" href="#where-data-lives" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Everything local, under <code>~/.quenderin/</code>:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Path</th><th>Contents</th></tr></thead><tbody><tr><td><code>~/.quenderin/models/</code></td><td>Downloaded GGUF model files</td></tr><tr><td><code>~/.quenderin/config.json</code></td><td>Saved configuration</td></tr><tr><td><code>~/.quenderin/memory.json</code>, <code>corrections.json</code></td><td>RAG memory (trajectories + embeddings)</td></tr></tbody></table></div>
+<h4 id="environment-variables">Environment variables<a class="docs-heading-anchor" href="#environment-variables" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Var</th><th>Effect</th></tr></thead><tbody><tr><td><code>PICOVOICE_ACCESS_KEY</code></td><td>Enables wake-word voice control (optional; voice is off without it)</td></tr><tr><td><code>CI</code> / <code>GITHUB_ACTIONS</code></td><td>Disables browser auto-open (non-interactive)</td></tr></tbody></table></div>
+<h4 id="project-layout">Project layout<a class="docs-heading-anchor" href="#project-layout" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>quenderin/
+├── src/                  # TypeScript backend
+│   ├── index.ts          # CLI entry (dashboard | agent)
+│   ├── server.ts app.ts  # Express + WebSocket boot
+│   ├── electron/         # Electron main + preload
+│   ├── routes/           # REST routes
+│   ├── websocket/        # WebSocket protocol
+│   ├── services/         # LLM, agent, session, memory, voice, tools, providers…
+│   ├── utils/            # logger, hardware, memory…
+│   └── constants.ts      # model catalog, limits
+├── ui/                   # React + Vite + Tailwind dashboard
+├── public/               # built UI (served by Express)
+├── tests/                # vitest tests
+├── apple/                # native iOS/Android rebuild (Swift package + app)
+├── website/              # marketing site
+└── docs/                 # ← you are here</code></pre></div>
+<h4 id="conventions-recap">Conventions recap<a class="docs-heading-anchor" href="#conventions-recap" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Changes to <code>src/</code> or <code>electron/</code> require a rebuild (<code>npm run build:tsc</code>); UI changes hot-reload under Vite.</li>
+<li>IPC channels (Electron main ↔ renderer) are typed in both directions; use <code>contextBridge</code>, never <code>nodeIntegration</code>.</li>
+<li>New WebSocket message types → update the TypeScript interfaces both ways and <a href="api-reference">API.md</a>.</li>
+<li>See <a href="#src-contributing-md">../CONTRIBUTING.md</a> for the contribution workflow.</li>
+</ul></section><section class="docs-subdoc" id="src-contributing-md"><h2 id="src-contributing-md-heading">Contributing to Quenderin</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>CONTRIBUTING.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/CONTRIBUTING.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="contributing-to-quenderin">Contributing to Quenderin<a class="docs-heading-anchor" href="#contributing-to-quenderin" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Thanks for your interest! Quenderin is MIT-licensed and we welcome contributions. Be respectful, be constructive, be collaborative.</p>
+<h4 id="getting-started">Getting started<a class="docs-heading-anchor" href="#getting-started" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>git clone https://github.com/alikatgh/quenderin
+cd quenderin
+npm install &amp;&amp; (cd ui &amp;&amp; npm install)
+npm run dashboard        # http://localhost:3000</code></pre></div>
+<p>New to the codebase? Read <strong><a href="architecture#src-docs-architecture-md">docs/ARCHITECTURE.md</a></strong> first, then the area you're touching: <a href="backend-frontend#src-docs-backend-md">BACKEND</a>, <a href="api-reference">API</a>, <a href="backend-frontend#src-docs-frontend-md">FRONTEND</a>, or <a href="#src-docs-development-md">DEVELOPMENT</a>.</p>
+<h4 id="workflow">Workflow<a class="docs-heading-anchor" href="#workflow" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>For major changes, open an issue first to discuss the approach.</li>
+<li>Branch off <code>main</code>: <code>git checkout -b feature/your-feature</code>.</li>
+<li>Make a <strong>focused</strong> change — one logical feature/fix per PR.</li>
+<li>Run the quality gate: <strong><code>npm run check</code></strong> (typecheck + lint + tests) must pass.</li>
+<li>Update docs in the same PR if you changed behavior, routes, or the WebSocket protocol.</li>
+<li>Open a PR: clear title, what changed and why, related issues, screenshots for UI changes.</li>
+</ol>
+<h5 id="commit-messages-conventional-commits">Commit messages (conventional commits)<a class="docs-heading-anchor" href="#commit-messages-conventional-commits" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p><code>feat:</code> · <code>fix:</code> · <code>docs:</code> · <code>test:</code> · <code>refactor:</code> · <code>chore:</code></p>
+<h4 id="ground-rules">Ground rules<a class="docs-heading-anchor" href="#ground-rules" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Enforced — for safety, privacy, and maintainability:</p>
+<ul>
+<li><strong>TypeScript discipline</strong> — no <code>any</code> in shared types and no <code>@ts-ignore</code> without a comment. <code>npm run typecheck</code> stays green.</li>
+<li><strong>Never remove safety-blocklist entries</strong> (Pay, Delete, Password, …). Add to it when a new dangerous action class appears.</li>
+<li><strong>Never hardcode model paths</strong> — use the catalog + discovery logic.</li>
+<li><strong>Privacy is the product</strong> — no telemetry, no analytics, no runtime network calls beyond the one-time model download. Don't add any.</li>
+<li><strong>Errors surface to the UI</strong> (WebSocket <code>error</code> events) — never silently swallow.</li>
+<li><strong>Electron</strong> — <code>contextBridge</code> only, never <code>nodeIntegration: true</code>. IPC typed both ways.</li>
+<li><strong>New WebSocket message types</strong> — add to the TypeScript interfaces in both directions and update <a href="api-reference">docs/API.md</a>.</li>
+</ul>
+<h4 id="ui-changes">UI changes<a class="docs-heading-anchor" href="#ui-changes" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Follow the design system: interactive state never changes geometry; hairline borders (no shadows); hierarchy in weight + size; tabular numbers; monospace for codes/metrics. Density over decoration — this is a developer power tool.</p>
+<h4 id="extending-the-agent-adding-a-capability">Extending the agent (adding a capability)<a class="docs-heading-anchor" href="#extending-the-agent-adding-a-capability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The computer-use agent is a growing library of governed capabilities, and adding one is one of the most useful contributions you can make. There's a step-by-step guide — the tier model, the seam+fake pattern that keeps it testable, the safety rules, wiring, and tests: <strong><a href="features#src-docs-adding-a-capability-md">docs/ADDING_A_CAPABILITY.md</a></strong>.</p>
+<h4 id="native-mobile-apple">Native mobile (<code>apple/</code>)<a class="docs-heading-anchor" href="#native-mobile-apple" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The Swift package unit-tests on a Mac with <code>swift test</code> (Swift 6 / Xcode 16+). See <a href="apple-native#src-apple-quenderinkit-readme-md">apple/QuenderinKit/README.md</a> and <a href="apple-native#src-apple-quenderinkit-integration-md">apple/QuenderinKit/INTEGRATION.md</a>.</p>
+<h4 id="review-process">Review process<a class="docs-heading-anchor" href="#review-process" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>A maintainer reviews each PR for: does it work, do tests pass, does it follow conventions, are docs updated, no undiscussed breaking changes. Make requested changes by pushing to your branch; once approved, a maintainer merges.</p>
+<h4 id="getting-help">Getting help<a class="docs-heading-anchor" href="#getting-help" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Questions:</strong> GitHub Discussions</li>
+<li><strong>Bugs:</strong> GitHub Issues (include OS + Node version + repro steps)</li>
+<li><strong>Security:</strong> see <code>SECURITY.md</code></li>
+</ul>
+<h4 id="license">License<a class="docs-heading-anchor" href="#license" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>By contributing, you agree your contributions are licensed under the MIT License.</p></section><section class="docs-subdoc" id="src-docs-roadmap-md"><h2 id="src-docs-roadmap-md-heading">Quenderin — the roadmap</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/ROADMAP.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/ROADMAP.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-the-roadmap">Quenderin — the roadmap<a class="docs-heading-anchor" href="#quenderin-the-roadmap" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><strong>Status:</strong> v1, 2026-07-07. This is the ONE consolidated, prioritized roadmap. The other planning docs remain the deep-dives it links to; when they disagree with this file, this file wins (and should be updated deliberately, not drifted from).</p>
+<p><strong>Mission (owner, 2026-07-05):</strong> local autonomous computer usage — <em>you say what to do, Quenderin operates the computer, with a local model as the brain and nothing leaving the machine.</em> Local LLM chat is the foundation and the funnel; the governed autonomy layer is the destination and the paid tier. Competitive frame: cloud computer-use agents (Claude Cowork), beaten on privacy/trust/reversibility — never on raw model IQ.</p>
+<p>Sources consolidated here: <a href="overview#src-docs-product-md">PRODUCT.md</a> · <a href="cli-and-agent#src-docs-agent-autonomy-plan-md">AGENT_AUTONOMY_PLAN.md</a> · <a href="release-store#src-docs-ship-readiness-md">SHIP_READINESS.md</a> · <a href="desktop-distribution#src-docs-windows-linux-strategy-md">WINDOWS_LINUX_STRATEGY.md</a> · the public 4-stage story (<a href="../roadmap">website/roadmap.html</a>) · audits under <a href="https://github.com/alikatgh/quenderin/tree/main/docs/audits" rel="noopener" target="_blank">audits/<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</p>
+<hr />
+<h4 id="where-we-actually-are-honest-snapshot-2026-07-07">Where we actually are (honest snapshot, 2026-07-07)<a class="docs-heading-anchor" href="#where-we-actually-are-honest-snapshot-2026-07-07" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Track</th><th>State</th></tr></thead><tbody><tr><td><strong>Mobile apps (iOS + Android)</strong> — private offline chat + T0 pure-compute agent</td><td><strong>Software-complete and store-ready</strong>; 295 Swift tests / 259 CoreVerify checks green; blocked ONLY on owner-gated store items (accounts, signing, console clicks, device numbers)</td></tr><tr><td><strong>Desktop agent (TS/Electron)</strong> — the governed capability agent</td><td><strong>Works end-to-end today</strong> via <code>quenderin do</code> (CLI): plan → preview → one approval → act → ledger → undo (even cross-session), ~400 TS tests. Capability library: fs.\<em>, app.\</em> (ADB), mac.\* (Calendar, Reminders, Notes, Mail-draft, Shortcuts, full-GUI <code>mac.ui.*</code>)</td></tr><tr><td><strong>Safety/governance spine</strong></td><td>Shipped on all three platforms: tiers T0–T4, blocklist (one canonical list, parity-enforced), consent, preview, per-run approval, append-only ledger, kill switch, dry-run, durable undo</td></tr><tr><td><strong>Cross-platform parity</strong></td><td>Machine-enforced (agent/safety/router/catalog parity scripts in CI); twin-drift audit batches 1–3 shipped — all P0/P1 drifts resolved</td></tr><tr><td><strong>Website / funnel</strong></td><td>quenderin.org live (privacy, roadmap, dev-log); in-app links all funnel there</td></tr><tr><td><strong>Distribution (0.2.0)</strong></td><td><strong>macOS:</strong> native App Store only (free). <strong>Windows:</strong> Microsoft Store (AppX) + GitHub <code>.exe</code>. <strong>Linux:</strong> GitHub AppImage/deb. Guides: <code>docs/MAC_APP_STORE.md</code>, <code>docs/MICROSOFT_STORE.md</code></td></tr><tr><td><strong>Honest weak spot</strong></td><td>GUI/action <strong>grounding</strong> — reliable action-selection by a small local model. The harness (guards, verification, undo) is how we compensate; this is the long-term technical frontier</td></tr></tbody></table></div>
+<hr />
+<h4 id="horizon-0-ship-whats-built-owner-gated-target-next-2-4-weeks">Horizon 0 — Ship what's built <em>(owner-gated · target: next 2–4 weeks)</em><a class="docs-heading-anchor" href="#horizon-0-ship-whats-built-owner-gated-target-next-2-4-weeks" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The apps are done; the remaining work is accounts, clicks, and hardware — an agent cannot do these. Full checklist with exact steps: <a href="release-store#src-docs-ship-readiness-md">SHIP_READINESS.md</a>.</p>
+<ol>
+<li>Apple Developer + Play Console accounts; signing (keystore steps in <a href="release-store#src-docs-release-md">RELEASE.md</a>).</li>
+<li>Console questionnaires: 17+/Mature rating, Apple EULA opt-in, Play Data-Safety ("no data collected"), iOS review notes; paste the privacy-policy URL.</li>
+<li>Build the iOS xcframework + xcodegen target; add <code>jni/llama.cpp</code> for the real-inference APK.</li>
+<li>Screenshots + store copy — <strong>offline private assistant wording</strong>, never "controls your phone".</li>
+<li>Physical-device ground truth: tok/s + thermals on a real iPhone and Android phone (replaces the estimate tables).</li>
+<li>Desktop prototype loose ends (if distributing it at all): live-verify the per-launch token; code-sign/notarize.</li>
+</ol>
+<p><strong>Why first:</strong> the free apps are the funnel and the credibility engine for everything below. Every week unshipped is zero users compounding.</p>
+<h4 id="horizon-1-desktop-agent-v1-trustworthy-not-just-capable-engineering-1-2-months">Horizon 1 — Desktop agent v1: "trustworthy, not just capable" <em>(engineering · 1–2 months)</em><a class="docs-heading-anchor" href="#horizon-1-desktop-agent-v1-trustworthy-not-just-capable-engineering-1-2-months" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Make the already-working governed agent a product someone else can use. Deep-dive: <a href="cli-and-agent#src-docs-agent-autonomy-plan-md">AGENT_AUTONOMY_PLAN.md</a> §7 (M0–M4 shipped; this is what remains).</p>
+<p><strong>Platform decision (owner, 2026-07-07 + 2026-07-09):</strong> the macOS <em>product</em> is the native Swift app. <strong>Public free distribution = Mac App Store only</strong> (branding + legitimacy; free listing — no 30% concern). Playbook: <a href="desktop-distribution#src-docs-mac-app-store-md">MAC_APP_STORE.md</a>. Electron/TS keeps (a) R&amp;D lab, (b) <code>quenderin do</code> CLI (dev), (c) Windows/Linux vehicle — GUI lab-grade. Note: full automation (AX / Apple Events) is largely incompatible with App Store sandboxing; if/when a <strong>Pro autonomy</strong> tier needs those APIs, that build may be a <strong>separate notarized direct-download</strong> (H2), not a replacement for the free MAS app.</p>
+<ol>
+<li><strong>macOS-native agent surface in the Swift app</strong> — the governance spine (tiers, gate → approve → run → ledger, workspace fs.\<em>, plan preview, undo) already exists natively in QuenderinKit; port the capability *library</em> from TS: <code>mac.*</code> (prefer native EventKit / AX APIs over osascript where possible), skill memory, durable undo journal, dry-run — plus the approval dialog and a Tasks pane in the Mac app. <em>(The Electron Tasks surface shipped 2026-07-07 remains the lab's reference implementation of this exact loop.)</em></li>
+<li><strong>Retire the legacy raw-action loop</strong> — migrate <code>AgentService</code> to the governed <code>CapabilityAgent</code> per the Q-549 scoping analysis (<a href="cli-and-agent#src-docs-audits-2026-07-06-q549-agent-governance-analysis-md">audits/2026-07-06-Q549-agent-governance-analysis.md</a>); one agent, one governance path.</li>
+<li><strong>Chore-class breadth</strong> — grow the capability library where demos convert: files/organize (done), calendar/reminders/notes (done), Shortcuts (done), GUI-drive (done). <strong>2026-07-09:</strong> <code>fs.organize</code> (batch by extension, one approval, durable undo) + <code>fs.collect</code> (multi-file text for summarize→<code>fs.write</code> report pipelines). Next: browser-adjacent chores via Shortcuts/AppleScript.</li>
+<li><strong>Reliability harness over weak models</strong> — the loop guard + parse-recovery shipped; <strong>post-action <code>verify()</code> (2026-07-09):</strong> beyond <code>mac.ui.tap</code> / <code>app.tap</code> — type, key, and menu now self-check. <strong>Skill-sequence retrieval:</strong> record/recall tool+input steps (<code>SkillMemory.recordSteps</code> / <code>formatHint</code>) so the next similar goal is primed with concrete plan shape, not bare tool names. Bulk rate limits already shipped.</li>
+<li><strong>Durable watch-and-resume</strong> (the §4b "wait for replies" execution model) — design doc first; this is new architecture, not a capability.</li>
+<li><strong>Android/mobile catch-up (parity debt):</strong> Compose agent UI (attach/workspace/approval/ ledger surfaces). <strong>PDF text extraction: done</strong> (pure-Kotlin content-stream twin of Apple PDFKit — 2026-07-09).</li>
+</ol>
+<p><strong>Exit criterion:</strong> a non-developer can install the desktop app, say "organize my Downloads into folders by type and month", read the plan, click approve once, watch it happen, and undo it — with zero terminal use.</p>
+<h4 id="horizon-2-monetization-open-core-autonomy-is-the-paid-tier-product-business-starts-alongside-h1">Horizon 2 — Monetization: open-core, autonomy is the paid tier <em>(product/business · starts alongside H1)</em><a class="docs-heading-anchor" href="#horizon-2-monetization-open-core-autonomy-is-the-paid-tier-product-business-starts-alongside-h1" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Recorded direction (owner, 2026-07-04/05): chat + model library stay free and MIT; the <strong>paid Pro tier is the autonomy layer</strong> — "an agent that uses your computer FOR you, and nothing leaves the machine."</p>
+<ol>
+<li><strong>Pick the vehicle</strong> <em>(owner decision)</em>: paid Pro desktop app vs. license key vs. IAP; likely simple one-time or yearly license served from quenderin.org.</li>
+<li><strong>Draw the free/paid line in code</strong>: T0–T1 (chat, perception) free everywhere; T2+ autonomy behind the Pro gate on desktop. Never ship autonomy free in store apps.</li>
+<li><strong>Funnel discipline</strong>: every in-app link → quenderin.org (standing rule); add a Pro page + changelog/dev-log cadence; the store apps' Settings link the desktop agent.</li>
+<li><strong>Later:</strong> org licensing for compliance-sensitive buyers (legal/medical/finance) — the "no AI middleman" pitch is strongest where cloud agents are prohibited.</li>
+</ol>
+<h4 id="horizon-3-widen-the-moat-quarter">Horizon 3 — Widen the moat <em>(quarter+)</em><a class="docs-heading-anchor" href="#horizon-3-widen-the-moat-quarter" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>T1 perception on mobile</strong> — read-only, consented (attach-a-PDF already ships; camera/ image description next). <em>Requires the PRODUCT.md revision the plan flags — owner sign-off.</em></li>
+<li><strong>Windows/Linux</strong> — per <a href="desktop-distribution#src-docs-windows-linux-strategy-md">WINDOWS_LINUX_STRATEGY.md</a>. <strong>Started 2026-07-07:</strong> the win.\<em>/linux.\</em> capability libraries ship on the governed spine (argv-only runner — no interpolation layer), wired into <code>quenderin do</code> and the dashboard Tasks service; next is per-OS perception breadth and Linux app-launch.</li>
+<li><strong>Opt-in connectors</strong> (user's own OAuth to Google etc.) — a deliberate, opt-in departure from pure-local; never the default; design constraints in AGENT_AUTONOMY_PLAN §4b.</li>
+<li><strong>Grounding R&amp;D</strong> — evaluate each small-model generation against the GUI-driving suite; the moment a 4–8B grounds reliably, the "drive any app" story goes from demo to flagship.</li>
+</ul>
+<hr />
+<h4 id="standing-engineering-tracks-parallel-low-intensity">Standing engineering tracks (parallel, low-intensity)<a class="docs-heading-anchor" href="#standing-engineering-tracks-parallel-low-intensity" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Twin parity</strong>: remaining P2/P3 seam-normalization batch (number rendering, rounding, digit classes, Unicode length units) + the audit's 2 never-scored subsystems (<a href="cross-platform-parity#src-docs-audits-2026-07-06-twin-drift-audit-md">audits/2026-07-06-twin-drift-audit.md</a> items 12–13, data gaps).</li>
+<li><strong>Backlog burn-down</strong>: 25 quick wins (mostly a11y) in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/audits/2026-06-27-improvement-backlog.md" rel="noopener" target="_blank">audits/2026-06-27-improvement-backlog.md<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</li>
+<li><strong>Journal + parity discipline</strong> (BUG_JOURNAL.md, parity vectors) — every fix, same commit.</li>
+<li><strong>MoE SSD-streaming spike</strong> — measure whether llama.cpp expert buffer-type offload (<code>tensor_buft_overrides</code> / <code>--ncmoe</code>: dense spine on Metal + experts CPU/mmap-streamed) beats the current all-or-nothing <code>n_gpu_layers</code> fallback on a MoE GGUF. The trained <em>prerouter</em> (routing lookahead) is a separate upstream research project, not a fork. Gate: needs a MoE model on disk. Detail: <a href="research-survey#src-docs-research-moe-ssd-streaming-md">research/moe-ssd-streaming.md</a>.</li>
+</ul>
+<h4 id="decision-queue-owner-input-needed-nothing-below-proceeds-without-it">Decision queue (owner input needed — nothing below proceeds without it)<a class="docs-heading-anchor" href="#decision-queue-owner-input-needed-nothing-below-proceeds-without-it" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>#</th><th>Decision</th><th>Blocks</th></tr></thead><tbody><tr><td>1</td><td>Create store accounts / do the console items (H0 §1–2)</td><td>the entire mobile launch</td></tr><tr><td>2</td><td>Monetization vehicle (Pro app vs license vs IAP)</td><td>H2 §2 gating work</td></tr><tr><td>3</td><td>PRODUCT.md revision: allow T1 perception in store apps</td><td>H3 mobile perception</td></tr><tr><td>4</td><td>Twin-drift item 6: persist-mid-stream semantics (Q-324/325 by-design area)</td><td>that parity fix</td></tr><tr><td>5</td><td>Twin-drift item 14: ConversationStore salvage format + <code>modelID</code> on Android</td><td>that parity fix</td></tr></tbody></table></div>
+<h4 id="anti-goals-permanent-fences-restated-so-the-roadmap-cant-drift">Anti-goals (permanent fences — restated so the roadmap can't drift)<a class="docs-heading-anchor" href="#anti-goals-permanent-fences-restated-so-the-roadmap-cant-drift" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>No cloud calls from our code · no accounts/telemetry · no "run arbitrary script" capability · no free-roaming mobile automation (store apps stay ≤T1) · no bulk-outreach marketing · no benchmark race against frontier models · T4 (irreversible/sensitive) never autonomous.</p></section>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="research-survey"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">On-Device AI Research Survey</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="changelog-releases"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Changelog &amp; Engineering Updates</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-development-md">docs/DEVELOPMENT.md</a></li><li><a class="is-depth-3" href="#development">Development</a></li><li><a class="is-depth-2" href="#src-contributing-md">CONTRIBUTING.md</a></li><li><a class="is-depth-3" href="#contributing-to-quenderin">Contributing to Quenderin</a></li><li><a class="is-depth-2" href="#src-docs-roadmap-md">docs/ROADMAP.md</a></li><li><a class="is-depth-3" href="#quenderin-the-roadmap">Quenderin — the roadmap</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>
