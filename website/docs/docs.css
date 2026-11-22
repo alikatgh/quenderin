@@ -113,7 +113,7 @@ html[data-theme-mode="dark"] .docs-page {
   background: var(--accent-soft);
   border: 1px solid var(--accent-border);
   color: var(--doc-link);
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.72rem;
@@ -263,7 +263,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   gap: 0.42rem;
   margin-bottom: 0.45rem;
   padding-inline: 0.55rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.75rem;
@@ -291,8 +291,8 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   font-size: 0.9rem;
   line-height: 1.35;
   color: var(--text-secondary);
-  border-left: 2px solid transparent;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  border: 1px solid transparent;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .docs-nav-list a:hover {
@@ -304,7 +304,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   background: var(--accent-soft);
   color: var(--doc-link);
   font-weight: 600;
-  border-left-color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 34%, transparent);
 }
 
 .docs-nav-list a .qi {
@@ -354,7 +354,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.65rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.82rem;
@@ -400,7 +400,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 86%;
   font-variation-settings: "wdth" 86;
   font-weight: 500;
@@ -496,9 +496,10 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
 
 /* ---------- Rendered Prose ---------- */
 .docs-prose {
-  font-size: 1.02rem;
+  font-size: 1rem;
   line-height: 1.72;
   color: var(--text);
+  max-width: 72ch;
 }
 
 .docs-prose > * + * {
@@ -608,11 +609,11 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
 
 .docs-prose code {
   font-family: var(--font-mono);
-  font-size: 0.86em;
-  padding: 0.12rem 0.38rem;
+  font-size: 0.855em;
+  padding: 0.1rem 0.36rem;
   border-radius: 5px;
   background: var(--doc-inline-code-bg);
-  border: 1px solid var(--doc-inline-code-border);
+  border: 1px solid color-mix(in srgb, var(--doc-inline-code-border) 62%, transparent);
   color: var(--text);
   word-break: break-word;
 }
@@ -649,7 +650,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.72rem;
@@ -712,7 +713,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   padding: 0.72rem 0.95rem;
   background: var(--surface-tint);
   border-bottom: 1px solid var(--border);
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.76rem;
@@ -736,11 +737,11 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
 
 /* Blockquotes & Admonitions */
 .docs-prose blockquote {
-  margin: 1.2rem 0;
-  padding: 0.85rem 1.1rem;
-  border-left: 3px solid var(--brand);
+  margin: 1.25rem 0;
+  padding: 0.9rem 1.15rem;
+  border: 1px solid var(--border);
   background: var(--surface-tint);
-  border-radius: 0 var(--r-md) var(--r-md) 0;
+  border-radius: var(--r-md);
   color: var(--text-secondary);
 }
 
@@ -748,20 +749,19 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   margin-block: 1.25rem;
   padding: 0.95rem 1.15rem;
   border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--doc-note-border);
+  border: 1px solid color-mix(in srgb, var(--doc-note-border) 55%, var(--border));
   background: var(--doc-note-bg);
 }
 
 .docs-callout--warning,
 .docs-callout--caution,
 .docs-callout--important {
-  border-left-color: var(--doc-warn-border);
+  border-color: color-mix(in srgb, var(--doc-warn-border) 55%, var(--border));
   background: var(--doc-warn-bg);
 }
 
 .docs-callout--tip {
-  border-left-color: var(--doc-tip-border);
+  border-color: color-mix(in srgb, var(--doc-tip-border) 55%, var(--border));
   background: var(--doc-tip-bg);
 }
 
@@ -770,7 +770,7 @@ html[data-theme-mode="dark"] .docs-page .theme-toggle .icon-moon { display: none
   align-items: center;
   gap: 0.42rem;
   margin-bottom: 0.35rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 84%;
   font-variation-settings: "wdth" 84;
   font-size: 0.8rem;
@@ -954,7 +954,7 @@ html[data-theme-mode="dark"] .docs-callout--important .docs-callout-title {
 .docs-card-foot {
   margin-top: auto;
   padding-top: 0.4rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 84%;
   font-variation-settings: "wdth" 84;
   font-size: 0.74rem;
@@ -998,7 +998,7 @@ html[data-theme-mode="dark"] .docs-callout--important .docs-callout-title {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.74rem;
@@ -1029,7 +1029,7 @@ html[data-theme-mode="dark"] .docs-callout--important .docs-callout-title {
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.65rem;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.74rem;
@@ -1172,7 +1172,7 @@ html[data-theme-mode="dark"] .docs-callout--important .docs-callout-title {
 }
 
 .docs-search-hit-cat {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-stretch: 82%;
   font-variation-settings: "wdth" 82;
   font-size: 0.72rem;

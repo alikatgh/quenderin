@@ -57,3 +57,45 @@ test('marketing and documentation pages link lucide-icons.css and expose Docs na
         assert.ok(!html.includes('/Users/'), `${file} leaked local checkout path`);
     }
 });
+
+test('all referenced section-illustrations SVG symbols exist in sprite', () => {
+    const sprite = readFileSync(path.join(websiteDir, 'assets', 'blog', 'section-illustrations.svg'), 'utf8');
+    const defined = new Set([...sprite.matchAll(/<symbol\s+id="([^"]+)"/g)].map((m) => m[1]));
+    assert.ok(defined.size > 0, 'section-illustrations.svg must define symbols');
+
+    for (const file of readdirSync(websiteDir).filter((f) => f.endsWith('.html'))) {
+        const html = readFileSync(path.join(websiteDir, file), 'utf8');
+        for (const match of html.matchAll(/section-illustrations\.svg#([a-zA-Z0-9_-]+)/g)) {
+            assert.ok(defined.has(match[1]), `${file} references missing SVG symbol #${match[1]}`);
+        }
+    }
+});
+
+test('all 12 i18n language files have 100% key parity and cover all HTML data-i18n attributes', () => {
+    const i18nDir = path.join(websiteDir, 'i18n');
+    const en = JSON.parse(readFileSync(path.join(i18nDir, 'en.json'), 'utf8'));
+    const enKeys = Object.keys(en);
+    const langs = readdirSync(i18nDir).filter((f) => f.endsWith('.json')).sort();
+    assert.equal(langs.length, 12, 'Expected 12 i18n language JSON files');
+
+    const dicts = new Map();
+    for (const file of langs) {
+        const dict = JSON.parse(readFileSync(path.join(i18nDir, file), 'utf8'));
+        const missing = enKeys.filter((k) => !(k in dict) || typeof dict[k] !== 'string' || dict[k].trim() === '');
+        const extra = Object.keys(dict).filter((k) => !(k in en));
+        assert.deepEqual(missing, [], `${file} missing keys: ${missing.join(', ')}`);
+        assert.deepEqual(extra, [], `${file} has unexpected extra keys: ${extra.join(', ')}`);
+        dicts.set(file, dict);
+    }
+
+    for (const htmlFile of readdirSync(websiteDir).filter((f) => f.endsWith('.html'))) {
+        const html = readFileSync(path.join(websiteDir, htmlFile), 'utf8');
+        for (const match of html.matchAll(/data-i18n(?:-(?:html|placeholder))?="([^"]+)"/g)) {
+            const key = match[1];
+            assert.ok(key in en, `${htmlFile} uses unknown i18n key: ${key}`);
+            for (const [langFile, dict] of dicts) {
+                assert.ok(key in dict, `${langFile} missing key ${key} used by ${htmlFile}`);
+            }
+        }
+    }
+});
