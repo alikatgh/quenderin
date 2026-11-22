@@ -4,6 +4,36 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 22 November 2026 — Google Play upload-key verification & live console refresh
+
+Google Play Console (`ai.quenderin.app`, checked read-only in **Albert - Main - CMax**)
+shows two material changes since the 9 November record:
+
+- **Upload key reset is now active.** `appSigning:getPlaySigningState` records the
+  replacement upload certificate SHA-256
+  `88:0A:CA:18:0C:19:3B:CB:D6:70:F1:AF:DD:C2:B0:E1:5E:95:F7:55:77:18:05:E4:70:AA:5E:75:38:4F:8B:6F`
+  (SHA-1 `A5:34:0E:4D:EF:C0:9B:A6:06:AB:14:CC:CF:F8:31:52:BA:05:02:6E`) as active
+  (reset activated `2026-11-11T13:57:55.000Z`). That matches the local reset keystore
+  (`upload-keystore.p12` and `upload_certificate.pem`), although the older local
+  `upload-key-reset.receipt.json` file was never updated after submission.
+- **Closed testing and policy state.** Closed testing - Alpha
+  (`4700414835984777148`) remains **Active** across 178 countries serving live release
+  `2 (0.2.0)` (12,427 supported devices, `quenderin-testers@googlegroups.com`), with
+  draft `6 (0.6.0)` containing no AAB (`Latest version: -`). **Policy status** shows an
+  enforcement error (`App must target Android 16 (API level 36) or higher`, enforced
+  31 August 2026) against that older live `0.2.0` binary; `main`
+  (`android/app/build.gradle.kts`) already sets `compileSdk = 36`, `targetSdk = 36`,
+  `versionCode = 7`, and `versionName = "0.6.1"`. Production remains **Inactive**
+  (`7` opted-in testers; needs `>= 12` opted-in testers for `>= 14` days), and the
+  console displays the banner `Declare your trader status`.
+
+No Android AAB was built, signed, or uploaded on 22 November 2026
+(`android/keystore.properties` is still absent in the repo checkout, and Play Console's
+public listing for `ai.quenderin.app` was not promoted). Apple App Store Connect and
+Xcode Cloud (`0.6.0` live / `0.6.1` prepared, Issue #217) were not re-checked in this
+session because only Chrome profile **Albert - Main - CMax** was attached to browser
+automation and **Apple Developer** must remain isolated in its own profile.
+
 ## 9 November 2026, evening — 0.6.1 drafts saved, not submitted
 
 Source for this candidate is main `6e87618908b2f919c929d9cf7ae4cfa87df0885f`
