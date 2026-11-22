@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Backend, Dashboard UI &amp; Website Stack — Quenderin Docs</title>
+<meta name="description" content="Express backend, React UI dashboard, Cloudflare Worker website, SEO clean-URL indexing, and the optional content-report receiver." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/backend-frontend" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend" class="is-active" aria-current="page"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Architecture &amp; API</span></div><div class="docs-kicker"><span class="qi qi-server" aria-hidden="true"></span>Architecture · Web &amp; Services</div><h1>Backend, Dashboard UI &amp; Website Stack</h1><p class="docs-lead">Express backend, React UI dashboard, Cloudflare Worker website, SEO clean-URL indexing, and the optional content-report receiver.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>14 min read (3,217 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>6 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 6 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/BACKEND.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/BACKEND.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/FRONTEND.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/FRONTEND.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/ui/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>ui/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/website/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>website/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/WEBSITE_INDEXING.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/WEBSITE_INDEXING.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/services/content-report-receiver/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>services/content-report-receiver/README.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-backend-md">docs/BACKEND.md</a></li><li><a class="is-depth-3" href="#backend">Backend</a></li><li><a class="is-depth-2" href="#src-docs-frontend-md">docs/FRONTEND.md</a></li><li><a class="is-depth-3" href="#frontend">Frontend</a></li><li><a class="is-depth-2" href="#src-ui-readme-md">ui/README.md</a></li><li><a class="is-depth-3" href="#quenderin-dashboard-ui">Quenderin Dashboard UI</a></li><li><a class="is-depth-2" href="#src-website-readme-md">website/README.md</a></li><li><a class="is-depth-3" href="#quenderin-marketing-website">Quenderin marketing website</a></li><li><a class="is-depth-2" href="#src-docs-website-indexing-md">docs/WEBSITE_INDEXING.md</a></li><li><a class="is-depth-3" href="#website-indexing">Website indexing</a></li><li><a class="is-depth-2" href="#src-services-content-report-receiver-readme-md">services/content-report-receiver/README.md</a></li><li><a class="is-depth-3" href="#content-report-receiver">Content report receiver</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-docs-backend-md"><h2 id="src-docs-backend-md-heading">Backend</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/BACKEND.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/BACKEND.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="backend">Backend<a class="docs-heading-anchor" href="#backend" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The TypeScript backend in <code>src/</code>. It runs as a plain Node server (<code>npm run dashboard</code>) or wrapped in Electron (<code>npm run electron:dev</code>).</p>
+<h4 id="entry-points">Entry points<a class="docs-heading-anchor" href="#entry-points" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>src/index.ts</code></td><td>CLI (<code>commander</code>): <code>dashboard</code> (server + UI) and <code>agent</code> (headless agent loop)</td></tr><tr><td><code>src/server.ts</code></td><td>Boots Express + WebSocket, dependency-injects services, temp-file cleanup, graceful shutdown, process-level safety nets</td></tr><tr><td><code>src/app.ts</code></td><td>The Express app: all <code>/api/*</code> routes, static UI from <code>public/</code></td></tr><tr><td><code>src/electron/main.ts</code></td><td>Electron main process — owns the dashboard server + the window</td></tr><tr><td><code>src/electron/preload.ts</code></td><td><code>contextBridge</code> API (no <code>nodeIntegration</code>)</td></tr><tr><td><code>src/constants.ts</code></td><td>Model catalog, RAM tiers, limits/thresholds</td></tr></tbody></table></div>
+<h4 id="services-src-services">Services (<code>src/services/</code>)<a class="docs-heading-anchor" href="#services-src-services" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="llm-llm-service-ts">LLM (<code>llm.service.ts</code>)<a class="docs-heading-anchor" href="#llm-llm-service-ts" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The core. Loads/unloads GGUF models via <code>node-llama-cpp</code>, runs inference with <strong>AbortController-based timeouts</strong> (real cancellation), tracks the GPU backend and flash-attention state, and manages the <strong>model catalog</strong> (<code>MODEL_CATALOG</code>), downloads (resumable, with progress events), and <strong>memory-fitness</strong> checks (<code>checkMemoryForModel</code>) so it refuses to load a model that won't fit. Lifecycle: idle models are released after a timeout to reclaim RAM.</p>
+<h5 id="agent-agent-service-ts-agent">Agent (<code>agent.service.ts</code> + <code>agent/</code>)<a class="docs-heading-anchor" href="#agent-agent-service-ts-agent" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The OS agent loop — <code>runAgentLoop(goal, emitter, attachments, maxSteps, maxWallClockMs)</code>. Composed of:</p>
+<ul>
+<li><code>agent/promptBuilder.ts</code> — assembles perception + history into the planner prompt.</li>
+<li><code>agent/actionExecutor.ts</code> — maps the LLM's symbolic action (<code>{action,id}</code>) to real input, with the <strong>safety blocklist</strong> gate.</li>
+<li><code>agent/uiVerifier.ts</code> — confirms the UI changed as intended (state verification).</li>
+</ul>
+<h5 id="perception">Perception<a class="docs-heading-anchor" href="#perception" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><code>providers/desktop.provider.ts</code> / <code>providers/android.provider.ts</code> — capture the screen and perform input (desktop automation / Android ADB).</li>
+<li><code>uiParser.service.ts</code> — turns a raw screen into a compact, LLM-readable UI tree.</li>
+<li><code>ocr.service.ts</code> — extracts text from screenshots to enrich perception.</li>
+</ul>
+<h5 id="conversation-memory">Conversation &amp; memory<a class="docs-heading-anchor" href="#conversation-memory" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><code>session.service.ts</code> — persists conversations, history, export (caps via <code>MAX_SESSIONS</code> / <code>MAX_MESSAGES_PER_SESSION</code>).</li>
+<li><code>memory.service.ts</code> — a RAG store: past <strong>trajectories</strong> (goal + actions) and <strong>corrections</strong> (384-dim Xenova embeddings) in <code>~/.quenderin/</code>, retrieved by similarity to inform future runs.</li>
+<li><code>presets.ts</code> — assistant personas (General/Code/Writer/Tutor/Summary).</li>
+<li><code>intentClassifier.ts</code> — routes input between chat and an agent objective.</li>
+</ul>
+<h5 id="tool-use-tools">Tool-use (<code>tools/</code>)<a class="docs-heading-anchor" href="#tool-use-tools" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The chat assistant's tool loop:</p>
+<ul>
+<li><code>tools/toolLoop.ts</code> — plan → call tool → observe → repeat.</li>
+<li><code>tools/registry.ts</code> — the tool catalog (see below).</li>
+<li><code>tools/handlers.ts</code> — executes a parsed tool call.</li>
+<li><code>tools/calculator.ts</code> — a safe expression evaluator.</li>
+</ul>
+<p><strong>Built-in tools:</strong> <code>calculator</code>, <code>expression</code>, <code>datetime</code>, <code>system_info</code>, <code>read_file</code>, <code>note_save</code>, <code>note_list</code>.</p>
+<h5 id="voice-daemons-metrics-readiness">Voice, daemons, metrics, readiness<a class="docs-heading-anchor" href="#voice-daemons-metrics-readiness" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><code>voice.service.ts</code> — Picovoice wake-word + speech; pipes spoken commands into the agent. Gated on <code>PICOVOICE_ACCESS_KEY</code> (optional).</li>
+<li><code>backgroundDaemon.service.ts</code> — passive observation; triggers the LLM only when the screen changes beyond <code>VISUAL_DIFF_THRESHOLD</code> (adaptive backoff when idle).</li>
+<li><code>metrics.service.ts</code> — tok/s, TTFT, RAM, loaded-model telemetry.</li>
+<li><code>readiness.service.ts</code> — drives <code>/ready</code> and <code>/health</code>.</li>
+</ul>
+<h4 id="utilities-src-utils">Utilities (<code>src/utils/</code>)<a class="docs-heading-anchor" href="#utilities-src-utils" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>logger.ts</code></td><td>Structured logging (levels: debug/info/warn/error/critical) — used everywhere instead of <code>console.*</code></td></tr><tr><td><code>hardware.ts</code></td><td>Hardware profile (RAM/chip), adaptive timeout multipliers, memory budgets</td></tr><tr><td><code>memory.ts</code></td><td>Available-memory probing</td></tr><tr><td><code>stripControlTokens.ts</code></td><td>Cleans model output of control tokens</td></tr></tbody></table></div>
+<h4 id="conventions">Conventions<a class="docs-heading-anchor" href="#conventions" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>No <code>any</code></strong> in shared types without a comment; <strong>no <code>@ts-ignore</code></strong> without a comment. Run <code>npm run typecheck</code> after changes.</li>
+<li><strong>Never hardcode model paths</strong> — use the catalog + discovery logic.</li>
+<li><strong>Never remove safety-blocklist entries.</strong></li>
+<li><strong>Errors propagate to the UI</strong> (via WebSocket <code>error</code> events) — never silently swallowed.</li>
+<li>New WebSocket message types must be added to the TypeScript interfaces in both directions. See <a href="api-reference">API.md</a>.</li>
+</ul></section><details class="docs-fold docs-subdoc" id="src-docs-frontend-md"><summary><span><strong>Frontend</strong> &mdash; <code>docs/FRONTEND.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/FRONTEND.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/FRONTEND.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="frontend">Frontend<a class="docs-heading-anchor" href="#frontend" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The dashboard UI in <code>ui/</code> — <strong>React + Vite + Tailwind + TypeScript</strong>. In development it runs on Vite (<code>localhost:5173</code>); in production it's built to <code>public/</code> and served by the Express backend.</p>
+<h4 id="entry-shell">Entry &amp; shell<a class="docs-heading-anchor" href="#entry-shell" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><code>ui/src/main.tsx</code> — mounts React.</li>
+<li><code>ui/src/App.tsx</code> — the shell: a <code>currentView</code> state switches the main pane, and a first-run <strong>WelcomeWizard</strong> (gated on <code>localStorage[&#x27;quenderin_setup_complete&#x27;]</code>) walks new users through setup.</li>
+</ul>
+<h5 id="views-currentview">Views (<code>currentView</code>)<a class="docs-heading-anchor" href="#views-currentview" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-table-wrap"><table><thead><tr><th>Value</th><th>Component</th><th>What it is</th></tr></thead><tbody><tr><td><code>general_chat</code></td><td><code>GeneralChatArea</code></td><td>The default assistant chat (personas, prompt presets)</td></tr><tr><td><code>chat</code></td><td><code>ChatArea</code></td><td>The "Device Agent" view — the OS agent loop</td></tr><tr><td><code>metrics</code></td><td><code>Metrics</code></td><td>Performance telemetry (tok/s, RAM, model)</td></tr><tr><td><code>settings</code></td><td><code>SettingsArea</code></td><td>Model manager, context-window ("RAM Armor"), Privacy Lock</td></tr><tr><td><code>docs</code></td><td><code>Docs</code></td><td>In-app documentation viewer (reached via "Help")</td></tr></tbody></table></div>
+<p>The <code>Inspector</code> panel overlays the agent view to show live <code>observe</code>/<code>decide</code>/ <code>action</code> state.</p>
+<h4 id="components-ui-src-components">Components (<code>ui/src/components/</code>)<a class="docs-heading-anchor" href="#components-ui-src-components" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Component</th><th>Role</th></tr></thead><tbody><tr><td><code>Sidebar</code></td><td>Navigation, model status, new-conversation, view switching</td></tr><tr><td><code>GeneralChatArea</code></td><td>Default chat — persona tabs, prompt suggestions, composer</td></tr><tr><td><code>ChatArea</code></td><td>Device-agent chat; renders fenced code via <code>CodeBlock</code></td></tr><tr><td><code>Inspector</code></td><td>Live agent-state panel (perception → plan → action)</td></tr><tr><td><code>Metrics</code></td><td>Performance dashboard</td></tr><tr><td><code>SettingsArea</code></td><td>Models (download/remove), context size, memory warnings, Privacy Lock</td></tr><tr><td><code>Docs</code></td><td>Markdown docs viewer (<code>/api/docs/:filename</code>)</td></tr><tr><td><code>TroubleshooterGuide</code></td><td>Help / troubleshooting</td></tr><tr><td><code>PrivacyLock</code></td><td>Passphrase lock screen for the app</td></tr><tr><td><code>CodeBlock</code></td><td>Syntax-highlighted code with copy (react-syntax-highlighter)</td></tr><tr><td><code>ErrorBoundary</code></td><td>Wraps Docs/Settings/Metrics so one render error can't blank the app</td></tr><tr><td><code>AnimatedEntrance</code></td><td>Entrance animation wrapper</td></tr></tbody></table></div>
+<h4 id="state-communication">State &amp; communication<a class="docs-heading-anchor" href="#state-communication" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong><code>ui/src/hooks/useAgentSocket.ts</code></strong> — the heart of the client. Opens the WebSocket, sends <code>start</code>/<code>chat</code>/<code>settings_update</code>/<code>preset_switch</code>/voice messages, and handles inbound <code>chat_stream</code>/<code>observe</code>/<code>decide</code>/<code>action</code>/<code>done</code>/ <code>error</code>/<code>model_download_progress</code> events, exposing the agent + chat state to components. See <a href="api-reference">API.md</a> for the message catalog.</li>
+<li><strong><code>ui/src/context/ThemeContext.tsx</code></strong> — dark/light theme.</li>
+<li><strong>REST</strong> (<code>fetch</code>) is used for non-streaming data: the model catalog, sessions, notes, metrics, voice download.</li>
+</ul>
+<h5 id="localstorage-keys">localStorage keys<a class="docs-heading-anchor" href="#localstorage-keys" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-table-wrap"><table><thead><tr><th>Key</th><th>Purpose</th></tr></thead><tbody><tr><td><code>quenderin_setup_complete</code></td><td>Whether the WelcomeWizard has been dismissed</td></tr><tr><td><code>quenderin_sidebar_open</code></td><td>Sidebar collapsed/expanded</td></tr><tr><td><code>quenderin_last_outage</code></td><td>Last backend-outage summary (for reconnection UX)</td></tr><tr><td><code>quenderin_settings</code></td><td>Persisted UI settings — theme + runtime settings (e.g. <code>contextSize</code>); read by <code>ThemeContext</code> and <code>useAgentSocket</code></td></tr></tbody></table></div>
+<h4 id="running-the-ui">Running the UI<a class="docs-heading-anchor" href="#running-the-ui" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd ui &amp;&amp; npm run dev        # http://localhost:5173 (hot reload)</code></pre></div>
+<p>The UI dev server renders the real components, but <strong>live data needs the backend</strong> running on <code>:3000</code> (<code>npm run dashboard</code> from the repo root). Without it, the UI shows its offline/disconnected state (e.g. "Loading Model… retrying").</p>
+<h4 id="design-rules">Design rules<a class="docs-heading-anchor" href="#design-rules" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The UI follows the project design system: state (<code>:hover</code>, <code>:focus</code>, active) never changes geometry; hairline borders, no card shadows; hierarchy in weight + size; tabular numbers; monospace for codes/metrics. Density beats decoration — this is a developer power tool.</p></div></details><details class="docs-fold docs-subdoc" id="src-ui-readme-md"><summary><span><strong>Quenderin Dashboard UI</strong> &mdash; <code>ui/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>ui/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/ui/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-dashboard-ui">Quenderin Dashboard UI<a class="docs-heading-anchor" href="#quenderin-dashboard-ui" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The React front-end for the Quenderin dashboard — chat, governed tasks, the device agent, metrics, and settings (including the AI Model Manager). Served in production by the local Node backend; run standalone against it during development.</p>
+<h4 id="stack">Stack<a class="docs-heading-anchor" href="#stack" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>React 18 + TypeScript</strong>, built with <strong>Vite</strong></li>
+<li><strong>Tailwind CSS</strong> for styling</li>
+<li>State over a single <strong>WebSocket</strong> (<code>src/hooks/useAgentSocket.ts</code>) plus REST helpers (<code>src/lib/api.ts</code> — every state-changing call goes through <code>apiFetch</code>, which attaches the per-launch <code>X-Auth-Token</code>)</li>
+</ul>
+<h4 id="development">Development<a class="docs-heading-anchor" href="#development" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Start the backend first (from the repo root):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npx tsx src/index.ts dashboard --no-open
+# prints: Open this URL to connect: http://localhost:3000/?token=&lt;per-launch token&gt;</code></pre></div>
+<p>Then the UI dev server:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd ui &amp;&amp; npm run dev</code></pre></div>
+<p>Open <code>http://localhost:5173/?token=&lt;token from the backend log&gt;</code>. Vite proxies <code>/api</code> and the WebSocket to <code>localhost:3000</code> (see <code>vite.config.ts</code>), and the renderer reads the token from <code>?token=</code> once, then strips it from the URL.</p>
+<h4 id="build">Build<a class="docs-heading-anchor" href="#build" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npm run build      # from ui/, or `npm run build:ui` from the repo root</code></pre></div>
+<p>Output lands in <code>ui/dist</code> and is what Electron / the packaged dashboard serves.</p>
+<h4 id="conventions-2">Conventions<a class="docs-heading-anchor" href="#conventions-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>New WebSocket message types must be added to the interfaces on <strong>both</strong> sides (client <code>src/hooks/useAgentSocket.ts</code> server-message union, server <code>src/types/</code>) and to the tables in <code>docs/API.md</code>.</li>
+<li>Model management (catalog, download, delete, switch) is <strong>REST-only</strong> — the WS <code>switch_model</code> twin was removed after it drifted unused (r9 H1).</li>
+<li>All inference is 100% local (<code>node-llama-cpp</code>); there is no external-provider configuration. (An earlier version of this README described a long-dead Ollama drag-and-drop setup page on port 3777 — that UI no longer exists; r7 C1.)</li>
+</ul></div></details><details class="docs-fold docs-subdoc" id="src-website-readme-md"><summary><span><strong>Quenderin marketing website</strong> &mdash; <code>website/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>website/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/website/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-marketing-website">Quenderin marketing website<a class="docs-heading-anchor" href="#quenderin-marketing-website" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>A marketing site with static HTML, CSS, vanilla JS, and a self-hosted font. The model tables and calculator data are generated from the shared app manifest. Browsers request only first-party resources; a small Worker reads public Hugging Face metadata for the latest-release feed.</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>website/
+├── index.html          # short introduction and downloads
+├── simple-home.css     # layout for the short homepage
+├── tell-me-more.html   # full overview, screenshots, and generated model catalog
+├── styles.css          # design system + all sections
+├── main.js             # mobile nav, scroll reveal, theme toggle, footer year
+├── gradient.js         # Stripe-style WebGL mesh gradient (reduced-motion aware)
+├── favicon.svg         # brand mark (modern browsers)
+├── favicon-16/32.png   # PNG favicon fallbacks  ┐
+├── apple-touch-icon.png# iOS home-screen icon   ├─ generated, see scripts/rasterize.mjs
+├── og-image.svg/.png   # social share card 1200×630 (PNG is what scrapers read) ┘
+├── site.webmanifest    # PWA manifest (installable, theme color)
+├── 404.html            # off-grid 404
+├── robots.txt
+├── sitemap.xml
+├── netlify.toml        # Netlify config
+├── vercel.json         # Vercel config
+└── scripts/
+    ├── serve.py        # sandbox-safe static server (absolute paths; no os.getcwd)
+    ├── shoot.mjs       # full-page / per-section screenshots via Chrome DevTools
+    └── rasterize.mjs   # SVG → PNG for og-image + favicons + apple-touch-icon</code></pre></div>
+<h4 id="regenerate-the-png-assets">Regenerate the PNG assets<a class="docs-heading-anchor" href="#regenerate-the-png-assets" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The favicons, <code>apple-touch-icon.png</code>, and <code>og-image.png</code> are <strong>generated</strong> from the SVGs — edit <code>favicon.svg</code> / <code>og-image.svg</code>, then re-run (requires Google Chrome):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>node website/scripts/rasterize.mjs   # → og-image.png, favicon-16/32.png, apple-touch-icon.png</code></pre></div>
+<p>To screenshot the rendered site (full page + every section, light/dark, any width):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>python3 website/scripts/serve.py 8099 &amp;                 # static server
+node website/scripts/shoot.mjs http://127.0.0.1:8099/ /tmp/shots dark 1440</code></pre></div>
+<h4 id="preview-locally">Preview locally<a class="docs-heading-anchor" href="#preview-locally" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Any static server works — no build:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd website
+python3 -m http.server 8080
+# open http://localhost:8080</code></pre></div>
+<h4 id="apple-launch-materials">Apple launch materials<a class="docs-heading-anchor" href="#apple-launch-materials" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Primary launch story: <code>blog-apple-launch.html</code> (30 September 2026).</li>
+<li>Both Apple apps use the same listing: <code>https://apps.apple.com/app/id6789854363</code>. Use <code>?platform=mac</code> or <code>?platform=iphone</code> to send visitors to the right platform.</li>
+<li>App icons in <code>assets/app/icon-ios.png</code> and <code>icon-mac.png</code> are exported at 320 px from the native asset catalog, not independently designed website substitutes.</li>
+<li>Platform glyphs in <code>icons/</code> identify the download choices. Keep the official App Store badge unchanged.</li>
+<li>Landing-page launch and setup copy is localized in all 12 <code>i18n/*.json</code> files. Keep English dictionary values aligned with the first-paint HTML.</li>
+<li><code>og-image.svg</code> and <code>og-image.png</code> are the share card; the SVG embeds the actual app icon. The 192/512 PNG icons cover the website manifest.</li>
+<li>Social captions and release wording are in <code>docs/APPLE_LAUNCH_MATERIALS.md</code>.</li>
+</ul>
+<h4 id="publish-the-website">Publish the website<a class="docs-heading-anchor" href="#publish-the-website" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The production domain <strong>quenderin.org</strong> is served by the Cloudflare Worker configured in <code>wrangler.site.jsonc</code>. Static pages use the assets binding; <code>/api/model-releases</code> refreshes public metadata hourly on demand, independently of deployment. The GitHub workflow also maintains GitHub Pages and the Cloudflare Pages preview when its configured secret is present.</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npx wrangler deploy --config wrangler.site.jsonc</code></pre></div>
+<p><code>bash scripts/deploy_website.sh</code> triggers all configured targets, but its GitHub workflow publishes the remote default branch. Push the intended website changes before using that part of the script. A local preview or pushed task branch is not production deployment evidence; check the live launch story and download links.</p>
+<h4 id="current-model-catalog">Current model catalog<a class="docs-heading-anchor" href="#current-model-catalog" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Run <code>npm run gen:website-catalog</code> after exporting the shared manifest. Never edit generated table rows or calculator values by hand. <code>npm run check:website-catalog</code> checks the full overview, models page, SEO list and calculator payload. Both CI and deployment enforce catalog parity. See <code>docs/MODEL_CATALOG_FRESHNESS.md</code>.</p>
+<p><code>npm run refresh:model-releases</code> updates the saved offline/static-preview snapshot. The production feed refreshes itself; no credentials, visitor headers or prompts are sent upstream. New metadata never changes installed app recommendations.</p>
+<h4 id="editing">Editing<a class="docs-heading-anchor" href="#editing" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The short homepage is <code>index.html</code>; its “Tell me more” link opens the full overview in <code>tell-me-more.html</code>. Keep English HTML and <code>i18n/en.json</code> in sync, and update all 12 language dictionaries for new copy. Shared styling is in <code>styles.css</code> (CSS variables at the top control the palette); <code>simple-home.css</code> only styles the short homepage. The design follows the project rule set: hairline borders (no shadows), interactive states change color only (never geometry), hierarchy via weight + size, tabular numbers, monospace for specs.</p></div></details><details class="docs-fold docs-subdoc" id="src-docs-website-indexing-md"><summary><span><strong>Website indexing</strong> &mdash; <code>docs/WEBSITE_INDEXING.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/WEBSITE_INDEXING.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/WEBSITE_INDEXING.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="website-indexing">Website indexing<a class="docs-heading-anchor" href="#website-indexing" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>September 21, 2026: Search Console reported clean URLs as alternates because canonical tags pointed back to <code>.html</code> addresses. The apex Cloudflare Worker redirects those <code>.html</code> addresses to clean URLs. Canonicals, structured-data URLs, HTML navigation links and the 20-entry sitemap now use the final URLs. The <code>website/*.html</code> filenames and existing redirect behavior are unchanged.</p>
+<p>Checked all 20 sitemap entries against local files and canonical tags, plus internal HTML links. No app, download artifact, or backend changes are included.</p>
+<p>Previous production Worker version (rollback): <code>0b50a219-9e95-4d57-9a81-a782e8eada9f</code>. Deploy the apex with <code>npx wrangler@4 deploy --config wrangler.site.jsonc</code>.</p>
+<h4 id="production-verification-september-21-2026">Production verification — September 21, 2026<a class="docs-heading-anchor" href="#production-verification-september-21-2026" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Approved release <code>a0c028c</code> was fast-forwarded to <code>main</code> and deployed to the apex Worker, version <code>2e14ca3d-c967-4e7c-8069-aadc0526d971</code>. All 20 live sitemap URLs return 200 without redirects, are indexable, and have exact self-canonical tags; the served sitemap matches the release byte for byte. Google accepted the resubmitted sitemap. Validation of the five reported canonical alternates started September 21. Reindexing is not yet confirmed.</p></div></details><details class="docs-fold docs-subdoc" id="src-services-content-report-receiver-readme-md"><summary><span><strong>Content report receiver</strong> &mdash; <code>services/content-report-receiver/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>services/content-report-receiver/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/services/content-report-receiver/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="content-report-receiver">Content report receiver<a class="docs-heading-anchor" href="#content-report-receiver" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>A small Google Apps Script V8 web app stores user-approved offensive AI content reports for manual review by Quenderin's developer. The product must show the editable excerpt, optional note, destination, and privacy explanation before an explicit <strong>Send report</strong> action. This receiver does not collect a conversation, device identifier, contact address, account, credentials, or model configuration. Text may still contain personal information the user chooses to include. Google hosts the endpoint and storage; its own request handling is separate from this code, which makes no payload or exception log calls.</p>
+<p>There are no dependencies to install. The custom code supplies the product's strict schema, receipt reconciliation, and atomic capacity admission around Google's existing Properties and Lock services. No mail, Drive files, Sheets, external requests, advanced services, libraries, schedules, or triggers are used. The manifest explicitly requests no OAuth scopes and disables exception logging.</p>
+<h4 id="request-and-receipt">Request and receipt<a class="docs-heading-anchor" href="#request-and-receipt" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>POST <code>application/json</code> (optionally <code>; charset=utf-8</code>) to the deployment's <code>/exec</code> URL. Only these keys are accepted; all except <code>note</code> are required:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Key</th><th>Type and accepted value</th></tr></thead><tbody><tr><td><code>schema</code></td><td>Number, exactly <code>1</code></td></tr><tr><td><code>reportId</code></td><td>Lowercase UUID version 4, generated by the client</td></tr><tr><td><code>platform</code></td><td>String, exactly <code>android</code></td></tr><tr><td><code>appVersion</code></td><td>1–64 ASCII characters; starts with an alphanumeric character, then alphanumerics or <code>. + _ ( ) -</code> without spaces</td></tr><tr><td><code>source</code></td><td><code>local-chat</code>, <code>agent</code>, <code>deepseek</code>, <code>remote</code>, or <code>step5</code></td></tr><tr><td><code>reason</code></td><td><code>harassment</code>, <code>hate</code>, <code>sexual</code>, <code>violence</code>, <code>dangerous</code>, or <code>other</code></td></tr><tr><td><code>content</code></td><td>Nonblank user-edited excerpt, at most 6,000 UTF-8 bytes</td></tr><tr><td><code>note</code></td><td>Optional string, at most 1,000 UTF-8 bytes; absence becomes <code>&quot;&quot;</code></td></tr></tbody></table></div>
+<p>Text is preserved exactly; lone UTF-16 surrogates are invalid. Unknown fields and wrong types are rejected. The raw JSON body and the stored canonical JSON envelope must each be at most <strong>8,192 UTF-8 bytes</strong>. The envelope includes receipt metadata and JSON escaping; a request within the raw limit can still need a shorter excerpt. Code-unit guards run before byte counting and JSON parsing. Google receives the HTTP body before this application can check its size.</p>
+<p>On verified persistence, including an identical retry:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>json</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>{
+  &quot;ok&quot;: true,
+  &quot;code&quot;: &quot;received&quot;,
+  &quot;reportId&quot;: &quot;12345678-1234-4234-8234-123456789abc&quot;,
+  &quot;receiptId&quot;: &quot;87654321-4321-4321-8321-cba987654321&quot;,
+  &quot;receivedAt&quot;: &quot;2026-10-28T00:00:00.000Z&quot;
+}</code></pre></div>
+<p>Failure responses contain only <code>{&quot;ok&quot;:false,&quot;code&quot;:&quot;…&quot;}</code>:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Code</th><th>Meaning</th></tr></thead><tbody><tr><td><code>invalid_request</code></td><td>Invalid JSON, media type, schema, field, or field byte limit</td></tr><tr><td><code>too_large</code></td><td>Raw request or stored envelope would exceed 8,192 bytes</td></tr><tr><td><code>conflict</code></td><td>The same report ID already has a different canonical payload</td></tr><tr><td><code>unavailable</code></td><td>Disabled, full, busy, quota/service failure, corrupt/unknown state, or unverified write</td></tr><tr><td><code>method_not_allowed</code></td><td>GET requests; no data or owner interface is exposed</td></tr></tbody></table></div>
+<p>Parse <code>ok</code> and <code>code</code>: Apps Script's TextOutput API does not offer custom HTTP status codes. Google redirects ContentService output to a one-time <code>script.googleusercontent.com</code> URL; the native client must follow that HTTPS redirect to read the JSON response, without reposting the report body there. HTML, a login page, an unexpected redirect, a timeout, or malformed/missing JSON does not establish delivery. Do not treat HTTP success alone as a receipt.</p>
+<p>After an ambiguous attempt, preserve the <strong>same ID and exact payload</strong> for an explicit manual retry. An identical payload returns its original receipt without another write, even when the inbox is full. Changing any field after a send attempt requires a new UUID; changed content under an existing UUID conflicts. Missing and empty notes are equivalent, and JSON key order is irrelevant. Do not retry in the background. <code>unavailable</code> can follow a successful write whose readback failed; never claim that such an attempt definitely was not received.</p>
+<h4 id="storage-and-bounds">Storage and bounds<a class="docs-heading-anchor" href="#storage-and-bounds" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>One Script Property named <code>report:&lt;reportId&gt;</code> holds one canonical JSON string:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>json</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>{
+  &quot;schema&quot;: 1,
+  &quot;receiptId&quot;: &quot;87654321-4321-4321-8321-cba987654321&quot;,
+  &quot;receivedAt&quot;: &quot;2026-10-28T00:00:00.000Z&quot;,
+  &quot;report&quot;: {
+    &quot;schema&quot;: 1,
+    &quot;reportId&quot;: &quot;12345678-1234-4234-8234-123456789abc&quot;,
+    &quot;platform&quot;: &quot;android&quot;,
+    &quot;appVersion&quot;: &quot;0.4.1&quot;,
+    &quot;source&quot;: &quot;local-chat&quot;,
+    &quot;reason&quot;: &quot;other&quot;,
+    &quot;content&quot;: &quot;Synthetic fixture excerpt.&quot;,
+    &quot;note&quot;: &quot;&quot;
+  }
+}</code></pre></div>
+<p>Maximum <strong>32 reports</strong>, each at most <strong>8,192 bytes</strong>, and at most <strong>262,144 bytes</strong> of report values in total. The sole supported configuration property is <code>qr.enabled</code>, exactly the string <code>true</code> or <code>false</code>. Absence means disabled; unrecognized properties or invalid values fail closed. At most 33 properties are used, within Google's documented 50-property manual management interface. A dedicated standalone script must be used; do not mix this store with other code.</p>
+<p>A Script Lock waits at most 200 ms. While held, one full store read validates all records, capacity, and duplicates. A new report uses one property write and one readback. There is no separate counter/index transaction. Existing reports are never overwritten or deleted. Quota or readback failure returns <code>unavailable</code> without attempting rollback or another write. Lock release runs in <code>finally</code>. An owner changing the enable flag does not cancel an already admitted request.</p>
+<p>The endpoint is anonymous and unauthenticated; reports are untrusted allegations, not verified incidents or instructions. Anonymous spam can fill the bounded inbox or exhaust shared Apps Script execution/property quotas. The fixed limits protect storage and prevent automatic downstream work; they do not guarantee availability, remaining account quota, or delivery during an outage. Review cadence and capacity must be checked before this endpoint is offered to users.</p>
+<h4 id="deployment-and-manual-review">Deployment and manual review<a class="docs-heading-anchor" href="#deployment-and-manual-review" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ol>
+<li>Complete independent code review and run the fixture command below. Verify the intended existing consumer Google account and its current applicable terms, included use, quota sharing, and account restrictions. This source does not establish those account facts or authorize paid services. Keep the default Apps Script Google Cloud project; do not attach billing, provision a paid service, enable APIs, or add integrations for this inbox.</li>
+<li>In that account, create a dedicated standalone Apps Script project. Paste only <code>Code.gs</code> and enable <strong>Show appsscript.json manifest file in editor</strong> in Project Settings, then paste <code>appsscript.json</code>. Save. Verify V8, empty scopes, no services/libraries/triggers, and no other code. Do not upload this README or the Node test file into the script project.</li>
+<li>In <strong>Project Settings → Script Properties</strong>, add <code>qr.enabled</code> with the value <code>false</code>. Do not add credentials or other configuration. Keep editor access limited to the report reviewers; anyone with project editor access can read the report store.</li>
+<li>Choose <strong>Deploy → New deployment → Web app</strong>; execute as the deploying owner and grant <strong>Anyone</strong> access, including people not signed in. The manifest equivalents are <code>USER_DEPLOYING</code> and <code>ANYONE_ANONYMOUS</code>. If anonymous access is unavailable or unexpected authorization scopes appear, stop and resolve that limitation. Use a versioned deployment's <code>/exec</code> URL, not <code>/dev</code>.</li>
+<li>Record source revision/hash, deployment ID/version, owner account category, and dated account/quota/permission evidence in the existing release record. Verify public GET returns only <code>method_not_allowed</code> and a bounded synthetic POST while disabled returns <code>unavailable</code>, including JSON after the redirect.</li>
+<li>When the reviewed source, owner access, policy/disclosure, Android client, and account limits are verified, deliberately set <code>qr.enabled</code> to <code>true</code>. Send one clearly labeled synthetic report, read its exact stored property in the owner UI, and verify an identical retry returns its original receipt. This uses one of the 32 slots; keep its fixture record identified in release evidence. Do not inject real offensive text or real user information as a test.</li>
+<li>The owner reviews reports in <strong>Project Settings → Script Properties</strong>. Read each <code>report:&lt;UUID&gt;</code> value as JSON, including reason, excerpt, note, version, and timestamp; treat content as untrusted text. There is no public listing, search, download, admin, email, or notification endpoint. Never paste reports into public logs, issue trackers, or test artifacts. Follow the published privacy/retention process for actual reports.</li>
+</ol>
+<p>To stop intake, set <code>qr.enabled</code> to <code>false</code>; keep all report properties intact. To recover from full/corrupt storage, keep intake disabled, inspect the exact state privately, and resolve through an explicitly authorized data-handling process. Do not delete reports, reset IDs, raise limits, or replace the project as an automatic recovery step. There is no automatic purge. Updating/rolling back a deployment must preserve this existing script's report properties and the schema-1 reconciliation behavior.</p>
+<h4 id="verification">Verification<a class="docs-heading-anchor" href="#verification" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Run from the repository root with Node 20+:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>node --test services/content-report-receiver/receiver.test.mjs</code></pre></div>
+<p>Fixtures use a fake Script Lock, properties, clock, receipts, ContentService, and logging traps. They cover normal persistence/readback, canonical retries and conflicts, capacity and overlap, disabled/unknown/corrupt state, byte boundaries and escaping, invalid Unicode/types, quota/lock/write/readback failures, ambiguous-write reconciliation, GET privacy, and the no-scope/no-log/no-network configuration. They install nothing and make no live requests. Hosted deployment, actual account/terms, owner UI readback, redirects, and native-client behavior remain separate release checks.</p>
+<p>Official documentation verified 2026-10-28:</p>
+<ul>
+<li><a href="https://developers.google.com/apps-script/guides/properties" rel="noopener" target="_blank">Properties Service<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: script-wide string storage and manual management up to 50 properties.</li>
+<li><a href="https://developers.google.com/apps-script/guides/services/quotas" rel="noopener" target="_blank">Apps Script quotas<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: consumer property read/write quota 50,000/day, value limit 9 KB, total store 500 KB; execution limits and quotas are shared and may change, and quota exhaustion stops execution.</li>
+<li><a href="https://developers.google.com/apps-script/reference/lock/lock" rel="noopener" target="_blank">Lock<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: bounded <code>tryLock</code> and explicit release.</li>
+<li><a href="https://developers.google.com/apps-script/guides/content" rel="noopener" target="_blank">Content Service<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> and <a href="https://developers.google.com/apps-script/reference/content/text-output" rel="noopener" target="_blank">TextOutput<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: JSON output, redirect behavior, and output API.</li>
+<li><a href="https://developers.google.com/apps-script/manifest" rel="noopener" target="_blank">Manifest<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> and <a href="https://developers.google.com/apps-script/manifest/web-app-api-executable" rel="noopener" target="_blank">web app configuration<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: V8, exception logging, explicit scopes, deployment identity, and anonymous access.</li>
+</ul>
+<p>These are provider documentation checks, not evidence of the current owner's remaining quota or a completed deployment.</p></div></details>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="architecture"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">System Architecture</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="api-reference"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">HTTP REST &amp; WebSocket API Reference</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-docs-backend-md">docs/BACKEND.md</a></li><li><a class="is-depth-3" href="#backend">Backend</a></li><li><a class="is-depth-2" href="#src-docs-frontend-md">docs/FRONTEND.md</a></li><li><a class="is-depth-3" href="#frontend">Frontend</a></li><li><a class="is-depth-2" href="#src-ui-readme-md">ui/README.md</a></li><li><a class="is-depth-3" href="#quenderin-dashboard-ui">Quenderin Dashboard UI</a></li><li><a class="is-depth-2" href="#src-website-readme-md">website/README.md</a></li><li><a class="is-depth-3" href="#quenderin-marketing-website">Quenderin marketing website</a></li><li><a class="is-depth-2" href="#src-docs-website-indexing-md">docs/WEBSITE_INDEXING.md</a></li><li><a class="is-depth-3" href="#website-indexing">Website indexing</a></li><li><a class="is-depth-2" href="#src-services-content-report-receiver-readme-md">services/content-report-receiver/README.md</a></li><li><a class="is-depth-3" href="#content-report-receiver">Content report receiver</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

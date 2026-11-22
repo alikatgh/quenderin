@@ -1,0 +1,129 @@
+/* Self-hosted Lucide icon font (lucide-static 1.77.0, ISC license: fonts/lucide-LICENSE.txt).
+   Scoped to .qi / .qi-* classes so existing .icon-moon / .icon-sun / .ios-icon SVGs are untouched. */
+@font-face {
+  font-family: "lucide";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/lucide.woff2") format("woff2");
+}
+
+.qi {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "lucide" !important;
+  font-style: normal;
+  font-weight: 400;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  letter-spacing: 0;
+  flex: none;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+.qi-activity::before { content: "\e038"; }
+.qi-alert-triangle::before { content: "\e193"; }
+.qi-apple::before { content: "\e34e"; }
+.qi-arrow-down::before { content: "\e042"; }
+.qi-arrow-left::before { content: "\e048"; }
+.qi-arrow-right::before { content: "\e049"; }
+.qi-arrow-up::before { content: "\e04a"; }
+.qi-arrow-up-right::before { content: "\e04d"; }
+.qi-award::before { content: "\e04f"; }
+.qi-bar-chart-2::before { content: "\e068"; }
+.qi-book::before { content: "\e05e"; }
+.qi-book-open::before { content: "\e05f"; }
+.qi-bookmark::before { content: "\e060"; }
+.qi-bot::before { content: "\e1bb"; }
+.qi-braces::before { content: "\e36a"; }
+.qi-bug::before { content: "\e20c"; }
+.qi-check::before { content: "\e06c"; }
+.qi-check-circle::before { content: "\e07c"; }
+.qi-check-circle-2::before { content: "\e226"; }
+.qi-chevron-down::before { content: "\e06d"; }
+.qi-chevron-left::before { content: "\e06e"; }
+.qi-chevron-right::before { content: "\e06f"; }
+.qi-chevron-up::before { content: "\e070"; }
+.qi-circle-alert::before { content: "\e077"; }
+.qi-circle-check::before { content: "\e226"; }
+.qi-circle-dollar-sign::before { content: "\e47d"; }
+.qi-circle-help::before { content: "\e082"; }
+.qi-clock::before { content: "\e087"; }
+.qi-cloud-off::before { content: "\e08d"; }
+.qi-code::before { content: "\e093"; }
+.qi-code-2::before { content: "\e206"; }
+.qi-coins::before { content: "\e097"; }
+.qi-command::before { content: "\e09a"; }
+.qi-compass::before { content: "\e09b"; }
+.qi-copy::before { content: "\e09e"; }
+.qi-cpu::before { content: "\e0a9"; }
+.qi-database::before { content: "\e0ad"; }
+.qi-download::before { content: "\e0b2"; }
+.qi-external-link::before { content: "\e0b9"; }
+.qi-eye::before { content: "\e0ba"; }
+.qi-file-code::before { content: "\e0c3"; }
+.qi-file-code-2::before { content: "\e45e"; }
+.qi-file-text::before { content: "\e0cc"; }
+.qi-filter::before { content: "\e0dc"; }
+.qi-flag::before { content: "\e0d1"; }
+.qi-flame::before { content: "\e0d2"; }
+.qi-folder::before { content: "\e0d7"; }
+.qi-folder-open::before { content: "\e247"; }
+.qi-gauge::before { content: "\e1bf"; }
+.qi-git-branch::before { content: "\e0e2"; }
+.qi-globe::before { content: "\e0e8"; }
+.qi-hard-drive::before { content: "\e0ed"; }
+.qi-hash::before { content: "\e0ef"; }
+.qi-help-circle::before { content: "\e082"; }
+.qi-history::before { content: "\e1f5"; }
+.qi-home::before { content: "\e0f5"; }
+.qi-image::before { content: "\e0f6"; }
+.qi-info::before { content: "\e0f9"; }
+.qi-key-round::before { content: "\e4a3"; }
+.qi-languages::before { content: "\e0fe"; }
+.qi-laptop::before { content: "\e1cd"; }
+.qi-layers::before { content: "\e529"; }
+.qi-life-buoy::before { content: "\e101"; }
+.qi-lightbulb::before { content: "\e1c2"; }
+.qi-link::before { content: "\e102"; }
+.qi-list::before { content: "\e106"; }
+.qi-lock::before { content: "\e10b"; }
+.qi-menu::before { content: "\e115"; }
+.qi-message-square::before { content: "\e117"; }
+.qi-mic::before { content: "\e118"; }
+.qi-monitor::before { content: "\e11d"; }
+.qi-moon::before { content: "\e11e"; }
+.qi-network::before { content: "\e125"; }
+.qi-package::before { content: "\e129"; }
+.qi-panel-left::before { content: "\e12a"; }
+.qi-play::before { content: "\e13c"; }
+.qi-refresh-cw::before { content: "\e145"; }
+.qi-rocket::before { content: "\e286"; }
+.qi-scale::before { content: "\e212"; }
+.qi-search::before { content: "\e151"; }
+.qi-server::before { content: "\e153"; }
+.qi-settings::before { content: "\e154"; }
+.qi-shield::before { content: "\e158"; }
+.qi-shield-alert::before { content: "\e1fe"; }
+.qi-shield-check::before { content: "\e1ff"; }
+.qi-sliders-horizontal::before { content: "\e29a"; }
+.qi-smartphone::before { content: "\e163"; }
+.qi-sparkles::before { content: "\e412"; }
+.qi-square::before { content: "\e167"; }
+.qi-sun::before { content: "\e178"; }
+.qi-tag::before { content: "\e17f"; }
+.qi-terminal::before { content: "\e181"; }
+.qi-thermometer::before { content: "\e186"; }
+.qi-triangle-alert::before { content: "\e193"; }
+.qi-undo-2::before { content: "\e2a1"; }
+.qi-unlock::before { content: "\e10c"; }
+.qi-wifi::before { content: "\e1ae"; }
+.qi-wifi-off::before { content: "\e1af"; }
+.qi-wrench::before { content: "\e1b1"; }
+.qi-x::before { content: "\e1b2"; }
+.qi-zap::before { content: "\e1b4"; }

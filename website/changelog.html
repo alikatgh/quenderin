@@ -14,19 +14,36 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
+<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="preload" href="fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="legal-header">
-  <div class="container container-wide">
+  <div class="container container-wide post-header">
     <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Primary">
+      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
+      <a href="models"><span class="qi qi-cpu" aria-hidden="true"></span>Models</a>
+      <a href="download"><span class="qi qi-download" aria-hidden="true"></span>Download</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
   </div>
 </header>
 
 <main class="container legal" id="main">
   <h1>What's new</h1>
   <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
+
+  <h2 id="2026-11-22">22 November 2026 &middot; Documentation portal &amp; self-hosted typography</h2>
+  <ul>
+    <li><strong>30-page documentation portal at <code>/docs/</code>.</strong> Generated deterministically from 116 canonical Markdown files and live <code>shared/*.json</code> manifests via <code>scripts/generate_website_docs.py</code>, complete with zero-network search (<kbd>/</kbd> or <kbd>Cmd+K</kbd>), collapsible long logs, copy-code buttons, and verified internal links.</li>
+    <li><strong>Self-hosted open-source typography &amp; icon font.</strong> Installed DINish variable sans, ChunkFive display slab headlines (both SIL OFL 1.1), and scoped Lucide <code>.qi-*</code> icons (ISC) under <code>website/fonts/</code> across all 35 marketing/blog/legal routes and all 30 documentation pages with zero external CDNs.</li>
+    <li><strong>Refreshed roadmap &amp; feature icons.</strong> Updated <code>roadmap</code> to reflect the 28-model catalog, July 2026 CLI launch date, and Lucide status indicators; replaced inline accordion SVGs on <code>tell-me-more</code> with Lucide icon font classes.</li>
+  </ul>
+  <p>This is a website and documentation release; native store app versions remain unchanged (Mac/iPhone 0.6.0 on the App Store, 0.6.1 unsubmitted in source, Android 0.2.0 closed beta). <a href="blog-website-fonts-docs-november-2026">Read the full update note</a>.</p>
 
   <h2 id="2026-11-09">9 November 2026 &middot; On-device chat, not yet a store build</h2>
   <ul>

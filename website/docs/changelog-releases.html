@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Changelog &amp; Engineering Updates — Quenderin Docs</title>
+<meta name="description" content="Release history from v0.1.0 through v0.6.x plus detailed October 2026 model and engineering publication records." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/changelog-releases" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases" class="is-active" aria-current="page"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Quality, Research &amp; Evolution</span></div><div class="docs-kicker"><span class="qi qi-history" aria-hidden="true"></span>History · Releases</div><h1>Changelog &amp; Engineering Updates</h1><p class="docs-lead">Release history from v0.1.0 through v0.6.x plus detailed October 2026 model and engineering publication records.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>18 min read (4,164 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>3 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 3 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/CHANGELOG.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>CHANGELOG.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-10-16-muse-bonsai/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/social/2026-10-16-muse-bonsai/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-10-18-open-models/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/social/2026-10-18-open-models/README.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-changelog-md">CHANGELOG.md</a></li><li><a class="is-depth-3" href="#changelog">Changelog</a></li><li><a class="is-depth-2" href="#src-docs-social-2026-10-16-muse-bonsai-readme-md">docs/social/2026-10-16-muse-bonsai/README.md</a></li><li><a class="is-depth-3" href="#muse-and-smaller-bonsai-social-update-16-october-2026">Muse and smaller Bonsai social update — 16 October 2026</a></li><li><a class="is-depth-2" href="#src-docs-social-2026-10-18-open-models-readme-md">docs/social/2026-10-18-open-models/README.md</a></li><li><a class="is-depth-3" href="#october-open-model-engineering-update">October open-model engineering update</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-changelog-md"><h2 id="src-changelog-md-heading">Changelog</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>CHANGELOG.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/CHANGELOG.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="changelog">Changelog<a class="docs-heading-anchor" href="#changelog" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<h4 id="unreleased-mobile-max-bindings-2026-10-26">Unreleased — mobile MAX bindings (2026-10-26)<a class="docs-heading-anchor" href="#unreleased-mobile-max-bindings-2026-10-26" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Refresh the missing mobile MAX inputs: main <code>8d5597…</code> still has no Android/Adreno/Qualcomm/Dragonfly source, the only official release is <code>max/v26.7.0</code>, 26.7.0 publishes no Android/iOS wheel, no MEF exists, and the demo author has no public build source. The MLX tokenizer is recorded as an unadopted, unverified candidate. MAX stays blocked and unselectable.</li>
+<li>Add an Android JNI bridge and pure-Kotlin facade over the canonical C boundary: registry IDs, run-scoped callbacks/cancellation, supplementary Unicode and embedded NUL, explicit close-while-busy, and a hosted JNI/JVM fixture with a test-only synthetic runner. Production links no runner.</li>
+<li>Add an Apple SwiftPM C target staged byte-for-byte from the canonical C boundary with a SHA-256 receipt, plus a Swift wrapper for receipts, capability, streaming, cancel and close. Close waits for the active run; tests use a test-only Swift runner. Production links no runner.</li>
+<li>Harden the boundary: Android validates exactly 64 lowercase hash bytes before copying and snapshots the caller's file list; Apple cancel holds the model pointer lock across the bounded native call so close cannot free it mid-cancel. Both bindings add run-specific pending cancellation so a cancel before native admission is honored and a delayed token cannot cancel a later run.</li>
+<li>No vendor SDK, runner, weights, simulator or device was used. Neither binding is wired into model selection; phone performance/UI and store submission remain deferred.</li>
+</ul>
+<h4 id="unreleased-mobile-max-adapter-boundary-2026-10-25">Unreleased — mobile MAX adapter boundary (2026-10-25)<a class="docs-heading-anchor" href="#unreleased-mobile-max-adapter-boundary-2026-10-25" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Add a vendor-neutral model-adapter boundary for a future mobile MAX backend: exact file sizes and SHA-256 receipts, exact runner ABI, telemetry/crash opt-outs, single-flight leases, bounded prompt/output/context/stream budgets, UTF-8 reassembly, token-boundary cancellation, capability probing and numeric-only performance reports. It loads no vendor runtime and contains no tokenizer, sampler, weights or GGUF loader.</li>
+<li>Add an inert runner double and sanitizer fixture covering verification failures, symlinks, opt-outs, streaming, split UTF-8, cancellation, sink abort, runner failure, output caps, context clamping, invalid requests and cleanup. Host compilation only; no SDK, weights or device.</li>
+<li>Record the mobile MAX audit in <code>native/max-runtime/mobile-lock.json</code>: pinned MAX 26.7 source contains no Android/Adreno/Qualcomm/Dragonfly paths, the Bonsai 2B GGUF is pinned but has no reviewed MEF/tokenizer/cache contract, mobile redistribution and telemetry are unreviewed, and the reported Snapdragon demonstration has no located public source/build recipe.</li>
+<li>Keep mobile MAX out of Automatic and reject unverified support, inference, phone-performance and store claims in a checked lock. Phone validation and store submission remain deferred; no model-weight download, simulator or physical-device run was performed.</li>
+</ul>
+<h4 id="unreleased-october-open-model-integrations-2026-10-18">Unreleased — October open-model integrations (2026-10-18)<a class="docs-heading-anchor" href="#unreleased-october-open-model-integrations-2026-10-18" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Add nine pinned experimental text entries across all catalogs: MiniCPM-V 4.7 1B/35B-A3B, LFM2.5-24B-A2B, all five Jais 3 sizes and Nemotron 3.5 Bolt 74B-A9B. Use complete model sizes, conservative memory floors, manual selection and compiled runtime gates. MiniCPM vision/video remains unavailable.</li>
+<li>Backport K2 Horizon, Arabic tokenization and per-layer Nemotron expert metadata onto the pinned Prism/Muse engine. Add publisher-specific Jais/Nemotron prompts, bounded final-answer filtering and generated-tensor graph/save-reload fixtures.</li>
+<li>Preserve patch preimages and recover from partial filesystem failures without replacing concurrent changes; failed recovery retains original backups.</li>
+<li>Add a separately built, symbol-isolated stable-diffusion.cpp C ABI for FLUX 3 Image Klein and MOSS Image Base/SFT. Pin every component and the patched GGML source. Add native and Electron image workspaces and desktop image models/verify/generate commands, explicit installation/import, hashing, progress, cancellation and export.</li>
+<li>Keep FLUX publisher access/license review with the user. MOSS installation is explicit. The native image gate requires 24 GiB available memory; this is not a measured inference-memory claim. Existing outputs and corrupt originals are preserved. Bound native requests, output, subprocess duration and concurrency.</li>
+<li>Add native/desktop package identity checks, private runtime exports, Android dependency-closure/16 KiB checks and signed Apple image-framework verification.</li>
+<li>Record remaining gaps for Super VL, Step 5, Beam, Granite Switch, Hy-Memory and the announced E4B artifact. Do not list these as ready chat downloads.</li>
+<li>No local model-weight downloads or simulator/device runs. Full inference, native rendered UI, performance and new store distribution remain unverified.</li>
+</ul>
+<h4 id="unreleased-native-0-4-0-bonsai-2-and-muse-spark-open-2026-10-16">Unreleased — native 0.4.0: Bonsai 2 and Muse Spark Open (2026-10-16)<a class="docs-heading-anchor" href="#unreleased-native-0-4-0-bonsai-2-and-muse-spark-open-2026-10-16" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li>Added experimental Bonsai 2 2B, 4B, and 9B manual choices across Android, iOS/macOS, and the shared desktop catalog. PTQ1_0 downloads are pinned to immutable publisher revisions, exact sizes, and SHA-256 checksums.</li>
+<li>Use size-specific conservative memory estimates for the verified small Bonsai files; preserve runtime checks, headroom, the 4,096-token cap, and existing defaults.</li>
+<li>Include PrismML in latest-release discovery and bundled offline metadata. The native release list checks runtime compatibility as well as memory fit.</li>
+<li>Add experimental native Muse Spark Open text-chat integration: a verified text architecture backport onto the pinned Prism runtime and a compiled capability probe. Older runtimes cannot enable it from catalog metadata alone.</li>
+<li>Treat its 22 Q2_K GGUF shards as one pinned 304.08 GB installation, with exact per-file sizes/checksums, complete-set validation, bounded sequential transfers, cancellation and verified-part reuse. Isolated or renamed split imports fail closed.</li>
+<li>Add the Muse prompt adapter and bounded final-channel streaming parser. Private reasoning stays hidden; unsupported raw, tool and grammar requests are rejected. Require conservative memory headroom and cap context at 4,096 tokens; ordinary phones cannot fit this model. No distributed or remote execution is introduced.</li>
+<li>Keep Muse out of automatic recommendations. Electron/CLI Muse installation stays unavailable until its multipart and chat adapters are implemented.</li>
+<li>Add an engineering post explaining the implementation, verification boundaries, and improvements: graph correctness, measured memory/performance, recovery, structured tools, multimodal inputs and upstream maintenance.</li>
+<li>No model weights were downloaded onto the development computer and no simulator or device was launched. Signed builds, full Muse inference and store publication are separate gates; this unreleased entry does not claim they have passed.</li>
+</ul>
+<h4 id="apple-apps-available-marketing-update-2026-09-30">Apple apps available — marketing update (2026-09-30)<a class="docs-heading-anchor" href="#apple-apps-available-marketing-update-2026-09-30" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Quenderin is free on the App Store for Mac and iPhone:</strong> <a href="https://apps.apple.com/app/id6789854363" rel="noopener" target="_blank">https://apps.apple.com/app/id6789854363</a>. Native SwiftUI apps with on-device inference.</li>
+<li>Added the Apple launch blog post and website changelog entry, platform-specific store links, real app icons, and an install-to-offline-reply guide. Refreshed download, FAQ, README, and social materials.</li>
+<li>Repaired the homepage CSS 3D phone: continuous rounded depth, readable screen, and mobile copy first.</li>
+</ul>
+<h4 id="0-2-0-ios-on-the-app-store-2026-07-20">0.2.0 — iOS on the App Store (2026-07-20)<a class="docs-heading-anchor" href="#0-2-0-ios-on-the-app-store-2026-07-20" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Quenderin: Offline AI Chat is live on the App Store</strong> — free, on iPhone, worldwide (175 regions): <a href="https://apps.apple.com/app/id6789854363" rel="noopener" target="_blank">https://apps.apple.com/app/id6789854363</a>. The native SwiftUI app, fully offline and on-device — our first public store release. The Mac app is also available as of the September website update.</li>
+</ul>
+<h4 id="unreleased-native-0-3-0-candidate">Unreleased — native 0.3.0 candidate<a class="docs-heading-anchor" href="#unreleased-native-0-3-0-candidate" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><strong>Mac, iPhone and Android model discovery:</strong> model selection now includes recent releases from the website's hourly feed, compact-download filters, model cards, compatibility labels and a saved snapshot that survives offline relaunches. Refreshing metadata never changes the active model or starts a weights download. Only checksum matches from the built-in catalog expose the existing install flow.</li>
+<li>The Apple model library now uses the iPhone selector's per-app memory budget for fit badges and recommendations, and adapts its grid to phone widths.</li>
+<li><strong>Current website model catalog:</strong> the homepage and model guide now render the complete shared app catalog, with consistent RAM estimates and calculator data. Added hourly discovery of recent original-model GGUF releases, download-size filters, verified file metadata and a dated offline fallback. Newly discovered files stay separate from app recommendations until device validation.</li>
+</ul>
+<h5 id="responsive-prompt-processing-apple-android">Responsive prompt processing (Apple + Android)<a class="docs-heading-anchor" href="#responsive-prompt-processing-apple-android" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Check Stop between bounded llama.cpp prompt batches (maximum 512 tokens), including the final batch. Cancelled prefills clear the native KV cache and its token mirror.</li>
+<li>Apple explicitly uses 512-token logical/physical batches, clamped to the loaded context, including the F16 cache fallback. Prompt ranges borrow storage without copies.</li>
+<li>Added Swift and C++ model-free regression checks. These source changes are not a new store release; GPU latency and answer quality still need device measurements.</li>
+</ul>
+<h5 id="android-0-2-1-engine-cut-dotprod-i8mm-variants">Android 0.2.1 engine cut (DOTPROD/I8MM variants)<a class="docs-heading-anchor" href="#android-0-2-1-engine-cut-dotprod-i8mm-variants" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>CPU-variant backends ON</strong> (<code>GGML_BACKEND_DL</code> + <code>GGML_CPU_ALL_VARIANTS</code>): JNI resolves <code>ggml_threadpool_new</code>/<code>free</code> via the CPU backend registry instead of linking them (that link was why variants stayed off in 0.2.0). Runtime pick of <code>android_armv8.6_1</code> (i8mm) etc. — the prefill lever (measured 3.5→9.0 tok/s on S23 when variants previously loaded).</li>
+<li><strong><code>nativeLoadedNCtx</code></strong>: Kotlin <code>loadedContextTokens</code> is the window llama actually created after a q8_0→F16 KV fallback, not the pre-fallback request.</li>
+<li>iOS twin: F16 retry recomputes <code>n_ctx</code> via <code>ContextWindow.recommend(..., .f16)</code>; Swift <code>load_mode</code> dual-API matches JNI (<code>QUENDERIN_LLAMA_LOAD_MODE</code>).</li>
+<li>Vulkan stays opt-in (<code>-Pquenderin.vulkan=true</code>) — vendored llama.cpp Vulkan needs SPIRV-Headers, which the NDK does not ship.</li>
+<li>Settings capability titles + purpose strings localized (ru/ko/ja/zh). Android versionName <strong>0.2.1</strong> / versionCode 3.</li>
+</ul>
+<h5 id="history-preview-date-tool-ru-markers-usability">History preview + date-tool RU markers (usability)<a class="docs-heading-anchor" href="#history-preview-date-tool-ru-markers-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Conversation list “You:” prefix localizes (Вы/나/…); empty-title packs already shipped.</li>
+<li>DateCalc accepts Russian triggers (между, через, день недели) on both platforms; RU day-count plurals.</li>
+</ul>
+<h5 id="new-conversation-agent-halt-locale-packs-usability">New conversation + agent halt locale packs (usability)<a class="docs-heading-anchor" href="#new-conversation-agent-halt-locale-packs-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Empty history title localizes (“Новая беседа” etc.).</li>
+<li>Agent halt banners localize (RU first; EN default for tests/export).</li>
+</ul>
+<h5 id="image-attach-refusal-locale-packs-usability">Image-attach refusal locale packs (usability)<a class="docs-heading-anchor" href="#image-attach-refusal-locale-packs-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Vision-not-yet rejection reasons localize (ru/ko/ja/zh) while retaining English <strong>vision</strong> / <strong>image</strong> tokens for the golden-chat structural gate.</li>
+</ul>
+<h5 id="model-picker-router-reason-i18n-usability">Model picker + router reason i18n (usability)<a class="docs-heading-anchor" href="#model-picker-router-reason-i18n-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>ModelPickerSheet</strong> title/sections/Current badge localized.</li>
+<li><strong>ModelRouter.reason</strong> localizes (ru/ko/ja/zh) while classification stays parity-pinned.</li>
+<li>Agent grant-folder / “may read files” consent lines + Settings about blurb localized.</li>
+</ul>
+<h5 id="android-agent-empty-state-i18n-usability">Android Agent empty-state i18n (usability)<a class="docs-heading-anchor" href="#android-agent-empty-state-i18n-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Agent title, empty guidance, multi-step <strong>example goals</strong>, recent goals, working/planning rows, and remaining Settings captions are string-resourced for en/ru/ko/ja/zh — day-one Agent tab is no longer English-only for Russian-first users.</li>
+</ul>
+<h5 id="android-settings-i18n-guided-handoff-locale-packs-usability">Android Settings i18n + guided handoff locale packs (usability)<a class="docs-heading-anchor" href="#android-settings-i18n-guided-handoff-locale-packs-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Settings screen</strong> section titles and common rows (Speed/Model/Reasoning/Agent/Storage/…) are string-resourced for en/ru/ko/ja/zh — Russian-first users no longer see an English Settings shell.</li>
+<li><strong>Guided computer-task reply</strong> is locale-aware on both platforms (<code>ActionIntent.guidedAssistantReply</code>).</li>
+</ul>
+<h5 id="agent-handoff-auto-runs-on-android-usability-parity">Agent handoff auto-runs on Android (usability parity)<a class="docs-heading-anchor" href="#agent-handoff-auto-runs-on-android-usability-parity" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Open in Agent</strong> now starts the run immediately (twin of iOS): the chat CTA was already the run gesture; mutating steps still preview + ask. Goal field clears and history records on submit.</li>
+<li>iOS chat: localize Continue / Today / Switch / handoff a11y via catalog.</li>
+</ul>
+<h5 id="low-quality-heads-up-on-android-ru-actionintent-usability">Low-quality heads-up on Android + RU ActionIntent (usability)<a class="docs-heading-anchor" href="#low-quality-heads-up-on-android-ru-actionintent-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Android empty chat</strong>: same “lightest model” honesty as iOS when quant quality is Low (Q2_K etc.) — before the first disappointing answer.</li>
+<li><strong>Share subject</strong> localized (<code>chat_share_subject</code>).</li>
+<li><strong>ActionIntent Russian patterns</strong> (iOS + Android twins): computer-task handoff works for “открой браузер…”, “отправь письмо…”, etc., without false-firing on pure chat questions.</li>
+</ul>
+<h5 id="android-chat-agent-handoff-usability-parity">Android chat→Agent handoff (usability parity)<a class="docs-heading-anchor" href="#android-chat-agent-handoff-usability-parity" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>ActionIntent short-circuit on Android chat</strong>: computer-task prompts get a guided reply + <strong>Open in Agent</strong> chip (no “I cannot fulfill…” wall). <code>AgentHandoff</code> baton switches tab and fills the Agent goal field (user still taps Run — ask-before-act).</li>
+<li><code>ChatModel.recordGuidedTurn</code> + <code>ActionIntent.displayAssistantText</code> twins of iOS.</li>
+</ul>
+<h5 id="demo-mock-feels-usable-android-model-router-usability">Demo mock feels usable + Android model router (usability)<a class="docs-heading-anchor" href="#demo-mock-feels-usable-android-model-router-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>DemoMockReplies</strong> (iOS + Android): when no native llama is linked, starter-like prompts (math, packing, jet lag, dinner ideas, email) get a short useful canned answer <strong>plus</strong> an honest demo footer — not a single frozen “canned until linked” wall for every tap.</li>
+<li><strong>Android ModelRouter chip</strong>: empty-chat first draft (≥12 chars) offers Switch to the best installed model (never silent). Settings → Routing toggle (<code>suggestBestModel</code>, default on).</li>
+</ul>
+<h5 id="chat-recovery-copy-parity-usability">Chat recovery + copy parity (usability)<a class="docs-heading-anchor" href="#chat-recovery-copy-parity-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Locale-aware empty-reply notice + continue cue</strong> (<code>ChatUserFacing</code> twins): zero-token and token-cap recovery no longer force English into a Russian (ko/ja/zh) chat.</li>
+<li><strong>Android long-press menu</strong>: Copy + Report (was Report-only on long-press) — parity with iOS context menu.</li>
+</ul>
+<h5 id="localization-desktop-prompt-parity-usability">Localization + desktop prompt parity (usability)<a class="docs-heading-anchor" href="#localization-desktop-prompt-parity-usability" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>iOS string catalog</strong>: engine honesty, Loading prompt / Writing phase, attach help (vision not yet), demo banner, Send/Stop a11y — keys in <code>scripts/translations.tsv</code> → <code>Localizable.xcstrings</code>. Source uses <code>String(localized:)</code> where <code>String</code> params used to skip the catalog.</li>
+<li><strong>Android locales</strong> (ru/ko/ja/zh-rCN): filled 28 missing keys — demo mode, engine row, generation phase, chat starters a11y, download-wait playground tips/scores.</li>
+<li><strong>Localized chat starters</strong> (ru/ko/ja/zh): empty-chat chips + prompts resolve to the UI language so Russian-first users are not forced into English on first message (iOS <code>offlineChat(locale:)</code>, Android <code>offlineChat(languageCode)</code>).</li>
+<li><strong>Desktop general preset</strong>: system prompt aligned with mobile ConversationContext (lead-with-answer, no invent); <code>maxTokens</code> 512 (was 2048) to curb ramble on small local models.</li>
+</ul>
+<h5 id="prefill-phase-honest-photo-refusal-golden-chat-gate">Prefill phase + honest photo refusal + golden chat gate<a class="docs-heading-anchor" href="#prefill-phase-honest-photo-refusal-golden-chat-gate" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>GenerationPhase</strong> (<code>loadingPrompt</code> → <code>writing</code>) drives “Loading prompt · Ns” / “Writing · Ns” (iOS + Android typing bubbles). Desktop shows “Loading prompt · Ns” during prefill.</li>
+<li><strong>Image attach</strong> refused with an explicit vision-not-available message (not “isn’t a text file”). Pickers now <strong>accept images</strong> so that refusal is reachable (iOS + Android).</li>
+<li><strong><code>shared/golden-chat-prompts.json</code></strong> + <code>npm run check:golden-chat</code> CI gate (starters, tiers, vision refusal copy).</li>
+</ul>
+<h5 id="ship-path-no-silent-mock-releases">Ship path: no silent mock releases<a class="docs-heading-anchor" href="#ship-path-no-silent-mock-releases" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Android release/bundle fails</strong> without <code>jni/llama.cpp</code> (escape: <code>-Pquenderin.allowMockRelease=true</code>).</li>
+<li><strong>BuildConfig.QUENDERIN_HAS_NATIVE_LLAMA</strong> + Settings “Inference engine” row (real vs demo).</li>
+<li>Mock canned reply no longer pretends to be real on-device AI (iOS + Android).</li>
+</ul>
+<h5 id="chattier-honest-demo-mode">ChatTier + honest demo mode<a class="docs-heading-anchor" href="#chattier-honest-demo-mode" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>ChatTier</strong> (tiny ≤2B / small ≤5.5B / full): shorter maxTokens + tighter prompt for small models (iOS GenerationOptions + Android LlamaEngine override).</li>
+<li><strong>Demo-mode banner</strong> when the build has no native llama (mock engine) — no more fake “on-device” chat.</li>
+<li>Desktop empty-state suggestions aligned with mobile offline starters; Thinking · Ns on desktop too.</li>
+</ul>
+<h5 id="chat-feels-alive-during-prefill-sharper-small-model-prompt">Chat feels alive during prefill + sharper small-model prompt<a class="docs-heading-anchor" href="#chat-feels-alive-during-prefill-sharper-small-model-prompt" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>“Thinking · Ns”</strong> on the typing bubble (iOS + Android) so multi-second prefill isn’t a frozen UI.</li>
+<li><strong>System prompt</strong> rewritten for 1–4B: lead with the answer, short bullets, no inventing facts/URLs/tool results, language-mirror + Agent redirect kept (twins in sync).</li>
+<li><strong>Android:</strong> failed generation shows <strong>Retry</strong> (restores last prompt into the composer).</li>
+</ul>
+<h5 id="day-one-usability-empty-chat-is-no-longer-a-blank-stare">Day-one usability (empty chat is no longer a blank stare)<a class="docs-heading-anchor" href="#day-one-usability-empty-chat-is-no-longer-a-blank-stare" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Starter chips</strong> on empty chat (iOS + Android): Summarize, Rewrite, Translate, Brainstorm, Explain simply, Quick math, Draft email, Packing list — prompts tuned for 1–4B offline models. Paste-ready chips fill the composer; complete prompts send in one tap.</li>
+<li><strong>Auto-open first chat</strong> after onboarding when there is no history (skip empty Chats list).</li>
+<li><strong>Download ETA</strong> (~N min left) from recent throughput on the wait playground.</li>
+</ul>
+<h5 id="download-wait-is-no-longer-a-dead-screen">Download wait is no longer a dead screen<a class="docs-heading-anchor" href="#download-wait-is-no-longer-a-dead-screen" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Catch-the-tokens mini-game + rotating tips</strong> while the first model downloads (iOS, Android, desktop wizard). Sticky progress stays visible; multi-GB installs used to strand users on a percentage ring only.</li>
+<li><strong>Desktop:</strong> setup wizard can continue (voice step) while the model keeps downloading in the background — no more disabled “Next” trap.</li>
+</ul>
+<h5 id="paged-moe-frontier-class-agent-quality-on-16-gb-machines">Paged MoE — frontier-class agent quality on 16 GB machines<a class="docs-heading-anchor" href="#paged-moe-frontier-class-agent-quality-on-16-gb-machines" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>New catalog flagship: Qwen3.6 35B MoE</strong> (<code>qwen36-35b-a3b</code>, UD-IQ3_XXS, 13.2 GB, sha256-pinned, all platforms + shared manifest). Only ~3B of 35B params run per token, so with mmap the OS page cache streams the experts from disk — measured 17.3 tok/s on a 16 GB M4 (CPU-only, 4–6 GB resident, zero swap). Directly attacks the "agent quality is model-bound" ceiling.</li>
+<li><strong><code>MoEShape</code> (Swift):</strong> detects the <code>…-35B-A3B</code> naming convention and estimates the paged RESIDENT set — open-catalog search &amp; fitness no longer tell a 16 GB Mac that a runnable 13 GB MoE "needs 20 GB". Filters gate MoE by ACTIVE params (size class per token) while download caps stay honest on total size.</li>
+<li><strong>GPU offload is now a policy, not a constant:</strong> Swift <code>GpuOffloadPolicy</code> (twin of Android's <code>GpuOffloadPlanner</code>) keeps Metal offload when weights fit the app budget and goes CPU-only
+<ul>
+<li>mmap when they don't (wiring an over-budget file thrashes the Metal working set); desktop</li>
+</ul></li>
+</ul>
+<p><code>gpuOffloadFits</code> does the same before trying GPU.</p>
+<ul>
+<li>Agent-screen upgrade copy is MoE-honest (13 GB download, SSD-streamed) — never the generic "slightly slower replies". <code>check_catalog_parity.py</code> fixed to parse hyphenated quant ids.</li>
+</ul>
+<h5 id="russian-first-ui-localization-honest-model-language-info">Russian-first: UI localization + honest model-language info<a class="docs-heading-anchor" href="#russian-first-ui-localization-honest-model-language-info" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Localized UI (macOS + iOS)</strong>: 280-key string catalog (<code>scripts/translations.tsv</code> → <code>build_xcstrings.py</code> → <code>Localizable.xcstrings</code>, wired into both app targets) — Russian first, then ko/ja/zh-Hans filled. Known gap: long Settings captions built from concatenated literals are verbatim strings (SwiftUI skips localization) — needs a source-side pass.</li>
+<li><strong>Every catalog model states its languages</strong> (<code>languages</code> field, all platforms + manifest, decode-safe for older persisted entries) — shown in the model profile, localized. Honest about Russian: the Llama 3.2 tier says "no Russian" out loud (a 1B answered a Russian user in English — the info was missing where the choice is made).</li>
+<li><strong>Chat prompt mirrors the user's language</strong> on all three platforms ("Always reply in the same language the user writes in") — small models default to English otherwise.</li>
+</ul>
+<h5 id="autopilot-run-a-goal-without-babysitting-it-macos">Autopilot — run a goal without babysitting it (macOS)<a class="docs-heading-anchor" href="#autopilot-run-a-goal-without-babysitting-it-macos" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>"Allow all steps for this goal"</strong> on the per-step approval dialog: one grant covers the rest of the run; the broker resets at the next goal, so it never leaks.</li>
+<li><strong>Settings → Agent → Autopilot</strong>: goals start pre-approved from step 1 (for runs you can't sit in front of). What it never skips: the SafetyBlocklist (refuses before approval is even consulted), standing consent tiers, the audit ledger, and undo. Off by default.</li>
+<li>New <code>scripts/build_mac_dmg.sh</code> — local-test DMG in one command (build → sign consistently → package); fixes the hardened-runtime/adhoc Team-ID launch crash.</li>
+</ul>
+<h4 id="0-2-0-2026-07-09">0.2.0 — 2026-07-09<a class="docs-heading-anchor" href="#0-2-0-2026-07-09" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="distribution">Distribution<a class="docs-heading-anchor" href="#distribution" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Version alignment:</strong> desktop (<code>package.json</code>), Android (<code>0.2.0</code> / versionCode 2), Apple marketing version <code>0.2.0</code> / build 2.</li>
+<li><strong>Windows dual channel:</strong> GitHub Releases keep Setup + Portable <code>.exe</code>; Microsoft Store path via AppX (<code>npm run electron:build:win:store</code>) — full owner guide <a href="desktop-distribution#src-docs-microsoft-store-md"><code>docs/MICROSOFT_STORE.md</code></a>.</li>
+<li><strong>macOS public product:</strong> native <strong>QuenderinMac</strong> App Store only (free listing for branding) — <a href="desktop-distribution#src-docs-mac-app-store-md"><code>docs/MAC_APP_STORE.md</code></a>. Electron mac remains lab-only; CI desktop release stays Windows + Linux only.</li>
+<li>Website <code>download.html</code> updated for Store policy + v0.2.x.</li>
+</ul>
+<h5 id="product-path-engineering-desktop-core">Product-path engineering (desktop / core)<a class="docs-heading-anchor" href="#product-path-engineering-desktop-core" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Sampling profiles: shared JSON + CI parity; packaged Electron loads <code>shared/</code> with embedded fallback.</li>
+<li>Android PDF text extract (pure-Kotlin) + FlateDecode; desktop sampling + golden chores in CI.</li>
+<li>GUI reliability: <code>verify()</code> on type/key/menu (TS + Swift).</li>
+<li>Skill memory: record/recall <strong>tool + input</strong> sequences (<code>recordSteps</code> / <code>formatHint</code>).</li>
+<li>Chore breadth: <code>fs.organize</code> (batch by type, durable undo), <code>fs.collect</code> (multi-file read for summarize → <code>fs.write</code> reports).</li>
+</ul>
+<h5 id="notes-for-owners-cutting-the-release">Notes for owners cutting the release<a class="docs-heading-anchor" href="#notes-for-owners-cutting-the-release" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ol>
+<li>Tag <code>v0.2.0</code> → GitHub Actions publishes Win/Linux installers.</li>
+<li>On Windows: fill Partner Center identity in <code>electron-builder.yaml</code> <code>appx.*</code>, then <code>npm run electron:build:win:store</code> and follow MICROSOFT_STORE.md.</li>
+<li>On Mac: <code>docs/MAC_APP_STORE.md</code> for App Store Connect upload of QuenderinMac 0.2.0 (2).</li>
+</ol>
+<h4 id="0-1-0-earlier">0.1.0 — earlier<a class="docs-heading-anchor" href="#0-1-0-earlier" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>First public desktop preview (Windows/Linux installers), native mobile software-complete baseline.</p></section><details class="docs-fold docs-subdoc" id="src-docs-social-2026-10-16-muse-bonsai-readme-md"><summary><span><strong>Muse and smaller Bonsai social update — 16 October 2026</strong> &mdash; <code>docs/social/2026-10-16-muse-bonsai/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/social/2026-10-16-muse-bonsai/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-10-16-muse-bonsai/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="muse-and-smaller-bonsai-social-update-16-october-2026">Muse and smaller Bonsai social update — 16 October 2026<a class="docs-heading-anchor" href="#muse-and-smaller-bonsai-social-update-16-october-2026" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Published as Quenderin, using the established company Pages:</p>
+<ul>
+<li><a href="https://www.linkedin.com/feed/update/urn:li:activity:7516826215324971008/" rel="noopener" target="_blank">LinkedIn post<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a></li>
+<li><a href="https://www.facebook.com/quenderin/posts/pfbid0eUUpiugyNuhf5BDwUQJ7G1pDdgZonv54WLoiWTasqjdtnvSvE7suTydm2EQWLW24l" rel="noopener" target="_blank">Facebook post<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a></li>
+</ul>
+<p>Both permalinks were opened and their captions and attached scene verified. LinkedIn was submitted through the company composer. Facebook's native picker stalled during automation; the final page subsequently displayed <strong>Your post has been published</strong>, and its permalink showed the prepared caption and correct image. No duplicate was submitted. Screenshots are <code>linkedin-published.png</code> and <code>facebook-published.jpg</code>. These are publication evidence, not app/device tests.</p>
+<h4 id="artwork-continuity">Artwork continuity<a class="docs-heading-anchor" href="#artwork-continuity" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Primary persistent project conversation: https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a</p>
+<p>Chat title: <strong>Generate Header Image Prompt</strong>. The October 12 original asks for the elf to share Zelda-like devices with people as a metaphor for local models; the follow-up specifies ordinary modern clothes. The title and original messages do not include Quenderin, so project-name search misses this thread.</p>
+<p>The October 16 revision was generated through the signed-in ChatGPT website, continuing that conversation and its reference images. The prompt identifies Quenderin, Muse Spark Open and Bonsai 2, and requests a sunlit workshop terrace: the same elf helping people use three miniature bonsai devices while developers assemble a larger teal-and-copper core. It preserves the waterfall city, modern clothing and cinematic realism, with no text, logos or performance claims.</p>
+<p><code>quenderin-muse-bonsai-workshop.png</code> is the unmodified downloaded original, 1536 × 1024, 2,810,645 bytes. SHA-256: <code>691dd4b0d67782e73ed93aff669570e89e30f1732b480515ecec5190efe9856b</code>. ChatGPT's download title is <strong>Elven Tech Workshop at Golden Hour</strong>. The same original was attached to both platforms. LinkedIn preserved content credentials; Facebook displayed its AI-content label.</p>
+<p><code>linkedin-header-reference.jpg</code> is the observed pre-existing company header, downloaded only as a reference, 179,596 bytes. SHA-256: <code>2d8544df8c7fb549082895f88c10c0524b1dfa565dcbb4005c49df57127732f1</code>. The header itself was not replaced.</p>
+<p>LinkedIn alt text: AI-generated illustration: Quenderin’s teal-braided elf helps people in modern clothes build local-AI devices on a sunlit terrace. Three miniature glowing bonsai devices sit beside a larger teal-and-copper mechanical core, with waterfalls and a fantasy city behind them.</p>
+<h4 id="claims-and-release-status">Claims and release status<a class="docs-heading-anchor" href="#claims-and-release-status" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Captions link to the live <a href="https://quenderin.org/blog-muse-engineering" rel="noopener" target="_blank">engineering article<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>; Facebook also links the <a href="https://quenderin.org/changelog" rel="noopener" target="_blank">changelog<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>. They describe manual Bonsai 2 2B/4B/9B choices, approximately 0.43/0.95/2 GB downloads, memory checks, and experimental native Muse text-engine support with 22 verified parts totaling roughly 304 GB. They explicitly state that full-weight Muse inference has not been validated. LinkedIn distinguishes synthetic CPU decode/save-reload checks from full-weight inference.</p>
+<p>The captions say iOS/macOS 0.4.0 were submitted for Apple review and Android's build is prepared with its Play upload pending, consistent with <code>docs/RELEASE.md</code>. They do not claim public store distribution, Muse on ordinary phones, multimodal support, distributed execution, measured Muse speed, or native UI validation. No ads, boosts, subscriptions, paid API generation or model downloads were used.</p>
+<p>The downloaded originals remain in Downloads under the artwork title (including one identical duplicate from a repeated download after the browser event timed out). The project PNG above is the canonical reusable deliverable.</p></div></details><details class="docs-fold docs-subdoc" id="src-docs-social-2026-10-18-open-models-readme-md"><summary><span><strong>October open-model engineering update</strong> &mdash; <code>docs/social/2026-10-18-open-models/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/social/2026-10-18-open-models/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-10-18-open-models/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="october-open-model-engineering-update">October open-model engineering update<a class="docs-heading-anchor" href="#october-open-model-engineering-update" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Status: published on quenderin.org, Facebook and LinkedIn on 18 October 2026. The engineering source is tracked in <a href="https://github.com/alikatgh/quenderin/pull/163" rel="noopener" target="_blank">PR 163<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>. All 18 integrated CI jobs and the separate catalog URL check passed at <code>1d5f4452b0dd096fdaab737bc4581562f3bce666</code>. No model weights were downloaded locally and no simulator or physical device was run. New-model full-weight inference and native rendered UI remain unverified. There is no new store submission or app-availability claim.</p>
+<p>The article is <code>website/blog-open-models-october-2026.html</code>, titled <strong>This week’s open models in Quenderin</strong>. Its blog-index and changelog entries describe an engineering candidate. The source includes 28 text catalog entries; complete Beam/Muse installation and native/desktop adapters; dedicated Vision, Hy-Memory, Granite and Images workflows; and Step 5 clients for the user's existing official CUDA host. Nemotron Bolt E4B remains unavailable without a verified artifact. Native Apple/Android store releases and Windows/Linux desktop distribution are separate from this source update. The October 16 store history is unchanged.</p>
+<p>Earlier runtime repairs were pushed as <code>78f02bfbb596a35c8154112e0cfe514df68c8e75</code>; the <a href="https://github.com/alikatgh/quenderin/actions/runs/39098085518" rel="noopener" target="_blank">earlier hosted run<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> predates the complete candidate. It must not stand in for final results.</p>
+<h4 id="artwork">Artwork<a class="docs-heading-anchor" href="#artwork" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Persistent project conversation: <a href="https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a" rel="noopener" target="_blank">https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a</a> (<strong>Generate Header Image Prompt</strong>), 18 October 2026, announcement cover revision 1. The prompt asks for the established teal/copper elf and modern developers in an open-air engineering library above the waterfall city, arranging small model modules, a large workstation core and a separate image easel. No labels, logos, benchmarks or claims of phone inference. The original remains in that thread.</p>
+<p>Downloaded original: <code>quenderin-open-model-library.png</code>,1536 × 1024, 2,927,828 bytes. SHA-256: <code>fdb97e87dafb5a84dfa97c8d12f85dabc5f63c488f435aaec2fb55d280df996f</code>. Original download path: <code>~/Downloads/Elven Atelier Above the Waterfalls.png</code>. Reviewed visually; existing user file was copied, not relocated or replaced. Use this original for social uploads and retain platform AI content credentials.</p>
+<p>Web derivative: <code>website/assets/blog/open-model-library-20261018.jpg</code>,1200 × 800. SHA-256: <code>37e2ac72bc5068d8991e6816156a6528f3aa09d91b8382a92f695525aa11a334</code>. The article labels it AI-generated editorial illustration, not product evidence.</p>
+<h4 id="published-page-caption-facebook-and-linkedin">Published Page caption — Facebook and LinkedIn<a class="docs-heading-anchor" href="#published-page-caption-facebook-and-linkedin" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>This week’s open models in Quenderin: an engineering update.</p>
+<p>The source now has 28 text-model choices, including Jais 3, Nemotron 3.5 Bolt, LFM2.5 and MiniCPM-V 4.7. Beam and Muse have complete multipart installation and native/desktop chat adapters. Their full weights still need workstation-scale storage and memory.</p>
+<p>Separate workflows let you ask about a still image with MiniCPM or Super VL, review Hy-Memory proposals before saving selected facts, import a verified Granite Switch 4.1 conversion for chat, and generate images with FLUX 3 Image Klein or MOSS. Step 5 connects to your own existing CUDA host after consent; it does not run on the phone. Gated FLUX files and license decisions remain yours.</p>
+<p>This is source engineering, not a new store release. Hosted native builds and desktop package checks have passed. Full-weight inference, image quality and native device UI have not been verified. The article gives each model’s setup path, resource requirements and limits. Bolt E4B remains unavailable without a verified artifact.</p>
+<p>https://quenderin.org/blog-open-models-october-2026</p>
+<p>Artwork: AI-generated editorial illustration.</p>
+<h4 id="verification-and-publication-evidence">Verification and publication evidence<a class="docs-heading-anchor" href="#verification-and-publication-evidence" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Targeted source and host fixtures cover catalog parity, complete-file and conversion-receipt checks, publisher prompts, native interfaces, strict proposal validation, private storage, resource bounds and joined cancellation/shutdown. Independent reviews resolved material correctness and resource-allocation defects. These are engineering checks, not new-model full-weight inference evidence. <a href="https://github.com/alikatgh/quenderin/actions/runs/39106905620" rel="noopener" target="_blank">CI 39106905620<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> passed all 18 jobs; <a href="https://github.com/alikatgh/quenderin/actions/runs/39106905664" rel="noopener" target="_blank">catalog URLs 39106905664<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> passed at the same engineering revision. Actual Apple/Android builds, Linux/Windows ASAR addon and image/vision package probes, the macOS desktop lab package and Windows private-storage ACL fixtures passed. macOS skips the packaged ASAR addon probe; its prepackage addon probe, joint library loads and packaged image/vision checks passed. New signing, native UI/device checks, ARMv7 support and full-weight inference remain separate.</p>
+<p><code>desktop-image-ui-fixture.jpg</code> is a browser render of the real component with an explicitly labelled mock bridge. Checked at 1497 × 790 and 900 × 700, in light and dark appearance: preset information, folder selection, verification, generation error, retained caption and leave/return navigation. It is not an Electron launch, native-device screenshot, model download or inference result.</p>
+<p>Engineering revision: <code>1d5f4452b0dd096fdaab737bc4581562f3bce666</code>. Later publication changes contain documentation, website copy and proof only.</p>
+<ul>
+<li><a href="https://quenderin.org/blog-open-models-october-2026" rel="noopener" target="_blank">Blog<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://quenderin.org/changelog#2026-10-18" rel="noopener" target="_blank">changelog<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://quenderin.org/tell-me-more#october-2026-update" rel="noopener" target="_blank">detailed landing page<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</li>
+<li>The <a href="https://quenderin.org/" rel="noopener" target="_blank">minimal homepage<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> adds only the latest-blog link.</li>
+<li><a href="https://www.facebook.com/quenderin/posts/pfbid0HnoqV5Ctv5YRLKWE43bAmLPHnQv6VBXLpRuNjfKXP6E6KYoazLznV1wPJx5rnraMl" rel="noopener" target="_blank">Facebook post<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: updated the existing October 18 post; no duplicate created. Public audience, AI content label retained, boost off.</li>
+<li><a href="https://www.linkedin.com/feed/update/urn:li:share:7517490348588425218/" rel="noopener" target="_blank">LinkedIn post<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: published as Quenderin company 135196272. Original artwork, descriptive alt text and image content credentials retained. No paid boost.</li>
+</ul>
+<p>Cloudflare Worker version <code>a493be9a-b250-483e-8d1e-b7d3323955df</code> serves 100% of traffic. Its script ETag <code>ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4</code>, bindings, runtime settings, routing and security headers exactly match the prior live version <code>cfa3e413-b0a8-438d-8550-033d76b798e9</code>; only static assets changed. The local dynamic-feed Worker changes were not activated. The seven checked public static routes returned 200 with byte-identical prepared assets and security headers; the existing model-feed API returned 200 before and after activation. The previous version remains available for rollback.</p>
+<p><code>publication-verification.json</code> records hashes and checks without credentials. <code>homepage-live.png</code>, <code>facebook-live.png</code> and <code>linkedin-live.png</code> show the published result. Social proofs focus on the public post and omit unrelated account panels.</p></div></details>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="development-roadmap"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Development Guide, Contributing &amp; Roadmap</span></a>
+        <div></div>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-changelog-md">CHANGELOG.md</a></li><li><a class="is-depth-3" href="#changelog">Changelog</a></li><li><a class="is-depth-2" href="#src-docs-social-2026-10-16-muse-bonsai-readme-md">docs/social/2026-10-16-muse-bonsai/README.md</a></li><li><a class="is-depth-3" href="#muse-and-smaller-bonsai-social-update-16-october-2026">Muse and smaller Bonsai social update — 16 October 2026</a></li><li><a class="is-depth-2" href="#src-docs-social-2026-10-18-open-models-readme-md">docs/social/2026-10-18-open-models/README.md</a></li><li><a class="is-depth-3" href="#october-open-model-engineering-update">October open-model engineering update</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

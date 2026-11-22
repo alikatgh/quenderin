@@ -14,7 +14,10 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
+<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="preload" href="fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 <style>
   #android-beta .btn { max-width: 100%; white-space: normal; }
   #android-beta .btn-primary { background: var(--brand-dark); color: #fff; box-shadow: none; }
@@ -24,8 +27,14 @@
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="legal-header">
-  <div class="container container-wide">
+  <div class="container container-wide post-header">
     <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Primary">
+      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
+      <a href="models"><span class="qi qi-cpu" aria-hidden="true"></span>Models</a>
+      <a href="blog"><span class="qi qi-file-text" aria-hidden="true"></span>Blog</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
   </div>
 </header>
 
@@ -67,7 +76,7 @@
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Setup-x64.exe"><strong>Quenderin-Setup-x64.exe</strong></a> — the installer (recommended from GitHub).</li>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Portable-x64.exe">Quenderin-Portable-x64.exe</a> — no installation; runs from any folder or USB stick.</li>
   </ul>
-  <p><strong>About the SmartScreen warning on GitHub builds:</strong> preview <code>.exe</code> files may be unsigned, so Windows can show “unrecognized app” — click <em>More info → Run anyway</em>. The file is built in public CI from this open source. The <strong>Microsoft Store</strong> listing is signed by Microsoft and removes that warning — owner playbook: <a href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener">docs/MICROSOFT_STORE.md</a>.</p>
+  <p><strong>About the SmartScreen warning on GitHub builds:</strong> preview <code>.exe</code> files may be unsigned, so Windows can show “unrecognized app” — click <em>More info → Run anyway</em>. The file is built in public CI from this open source. The <strong>Microsoft Store</strong> listing is signed by Microsoft and removes that warning — owner playbook: <a href="docs/desktop-distribution">desktop distribution docs</a> (<a href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener">source</a>).</p>
 
   <h2 class="platform-heading"><img src="icons/linux.svg" alt="" /> Linux &middot; preview</h2>
   <ul>
@@ -87,7 +96,7 @@
   <h2>What you're downloading</h2>
   <p>The desktop preview (<strong>v0.2.x</strong>): chat with streaming replies, the full model library (Llama, Qwen, DeepSeek-R1, Mistral, Gemma&nbsp;3 &amp; 4, Phi) with RAM-fit recommendations and SHA-256-verified downloads, and the governed task tools. Everything runs on your machine — <a href="how-it-works">how it works</a>, <a href="reality">the measured numbers</a>. Model downloads happen inside the app after install; expect 0.4–9&nbsp;GB per model, your pick.</p>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="help">Get help</a> &middot; <a href="changelog">What's new</a> &middot; <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">All releases</a></p>
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="docs/">Documentation</a> &middot; <a href="docs/quickstart">Quickstart</a> &middot; <a href="help">Get help</a> &middot; <a href="changelog">What's new</a> &middot; <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">All releases</a></p>
 </main>
 <script src="main.js" defer></script>
 </body>

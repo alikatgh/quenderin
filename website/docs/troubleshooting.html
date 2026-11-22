@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Troubleshooting &amp; Device Verification — Quenderin Docs</title>
+<meta name="description" content="Fix Node/npm build failures, llama.cpp native addon issues, simulator/emulator checks, and physical-device verification runs." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/troubleshooting" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting" class="is-active" aria-current="page"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Start Here</span></div><div class="docs-kicker"><span class="qi qi-wrench" aria-hidden="true"></span>Start Here · Diagnostics</div><h1>Troubleshooting &amp; Device Verification</h1><p class="docs-lead">Fix Node/npm build failures, llama.cpp native addon issues, simulator/emulator checks, and physical-device verification runs.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>9 min read (2,137 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>2 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 2 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/TROUBLESHOOTING.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>TROUBLESHOOTING.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/DEVICE_VERIFICATION.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/DEVICE_VERIFICATION.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-troubleshooting-md">TROUBLESHOOTING.md</a></li><li><a class="is-depth-3" href="#troubleshooting">Troubleshooting</a></li><li><a class="is-depth-2" href="#src-docs-device-verification-md">docs/DEVICE_VERIFICATION.md</a></li><li><a class="is-depth-3" href="#physical-device-verification-runbook">Physical-device verification runbook</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-troubleshooting-md"><h2 id="src-troubleshooting-md-heading">Troubleshooting</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>TROUBLESHOOTING.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/TROUBLESHOOTING.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="troubleshooting">Troubleshooting<a class="docs-heading-anchor" href="#troubleshooting" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Diagnostic guide for common problems. Work through each section top-to-bottom before asking for help.</p>
+<hr />
+<h4 id="dashboard-wont-start">Dashboard won't start<a class="docs-heading-anchor" href="#dashboard-wont-start" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="symptom-a-port-conflict">Symptom A — port conflict<a class="docs-heading-anchor" href="#symptom-a-port-conflict" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Error: listen EADDRINUSE: address already in use :::3000</code></pre></div>
+<p><strong>What happened:</strong> Another process is running on port 3000. Quenderin auto-detects this and should switch to the next free port automatically. If the error still appears, your version may not have the port-fallback fix.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>Check whether Quenderin found another port — look for this message:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   [Server] Port 3000 is busy, starting on port 3001 instead.</code></pre></div>
+<p>If yes, open whichever URL is printed. No further action needed.</p>
+<ol>
+<li>If it crashed without finding another port, manually free port 3000:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   lsof -ti:3000 | xargs kill
+   npm run dashboard</code></pre></div>
+<ol>
+<li>Or specify a custom port:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   PORT=3001 npm run dashboard</code></pre></div>
+<h5 id="symptom-b-crash-immediately-on-startup-with-no-error-message">Symptom B — crash immediately on startup with no error message<a class="docs-heading-anchor" href="#symptom-b-crash-immediately-on-startup-with-no-error-message" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Check that your Node.js version is 20 or higher:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>node --version</code></pre></div>
+<p>If below 20, upgrade via <code>nvm</code> or <code>brew</code>:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code># Using nvm
+nvm install 22 &amp;&amp; nvm use 22
+
+# Using Homebrew
+brew install node@22</code></pre></div>
+<h5 id="symptom-c-cannot-find-module-or-err-module-not-found">Symptom C — <code>Cannot find module</code> or <code>ERR_MODULE_NOT_FOUND</code><a class="docs-heading-anchor" href="#symptom-c-cannot-find-module-or-err-module-not-found" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Dependencies may not be installed:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npm install
+cd ui &amp;&amp; npm install &amp;&amp; cd ..</code></pre></div>
+<p>Then restart.</p>
+<hr />
+<h4 id="no-model-available-ai-responses-dont-work">No model available / AI responses don't work<a class="docs-heading-anchor" href="#no-model-available-ai-responses-dont-work" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="symptom">Symptom<a class="docs-heading-anchor" href="#symptom" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Chat area shows "No model loaded" or messages time out with no response.</p>
+<h5 id="diagnosis">Diagnosis<a class="docs-heading-anchor" href="#diagnosis" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ol>
+<li>Look for model files:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   ls ~/.quenderin/models/</code></pre></div>
+<p>If the directory is empty or doesn't exist, no model is installed.</p>
+<ol>
+<li>Check the terminal for load errors such as:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   [LLM] No suitable model found
+   [LLM] Memory check failed for llama-3-8b</code></pre></div>
+<h5 id="solutions">Solutions<a class="docs-heading-anchor" href="#solutions" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>No model files:</strong> Open the Models tab and download a model. Start with Llama 3.2 3B if unsure.</li>
+<li><strong>Memory check failed:</strong> You have a model installed but not enough free RAM. Either:
+<ul>
+<li>Download a smaller model (3B or 1B)</li>
+<li>Disable memory safety in Settings and try loading anyway</li>
+<li>Close other memory-heavy apps before starting Quenderin</li>
+</ul></li>
+</ul>
+<h5 id="model-directory-location">Model directory location<a class="docs-heading-anchor" href="#model-directory-location" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Models are stored at <code>~/.quenderin/models/</code> by default. You can override this by setting <code>modelPath</code> in <code>quenderin.json</code>.</p>
+<hr />
+<h4 id="model-download-stopped-mid-way">Model download stopped mid-way<a class="docs-heading-anchor" href="#model-download-stopped-mid-way" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="what-happened">What happened<a class="docs-heading-anchor" href="#what-happened" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Network interruption, system sleep, or manual stop during download.</p>
+<h5 id="solution">Solution<a class="docs-heading-anchor" href="#solution" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Re-trigger the same model download from the Models tab. Quenderin automatically detects the partial file and the <code>.download.json</code> sidecar metadata, then resumes from the last saved byte position using HTTP range requests.</p>
+<p><strong>You do not need to delete the partial file.</strong> Deleting it forces a full restart.</p>
+<h5 id="if-the-download-wont-resume">If the download won't resume<a class="docs-heading-anchor" href="#if-the-download-wont-resume" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>If the partial file appears corrupted (download fails immediately after starting):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>rm ~/.quenderin/models/&lt;model-id&gt;.gguf
+rm ~/.quenderin/models/&lt;model-id&gt;.download.json</code></pre></div>
+<p>Then re-download from scratch.</p>
+<hr />
+<h4 id="responses-are-very-slow">Responses are very slow<a class="docs-heading-anchor" href="#responses-are-very-slow" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="expected-performance">Expected performance<a class="docs-heading-anchor" href="#expected-performance" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-table-wrap"><table><thead><tr><th>Hardware</th><th>Model</th><th>Expected tok/s</th></tr></thead><tbody><tr><td>Apple M2 (8 GB)</td><td>Llama 3.2 1B</td><td>60–100 tok/s</td></tr><tr><td>Apple M2 (8 GB)</td><td>Llama 3.2 3B</td><td>25–50 tok/s</td></tr><tr><td>Apple M2 (16 GB)</td><td>Llama 3 8B</td><td>20–35 tok/s</td></tr><tr><td>Intel i7 (RAM only)</td><td>Llama 3.2 3B</td><td>5–15 tok/s</td></tr></tbody></table></div>
+<p>If you're seeing significantly lower numbers:</p>
+<ol>
+<li><strong>Switch to a smaller model.</strong> Try 3B → 1B.</li>
+<li><strong>Lower context size</strong> in Settings (4096 → 2048 → 1024). Smaller context = faster prompt evaluation.</li>
+<li><strong>Check memory pressure.</strong> If the system is swapping (purple bar in Activity Monitor), the model is being read from disk during generation — extremely slow. Free up RAM.</li>
+<li><strong>Check thread count.</strong> If you set <code>threads</code> in <code>quenderin.json</code>, try removing it to let <code>node-llama-cpp</code> pick automatically.</li>
+</ol>
+<p>The generation stats bar under each message shows <code>tok/s</code> and <code>TTFT</code> — use these to benchmark changes.</p>
+<hr />
+<h4 id="voice-wake-word-features-dont-work">Voice / wake-word features don't work<a class="docs-heading-anchor" href="#voice-wake-word-features-dont-work" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="symptom-2">Symptom<a class="docs-heading-anchor" href="#symptom-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>[Voice] PICOVOICE_ACCESS_KEY not set — voice features disabled</code></pre></div>
+<p>Or the voice control button is greyed out in the UI.</p>
+<h5 id="solution-2">Solution<a class="docs-heading-anchor" href="#solution-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ol>
+<li>Get a free access key from <a href="https://console.picovoice.ai/" rel="noopener" target="_blank">Picovoice Console<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a></li>
+<li>Set the key before starting the dashboard:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   export PICOVOICE_ACCESS_KEY=&quot;your-key-here&quot;
+   npm run dashboard</code></pre></div>
+<ol>
+<li>To persist it, add it to your shell profile (<code>~/.zshrc</code> or <code>~/.bash_profile</code>).</li>
+</ol>
+<p>Voice features are entirely optional. All other features work without this key.</p>
+<hr />
+<h4 id="settings-seem-wrong-or-stuck">Settings seem wrong or stuck<a class="docs-heading-anchor" href="#settings-seem-wrong-or-stuck" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="symptom-3">Symptom<a class="docs-heading-anchor" href="#symptom-3" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Saved settings don't apply, or the app behaves as if using different values.</p>
+<h5 id="solution-3">Solution<a class="docs-heading-anchor" href="#solution-3" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Use <strong>Reset Defaults</strong> in the Settings tab. This restores all values to:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Setting</th><th>Default</th></tr></thead><tbody><tr><td>Context size</td><td>2048</td></tr><tr><td>Memory safety</td><td>Enabled</td></tr><tr><td>Theme</td><td>System</td></tr><tr><td>Privacy lock</td><td>Disabled</td></tr></tbody></table></div>
+<p>After reset, re-apply only the settings you actually want to change.</p>
+<h5 id="if-settings-reset-doesnt-help">If settings reset doesn't help<a class="docs-heading-anchor" href="#if-settings-reset-doesnt-help" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The settings may be invalid values rejected by the backend. Open browser DevTools → Network → WebSocket and look for <code>settings_update</code> messages to see what values are being sent and whether the backend acknowledges them.</p>
+<hr />
+<h4 id="privacy-lock-locked-out">Privacy lock — locked out<a class="docs-heading-anchor" href="#privacy-lock-locked-out" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="symptom-4">Symptom<a class="docs-heading-anchor" href="#symptom-4" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>You set a privacy lock PIN and can't remember it.</p>
+<h5 id="solution-4">Solution<a class="docs-heading-anchor" href="#solution-4" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Settings are stored client-side. To reset:</p>
+<ol>
+<li>Open browser DevTools (F12)</li>
+<li>Go to Application → Local Storage → <code>http://localhost:3000</code></li>
+<li>Delete the key related to privacy lock / PIN</li>
+<li>Refresh the page</li>
+</ol>
+<p>Alternatively, try <strong>Reset Defaults</strong> from the Settings tab if you can still access it.</p>
+<hr />
+<h4 id="typescript-errors-in-development">TypeScript errors in development<a class="docs-heading-anchor" href="#typescript-errors-in-development" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="check-both-projects">Check both projects<a class="docs-heading-anchor" href="#check-both-projects" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code># Backend
+npx tsc --noEmit
+
+# Frontend
+cd ui &amp;&amp; npx tsc --noEmit</code></pre></div>
+<h5 id="common-errors-and-fixes">Common errors and fixes<a class="docs-heading-anchor" href="#common-errors-and-fixes" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-table-wrap"><table><thead><tr><th>Error</th><th>Likely cause</th><th>Fix</th></tr></thead><tbody><tr><td><code>Property X does not exist on type Y</code></td><td>Missing interface field</td><td>Add the field to the relevant type in <code>src/types/index.ts</code> or <code>ui/src/types/index.ts</code></td></tr><tr><td><code>Cannot find module</code></td><td>Import path wrong or missing file</td><td>Check relative path and file extension (<code>.js</code> required in ESM imports)</td></tr><tr><td><code>Type &#x27;string&#x27; is not assignable to type &#x27;&quot;light&quot; \| &quot;dark&quot; \| &quot;system&quot;&#x27;</code></td><td>Value not narrowed to literal union</td><td>Use <code>as const</code> or explicit type annotation</td></tr><tr><td><code>ui/tsconfig.tsbuildinfo</code> conflicts</td><td>Build artifact out of sync</td><td>Run <code>cd ui &amp;&amp; rm -f tsconfig.tsbuildinfo &amp;&amp; npx tsc --noEmit</code></td></tr></tbody></table></div>
+<p>Do not edit <code>ui/tsconfig.tsbuildinfo</code> directly — it is a generated build cache.</p>
+<hr />
+<h4 id="in-app-docs-show-page-not-found-or-blank">In-app docs show "Page Not Found" or blank<a class="docs-heading-anchor" href="#in-app-docs-show-page-not-found-or-blank" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="cause">Cause<a class="docs-heading-anchor" href="#cause" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The docs route (<code>GET /api/docs/:filename</code>) only serves <code>.md</code> files that physically exist in the project root directory (or <code>examples/</code> subdirectory). A missing file results in a 404.</p>
+<h5 id="expected-files">Expected files<a class="docs-heading-anchor" href="#expected-files" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The following must exist in the project root:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>README.md
+QUICKSTART.md
+SETUP.md
+FEATURES.md
+TROUBLESHOOTING.md
+SECURITY.md
+RUN_GUIDE.md</code></pre></div>
+<h5 id="fix">Fix<a class="docs-heading-anchor" href="#fix" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>If a file is missing, restore it from git:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>git checkout HEAD -- QUICKSTART.md</code></pre></div>
+<p>Or re-create it by running the documentation generator.</p>
+<hr />
+<h4 id="websocket-connection-drops-or-never-connects">WebSocket connection drops or never connects<a class="docs-heading-anchor" href="#websocket-connection-drops-or-never-connects" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="symptom-5">Symptom<a class="docs-heading-anchor" href="#symptom-5" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Chat input is disabled, connection spinner stays active, or browser console shows <code>WebSocket connection failed</code>.</p>
+<h5 id="diagnosis-2">Diagnosis<a class="docs-heading-anchor" href="#diagnosis-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ol>
+<li>Confirm the dashboard is still running (check your terminal — it may have crashed).</li>
+<li>Confirm the URL in your browser matches the port printed by the dashboard.</li>
+<li>Open browser DevTools → Console and look for WebSocket error messages.</li>
+</ol>
+<h5 id="solutions-2">Solutions<a class="docs-heading-anchor" href="#solutions-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Restart the dashboard: <code>npm run dashboard</code></li>
+<li>Hard-refresh the browser (<code>Cmd+Shift+R</code> or <code>Ctrl+Shift+R</code>)</li>
+<li>Check if another process killed the Node.js process (common if running background tasks or sleep/wake)</li>
+<li>Try a different browser to rule out extension interference</li>
+</ul>
+<hr />
+<h4 id="getting-more-debug-output">Getting more debug output<a class="docs-heading-anchor" href="#getting-more-debug-output" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Start the dashboard with verbose logging:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>LOG_LEVEL=debug npm run dashboard</code></pre></div>
+<p>The logger (<code>src/utils/logger.ts</code>) will emit <code>[DEBUG]</code> prefixed messages from all services, including model lifecycle, intent classification, tool loop iterations, and WebSocket message routing.</p></section><section class="docs-subdoc" id="src-docs-device-verification-md"><h2 id="src-docs-device-verification-md-heading">Physical-device verification runbook</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/DEVICE_VERIFICATION.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/DEVICE_VERIFICATION.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="physical-device-verification-runbook">Physical-device verification runbook<a class="docs-heading-anchor" href="#physical-device-verification-runbook" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Everything else is automated, simulated, or unit-tested. This is the one thing that <strong>requires you and a physical phone</strong>: ground-truth numbers that a Mac, an iOS Simulator, or an Android emulator physically cannot produce —</p>
+<ul>
+<li><strong>real on-device tok/s</strong> (Metal on Apple GPUs, the actual SoC on Android — not a host-CPU ceiling),</li>
+<li><strong>battery drain</strong> under a sustained agent loop (<code>%/hr</code>),</li>
+<li><strong>thermal throttling</strong> (STATUS.md flags heat, not memory, as the agent-loop ceiling).</li>
+</ul>
+<p>The inference path itself is already proven on both platforms (simulator/emulator, real llama.cpp). What's missing is replacing the conservative, clearly-labelled chip-score <em>estimates</em> in <code>apple/REALITY.md</code> with measured truth. Fill in the <a href="#results">results table</a> at the bottom and update <code>apple/REALITY.md</code> if reality differs.</p>
+<blockquote><p><strong>Why this can't be automated here:</strong> it needs hardware physically attached to a machine, plus (iOS) a signing identity. Steps below are copy-pasteable; the judgement calls (which device, acceptable thermals) are yours.</p></blockquote>
+<hr />
+<h4 id="automated-correctness-gate-run-this-before-the-perf-pass">Automated correctness gate — run this before the perf pass<a class="docs-heading-anchor" href="#automated-correctness-gate-run-this-before-the-perf-pass" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Before measuring tok/s, prove the real decode path is <em>correct</em> on your hardware. Both are one command and need only a model file (no signing, no store accounts). They validate the shipped <strong>multi-turn KV-cache reuse</strong> — an incremental (reused) turn must be byte-identical to a from-scratch full prefill, or the reuse logic is corrupting context:</p>
+<ul>
+<li><strong>iOS</strong> — set a model and run the gated XCTest against the real engine (not a replica):</li>
+</ul>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>  QUENDERIN_LLAMA_DIR=/path/to/llama.cpp QUENDERIN_LLAMA_MODEL=/path/to/model.gguf \
+    sh -c &#x27;cd apple/QuenderinKit &amp;&amp; swift test --filter LlamaEngineRealInferenceTests&#x27;</code></pre></div>
+<p><code>testKVCacheReuseOutputMatchesFullPrefill</code> asserts reuse == full prefill (greedy); <code>testMultiTurnChatStaysCoherentAndPrintsTiming</code> prints per-turn time (should stay flat, not climb).</p>
+<ul>
+<li><strong>Android</strong> — <code>android/verify-llama-link.sh</code> (emulator or attached device) builds the real <code>libllama</code>, compiles <code>jni/llama_jni.cpp</code>, and runs <code>llama-smoketest</code>, which now drives the <strong>same shared decode loop the JNI ships</strong> (<code>jni/llama_generate.h</code>) and asserts the KV-reuse equivalence on-device. The script greps the result and <strong>fails on any desync</strong> — a green run means it's correct.</li>
+</ul>
+<p>These gate <em>correctness</em>; the sections below capture <em>performance</em> (tok/s, battery, thermals).</p>
+<hr />
+<h4 id="ios-physical-iphone">iOS (physical iPhone)<a class="docs-heading-anchor" href="#ios-physical-iphone" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>You need:</strong> a physical iPhone, a Mac with Xcode 16+, and an Apple ID (a <em>free</em> one gives 7-day development provisioning — no paid Developer Program required just to run on your own device; you only need the paid program to ship — see <code>STORE_SUBMISSION.md</code>).</p>
+<ol>
+<li><strong>Build the real-inference framework</strong> so a device build links llama.cpp (Metal) without <code>QUENDERIN_LLAMA_DIR</code>:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   apple/build-xcframework.sh           # ~20–60 min first run; writes apple/QuenderinKit/Frameworks/llama.xcframework</code></pre></div>
+<ol>
+<li><strong>Generate + open the app project:</strong></li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   cd apple/QuenderinApp &amp;&amp; xcodegen generate   # project.yml → Quenderin.xcodeproj (bundle prefix ai.quenderin)
+   open Quenderin.xcodeproj</code></pre></div>
+<ol>
+<li><strong>Sign it:</strong> select the app target → <em>Signing &amp; Capabilities</em> → pick your Team. (Free Apple ID is fine; Xcode provisions automatically.)</li>
+<li><strong>Run on device:</strong> plug in the iPhone, choose it as the run destination, ⌘R. Trust the developer profile on the phone if prompted (Settings → General → VPN &amp; Device Management).</li>
+<li><strong>Exercise the real path:</strong> onboard → accept the recommended model → download over Wi-Fi (it will run the C3 integrity check after download) → send a few chat turns → run an agent loop for <strong>5–10 minutes</strong> to surface sustained throttling.</li>
+<li><strong>Capture numbers:</strong>
+<ul>
+<li><strong>tok/s</strong> — the engine logs prompt + decode tok/s; or read the in-app metrics.</li>
+<li><strong>battery</strong> — Settings → Battery (per-app %), or Xcode → Debug navigator → Energy gauge.</li>
+<li><strong>thermals</strong> — the app reads <code>ProcessInfo.processInfo.thermalState</code>; watch for <code>.serious</code> / <code>.critical</code> during the sustained loop. Note the model + minutes-to-throttle.</li>
+</ul></li>
+</ol>
+<hr />
+<h4 id="android-physical-phone">Android (physical phone)<a class="docs-heading-anchor" href="#android-physical-phone" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><strong>You need:</strong> a physical Android phone with USB debugging on, Android Studio / SDK + NDK, and <code>android/jni/llama.cpp</code> present (so the real <code>libquenderin_llama.so</code> is bundled — see <code>android/verify-llama-link.sh</code>, which already clones/builds it).</p>
+<ol>
+<li><strong>Build a real-inference APK</strong> (jni/llama.cpp present → auto-bundles the native lib):</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   cd android &amp;&amp; ./gradlew :app:assembleDebug</code></pre></div>
+<ol>
+<li><strong>Install + launch:</strong></li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   adb shell monkey -p ai.quenderin.app 1</code></pre></div>
+<ol>
+<li><strong>Confirm the real engine loaded</strong> (not the mock):</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   adb logcat | grep -iE &quot;nativeloader|quenderin_llama|NATIVE_AVAILABLE&quot;   # expect &quot;...ok&quot;</code></pre></div>
+<ol>
+<li><strong>Exercise the path:</strong> onboard → download → chat → run an agent loop 5–10 min.</li>
+<li><strong>Capture numbers:</strong>
+<ul>
+<li><strong>tok/s</strong> — logcat (the engine logs decode rate). For a clean isolated number, <code>android/verify-llama-link.sh</code> runs raw inference (currently targets an emulator — point <code>adb</code> at the device / pass the serial to get device numbers).</li>
+<li><strong>battery</strong> — <code>adb shell dumpsys batterystats --charged ai.quenderin.app</code> (or Battery Historian).</li>
+<li><strong>thermals</strong> — <code>adb shell dumpsys thermalservice</code> (watch the throttling status during the loop).</li>
+</ul></li>
+</ol>
+<h5 id="gpu-offload-a-b-vulkan-snapdragon-adreno-e-g-the-galaxy-s23">GPU offload A/B (Vulkan) — Snapdragon/Adreno, e.g. the Galaxy S23<a class="docs-heading-anchor" href="#gpu-offload-a-b-vulkan-snapdragon-adreno-e-g-the-galaxy-s23" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>On a Snapdragon device (S23 = 8 Gen 2 → Adreno 740, a proven Vulkan target), measure whether GPU offload actually wins. The smoke test reports <strong>prefill and decode tok/s separately</strong> — exactly the split that matters here — plus a <code>MODE:</code> line:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>MODE: GPU-offload (n_gpu_layers=999, gpu_offload_supported=yes)
+REAL: prefill 268 tok in 0.41s = 654 tok/s | decode 96 tok in 5.10s = 18.8 tok/s [GPU]</code></pre></div>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code># 1) CPU baseline (default)
+android/verify-llama-link.sh                       # MODE: CPU
+
+# 2) Vulkan GPU offload (builds GGML_VULKAN, runs smoke with n_gpu_layers=999)
+QUENDERIN_VULKAN=1 android/verify-llama-link.sh     # MODE: GPU-offload</code></pre></div>
+<p>Compare the two runs <strong>per metric</strong>. <strong>Expect the GPU win in PREFILL tok/s</strong> (compute-bound prompt pass), and <strong>decode tok/s to barely move</strong> — decode is memory-bandwidth bound and both paths share the same RAM bus (<code>docs/NPU_NEURAL_ENGINE.md</code>). If GPU decode is <em>slower</em> than CPU, or the GPU run crashes, that's a real finding: the <code>GpuOffloadPlanner</code> default (Adreno = offload) should be revised for that driver/model, and Mali/Xclipse should stay CPU-only (their default). Record both numbers below so the planner's defaults become <em>measured</em>, not assumed — fill the <strong>Prompt tok/s</strong> (prefill) and <strong>Decode tok/s</strong> columns for the CPU and Vulkan rows.</p>
+<hr />
+<h4 id="results">Results<a class="docs-heading-anchor" href="#results" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Fill this in per device; then reconcile <code>apple/REALITY.md</code> (iOS) / the Android SoC scores in <code>AndroidSoc</code> if measured numbers diverge from the estimates.</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Device</th><th>SoC / chip</th><th>Model (id)</th><th style="text-align:right">Prompt tok/s</th><th style="text-align:right">Decode tok/s</th><th style="text-align:right">Battery %/hr (agent loop)</th><th>Peak thermal state</th><th>Mins to throttle</th></tr></thead><tbody><tr><td><em>e.g. iPhone 16 Pro</em></td><td>A18 Pro</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td><em>e.g. Pixel 9 Pro</em></td><td>Tensor G4</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td>Galaxy S23 (CPU)</td><td>SD 8 Gen 2 / Adreno 740</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td>Galaxy S23 (Vulkan GPU)</td><td>SD 8 Gen 2 / Adreno 740</td><td>qwen3-4b</td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td style="text-align:right"></td><td style="text-align:right"></td><td style="text-align:right"></td><td></td><td></td></tr></tbody></table></div>
+<p><strong>Pass criteria (suggested):</strong> decode tok/s usable for chat (≳10), agent loop sustainable without hitting <code>.critical</code> thermal in the first ~10 min, battery drain disclosed to users. Record whatever you see — even "throttles in 4 min" is a shippable finding (it informs the default model pick and the heat warning the picker already surfaces).</p></section>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="quickstart"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Quickstart, Setup &amp; Run Guide</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="features"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Features, Shell Router &amp; Capabilities</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-troubleshooting-md">TROUBLESHOOTING.md</a></li><li><a class="is-depth-3" href="#troubleshooting">Troubleshooting</a></li><li><a class="is-depth-2" href="#src-docs-device-verification-md">docs/DEVICE_VERIFICATION.md</a></li><li><a class="is-depth-3" href="#physical-device-verification-runbook">Physical-device verification runbook</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

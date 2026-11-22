@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quenderin Documentation</title>
+<meta name="description" content="Complete user, model, inference, architecture, native platform, API, and release engineering documentation compiled from the repository." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./" class="is-active" aria-current="page"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-hero"><div class="docs-kicker"><span class="qi qi-book-open" aria-hidden="true"></span>Documentation Portal</div><h1>Quenderin Documentation</h1><p class="docs-lead" style="margin-bottom:0">Complete user, model, inference, architecture, native platform, API, and release engineering documentation compiled from the repository.</p><div class="docs-hero-actions"><a class="btn btn-primary" href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span>Quickstart</a><a class="btn btn-ghost" href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span>Models (28)</a><a class="btn btn-ghost" href="architecture"><span class="qi qi-layers" aria-hidden="true"></span>Architecture</a><a class="btn btn-ghost" href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span>API Reference</a></div></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 1 canonical source file</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/README.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#track-start-here">Start Here</a></li><li><a class="is-depth-2" href="#track-agent-product">Agent &amp; Product</a></li><li><a class="is-depth-2" href="#track-models-hardware">Models &amp; Hardware</a></li><li><a class="is-depth-2" href="#track-inference-internals">Inference Internals</a></li><li><a class="is-depth-2" href="#track-architecture-api">Architecture &amp; API</a></li><li><a class="is-depth-2" href="#track-platforms-releases">Platforms &amp; Releases</a></li><li><a class="is-depth-2" href="#track-quality-research-evolution">Quality, Research &amp; Evolution</a></li><li><a class="is-depth-2" href="#quenderin-documentation">Quenderin Documentation</a></li><li><a class="is-depth-3" href="#start-here">Start here</a></li><li><a class="is-depth-3" href="#reference">Reference</a></li><li><a class="is-depth-3" href="#the-native-mobile-app">The native mobile app</a></li><li><a class="is-depth-3" href="#one-paragraph-summary">One-paragraph summary</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <div class="docs-stat-row">
+<div class="docs-stat-card"><div class="docs-stat-num">30</div><div class="docs-stat-label">Structured documentation guides &amp; hub</div></div>
+<div class="docs-stat-card"><div class="docs-stat-num">116</div><div class="docs-stat-label">Canonical Markdown files compiled</div></div>
+<div class="docs-stat-card"><div class="docs-stat-num">28</div><div class="docs-stat-label">Curated models in shared catalog</div></div>
+<div class="docs-stat-card"><div class="docs-stat-num">$0</div><div class="docs-stat-label">Self-hosted MIT / OFL / ISC static docs</div></div>
+</div>
+<h2 id="track-start-here">Start Here</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="overview"><div class="docs-card-head"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></div><div class="docs-card-desc">End-to-end map of Quenderin: mission, product identity, privacy boundary, platforms, and cross-platform feature status.</div><div class="docs-card-foot">4 source files &rarr;</div></a>
+<a class="docs-card" href="quickstart"><div class="docs-card-head"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></div><div class="docs-card-desc">Run the CLI, build the Electron desktop prototype and web UI, configure optional native helpers, and download verified GGUF models.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+<a class="docs-card" href="troubleshooting"><div class="docs-card-head"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></div><div class="docs-card-desc">Fix Node/npm build failures, llama.cpp native addon issues, simulator/emulator checks, and physical-device verification runs.</div><div class="docs-card-foot">2 source files &rarr;</div></a>
+</div>
+<h2 id="track-agent-product">Agent &amp; Product</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="features"><div class="docs-card-head"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></div><div class="docs-card-desc">Chat features, task routing across installed models, the compact shell UI, deep settings, and extending the governed capability registry.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+<a class="docs-card" href="cli-and-agent"><div class="docs-card-head"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></div><div class="docs-card-desc">Dry-run planning, explicit approval, reversible file moves, Accessibility &amp; Apple Shortcuts execution, dynamic planning, and audit logs.</div><div class="docs-card-foot">5 source files &rarr;</div></a>
+<a class="docs-card" href="remote-harness"><div class="docs-card-head"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></div><div class="docs-card-desc">Encrypted remote companion host, runtime fixture, Noise/Ed25519 crypto bridge, mobile stop parity, and external provider contracts.</div><div class="docs-card-foot">8 source files &rarr;</div></a>
+</div>
+<h2 id="track-models-hardware">Models &amp; Hardware</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="models-catalog"><div class="docs-card-head"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></div><div class="docs-card-desc">All 28 curated GGUF models, RAM floors, SHA-256 verification, image models, and source-level experimental runtime manifests.</div><div class="docs-card-foot">1 source file &rarr;</div></a>
+<a class="docs-card" href="device-selection"><div class="docs-card-head"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></div><div class="docs-card-desc">How Quenderin scores device RAM and SoCs, picks Q4/Q2/Q3 quantizations per tier, and optimizes Qwen 3 and runtime parameters.</div><div class="docs-card-foot">4 source files &rarr;</div></a>
+<a class="docs-card" href="bonsai-muse"><div class="docs-card-head"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></div><div class="docs-card-desc">Source-integrated 1-bit Bonsai 2 / Q1_0_G128 via Prism, Muse Spark artifact manifests, and local image diffusion runtime status.</div><div class="docs-card-foot">2 source files &rarr;</div></a>
+<a class="docs-card" href="benchmarks-reality"><div class="docs-card-head"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></div><div class="docs-card-desc">Measured vs simulated throughput ceilings, latency targets (TTFT / decode TPS), thermal limits, and hardware reality checks.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+</div>
+<h2 id="track-inference-internals">Inference Internals</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="inference-101"><div class="docs-card-head"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></div><div class="docs-card-desc">How local LLM inference works end-to-end inside Quenderin: GGUF weights, tokenization, prefill vs decode, KV cache, and sampling.</div><div class="docs-card-foot">1 source file &rarr;</div></a>
+<a class="docs-card" href="mobile-performance-101"><div class="docs-card-head"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></div><div class="docs-card-desc">Memory-bandwidth limits, i8mm/dot-product kernels, thermal throttling, KV-cache context shifting, and llama.cpp mobile tuning audits.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+<a class="docs-card" href="llama-cpp-101"><div class="docs-card-head"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></div><div class="docs-card-desc">Under the hood of ggml, Metal and CPU backends, tensor allocation, batch decoding, sampler chains, and abort callbacks.</div><div class="docs-card-foot">1 source file &rarr;</div></a>
+<a class="docs-card" href="npu-max-acceleration"><div class="docs-card-head"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></div><div class="docs-card-desc">Honest assessment of Apple ANE / Hexagon NPU tradeoffs for LLM decode and Modular MAX runtime bindings for Apple and Android.</div><div class="docs-card-foot">7 source files &rarr;</div></a>
+</div>
+<h2 id="track-architecture-api">Architecture &amp; API</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="architecture"><div class="docs-card-head"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></div><div class="docs-card-desc">Layered TypeScript, Swift, and Kotlin architecture across chat, model management, shared contracts, and governed OS execution.</div><div class="docs-card-foot">2 source files &rarr;</div></a>
+<a class="docs-card" href="backend-frontend"><div class="docs-card-head"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></div><div class="docs-card-desc">Express backend, React UI dashboard, Cloudflare Worker website, SEO clean-URL indexing, and the optional content-report receiver.</div><div class="docs-card-foot">6 source files &rarr;</div></a>
+<a class="docs-card" href="api-reference"><div class="docs-card-head"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></div><div class="docs-card-desc">Localhost HTTP endpoints, WebSocket streaming protocol, agent plan/execute/undo calls, model management routes, and error schemas.</div><div class="docs-card-foot">1 source file &rarr;</div></a>
+<a class="docs-card" href="cross-platform-parity"><div class="docs-card-head"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></div><div class="docs-card-desc">Machine-enforced parity across TypeScript, Swift, Python, and Kotlin: twin-drift audits, router/sampling vectors, and agent loop parity.</div><div class="docs-card-foot">5 source files &rarr;</div></a>
+</div>
+<h2 id="track-platforms-releases">Platforms &amp; Releases</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="apple-native"><div class="docs-card-head"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></div><div class="docs-card-desc">Universal SwiftUI app, QuenderinKit SPM package, llama.cpp xcframework integration, Xcode Cloud bounded tests, and MLX comparison.</div><div class="docs-card-foot">6 source files &rarr;</div></a>
+<a class="docs-card" href="android-mobile"><div class="docs-card-head"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></div><div class="docs-card-desc">Jetpack Compose + JNI llama.cpp core, CPU variant selection, NDK build requirements, mobile verification, and Play signing scripts.</div><div class="docs-card-foot">5 source files &rarr;</div></a>
+<a class="docs-card" href="desktop-distribution"><div class="docs-card-head"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></div><div class="docs-card-desc">Windows &amp; Linux desktop strategy, Mac App Store packaging, and Microsoft Store MSIX submission workflow.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+<a class="docs-card" href="release-store"><div class="docs-card-head"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></div><div class="docs-card-desc">Verified App Store Connect (0.6.0 shipped Nov 1, 0.6.1 prepared) &amp; Google Play (0.2.0 closed beta) record, checklists, and store copy.</div><div class="docs-card-foot">13 source files &rarr;</div></a>
+<a class="docs-card" href="security-privacy"><div class="docs-card-head"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></div><div class="docs-card-desc">Vulnerability reporting, SHA-256 download integrity, local-only data policy, Apple export-compliance annex, and store compliance audit.</div><div class="docs-card-foot">4 source files &rarr;</div></a>
+</div>
+<h2 id="track-quality-research-evolution">Quality, Research &amp; Evolution</h2>
+<div class="docs-card-grid">
+<a class="docs-card" href="failure-modes"><div class="docs-card-head"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></div><div class="docs-card-desc">Unfiltered ledger of known limitations, urgent engineering items, cross-machine handoff notes, and the 50-round audit status.</div><div class="docs-card-foot">6 source files &rarr;</div></a>
+<a class="docs-card" href="bug-journal"><div class="docs-card-head"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></div><div class="docs-card-desc">Chronological Q-series bug journal documenting root causes, regression pins, and cross-platform fixes across the codebase.</div><div class="docs-card-foot">1 source file &rarr;</div></a>
+<a class="docs-card" href="brand-design"><div class="docs-card-head"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></div><div class="docs-card-desc">Quenderin brand rules, anti-slop criteria, paper/teal/copper tokens, DINish + ChunkFive + Lucide typography, and icon pipeline.</div><div class="docs-card-foot">5 source files &rarr;</div></a>
+<a class="docs-card" href="research-survey"><div class="docs-card-head"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></div><div class="docs-card-desc">Verified academic and open-source benchmarks for mobile LLM inference, SSD MoE streaming (edge0), and peer local-AI projects.</div><div class="docs-card-foot">5 source files &rarr;</div></a>
+<a class="docs-card" href="development-roadmap"><div class="docs-card-head"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></div><div class="docs-card-desc">Repo conventions, parity-check commands, contribution workflow, and the 4-stage technical roadmap toward local computer usage.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+<a class="docs-card" href="changelog-releases"><div class="docs-card-head"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></div><div class="docs-card-desc">Release history from v0.1.0 through v0.6.x plus detailed October 2026 model and engineering publication records.</div><div class="docs-card-foot">3 source files &rarr;</div></a>
+</div><section class="docs-subdoc"><h2 id="quenderin-documentation">Quenderin Documentation<a class="docs-heading-anchor" href="#quenderin-documentation" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h2>
+<p>Everything you need to understand, run, and extend Quenderin — the offline, on-device AI agent.</p>
+<h3 id="start-here">Start here<a class="docs-heading-anchor" href="#start-here" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<ul>
+<li><strong><a href="development-roadmap#src-docs-roadmap-md">ROADMAP.md</a></strong> — the ONE consolidated roadmap: where the project is, the four horizons (ship → agent v1 → monetization → moat), the owner decision queue, and the permanent anti-goals. When plans disagree, this wins.</li>
+<li><strong><a href="architecture#src-docs-architecture-md">ARCHITECTURE.md</a></strong> — the whole system: the offline-first thesis, the desktop (Electron) app, the native-mobile destination, and the agent loop. Read this first.</li>
+</ul>
+<h3 id="reference">Reference<a class="docs-heading-anchor" href="#reference" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<div class="docs-table-wrap"><table><thead><tr><th>Doc</th><th>What it covers</th></tr></thead><tbody><tr><td><a href="development-roadmap#src-docs-roadmap-md">ROADMAP.md</a></td><td><strong>The consolidated roadmap</strong> — current state, horizons 0–3, decision queue, anti-goals</td></tr><tr><td><a href="architecture#src-docs-architecture-md">ARCHITECTURE.md</a></td><td>System overview, data flow, the OODA agent loop, the two products</td></tr><tr><td><a href="backend-frontend#src-docs-backend-md">BACKEND.md</a></td><td>The <code>src/</code> services — LLM, agent, session, memory, voice, OCR, daemons, tools, device providers</td></tr><tr><td><a href="api-reference">API.md</a></td><td>The REST routes <strong>and</strong> the full WebSocket message protocol</td></tr><tr><td><a href="backend-frontend#src-docs-frontend-md">FRONTEND.md</a></td><td>The React/Vite UI — components, state, the agent socket hook, theming</td></tr><tr><td><a href="development-roadmap#src-docs-development-md">DEVELOPMENT.md</a></td><td>Setup, scripts, build, test, lint, project layout</td></tr><tr><td><a href="cli-and-agent#src-docs-agent-autonomy-plan-md">AGENT_AUTONOMY_PLAN.md</a></td><td><strong>The plan for the mission</strong> — local autonomous computer usage: the Shortcuts-shaped capability ladder, the consent/safety spine, and Milestone 0 (<code>fs.read</code>)</td></tr><tr><td><a href="features#src-docs-adding-a-capability-md">ADDING_A_CAPABILITY.md</a></td><td><strong>Contributor guide</strong> — how to add a governed capability: the tier model, the seam+fake pattern, safety rules, wiring, and tests</td></tr><tr><td><a href="brand-design#src-docs-icon-extraction-md">ICON_EXTRACTION.md</a></td><td>How the app icon is cut perfectly from the artwork — sharpness detection, the 5.8% inset math, per-platform derivation (written for future agent sessions)</td></tr><tr><td><a href="development-roadmap#src-contributing-md">../CONTRIBUTING.md</a></td><td>How to contribute</td></tr></tbody></table></div>
+<h3 id="the-native-mobile-app">The native mobile app<a class="docs-heading-anchor" href="#the-native-mobile-app" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The iOS/Android rebuild has its own docs under <code>apple/</code>:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Doc</th><th>What it covers</th></tr></thead><tbody><tr><td><a href="architecture#src-apple-architecture-md">../apple/ARCHITECTURE.md</a></td><td>What llama.cpp is, the <strong>engine-vs-model</strong> distinction, the native stack</td></tr><tr><td><a href="apple-native#src-apple-roadmap-md">../apple/ROADMAP.md</a></td><td>Milestones M1–M4 and what's left</td></tr><tr><td><a href="apple-native#src-apple-quenderinkit-readme-md">../apple/QuenderinKit/README.md</a></td><td>The Swift package module catalog</td></tr><tr><td><a href="apple-native#src-apple-quenderinkit-integration-md">../apple/QuenderinKit/INTEGRATION.md</a></td><td>How to link llama.cpp on a device</td></tr><tr><td><a href="npu-max-acceleration#src-docs-max-mobile-integration-md">max-mobile-integration.md</a></td><td>Mobile MAX/Bonsai status — portable adapter boundary, blocked vendor runtime, deferred phone validation</td></tr><tr><td><a href="npu-max-acceleration#src-docs-max-android-binding-md">max-android-binding.md</a></td><td>Android JNI/Kotlin binding — unavailable without a runner, hosted synthetic fixture</td></tr><tr><td><a href="npu-max-acceleration#src-docs-max-apple-binding-md">max-apple-binding.md</a></td><td>Apple C/Swift binding — byte-staged C target, hosted Swift fixture</td></tr></tbody></table></div>
+<h3 id="one-paragraph-summary">One-paragraph summary<a class="docs-heading-anchor" href="#one-paragraph-summary" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Quenderin runs large language models <strong>fully on the user's device</strong> — no cloud, no API keys, no telemetry. The shipping prototype is an <strong>Electron desktop app</strong> (TypeScript backend + React UI) that serves a dashboard, runs local GGUF models via <code>node-llama-cpp</code>, and drives an agent loop that can observe a screen, plan a symbolic action, execute it, and verify the result — all gated by a hard safety blocklist. The <strong>destination</strong> is a native iOS/Android app (<code>apple/</code>) built on the same llama.cpp engine. See <a href="architecture#src-docs-architecture-md">ARCHITECTURE.md</a> for the full picture.</p></section>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <div></div>
+        <a class="docs-pager-card docs-pager-card--next" href="overview"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Overview &amp; Quenderin A to Z</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#track-start-here">Start Here</a></li><li><a class="is-depth-2" href="#track-agent-product">Agent &amp; Product</a></li><li><a class="is-depth-2" href="#track-models-hardware">Models &amp; Hardware</a></li><li><a class="is-depth-2" href="#track-inference-internals">Inference Internals</a></li><li><a class="is-depth-2" href="#track-architecture-api">Architecture &amp; API</a></li><li><a class="is-depth-2" href="#track-platforms-releases">Platforms &amp; Releases</a></li><li><a class="is-depth-2" href="#track-quality-research-evolution">Quality, Research &amp; Evolution</a></li><li><a class="is-depth-2" href="#quenderin-documentation">Quenderin Documentation</a></li><li><a class="is-depth-3" href="#start-here">Start here</a></li><li><a class="is-depth-3" href="#reference">Reference</a></li><li><a class="is-depth-3" href="#the-native-mobile-app">The native mobile app</a></li><li><a class="is-depth-3" href="#one-paragraph-summary">One-paragraph summary</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

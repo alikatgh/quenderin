@@ -73,6 +73,20 @@ html[data-theme-mode="dark"] .simple-scene {
 .simple-topbar { border-bottom: 1px solid var(--header-border); }
 .simple-home .brand-name { font-weight: 600; }
 .simple-controls { display: flex; align-items: center; gap: 0.5rem; }
+.simple-docs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding-inline: 0.65rem;
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out);
+}
+.simple-docs-link:hover { color: var(--text); background: var(--accent-soft); }
+.simple-docs-link .qi { font-size: 0.95rem; }
 .simple-github { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--text-secondary); flex: none; }
 .simple-github svg { width: 21px; height: 21px; }
 .simple-github:hover { color: var(--text); }
@@ -104,10 +118,11 @@ html[data-theme-mode="dark"] .simple-scene {
 .simple-intro { min-width: 0; }
 .simple-main h1 {
   max-width: 11ch;
-  font-size: clamp(3.51rem, 6.264vw, 5.13rem);
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: -0.045em;
+  font-family: var(--font-slab);
+  font-size: clamp(3rem, 5.5vw, 4.45rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.012em;
   text-wrap: balance;
 }
 .simple-description {
@@ -183,12 +198,15 @@ html[data-theme-mode="dark"] .simple-scene {
   justify-content: space-between;
   gap: 1rem;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  font-stretch: 82%;
+  font-variation-settings: "wdth" 82;
+  font-weight: 600;
+  font-size: 0.78rem;
   line-height: 1.6;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
-.simple-update-meta > span { text-transform: uppercase; }
+.simple-update-meta > span { display: inline-flex; align-items: center; gap: 0.35rem; text-transform: uppercase; }
 .simple-update-title {
   display: flex;
   align-items: baseline;
@@ -230,7 +248,7 @@ html[dir="rtl"] .simple-arrow { transform: scaleX(-1); }
   .simple-main { padding-block: 1.5rem 1.25rem; }
   .simple-hero, .simple-update { width: 100%; }
   .simple-hero { gap: 1.75rem; }
-  .simple-main h1 { font-size: clamp(3.24rem, 10.8vw, 4.86rem); }
+  .simple-main h1 { font-size: clamp(2.65rem, 9.2vw, 4.1rem); }
   .simple-description { max-width: 38ch; margin-top: 1.4rem; }
   .simple-downloads { width: min(100%, 31rem); }
   .simple-home .store-actions { gap: 1rem; }
@@ -239,6 +257,7 @@ html[dir="rtl"] .simple-arrow { transform: scaleX(-1); }
 @media (max-width: 520px) {
   .simple-header { gap: 0.5rem; }
   .simple-controls { gap: 0.25rem; }
+  .simple-docs-link { padding-inline: 0.45rem; font-size: 0.8rem; gap: 0.3rem; }
   .simple-home .lang-select,
   html[dir="rtl"] .simple-home .lang-select { width: 44px; padding: 0; color: transparent; }
   .simple-home .lang-select:hover,

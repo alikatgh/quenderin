@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Model Catalog &amp; Runtime Manifests — Quenderin Docs</title>
+<meta name="description" content="All 28 curated GGUF models, RAM floors, SHA-256 verification, image models, and source-level experimental runtime manifests." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/models-catalog" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog" class="is-active" aria-current="page"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Models &amp; Hardware</span></div><div class="docs-kicker"><span class="qi qi-cpu" aria-hidden="true"></span>Models · Live Registry</div><h1>Model Catalog &amp; Runtime Manifests</h1><p class="docs-lead">All 28 curated GGUF models, RAM floors, SHA-256 verification, image models, and source-level experimental runtime manifests.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>3 min read (718 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>1 source doc</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 1 canonical source file</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/MODEL_CATALOG_FRESHNESS.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/MODEL_CATALOG_FRESHNESS.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-3" href="#what-visitors-see">What visitors see</a></li><li><a class="is-depth-3" href="#automatic-refresh">Automatic refresh</a></li><li><a class="is-depth-3" href="#native-compatibility-and-selection">Native compatibility and selection</a></li><li><a class="is-depth-3" href="#updating-curated-recommendations">Updating curated recommendations</a></li><li><a class="is-depth-2" href="#live-gguf-catalog">Live Curated GGUF Catalog (28 Models)</a></li><li><a class="is-depth-2" href="#image-diffusion-catalog">Local Image Diffusion Catalog</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc"><h2 id="live-gguf-catalog">Live Curated GGUF Catalog (28 Models)</h2>
+<p>Generated directly from <code>shared/model-catalog.json</code> (catalog version <code>1</code>). Every download is verified by SHA-256 before loading.</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Model</th><th>Params</th><th>Quant</th><th>Download</th><th>Min RAM</th><th>Languages</th><th>SHA-256 Prefix</th></tr></thead><tbody><tr><td><strong>Qwen3.6 35B MoE (Best Agent, Big Download)</strong><br /><code>qwen36-35b-a3b</code></td><td>35.0B</td><td><code>UD-IQ3_XXS</code></td><td>13.2 GB download</td><td>5.5 GB</td><td>R, u, s, s, i, a, n, ,,  , E, n, g, l, i, s, h, ,,  , C, h, i, n, e, s, e,  , +,  , 1, 0, 0,  , m, o, r, e</td><td><code>9c964e657212…</code></td></tr><tr><td><strong>Bonsai 2 27B (Experimental)</strong><br /><code>bonsai2-27b</code></td><td>27.36B</td><td><code>PTQ1_0</code></td><td>5.95 GB download</td><td>7.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>53107f530aa5…</code></td></tr><tr><td><strong>Bonsai 2 9B (Experimental)</strong><br /><code>bonsai2-9b</code></td><td>8.95B</td><td><code>PTQ1_0</code></td><td>2.00 GB download</td><td>4.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>3561df7ac7d2…</code></td></tr><tr><td><strong>Bonsai 2 4B (Experimental)</strong><br /><code>bonsai2-4b</code></td><td>4.21B</td><td><code>PTQ1_0</code></td><td>0.95 GB download</td><td>2.5 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>56711263ec9a…</code></td></tr><tr><td><strong>Bonsai 2 2B (Experimental)</strong><br /><code>bonsai2-2b</code></td><td>1.88B</td><td><code>PTQ1_0</code></td><td>0.43 GB download</td><td>1.5 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>36061ad406df…</code></td></tr><tr><td><strong>MiniCPM-V 4.7 1B (Experimental, text only)</strong><br /><code>minicpm-v47-1b</code></td><td>1.0B</td><td><code>Q4_K_M</code></td><td>0.67 GB download</td><td>2.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>588c6c94c82f…</code></td></tr><tr><td><strong>MiniCPM-V 4.7 35B-A3B (Experimental, text only)</strong><br /><code>minicpm-v47-35b-a3b</code></td><td>35.0B</td><td><code>Q4_K_M</code></td><td>21.17 GB download</td><td>25.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>bf3d1c67f784…</code></td></tr><tr><td><strong>LFM2.5 24B-A2B (Experimental, text only)</strong><br /><code>lfm25-24b-a2b</code></td><td>24.0B</td><td><code>Q4_K_M</code></td><td>14.53 GB download</td><td>18.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>d3334405b962…</code></td></tr><tr><td><strong>Jais 3 0.9B (Experimental, text only)</strong><br /><code>jais3-0.9b</code></td><td>1.078285824B</td><td><code>Q4_K_M</code></td><td>0.67 GB download</td><td>2.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>e56a4b769c39…</code></td></tr><tr><td><strong>Jais 3 3.7B (Experimental, text only)</strong><br /><code>jais3-3.7b</code></td><td>5.05825536B</td><td><code>Q4_K_M</code></td><td>3.16 GB download</td><td>6.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>d2039e169049…</code></td></tr><tr><td><strong>Jais 3 7B (Experimental, text only)</strong><br /><code>jais3-7b</code></td><td>8.99917824B</td><td><code>Q4_K_M</code></td><td>5.59 GB download</td><td>9.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>a8caa7fecf38…</code></td></tr><tr><td><strong>Jais 3 32B (Experimental, text only)</strong><br /><code>jais3-32b</code></td><td>34.77930496B</td><td><code>Q4_K_M</code></td><td>21.08 GB download</td><td>28.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>75b5f08fd3b0…</code></td></tr><tr><td><strong>Jais 3 MoVA 36B-A4B (Experimental, text only)</strong><br /><code>jais3-mova-36b-a4b</code></td><td>37.44479202B</td><td><code>Q4_K_M</code></td><td>22.37 GB download</td><td>30.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>ba9df171ff9e…</code></td></tr><tr><td><strong>Nemotron 3.5 Bolt 74B-A9B (Experimental, text only)</strong><br /><code>nemotron35-bolt-74b-a9b</code></td><td>74.042720848B</td><td><code>IQ2_XXS-mixed</code></td><td>22.02 GB download</td><td>28.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>91d63363e782…</code></td></tr><tr><td><strong>Beam 1.0 501B-A23B (Experimental, text only)</strong><br /><code>beam-1.0-501b-a23b-ud-iq2-xxs</code></td><td>501.0B</td><td><code>UD-IQ2_XXS</code></td><td>133.89 GB download · 4 files</td><td>160.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>1ca3bcc65093…</code></td></tr><tr><td><strong>Muse Spark Open Q2_K (Experimental, text only)</strong><br /><code>muse-spark-open-q2-k</code></td><td>816.0B</td><td><code>Q2_K</code></td><td>304.08 GB download · 22 files</td><td>330.0 GB</td><td>S, e, e,  , m, o, d, e, l,  , c, a, r, d</td><td><code>b2eb6f55ee80…</code></td></tr><tr><td><strong>Qwen3 14B (Best Quality)</strong><br /><code>qwen3-14b</code></td><td>14.0B</td><td><code>Q4_K_M</code></td><td>9.0 GB download</td><td>11.0 GB</td><td>R, u, s, s, i, a, n, ,,  , E, n, g, l, i, s, h, ,,  , C, h, i, n, e, s, e,  , +,  , 1, 0, 0,  , m, o, r, e</td><td><code>500a8806e85e…</code></td></tr><tr><td><strong>Gemma 4 12B (Multilingual)</strong><br /><code>gemma4-12b</code></td><td>12.0B</td><td><code>Q4_K_M</code></td><td>7.1 GB download</td><td>9.0 GB</td><td>R, u, s, s, i, a, n, ,,  , E, n, g, l, i, s, h,  , +,  , 1, 4, 0,  , m, o, r, e</td><td><code>0a270ec9fe6b…</code></td></tr><tr><td><strong>Qwen2.5 Coder 7B (Coding)</strong><br /><code>qwen25-coder-7b</code></td><td>7.0B</td><td><code>Q4_K_M</code></td><td>4.7 GB download</td><td>6.5 GB</td><td>R, u, s, s, i, a, n, ,,  , E, n, g, l, i, s, h, ,,  , C, h, i, n, e, s, e,  , +,  , 2, 5,  , m, o, r, e</td><td><code>509287f78cb4…</code></td></tr><tr><td><strong>DeepSeek-R1 7B (Reasoning)</strong><br /><code>deepseek-r1-7b</code></td><td>7.0B</td><td><code>Q4_K_M</code></td><td>4.7 GB download</td><td>6.5 GB</td><td>E, n, g, l, i, s, h,  , &amp;,  , C, h, i, n, e, s, e,  , —,  , w, e, a, k,  , R, u, s, s, i, a, n</td><td><code>731ece8d06dc…</code></td></tr><tr><td><strong>Llama 3 8B (Best Quality)</strong><br /><code>llama3-8b</code></td><td>8.0B</td><td><code>Q4_K_M</code></td><td>4.7 GB download</td><td>6.75 GB</td><td>E, n, g, l, i, s, h, -, f, o, c, u, s, e, d,  , —,  , w, e, a, k,  , R, u, s, s, i, a, n</td><td><code>ab9e4eec7e80…</code></td></tr><tr><td><strong>Mistral 7B (All-Rounder)</strong><br /><code>mistral-7b</code></td><td>7.0B</td><td><code>Q4_K_M</code></td><td>4.1 GB download</td><td>6.0 GB</td><td>E, n, g, l, i, s, h,  , +,  , E, u, r, o, p, e, a, n,  , —,  , w, e, a, k,  , R, u, s, s, i, a, n</td><td><code>1270d22c0fbb…</code></td></tr><tr><td><strong>Gemma 3 4B (Multilingual)</strong><br /><code>gemma3-4b</code></td><td>4.0B</td><td><code>Q4_K_M</code></td><td>2.5 GB download</td><td>3.8 GB</td><td>R, u, s, s, i, a, n, ,,  , E, n, g, l, i, s, h,  , +,  , 1, 4, 0,  , m, o, r, e</td><td><code>04a43a22e8d2…</code></td></tr><tr><td><strong>Qwen3 4B (Everyday)</strong><br /><code>qwen3-4b</code></td><td>4.0B</td><td><code>Q4_K_M</code></td><td>2.4 GB download</td><td>3.6 GB</td><td>R, u, s, s, i, a, n, ,,  , E, n, g, l, i, s, h, ,,  , C, h, i, n, e, s, e,  , +,  , 1, 0, 0,  , m, o, r, e</td><td><code>7485fe6f11af…</code></td></tr><tr><td><strong>Phi-4 Mini 3.8B (Efficient)</strong><br /><code>phi4-mini</code></td><td>3.8B</td><td><code>Q4_K_M</code></td><td>2.3 GB download</td><td>3.4 GB</td><td>E, n, g, l, i, s, h, -, f, o, c, u, s, e, d,  , —,  , w, e, a, k,  , R, u, s, s, i, a, n</td><td><code>88c002299140…</code></td></tr><tr><td><strong>Llama 3.2 3B (Balanced)</strong><br /><code>llama32-3b</code></td><td>3.0B</td><td><code>Q4_K_M</code></td><td>2.0 GB download</td><td>3.0 GB</td><td>E, n, g, l, i, s, h,  , +,  , 7,  , m, o, r, e,  , —,  , n, o,  , R, u, s, s, i, a, n</td><td><code>e4f1a04d927b…</code></td></tr><tr><td><strong>Llama 3.2 1B (Light)</strong><br /><code>llama32-1b</code></td><td>1.0B</td><td><code>Q4_K_M</code></td><td>0.8 GB download</td><td>1.5 GB</td><td>E, n, g, l, i, s, h,  , +,  , 7,  , m, o, r, e,  , —,  , n, o,  , R, u, s, s, i, a, n</td><td><code>f7ede42862ce…</code></td></tr><tr><td><strong>Llama 3.2 1B Ultra-Light (Low RAM)</strong><br /><code>llama32-1b-q2</code></td><td>1.0B</td><td><code>Q2_K</code></td><td>0.4 GB download</td><td>0.7 GB</td><td>E, n, g, l, i, s, h,  , +,  , 7,  , m, o, r, e,  , —,  , n, o,  , R, u, s, s, i, a, n</td><td><code>8b7091a92bc1…</code></td></tr></tbody></table></div>
+<h2 id="image-diffusion-catalog">Local Image Diffusion Catalog</h2>
+<p>Source: <code>shared/image-model-catalog.json</code> — runtime <code>shared/diffusion-runtime.json</code>, status <code>experimental-source-integration-no-inference-validation</code> (verified 2026-10-18).</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Model</th><th>Publisher</th><th>Modality</th><th>Transformer</th><th>License</th></tr></thead><tbody><tr><td><strong>FLUX 3 Image Klein</strong><br /><code>flux3-image-klein</code></td><td>Black Forest Labs</td><td>text-and-reference-images-to-image</td><td>5.6B</td><td>FLUX Kommunity License v.1.0</td></tr><tr><td><strong>MOSS Image Base</strong><br /><code>moss-image-base</code></td><td>OpenMOSS</td><td>text-to-image</td><td>5B</td><td>Apache-2.0</td></tr><tr><td><strong>MOSS Image SFT</strong><br /><code>moss-image-sft</code></td><td>OpenMOSS</td><td>text-to-image</td><td>5B</td><td>Apache-2.0</td></tr></tbody></table></div></section><p>The marketing site used a manually copied eight-model list. The app source has 13 models; the website tables, RAM calculator and structured data now come from the same <code>shared/model-catalog.json</code> manifest. <code>src/constants.ts</code> remains the existing authoritative app catalog, with parity checks across Apple and Android.</p>
+<h3 id="what-visitors-see">What visitors see<a class="docs-heading-anchor" href="#what-visitors-see" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<ul>
+<li><strong>Latest releases:</strong> live original-model releases from recognized authors, with a standalone GGUF, verified file size/hash, model-card link and release date. Download-size filters help people explore compact models. They do not claim RAM fit.</li>
+<li><strong>Curated choices:</strong> every model in the source app catalog, use case, download, estimated RAM and quantization. Catalog availability depends on installed app version.</li>
+<li><strong>Starting point:</strong> a desktop RAM estimate using the app's RAM bands and memory headroom. iPhone selection remains chip/jetsam/storage aware inside the app.</li>
+</ul>
+<p>The new-release feed never promotes a file to an app default automatically. A new model can have an unsupported architecture, chat template, license or unacceptable latency even when its quantization fits. “Best” is a device/task judgment; file popularity and recency cannot establish it. Evaluate those before changing defaults.</p>
+<h3 id="automatic-refresh">Automatic refresh<a class="docs-heading-anchor" href="#automatic-refresh" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p><code>workers/site.mjs</code> serves <code>/api/model-releases</code>; other requests use the static assets binding. <code>workers/model-releases.mjs</code> reads public Hugging Face API metadata:</p>
+<ol>
+<li>Recognized quant publishers: Unsloth, Qwen, bartowski and ggml-org. Original models must identify a recognized developer in <code>base_model</code> metadata.</li>
+<li>Text/chat candidates only; no embeddings, image generators, split weights, projectors, imatrix files or speculative MTP sidecars.</li>
+<li>Deduplicate original models, preserve compact choices, read original release dates (a new quant of an old model is not a new model), and verify GGUF metadata.</li>
+<li>Up to 20 candidates, six list requests plus two metadata requests each: at most 46 upstream requests, six-second timeouts, no weights downloaded. Standalone Q4 variants of 0.2–24 GB are eligible; this is bounded discovery, not all HF models.</li>
+<li>Cache successful metadata for one hour. Keep the last success for up to a week; when refresh fails, show it as <strong>Saved snapshot</strong>, with its original checked time. A cold failure uses the committed <code>website/data/model-releases.json</code> snapshot.</li>
+</ol>
+<p>The feed refreshes on the first visit after cache expiry. Upstream fetches also use Cloudflare's one-hour cache. No cron, secret, new database or store update is required. The Mac, iPhone and Android model screens also read the feed, at most once per hour while opened (explicit Refresh bypasses that interval). No background polling or weights download is started. Failed refreshes retain the original timestamp and last good results, with a one-minute retry backoff. A bundled snapshot is generated from the same source as the website; app-private atomic storage preserves later successful responses for offline relaunches. Older server responses cannot roll it back. Only fixed public API URLs are requested: no visitor cookies, headers, identifiers, conversations or user-selected URLs are forwarded. User-supplied query parameters cannot select upstream destinations or create arbitrary cache keys.</p>
+<h3 id="native-compatibility-and-selection">Native compatibility and selection<a class="docs-heading-anchor" href="#native-compatibility-and-selection" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Native clients bound metadata to 1 MiB / 60 rows, validate schema, repository IDs, release dates, standalone filenames, sizes, revision and SHA-256, and discard invalid/duplicate rows. Model-card URLs are constructed from validated repository IDs rather than trusting URLs in the response.</p>
+<p>“Compatibility not tested in this app” appears on newly discovered files. They link to their model cards/licenses, with no automatic install or default promotion. An exact checksum match to a built-in ModelEntry can use the existing install flow, gated by the same platform memory selector. File size is never called a RAM fit. Installed models, active selection, task routing and user-controlled downloads continue through their existing paths. All three native apps already share llama.cpp; this increment adds no new inference runtime or model-weight dependency.</p>
+<p>The Apple library uses the same chip/per-app memory selector as the iPhone picker; the previous library used total desktop RAM on phones. Speed/fit remain estimates until real-device measurements. See <code>docs/INFERENCE_SLO.md</code> for prompt cancellation and latency release gates.</p>
+<h3 id="updating-curated-recommendations">Updating curated recommendations<a class="docs-heading-anchor" href="#updating-curated-recommendations" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Verify engine/chat-template compatibility, pinned SHA-256, license, first-token latency, decode speed, memory, cancellation and offline behavior on target devices. Then update the three existing app catalogs and regenerate:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>python3 scripts/export_catalog.py
+python3 scripts/check_catalog_parity.py
+python3 scripts/generate_features_models.py
+npm run gen:website-catalog
+npm run check:website-catalog
+npm run test:website-catalog</code></pre></div>
+<p>Refresh the static fallback when publishing:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>npm run refresh:model-releases
+npm run gen:website-catalog
+npx wrangler deploy --config wrangler.site.jsonc</code></pre></div>
+<p>Wrangler runs catalog parity and generation before publishing. GitHub Pages can display the saved snapshot; automatic live discovery belongs to quenderin.org's Worker.</p>
+<p>References: <a href="https://huggingface.co/docs/hub/api" rel="noopener" target="_blank">Hugging Face public API<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://developers.cloudflare.com/workers/static-assets/routing/worker-script/" rel="noopener" target="_blank">Cloudflare asset routing<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://developers.cloudflare.com/workers/runtime-apis/cache/" rel="noopener" target="_blank">Cloudflare cache<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</p>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="remote-harness"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Native Connections, Remote Crypto &amp; Bots</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="device-selection"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Model Selection &amp; Phone Hardware Fit</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-3" href="#what-visitors-see">What visitors see</a></li><li><a class="is-depth-3" href="#automatic-refresh">Automatic refresh</a></li><li><a class="is-depth-3" href="#native-compatibility-and-selection">Native compatibility and selection</a></li><li><a class="is-depth-3" href="#updating-curated-recommendations">Updating curated recommendations</a></li><li><a class="is-depth-2" href="#live-gguf-catalog">Live Curated GGUF Catalog (28 Models)</a></li><li><a class="is-depth-2" href="#image-diffusion-catalog">Local Image Diffusion Catalog</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

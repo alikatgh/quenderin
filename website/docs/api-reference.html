@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HTTP REST &amp; WebSocket API Reference — Quenderin Docs</title>
+<meta name="description" content="Localhost HTTP endpoints, WebSocket streaming protocol, agent plan/execute/undo calls, model management routes, and error schemas." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/api-reference" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference" class="is-active" aria-current="page"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Architecture &amp; API</span></div><div class="docs-kicker"><span class="qi qi-braces" aria-hidden="true"></span>Reference · Local Endpoints</div><h1>HTTP REST &amp; WebSocket API Reference</h1><p class="docs-lead">Localhost HTTP endpoints, WebSocket streaming protocol, agent plan/execute/undo calls, model management routes, and error schemas.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>2 min read (478 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>1 source doc</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 1 canonical source file</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/API.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/API.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-3" href="#rest-endpoints">REST endpoints</a></li><li><a class="is-depth-3" href="#websocket-protocol">WebSocket protocol</a></li><li><a class="is-depth-3" href="#adding-a-message-type">Adding a message type</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <p>Quenderin exposes a <strong>REST API</strong> (request/response, under <code>/api/*</code>) and a <strong>WebSocket protocol</strong> (streaming, for chat and the agent loop). All of it is local — served from <code>localhost</code>, no external calls.</p>
+<h3 id="rest-endpoints">REST endpoints<a class="docs-heading-anchor" href="#rest-endpoints" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Base: <code>http://localhost:3000</code> (the dashboard server).</p>
+<h4 id="health-diagnostics">Health &amp; diagnostics<a class="docs-heading-anchor" href="#health-diagnostics" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/health</code></td><td>Liveness + <code>recommendedModelId</code> for the device</td></tr><tr><td>GET</td><td><code>/ready</code></td><td>Readiness (serving / starting / error)</td></tr><tr><td>GET</td><td><code>/diagnostics</code></td><td>Detailed diagnostics (hardware, model, services)</td></tr></tbody></table></div>
+<h4 id="metrics">Metrics<a class="docs-heading-anchor" href="#metrics" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/api/metrics</code></td><td>Performance telemetry (tok/s, TTFT, RAM, loaded model)</td></tr></tbody></table></div>
+<h4 id="models">Models<a class="docs-heading-anchor" href="#models" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/api/models/catalog</code></td><td>All catalog models + <code>isDownloaded</code> status, plus <code>activeModelId</code></td></tr><tr><td>POST</td><td><code>/api/models/download</code></td><td>Download a model. Body <code>{ modelId? }</code>; defaults to the hardware recommendation (kept in sync with <code>/health</code>)</td></tr><tr><td>POST</td><td><code>/api/models/switch</code></td><td>Switch the active model at runtime (the ONE switch path — the unused WS <code>switch_model</code> twin was removed after it drifted). Body <code>{ modelId }</code></td></tr><tr><td>DELETE</td><td><code>/api/models/:modelId</code></td><td>Remove a downloaded model</td></tr></tbody></table></div>
+<h4 id="agent">Agent<a class="docs-heading-anchor" href="#agent" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>POST</td><td><code>/api/agent/intervene</code></td><td>Pause / inject a correction into a running agent loop</td></tr><tr><td>POST</td><td><code>/api/agent/resume</code></td><td>Resume a paused agent loop</td></tr></tbody></table></div>
+<h4 id="sessions">Sessions<a class="docs-heading-anchor" href="#sessions" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/api/sessions</code></td><td>List sessions</td></tr><tr><td>GET</td><td><code>/api/sessions/:id</code></td><td>Fetch one session</td></tr><tr><td>DELETE</td><td><code>/api/sessions/:id</code></td><td>Delete a session</td></tr><tr><td>GET</td><td><code>/api/sessions/:id/export</code></td><td>Export a session</td></tr></tbody></table></div>
+<h4 id="notes-memory">Notes &amp; memory<a class="docs-heading-anchor" href="#notes-memory" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/api/notes</code></td><td>List notes (saved via the <code>note_save</code> tool)</td></tr><tr><td>GET</td><td><code>/api/notes/:filename</code></td><td>Read a note</td></tr><tr><td>DELETE</td><td><code>/api/notes/:filename</code></td><td>Delete a note</td></tr><tr><td>GET</td><td><code>/api/memory/trajectories</code></td><td>List stored agent trajectories (RAG memory)</td></tr><tr><td>DELETE</td><td><code>/api/memory/trajectories</code></td><td>Clear stored trajectories</td></tr></tbody></table></div>
+<h4 id="misc">Misc<a class="docs-heading-anchor" href="#misc" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/api/presets</code></td><td>Assistant personas</td></tr><tr><td>GET</td><td><code>/api/tools</code></td><td>Available chat tools</td></tr><tr><td>GET</td><td><code>/api/templates</code></td><td>Prompt templates</td></tr><tr><td>GET</td><td><code>/api/docs/:filename</code></td><td>Serve a docs markdown file (in-app docs viewer)</td></tr><tr><td>POST</td><td><code>/api/voice/download</code></td><td>Download the Picovoice voice model bundle</td></tr></tbody></table></div>
+<h3 id="websocket-protocol">WebSocket protocol<a class="docs-heading-anchor" href="#websocket-protocol" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Connect to the dashboard's WebSocket. Messages are JSON with a <code>type</code> field. Input is validated server-side (length caps, attachment count/size limits).</p>
+<h4 id="client-server">Client → Server<a class="docs-heading-anchor" href="#client-server" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th><code>type</code></th><th>Purpose</th><th>Key fields</th></tr></thead><tbody><tr><td><code>start</code></td><td>Start an agent objective</td><td><code>goal</code>, optional <code>attachments</code>, <code>maxSteps</code></td></tr><tr><td><code>chat</code></td><td>Send a chat message</td><td><code>message</code>, optional <code>attachments</code></td></tr><tr><td><code>settings_update</code></td><td>Change runtime settings</td><td>e.g. <code>contextSize</code> (one of <code>ALLOWED_CONTEXT_SIZES</code>)</td></tr><tr><td><code>preset_switch</code></td><td>Switch assistant persona</td><td><code>presetId</code></td></tr><tr><td><code>manual_voice_start</code></td><td>Begin push-to-talk voice capture</td><td>—</td></tr><tr><td><code>manual_voice_stop</code></td><td>End voice capture</td><td>—</td></tr></tbody></table></div>
+<h4 id="server-client">Server → Client<a class="docs-heading-anchor" href="#server-client" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th><code>type</code></th><th>Meaning</th></tr></thead><tbody><tr><td><code>session_started</code></td><td>An agent run / chat session has begun</td></tr><tr><td><code>status</code></td><td>Human-readable status update (e.g. "Loading model…")</td></tr><tr><td><code>log</code></td><td>A log line for the UI/inspector</td></tr><tr><td><code>chat_stream</code></td><td>A streamed token chunk of a chat reply</td></tr><tr><td><code>chat_response</code></td><td>The final, complete chat reply</td></tr><tr><td><code>observe</code></td><td>Agent loop: current perception of the screen</td></tr><tr><td><code>decide</code></td><td>Agent loop: the LLM's planned symbolic action</td></tr><tr><td><code>action</code></td><td>Agent loop: the action being executed</td></tr><tr><td><code>action_required</code></td><td>Agent paused — needs human confirmation</td></tr><tr><td><code>done</code></td><td>Agent loop finished successfully</td></tr><tr><td><code>model_download_progress</code></td><td>Download progress <code>{ progress, modelId }</code></td></tr><tr><td><code>preset_changed</code></td><td>Confirms a persona switch</td></tr><tr><td><code>error</code></td><td>An error to surface to the user (never silently swallowed)</td></tr></tbody></table></div>
+<h4 id="the-agent-event-sequence">The agent event sequence<a class="docs-heading-anchor" href="#the-agent-event-sequence" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>A typical objective streams: <code>session_started</code> → (<code>observe</code> → <code>decide</code> → <code>action</code>)\* → <code>done</code>. An <code>error</code> can end it at any point; <code>action_required</code> pauses it pending <code>/api/agent/resume</code> or an <code>intervene</code>.</p>
+<h3 id="adding-a-message-type">Adding a message type<a class="docs-heading-anchor" href="#adding-a-message-type" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>New WebSocket message types <strong>must</strong> be added to the TypeScript interfaces in both directions (client <code>ui/src/types/</code> and server <code>src/types/</code>) — this is a project rule. Keep this table in sync.</p>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="backend-frontend"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Backend, Dashboard UI &amp; Website Stack</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="cross-platform-parity"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Cross-Platform Parity &amp; Verification</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-3" href="#rest-endpoints">REST endpoints</a></li><li><a class="is-depth-3" href="#websocket-protocol">WebSocket protocol</a></li><li><a class="is-depth-3" href="#adding-a-message-type">Adding a message type</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Android Native &amp; Mobile Build — Quenderin Docs</title>
+<meta name="description" content="Jetpack Compose + JNI llama.cpp core, CPU variant selection, NDK build requirements, mobile verification, and Play signing scripts." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<script src="../theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/docs/android-mobile" />
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<link rel="manifest" href="../site.webmanifest" />
+<link rel="preload" href="../fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="../fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="../styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="../lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="docs.css?v=20261122-fonts-docs" />
+</head>
+<body class="docs-page">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <div class="docs-brand-group">
+      <button class="docs-sidebar-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-sidebar">
+        <span class="qi qi-panel-left" aria-hidden="true"></span>
+      </button>
+      <a class="docs-brand" href="./" aria-label="Quenderin documentation home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Quenderin</span>
+        <span class="docs-portal-pill"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</span>
+      </a>
+    </div>
+
+    <div class="docs-header-actions">
+      <nav class="docs-top-links" aria-label="Site sections">
+        <a href="../"><span class="qi qi-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="../models"><span class="qi qi-cpu" aria-hidden="true"></span><span>Models</span></a>
+        <a href="../download"><span class="qi qi-download" aria-hidden="true"></span><span>Download</span></a>
+        <a href="../changelog"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog</span></a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank"><span class="qi qi-code-2" aria-hidden="true"></span><span>GitHub</span></a>
+      </nav>
+      <button class="docs-search-btn" id="docs-search-trigger" type="button" aria-label="Search documentation">
+        <span class="qi qi-search" aria-hidden="true"></span>
+        <span class="docs-search-btn-label">Search docs&hellip;</span>
+        <kbd class="docs-search-kbd">/</kbd>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <span class="qi qi-moon icon-moon" aria-hidden="true"></span>
+        <span class="qi qi-sun icon-sun" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="docs-sidebar-backdrop" id="docs-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+    <div class="docs-sidebar-head">
+      <strong>Sections</strong>
+      <button class="docs-sidebar-close" type="button" aria-label="Close documentation menu">
+        <span class="qi qi-x" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="docs-nav-group"><div class="docs-group-label">Start Here</div><ul class="docs-nav-list"><li><a href="./"><span class="qi qi-book-open" aria-hidden="true"></span><span>Quenderin Documentation</span></a></li><li><a href="overview"><span class="qi qi-compass" aria-hidden="true"></span><span>Overview &amp; Quenderin A to Z</span></a></li><li><a href="quickstart"><span class="qi qi-rocket" aria-hidden="true"></span><span>Quickstart, Setup &amp; Run Guide</span></a></li><li><a href="troubleshooting"><span class="qi qi-wrench" aria-hidden="true"></span><span>Troubleshooting &amp; Device Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Agent &amp; Product</div><ul class="docs-nav-list"><li><a href="features"><span class="qi qi-sliders-horizontal" aria-hidden="true"></span><span>Features, Shell Router &amp; Capabilities</span></a></li><li><a href="cli-and-agent"><span class="qi qi-bot" aria-hidden="true"></span><span>Governed Local Agent &amp; Autonomy</span></a></li><li><a href="remote-harness"><span class="qi qi-lock" aria-hidden="true"></span><span>Native Connections, Remote Crypto &amp; Bots</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Models &amp; Hardware</div><ul class="docs-nav-list"><li><a href="models-catalog"><span class="qi qi-cpu" aria-hidden="true"></span><span>Model Catalog &amp; Runtime Manifests</span></a></li><li><a href="device-selection"><span class="qi qi-hard-drive" aria-hidden="true"></span><span>Model Selection &amp; Phone Hardware Fit</span></a></li><li><a href="bonsai-muse"><span class="qi qi-sparkles" aria-hidden="true"></span><span>Bonsai 2, Prism, Muse &amp; Diffusion</span></a></li><li><a href="benchmarks-reality"><span class="qi qi-gauge" aria-hidden="true"></span><span>Inference SLOs, Baselines &amp; Reality</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Inference Internals</div><ul class="docs-nav-list"><li><a href="inference-101"><span class="qi qi-flame" aria-hidden="true"></span><span>Inference 101: Quenderin Pipeline</span></a></li><li><a href="mobile-performance-101"><span class="qi qi-activity" aria-hidden="true"></span><span>Mobile Performance &amp; KV-Cache Tuning</span></a></li><li><a href="llama-cpp-101"><span class="qi qi-terminal" aria-hidden="true"></span><span>llama.cpp C++ Internals 101</span></a></li><li><a href="npu-max-acceleration"><span class="qi qi-zap" aria-hidden="true"></span><span>NPU, Neural Engine &amp; MAX Acceleration</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Architecture &amp; API</div><ul class="docs-nav-list"><li><a href="architecture"><span class="qi qi-layers" aria-hidden="true"></span><span>System Architecture</span></a></li><li><a href="backend-frontend"><span class="qi qi-server" aria-hidden="true"></span><span>Backend, Dashboard UI &amp; Website Stack</span></a></li><li><a href="api-reference"><span class="qi qi-braces" aria-hidden="true"></span><span>HTTP REST &amp; WebSocket API Reference</span></a></li><li><a href="cross-platform-parity"><span class="qi qi-git-branch" aria-hidden="true"></span><span>Cross-Platform Parity &amp; Verification</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Platforms &amp; Releases</div><ul class="docs-nav-list"><li><a href="apple-native"><span class="qi qi-apple" aria-hidden="true"></span><span>Apple Native: macOS, iOS &amp; QuenderinKit</span></a></li><li><a href="android-mobile" class="is-active" aria-current="page"><span class="qi qi-smartphone" aria-hidden="true"></span><span>Android Native &amp; Mobile Build</span></a></li><li><a href="desktop-distribution"><span class="qi qi-monitor" aria-hidden="true"></span><span>Desktop Platforms &amp; Store Channels</span></a></li><li><a href="release-store"><span class="qi qi-package" aria-hidden="true"></span><span>Release Status &amp; Store Submissions</span></a></li><li><a href="security-privacy"><span class="qi qi-shield-check" aria-hidden="true"></span><span>Security, Privacy &amp; Encryption Annex</span></a></li></ul></div><div class="docs-nav-group"><div class="docs-group-label">Quality, Research &amp; Evolution</div><ul class="docs-nav-list"><li><a href="failure-modes"><span class="qi qi-alert-triangle" aria-hidden="true"></span><span>Known Failure Modes &amp; Engineering Backlog</span></a></li><li><a href="bug-journal"><span class="qi qi-bug" aria-hidden="true"></span><span>Engineering Bug Journal</span></a></li><li><a href="brand-design"><span class="qi qi-award" aria-hidden="true"></span><span>Brand, Design System &amp; Visual Assets</span></a></li><li><a href="research-survey"><span class="qi qi-globe" aria-hidden="true"></span><span>On-Device AI Research Survey</span></a></li><li><a href="development-roadmap"><span class="qi qi-code-2" aria-hidden="true"></span><span>Development Guide, Contributing &amp; Roadmap</span></a></li><li><a href="changelog-releases"><span class="qi qi-history" aria-hidden="true"></span><span>Changelog &amp; Engineering Updates</span></a></li></ul></div>
+  </aside>
+
+  <main class="docs-main" id="main">
+    <article class="docs-article">
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Platforms &amp; Releases</span></div><div class="docs-kicker"><span class="qi qi-smartphone" aria-hidden="true"></span>Platforms · Android</div><h1>Android Native &amp; Mobile Build</h1><p class="docs-lead">Jetpack Compose + JNI llama.cpp core, CPU variant selection, NDK build requirements, mobile verification, and Play signing scripts.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>18 min read (4,084 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>5 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 5 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/android/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>android/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/android/INTEGRATION.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>android/INTEGRATION.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/android/quenderin-core/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>android/quenderin-core/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/BUILD_MOBILE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/BUILD_MOBILE.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/tools/android-release/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>tools/android-release/README.md</a></div></details>
+      <details class="docs-mobile-toc">
+        <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
+        <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-android-readme-md">android/README.md</a></li><li><a class="is-depth-3" href="#quenderin-for-android">Quenderin for Android</a></li><li><a class="is-depth-2" href="#src-android-integration-md">android/INTEGRATION.md</a></li><li><a class="is-depth-3" href="#android-integration-native-0-5-0-model-update">Android integration — native 0.5.0 model update</a></li><li><a class="is-depth-2" href="#src-android-quenderin-core-readme-md">android/quenderin-core/README.md</a></li><li><a class="is-depth-3" href="#quenderin-android-kotlin">Quenderin — Android (Kotlin)</a></li><li><a class="is-depth-2" href="#src-docs-build-mobile-md">docs/BUILD_MOBILE.md</a></li><li><a class="is-depth-3" href="#building-running-the-native-apps-ios-android">Building &amp; running the native apps (iOS + Android)</a></li><li><a class="is-depth-2" href="#src-tools-android-release-readme-md">tools/android-release/README.md</a></li><li><a class="is-depth-3" href="#sign-the-verified-android-candidate-locally">Sign the verified Android candidate locally</a></li></ul>
+      </details>
+      <div class="docs-prose">
+        <section class="docs-subdoc" id="src-android-readme-md"><h2 id="src-android-readme-md-heading">Quenderin for Android</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>android/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/android/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-for-android">Quenderin for Android<a class="docs-heading-anchor" href="#quenderin-for-android" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>Native Android client. Same architecture as iOS: a portable, tested <strong>brain</strong> in pure Kotlin, a thin <strong>JNI adapter</strong> to llama.cpp, and a <strong>Compose UI</strong> — built so everything that can be proven without a device is proven, and the rest is a clearly-marked cliff.</p>
+<h4 id="layout">Layout<a class="docs-heading-anchor" href="#layout" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>android/
+├── quenderin-core/      Pure-Kotlin/JVM brain — NO Android deps. The source of truth.
+│   ├── ModelCatalog · ModelRecommender · MemoryFitness · SafetyBlocklist
+│   ├── AndroidSoc · AndroidDeviceProfile · AndroidModelSelector · ThermalBattery
+│   │      ↳ device-aware picker (native-heap budget + chip + disk + heat/battery),
+│   │        twin of iOS IPhoneModelSelector — unlocks 7B on 12–16 GB flagships
+│   ├── InferenceEngine (seam) · MockInferenceEngine · LlamaEngine (JNI adapter)
+│   ├── ModelDownloader (seam) · MockModelDownloader
+│   ├── DownloadPolicy · DiskSpace · OfflineReadiness · DownloadStore  (M3 offline + resume)
+│   ├── AgentTool · AgentDecision · AgentLoop · ScriptedInferenceEngine  (M4 agent loop)
+│   ├── OnboardingModel (M1 state machine) · ChatModel (M2)
+│   ├── src/verify/CoreVerify.kt   ← headless harness (kotlinc + java, 139 checks)
+│   └── src/test/…/CoreTest.kt     ← JUnit mirror (./gradlew test)
+├── jni/                 C++ bridge to llama.cpp (llama_jni.cpp + CMakeLists.txt)
+└── app/                 Jetpack Compose app over the core (MainActivity + ui/)</code></pre></div>
+<h4 id="verify-the-brain-headlessly-no-gradle-android-needed">Verify the brain headlessly (no Gradle/Android needed)<a class="docs-heading-anchor" href="#verify-the-brain-headlessly-no-gradle-android-needed" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>KOTLINC=&quot;/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc&quot;
+cd android/quenderin-core
+bash &quot;$KOTLINC&quot; src/main/kotlin/ai/quenderin/core/*.kt src/verify/CoreVerify.kt \
+    -include-runtime -d /tmp/qcore.jar &amp;&amp; java -jar /tmp/qcore.jar    # → ALL PASSED</code></pre></div>
+<p>This is the Android equivalent of <code>swift test</code> for <code>apple/QuenderinKit</code>. It proves the catalog + recommendation match the other platforms, memory fitness, the safety blocklist, the <code>LlamaEngine</code> off-device fallback, and the M1/M2 onboarding + chat flows.</p>
+<h4 id="run-the-app-mock-engine">Run the app (mock engine)<a class="docs-heading-anchor" href="#run-the-app-mock-engine" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Open <code>android/</code> in Android Studio → run <code>app</code>. The full onboarding → chat flow works on <code>MockInferenceEngine</code>; no llama.cpp required.</p>
+<h4 id="what-the-selector-picks-and-why-android-differs-from-ios">What the selector picks (and why Android differs from iOS)<a class="docs-heading-anchor" href="#what-the-selector-picks-and-why-android-differs-from-ios" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><code>AndroidModelSelector</code> gates each model on memory + chip speed + disk, then defaults to the largest <em>comfortable</em> model. Android's memory reality differs from iOS, and the picks show it:</p>
+<div class="docs-table-wrap"><table><thead><tr><th>Device</th><th>Pick</th><th>Why</th></tr></thead><tbody><tr><td>4 GB mid-range</td><td>Llama 3.2 1B</td><td>budget ~2.2 GB; 3B too big</td></tr><tr><td>6 GB Snapdragon 8 Gen 2</td><td>Qwen3 4B</td><td>the mainstream sweet spot</td></tr><tr><td>8 GB Snapdragon 8 Gen 3</td><td>Qwen3 4B</td><td>comfortable; 7B <em>offered</em> (tight)</td></tr><tr><td>12 GB + slower chip</td><td>Qwen3 4B</td><td>RAM allows more, but the chip is the limit</td></tr><tr><td><strong>16 GB Snapdragon 8 Elite</strong></td><td><strong>Mistral 7B</strong></td><td>RAM + a fast chip unlock a 7B <strong>no 8 GB iPhone can hold</strong></td></tr></tbody></table></div>
+<p>Two Android-specific truths, both from the measured research (<code>apple/REALITY.md</code>):</p>
+<ul>
+<li><strong>Native heap, not jetsam.</strong> llama.cpp allocates via JNI on the native heap, which is bounded by total RAM + the low-memory-killer — <em>not</em> the tiny Dalvik per-app cap. So budgets are more generous than iOS, and the 12–16 GB tiers (common on Android) unlock bigger models.</li>
+<li><strong>The 7 tok/s floor keeps 14B off phones</strong> — it's too slow to feel alive even at 16 GB.</li>
+</ul>
+<p><code>ThermalBattery</code> attaches the same heat/battery advisory as iOS.</p>
+<h4 id="go-real">Go real<a class="docs-heading-anchor" href="#go-real" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Linking llama.cpp (NDK + CMake) and running on a device is the on-device cliff — see <strong><code>INTEGRATION.md</code></strong>. <code>MainActivity</code> auto-switches to the real engine once the native <code>.so</code> is built; no code change required.</p>
+<h4 id="parity-rule">Parity rule<a class="docs-heading-anchor" href="#parity-rule" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><code>ModelCatalog</code> + <code>ModelRecommender</code> must stay identical across desktop (<code>src/constants.ts</code>), iOS (<code>apple/QuenderinKit</code>), and here — enforced by <code>scripts/check_catalog_parity.py</code> (<code>npm run check:catalog-parity</code>). The selectors (<code>AndroidModelSelector</code> / <code>IPhoneModelSelector</code>) are platform-specific by design; the <em>catalog</em> is the shared part.</p></section><details class="docs-fold docs-subdoc" id="src-android-integration-md"><summary><span><strong>Android integration — native 0.5.0 model update</strong> &mdash; <code>android/INTEGRATION.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>android/INTEGRATION.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/android/INTEGRATION.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="android-integration-native-0-5-0-model-update">Android integration — native 0.5.0 model update<a class="docs-heading-anchor" href="#android-integration-native-0-5-0-model-update" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>This is the Android twin of <code>apple/QuenderinKit/INTEGRATION.md</code>. The native 0.5.0 candidate uses the locked Prism runtime, verified Muse source patch and isolated image runtime. A stock llama.cpp checkout does not provide these capabilities.</p>
+<p>The update expands the shared text catalog to 28 entries, including complete-part Beam and Muse installation. Dedicated workflows cover still-image questions with managed vision model/projector pairs, explicit Hy-Memory proposals, receipt-verified Granite Switch imports, Step 5 Preview through a user-owned CUDA host, and isolated FLUX/MOSS image generation. Resource leases, memory floors and cancellation guard these workflows; availability depends on each model's artifacts and device capacity. See <code>docs/bonsai-2.md</code> for exact sources and limits. Source integration and hosted compilation do not establish full-weight inference or image quality.</p>
+<p>The source declares <code>versionCode = 5</code>, <code>versionName = &quot;0.5.0&quot;</code>, and compile/target API 36. Build with AGP 8.10.1, Kotlin/Compose compiler 2.2.21, and the checked-in Gradle 8.11.1 wrapper. The SDK packages used by the build are <code>platforms;android-36</code>, <code>build-tools;35.0.0</code>, <code>ndk;26.3.11579264</code>, and <code>cmake;3.22.1</code>; Java source/bytecode targets remain 17. The wrapper verifies its distribution against Gradle's published SHA-256. Code 5 is provisional until the highest uploaded Play version code is refreshed.</p>
+<h4 id="verification-boundaries">Verification boundaries<a class="docs-heading-anchor" href="#verification-boundaries" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>Layer</th><th>State</th><th>How it's verified</th></tr></thead><tbody><tr><td><code>quenderin-core</code> (Kotlin brain)</td><td>Portable source and fixture tests</td><td><code>kotlinc</code> verification and <code>:quenderin-core:test</code></td></tr><tr><td>Prism/Muse source identity</td><td>Build-time gate</td><td><code>prepare_prism_runtime.py verify</code> and CMake's provenance check</td></tr><tr><td>Image runtime and package identity</td><td>Build and final-package gates</td><td><code>build_android_diffusion.sh</code> seals the private runtime; <code>verify_diffusion_android_package.py</code> checks APK/AAB bytes, dependency closure and 16 KiB alignment</td></tr><tr><td><code>jni/llama_jni.cpp</code> and Compose app</td><td>Hosted compilation gate</td><td>CI builds <code>assembleDebug</code> and <code>bundleRelease</code> with prepared Prism and image runtimes</td></tr><tr><td>Signed Google Play update</td><td>Separate release step</td><td>Requires the package's registered upload key and Play Console acceptance</td></tr><tr><td>Android 16 behavior and real inference</td><td>Device validation still required</td><td>No current physical-device evidence is implied by compilation or fixtures</td></tr></tbody></table></div>
+<p>The historical 2026-06-14 smoke test used NDK r26d and an arm64 emulator with an older runtime, reporting coherent output and about 102 tok/s. It does not verify 0.4.0, 0.5.0, Bonsai, Muse, Android 16, or physical-phone performance. The legacy <code>verify-llama-link.sh</code> path is a device smoke-test helper, not the current source preparation or release-build procedure.</p>
+<p>The app <strong>boots on <code>MockInferenceEngine</code></strong> when <code>jni/llama.cpp</code> is absent so onboarding → chat runs in Android Studio without NDK. <code>MainActivity</code> switches to real <code>LlamaEngine</code> automatically once <code>libquenderin_llama.so</code> is present (Gradle auto-enables <code>externalNativeBuild</code> when the checkout exists). <strong>Demo mode is labeled in chat + Settings</strong> and mock replies say they are canned. <strong>Release/bundle builds fail</strong> without <code>jni/llama.cpp</code> unless you pass <code>-Pquenderin.allowMockRelease=true</code> (intentional demo APK only).</p>
+<h4 id="debug-builds-without-a-native-checkout">Debug builds without a native checkout<a class="docs-heading-anchor" href="#debug-builds-without-a-native-checkout" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Open <code>android/</code> in an Android Studio version compatible with AGP 8.10.1, or run <code>./gradlew :app:assembleDebug</code>. Without a native checkout this compiles the demo engine; it cannot establish native inference support. The Gradle wrapper is already checked in. Building does not require an emulator or model weights.</p>
+<h4 id="prepare-and-compile-the-pinned-native-runtime">Prepare and compile the pinned native runtime<a class="docs-heading-anchor" href="#prepare-and-compile-the-pinned-native-runtime" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>llama.cpp stays C/C++; <code>jni/llama_jni.cpp</code> is the only glue (twin of the Swift adapter).</p>
+<ol>
+<li>From the repository root, prepare the runtime at a new or matching destination:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   quenderin_root=&quot;$PWD&quot;
+   python3 scripts/prepare_prism_runtime.py fetch --destination &quot;$quenderin_root/android/jni/llama.cpp&quot;
+   python3 scripts/prepare_prism_runtime.py verify --source &quot;$quenderin_root/android/jni/llama.cpp&quot;</code></pre></div>
+<p>This downloads source only. The lock is <code>shared/prism-runtime.json</code>; the helper verifies the base revision, applies the locked Muse patch, and verifies its files. It refuses to replace a mismatched existing checkout. Choose a separate destination if <code>android/jni/llama.cpp</code> already contains other work and pass that absolute path below. The example checkout is gitignored.</p>
+<ol>
+<li>Build the isolated image runtime in a <strong>new absolute work directory</strong>, using the established NDK. Replace the example SDK/work paths with your own:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   quenderin_diffusion_work=&quot;/absolute/new/android-diffusion&quot;
+   ANDROID_NDK_HOME=&quot;/absolute/path/to/Android/sdk/ndk/26.3.11579264&quot; \
+     bash scripts/build_android_diffusion.sh &quot;$quenderin_diffusion_work&quot;</code></pre></div>
+<p>The builder refuses an existing work path. It fetches pinned source, statically links its private C++ runtime, strips and seals both image DSOs, and verifies their identity, dependencies and 16 KiB alignment. It downloads no model weights.</p>
+<ol>
+<li>Build the app and run the JVM unit tests with both explicit runtime paths:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   cd &quot;$quenderin_root/android&quot;
+   ./gradlew :app:assembleDebug :app:bundleRelease :quenderin-core:test \
+     --no-daemon --console=plain \
+     -Pquenderin.runtime=prism \
+     -Pquenderin.llamaDir=&quot;$quenderin_root/android/jni/llama.cpp&quot; \
+     -Pquenderin.diffusionLibDir=&quot;$quenderin_diffusion_work/jniLibs&quot;</code></pre></div>
+<p>Gradle enables CMake/NDK automatically and builds arm64-v8a JNI plus the CPU backend variants. CMake rejects missing or altered Prism/Muse provenance. No model weights are downloaded by these build tasks.</p>
+<ol>
+<li>Verify the actual packaged libraries in <strong>both</strong> outputs:</li>
+</ol>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>   cd &quot;$quenderin_root&quot;
+   python3 scripts/verify_diffusion_android_package.py \
+     --libraries &quot;$quenderin_diffusion_work/jniLibs&quot; \
+     --package android/app/build/outputs/apk/debug/app-debug.apk
+   python3 scripts/verify_diffusion_android_package.py \
+     --libraries &quot;$quenderin_diffusion_work/jniLibs&quot; \
+     --package android/app/build/outputs/bundle/release/app-release.aab</code></pre></div>
+<p>This verifies sealed image-library bytes, dependency closure and 16 KiB ELF alignment after AGP packaging. Gradle also rejects a Prism release without the verified image-runtime directory.</p>
+<ol>
+<li>The bundle is <code>android/app/build/outputs/bundle/release/app-release.aab</code>. Without <code>android/keystore.properties</code> it is <strong>unsigned</strong>. Reuse the registered upload key for a signed Google Play update; do not create a replacement key as a workaround. See <code>docs/RELEASE.md</code> for the signing and console steps.</li>
+</ol>
+<p>CI uses the same explicit runtime selections and compiles an unsigned release bundle. A passing job proves compilation and package verification of that revision, not signing, upload, submission, installation, or inference with the real model weights.</p>
+<h5 id="keep-the-c-api-in-sync">Keep the C API in sync<a class="docs-heading-anchor" href="#keep-the-c-api-in-sync" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p><code>llama_jni.cpp</code> targets the post-2024 llama.cpp API (<code>llama_model_load_from_file</code>, <code>llama_init_from_model</code>, the <code>llama_vocab</code> + <code>llama_sampler</code> chain). The API moves — if the build breaks, diff against <code>jni/llama.cpp/include/llama.h</code> at your pinned commit and adjust (same discipline as the iOS adapter, which was checked against <code>llama.h</code>).</p>
+<h5 id="cpu-variant-backends-0-2-1-default">CPU-variant backends (0.2.1 default)<a class="docs-heading-anchor" href="#cpu-variant-backends-0-2-1-default" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p><code>jni/CMakeLists.txt</code> builds ggml's Android CPU variant set (<code>android_armv8.0</code> … <code>armv9.2</code>, DOTPROD/I8MM) as dlopen-able plugins. The JNI loads them from <code>applicationInfo.nativeLibraryDir</code> and ggml picks the best match for the live CPU. <strong>Packaging:</strong> <code>useLegacyPackaging = true</code> is required — AGP otherwise leaves the <code>.so</code> files inside the APK and the scan finds zero devices.</p>
+<p>Affinity (<code>ggml_threadpool_new</code>) is resolved at runtime from the CPU backend registry, not linked into <code>libquenderin_llama.so</code> (link-time was an undefined-symbol with <code>GGML_BACKEND_DL</code>).</p>
+<h5 id="optional-gpu-offload-vulkan">Optional — GPU offload (Vulkan)<a class="docs-heading-anchor" href="#optional-gpu-offload-vulkan" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>CPU-variant backends are the default win. Vulkan stays opt-in because the vendored llama.cpp Vulkan backend requires SPIRV-Headers at configure time (not in the NDK). To build it:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>kotlin</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>// android/app/build.gradle.kts → externalNativeBuild { cmake { ... } }
+arguments += &quot;-DQUENDERIN_VULKAN=ON&quot;
+buildConfigField(&quot;boolean&quot;, &quot;QUENDERIN_VULKAN&quot;, &quot;true&quot;)   // tell Kotlin the .so has the backend</code></pre></div>
+<p>Then let <code>GpuOffloadPlanner</code> decide <strong>per SoC</strong> whether to actually offload, and pass the result to the engine — so a Vulkan build stays safe on every device (Adreno offloads; Mali/Xclipse stay on CPU):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>kotlin</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>val soc = AndroidSoc.fromSocModel(Build.SOC_MODEL)           // API 31+
+val gpuLayers = GpuOffloadPlanner.recommend(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)
+val engine = LlamaEngine(deviceBudgetGb = budget, gpuLayers = gpuLayers)</code></pre></div>
+<p><strong>Why a decision and not just "all layers":</strong> Android Vulkan driver quality is heterogeneous, and on mobile <strong>decode is memory-bandwidth bound</strong> — GPU offload mainly speeds <strong>prefill</strong> (long-prompt time-to-first-token), not steady tok/s. Background + measured rationale: <code>docs/NPU_NEURAL_ENGINE.md</code>. A/B it on your device with <code>QUENDERIN_VULKAN=1 ./verify-llama-link.sh</code> (see <code>docs/DEVICE_VERIFICATION.md</code>).</p>
+<h4 id="downloads-and-android-16-validation">Downloads and Android 16 validation<a class="docs-heading-anchor" href="#downloads-and-android-16-validation" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>The native app uses a WorkManager <code>dataSync</code> foreground worker with disk/memory preflights, resumable transfers, artifact verification, and persisted progress. Muse is a multipart installation; all required shards must verify before loading. The demo-only <code>MockModelDownloader</code> does not download weights.</p>
+<p>The API 36 source audit found existing Compose Scaffold/system-bar/IME inset handling and no edge-to-edge opt-out or legacy <code>onBackPressed</code> interception. Android 16 job quotas also apply to long-running foreground WorkManager jobs; large background downloads can pause when quota is exhausted. Physical-device checks must still establish download stop/resume behavior, keyboard and system bar layout, predictive back, and lifecycle recovery. These checks were not run for the build-only 0.4.0 preparation.</p>
+<h4 id="measure-on-a-physical-phone-before-promotion">Measure on a physical phone before promotion<a class="docs-heading-anchor" href="#measure-on-a-physical-phone-before-promotion" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>On a physical device, capture tok/s, time-to-first-token, peak RAM, and battery for the recommended model. That's the number that tells us whether the "50-year-old, off-grid, asks a question" story actually holds — and it can only be measured here.</p></div></details><details class="docs-fold docs-subdoc" id="src-android-quenderin-core-readme-md"><summary><span><strong>Quenderin — Android (Kotlin)</strong> &mdash; <code>android/quenderin-core/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>android/quenderin-core/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/android/quenderin-core/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="quenderin-android-kotlin">Quenderin — Android (Kotlin)<a class="docs-heading-anchor" href="#quenderin-android-kotlin" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The Android port, started the same way as iOS: the portable <strong>Kotlin "brain"</strong> first, compiled and tested, before the device-coupled parts.</p>
+<p><code>quenderin-core</code> is a <strong>pure-Kotlin/JVM</strong> module (no Android framework deps), so it compiles and unit-tests without a device — and it mirrors the Swift <code>apple/QuenderinKit</code> and the desktop <code>src/constants.ts</code> exactly. All three platforms must agree on the catalog and the recommendation.</p>
+<h4 id="whats-here">What's here<a class="docs-heading-anchor" href="#whats-here" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<div class="docs-table-wrap"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>ModelCatalog.kt</code></td><td>The 11-model catalog (Qwen, DeepSeek, Gemma, Phi, Mistral, Llama) + quantization table</td></tr><tr><td><code>ModelRecommender.kt</code></td><td><code>device RAM → recommended model</code> — Qwen3-first, identical thresholds to Swift/TS</td></tr><tr><td><code>MemoryFitness.kt</code></td><td>"Can this device load it?" — same 0.85/0.65 budgets</td></tr><tr><td><code>SafetyBlocklist.kt</code></td><td>The agent's hard sandbox (Pay/Delete/Password…)</td></tr><tr><td><code>InferenceEngine.kt</code></td><td>The runtime-agnostic seam + <code>MockInferenceEngine</code></td></tr></tbody></table></div>
+<h4 id="verify">Verify<a class="docs-heading-anchor" href="#verify" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Headless, with just the Kotlin compiler (Android Studio bundles one) — no Gradle needed:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>KOTLINC=&quot;/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc&quot;
+cd android/quenderin-core
+bash &quot;$KOTLINC&quot; src/main/kotlin/ai/quenderin/core/*.kt src/verify/CoreVerify.kt -include-runtime -d core.jar
+java -jar core.jar      # → 139 checks, ALL PASSED</code></pre></div>
+<p>Or, in Android Studio / with Gradle: <code>./gradlew test</code> (runs <code>src/test</code> JUnit).</p>
+<h4 id="the-architecture-same-engine-thin-kotlin-adapter">The architecture (same engine, thin Kotlin adapter)<a class="docs-heading-anchor" href="#the-architecture-same-engine-thin-kotlin-adapter" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Quenderin runs <strong>llama.cpp</strong> on every platform; only the adapter differs. On Android that adapter is <strong>Kotlin + JNI over the NDK</strong> (already installed at <code>~/Library/Android/sdk/ndk</code>):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Quenderin (Android app)
+  └─ :app            Jetpack Compose UI + WorkManager downloads
+      └─ :quenderin-core   this module (probe, catalog, recommend, fitness, safety, seam)
+          └─ LlamaEngine (Kotlin) ── JNI ──► llama.cpp (C/C++)  ← built with the NDK</code></pre></div>
+<h4 id="next-steps-mirror-ios">Next steps (mirror iOS)<a class="docs-heading-anchor" href="#next-steps-mirror-ios" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<ul>
+<li><code>LlamaEngine.kt</code> + a JNI <code>.cpp</code> bridge → llama.cpp built via the NDK (the real inference; needs a device/emulator + a GGUF to verify — the same cliff as iOS).</li>
+<li><code>HardwareProbe</code> real impl via <code>ActivityManager.MemoryInfo</code> (the core keeps it abstract so the JVM build stays pure).</li>
+<li>Background/resumable downloader via <code>WorkManager</code> + <code>DownloadManager</code>.</li>
+<li>The <code>:app</code> Compose module: onboarding → chat, on the mock engine first.</li>
+</ul>
+<p>See <code>../../apple/ARCHITECTURE.md</code> for the cross-platform picture.</p></div></details><details class="docs-fold docs-subdoc" id="src-docs-build-mobile-md"><summary><span><strong>Building &amp; running the native apps (iOS + Android)</strong> &mdash; <code>docs/BUILD_MOBILE.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>docs/BUILD_MOBILE.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUILD_MOBILE.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="building-running-the-native-apps-ios-android">Building &amp; running the native apps (iOS + Android)<a class="docs-heading-anchor" href="#building-running-the-native-apps-ios-android" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>How to take the Swift (<code>apple/</code>) and Kotlin (<code>android/</code>) apps from source to a running install. Two tiers per platform:</p>
+<ul>
+<li><strong>Bring-up (mock engine)</strong> — the whole UI flow (onboarding → chat → agent) runs with no model file. Fastest way to see the app on a device/simulator.</li>
+<li><strong>Real on-device inference</strong> — link llama.cpp so the app actually generates tokens.</li>
+</ul>
+<blockquote><p><strong>What's verified end-to-end in this repo (2026-06-14, no CI):</strong></p>
+<ul>
+<li><strong>iOS app builds + runs</strong> on the iPhone 17 simulator (Xcode 26.3): <code>xcodegen</code> → <code>xcodebuild -sdk iphonesimulator</code> → install + launch; the model picker renders a device-aware recommendation (Apple M4 → Llama 3.2 3B Balanced).</li>
+<li><strong>Android app builds + runs</strong> on a booted arm64 emulator: <code>./gradlew :app:assembleDebug</code> → <code>adb install</code> → launch; picker renders (low-mem emulator → Llama 3.2 1B).</li>
+<li><strong>Real llama.cpp inference runs on both:</strong> iOS <code>apple/verify-llama-link.sh</code> (~135 tok/s, CPU, Mac) and Android <code>android/verify-llama-link.sh</code> <strong>on the emulator</strong> (~102 tok/s, CPU, arm64). The real-inference Android APK loads <code>libquenderin_llama.so</code> (<code>NATIVE_AVAILABLE</code> true). <code>QuenderinKit</code> compiles in all engine modes (<code>swift build</code>); Android core 99/99.</li>
+</ul>
+<p><strong>What still needs a physical device (ground-truth numbers only — the path is proven):</strong></p>
+<ul>
+<li>A real <strong>iPhone</strong> for Metal tok/s + battery + thermals, and a real <strong>Android phone</strong> for SoC tok/s. The Mac/sim/emulator numbers are host-CPU ceilings.</li>
+</ul></blockquote>
+<hr />
+<h4 id="ios">iOS<a class="docs-heading-anchor" href="#ios" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="prereqs">Prereqs<a class="docs-heading-anchor" href="#prereqs" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Full Xcode</strong> (not just CommandLineTools): <code>xcode-select -p</code> must point at <code>…/Xcode.app/Contents/Developer</code>. Switch with <code>sudo xcode-select -s /Applications/Xcode.app</code>.</li>
+<li><code>brew install xcodegen</code></li>
+</ul>
+<h5 id="a-bring-up-mock-engine-clickable-app-no-model-verified">A. Bring-up (mock engine) — clickable app, no model ✅ verified<a class="docs-heading-anchor" href="#a-bring-up-mock-engine-clickable-app-no-model-verified" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd apple/QuenderinApp
+xcodegen generate            # → Quenderin.xcodeproj (+ Info.plist, both git-ignored)
+open Quenderin.xcodeproj     # then Run (⌘R) on an iPhone simulator
+# …or fully headless (what was verified here):
+xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -sdk iphonesimulator \
+  -destination &#x27;platform=iOS Simulator,name=iPhone 17&#x27; build
+xcrun simctl install booted &quot;$(find ~/Library/Developer/Xcode/DerivedData -name Quenderin.app -path &#x27;*iphonesimulator*&#x27; | head -1)&quot;
+xcrun simctl launch booted ai.quenderin.Quenderin</code></pre></div>
+<p>The app runs the full flow on <code>MockInferenceEngine</code>. The engine is chosen by <code>DefaultInferenceEngine.make()</code> — mock until llama.cpp is linked (next).</p>
+<h5 id="b-real-on-device-inference-route-a-the-shippable-path">B. Real on-device inference — Route A, the shippable path<a class="docs-heading-anchor" href="#b-real-on-device-inference-route-a-the-shippable-path" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code># 1. Build the llama.cpp xcframework (device + simulator + macOS slices; needs Xcode)
+git clone https://github.com/ggml-org/llama.cpp &amp;&amp; cd llama.cpp
+./build-xcframework.sh        # → build-apple/llama.xcframework
+
+# 2. Drop it into the package — Package.swift auto-detects it (no edits needed)
+mkdir -p ../apple/QuenderinKit/Frameworks
+cp -R build-apple/llama.xcframework ../apple/QuenderinKit/Frameworks/
+
+# 3. Regenerate + run — canImport(llama) is now true, Metal GPU included
+cd ../apple/QuenderinApp &amp;&amp; xcodegen generate &amp;&amp; open Quenderin.xcodeproj</code></pre></div>
+<p><code>Frameworks/*.xcframework</code> is git-ignored (large binary — ship via Git LFS or a CI step).</p>
+<blockquote><p><strong>Faster local check without the xcframework</strong> (macOS only, Route C): point the package at a dev build of llama.cpp — see <code>apple/QuenderinKit/INTEGRATION.md</code> and <code>apple/verify-llama-link.sh</code>.</p></blockquote>
+<h5 id="bigger-models-optional">Bigger models (optional)<a class="docs-heading-anchor" href="#bigger-models-optional" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>To hold 4B+ comfortably before iOS <em>jetsam</em> kills the app, add the <code>com.apple.developer.kernel.increased-memory-limit</code> entitlement (needs a provisioning profile that allows it). Not required for bring-up or for 1–3B models.</p>
+<hr />
+<h4 id="android">Android<a class="docs-heading-anchor" href="#android" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="prereqs-2">Prereqs<a class="docs-heading-anchor" href="#prereqs-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Android Studio</strong> (or the command-line SDK) with <strong>platform 35</strong> + <strong>build-tools 35</strong>.</li>
+<li>For real inference only: the <strong>NDK</strong> (<code>sdkmanager &quot;ndk;26.3.11579264&quot;</code>) + CMake.</li>
+<li>A committed Gradle <strong>wrapper</strong> (<code>./gradlew</code>, pinned to 8.9 to match AGP 8.5.2) — no separate Gradle install needed. JDK <strong>17</strong> for the build (<code>JAVA_HOME=…/openjdk@17</code>).</li>
+<li><code>android/local.properties</code> with <code>sdk.dir=&lt;your Android SDK&gt;</code> (git-ignored).</li>
+</ul>
+<h5 id="a-bring-up-mock-engine-clickable-app-no-model-no-ndk-verified">A. Bring-up (mock engine) — clickable app, no model, no NDK ✅ verified<a class="docs-heading-anchor" href="#a-bring-up-mock-engine-clickable-app-no-model-no-ndk-verified" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>The app boots on <code>MockInferenceEngine</code> the moment it opens. <strong>This build is verified in-repo</strong> — produces <code>app-debug.apk</code> (<code>ai.quenderin.app</code>, label "Quenderin", target SDK 35):</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>cd android
+echo &quot;sdk.dir=$ANDROID_SDK_ROOT&quot; &gt; local.properties     # one-time
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug
+#   → app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk  # to a device/emulator
+# (Or just open the android/ folder in Android Studio and hit Run.)</code></pre></div>
+<p><code>MainActivity</code> already uses the <strong>real</strong> <code>WorkManagerModelDownloader</code>, and selects the engine with <code>if (LlamaEngine.NATIVE_AVAILABLE) LlamaEngine() else MockInferenceEngine()</code> — so it stays on the mock until the native <code>.so</code> is present (next).</p>
+<h5 id="b-real-on-device-inference-build-the-jni-bridge-against-llama-cpp">B. Real on-device inference — build the JNI bridge against llama.cpp<a class="docs-heading-anchor" href="#b-real-on-device-inference-build-the-jni-bridge-against-llama-cpp" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>bash</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code># 1. Add llama.cpp where the JNI CMake expects it (or pass -DLLAMA_DIR=…)
+git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
+
+# 2. In android/app/build.gradle.kts, uncomment:
+#      ndk { abiFilters += listOf(&quot;arm64-v8a&quot;) }   // + &quot;x86_64&quot; for the emulator
+#      externalNativeBuild { cmake { path = file(&quot;../jni/CMakeLists.txt&quot;); version = &quot;3.22.1&quot; } }
+
+# 3. Build — produces libquenderin_llama.so, flipping LlamaEngine.NATIVE_AVAILABLE true
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk</code></pre></div>
+<p>See <code>android/INTEGRATION.md</code> for the JNI details. The native build is CPU (GGML_OPENMP off); GPU/NNAPI deltas mainly affect prefill (decode is memory-bandwidth bound — see <code>apple/REALITY.md</code>).</p>
+<p><strong>Why <code>useLegacyPackaging = true</code> stays set</strong> (r8 R3): AGP's default keeps <code>.so</code> files compressed in the APK and dlopens them via mmap-from-APK — but ggml's backend enumeration scans a real directory for its backends, which the mmap path doesn't provide, so backend discovery silently fails (BUG_JOURNAL, 2026-06). Legacy packaging extracts the libs to disk where the scan works. <strong>Re-audit this whenever AGP is upgraded</strong> — if a future ggml loads backends without the directory scan, the ~30–60 MB install-size cost can be reclaimed.</p>
+<hr />
+<h4 id="after-it-runs-on-a-real-phone">After it runs on a real phone<a class="docs-heading-anchor" href="#after-it-runs-on-a-real-phone" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Replace the interpolated chip-score estimates with ground truth: capture decode tok/s, post-throttle steady-state, and battery drain on physical A15/A17/A18 + a Snapdragon flagship, then update the calibration tables (<code>apple/REALITY.md</code> documents the method).</p></div></details><details class="docs-fold docs-subdoc" id="src-tools-android-release-readme-md"><summary><span><strong>Sign the verified Android candidate locally</strong> &mdash; <code>tools/android-release/README.md</code></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-fold-body"><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>tools/android-release/README.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/tools/android-release/README.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
+<h3 id="sign-the-verified-android-candidate-locally">Sign the verified Android candidate locally<a class="docs-heading-anchor" href="#sign-the-verified-android-candidate-locally" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
+<p>The hosted candidate remains unsigned and draft-only. The signer accepts only the currently pinned Google Play upload certificate. It signs an existing hosted AAB; it does not build Android/native code, change the Play upload key, upload anything, or read <code>android/keystore.properties</code>. The separate replacement-key generator below is for the user's explicitly authorized upload-key reset preparation.</p>
+<p>The expected upload certificate SHA-256 is <code>8B:38:F4:E5:85:88:3A:B7:37:F2:91:8F:49:90:BA:40:17:67:A0:39:37:EB:2A:68:72:88:BD:E3:E9:49:CF:3D</code>. The existing private keystore location and alias remain unverified. On 2026-10-28, the user explicitly authorized a bounded search and a replacement upload key if the original could not be found. The bounded follow-up located no usable key; repository and <code>github-pages</code> environment Actions secret counts were both zero. This does not establish permanent loss of the original key.</p>
+<p>The cached official npm Varlock launcher at <code>~/.local/varlock/1.23.0/varlock</code> and JDK 21 signing tools were checked on this Mac on 2026-10-28. No additional download or installation is required. The wrapper pins version 1.23.0, uses only the adjacent explicit public <code>signing.schema</code>, disables telemetry and cache, and emits only validation booleans/status. Password variables and the private path/alias are marked sensitive. No credential value is written to a file. Pinned Varlock was tested with this custom filename passed through <code>--path</code>: synthetic inputs validate, while omission of each required input is rejected. No dotfile is needed or published.</p>
+<h4 id="prepare-the-authorized-replacement-upload-key">Prepare the authorized replacement upload key<a class="docs-heading-anchor" href="#prepare-the-authorized-replacement-upload-key" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>This is an offline private Terminal step; the agent does not receive the password or invoke real key generation. It creates a replacement <strong>upload</strong> key. Google's existing <strong>app signing</strong> key, application ID and installed-user update identity remain unchanged. Nothing is requested or submitted to Google by this helper.</p>
+<p>Check the exact installed tools without credentials or a keystore:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>python3 -B tools/android-release/generate_upload_key.py check</code></pre></div>
+<p>All three booleans must be true: <code>varlock1230</code>, <code>jdk21</code>, <code>keytoolAvailable</code>. In your own Mac Terminal, from this checkout, run:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>zsh tools/android-release/generate-with-prompts.zsh</code></pre></div>
+<p>Enter a <strong>new absolute directory outside every Git checkout</strong>, with an existing parent and no symlink components. One suitable location is a new directory under your existing <code>~/Library/Application Support/</code> folder; expand <code>~</code> to the absolute path at the hidden prompt. Enter and confirm one new password of at least 12 characters. Both entries are hidden, passed through pinned Varlock, and cleared from the wrapper's environment on exit. Keep this password in your existing password manager through its private interface; never send it in chat or put it in command arguments, a plaintext file, <code>.env</code>, logs or repository files.</p>
+<p>The helper creates exactly these files in the new directory:</p>
+<ul>
+<li><code>upload-keystore.p12</code>: private RSA 3072-bit PKCS12 upload key; alias <code>quenderin-upload</code>, SHA256withRSA certificate, validity 10,000 days. Its subject <code>CN=Quenderin upload key</code> labels the project and asserts no owner's legal identity.</li>
+<li><code>upload_certificate.pem</code>: <strong>public certificate only</strong>, for Google's reset form.</li>
+<li><code>upload-key-reset.receipt.json</code>: public fingerprint and preparation status; <code>resetRequested</code> and <code>registeredForPlay</code> are both false.</li>
+</ul>
+<p>The directory is mode 0700 and files are mode 0600 under umask 077. macOS extended ACLs are checked through descriptor metadata; any ACL-bearing output is rejected, including inherited grants hidden by those mode bits. If the new empty directory inherits an ACL, generation stops before creating a key. Existing ancestors and their permissions are never changed. Directory descriptors anchor creation and checks, and fixed relative keytool filenames resolve in that directory; ancestor identity, Git markers and output privacy are rechecked between phases.</p>
+<p>The generator never reads private keystore bytes. Only JDK <code>keytool</code> creates/accesses the key; passwords reach it by environment-variable name. Tool output is captured and only fixed status is printed. Each command has an owned process group. Timeout or interruption stops that group with TERM, escalates to KILL when needed and reaps its direct child. The outer Varlock supervisor gives the inner generator time to stop its own keytool group before escalating. Signal handlers are installed before spawning; cancellation during startup is deferred until the child PID is owned, then its group is stopped before rejection returns.</p>
+<p>Existing paths, files and symlinks are rejected before generation. A failed operation preserves every newly created file. A generated <code>.p12</code> remains a private signing identity even if PEM export, fingerprint checks or receipt writing later fails: <strong>never delete it as scratch or regenerate over it</strong>. Keep the directory private and recover the public certificate from that same key after diagnosing the failure. A partial receipt is not success evidence; do not submit it. There is no automatic deletion, overwrite, regeneration or retry.</p>
+<p>Preflight rejection reports <code>status: &quot;rejected&quot;</code> and <code>privateOutputMayExist: false</code>. Once generation can have started, failure reports <code>status: &quot;preserved_output_requires_recovery&quot;</code> and <code>privateOutputMayExist: true</code>. The outer supervisor reports this conservatively after dispatching Varlock, including a timeout that prevents the child from reporting its exact phase. It does not prove that key creation completed. Inspect the chosen directory privately before taking another action. Preserve any <code>.p12</code> there and its password; recover its public certificate from the same key rather than rerunning generation. Send only the public certificate location or fingerprint when recovery is complete.</p>
+<p>After successful private entry, share only the public certificate location or its public SHA-256 fingerprint. Do not upload or send the <code>.p12</code> file or password.</p>
+<h5 id="register-the-replacement-with-google">Register the replacement with Google<a class="docs-heading-anchor" href="#register-the-replacement-with-google" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<p>Use the existing Quenderin <code>ai.quenderin.app</code> Play Console record and the correct signed-in profile. Open <strong>Protected with Play → Play Store protection → Manage Play app signing</strong>, then <strong>Upload key certificate → Request upload key reset</strong>. Select the truthful reason that the existing upload key could not be located, upload only <code>upload_certificate.pem</code>, and submit the already-authorized reset. Do not choose an app signing key upgrade or create another app record.</p>
+<p>Record the reset receipt and the effective date/time Google displays or confirms. The current official help does not specify a guaranteed completion interval; do not promise a fixed 48-hour wait. Verify the effective <strong>upload certificate</strong> fingerprint in Play against the new receipt before enabling it in the signer. Only after that verification, update the public <code>CERT_SHA256</code> pin and its focused tests to the confirmed certificate. The current pin stays unchanged during key generation and reset preparation, so the signer intentionally rejects the new key until that separate change is verified. Then use the signing command below with the new <code>.p12</code> location, alias <code>quenderin-upload</code>, and the same password twice.</p>
+<p>Official references: <a href="https://support.google.com/googleplay/android-developer/answer/9842756?hl=en" rel="noopener" target="_blank">Google's upload-key reset procedure<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://developer.android.com/studio/publish/app-signing#reset-upload-key" rel="noopener" target="_blank">upload key versus app signing key<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</p>
+<h4 id="sign-the-exact-hosted-candidate">Sign the exact hosted candidate<a class="docs-heading-anchor" href="#sign-the-exact-hosted-candidate" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Check availability without accessing a keystore:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>python3 -B tools/android-release/sign_aab.py check</code></pre></div>
+<p>After the exact reviewed source has passed the hosted workflow, download its three draft assets and verify the GitHub asset digest and <code>.sha256</code> against that exact draft/source. In your own Mac Terminal, use the existing key's private path, alias and passwords at these hidden prompts:</p>
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>zsh tools/android-release/sign-with-prompts.zsh \
+  --bundle /absolute/path/quenderin-android-0.6.0-6-SHORTSHA-unsigned.aab \
+  --receipt /absolute/path/quenderin-android-0.6.0-6-SHORTSHA-unsigned.aab.receipt.json \
+  --receipt-sha256 VERIFIED_GITHUB_RECEIPT_ASSET_SHA256_WITHOUT_PREFIX \
+  --output-dir /absolute/path/new-signed-candidate-directory \
+  --source-commit FULL_REVIEWED_40_CHARACTER_SHA \
+  --version-name 0.6.0 --version-code 6</code></pre></div>
+<p>Replace the placeholders with the exact verified artifact and reviewed commit. Obtain the expected receipt SHA-256 from that draft's GitHub asset metadata, independently of the downloaded local receipt. The hidden prompts export inputs only to this command; the shell clears them on exit. Alternatively, a human who already exported the four <code>QUENDERIN_UPLOAD_*</code> variables may invoke <code>sign_aab.py sign</code> with the same arguments. Never enter actual values in chat, command arguments, <code>.env</code> files, logs or repository files.</p>
+<p>Varlock validates/injects the inputs, then <code>keytool</code> checks the existing upload certificate before signing. <code>jarsigner</code> receives passwords by environment-variable name, without password arguments. The wrapper checks the exact source/version, unsigned AAB digest and Prism/image/Noise/JNA provenance; verifies the final JAR signature and the actual packaged certificate; and compares every original payload entry byte-for-byte after signing. Signature metadata is the only allowed addition. Android upload certificates are self-signed, so the fixed certificate pin and JAR signature verification are used instead of requiring a public CA trust chain.</p>
+<p>The output directory must be new. Successful signing writes exactly the signed AAB, its SHA-256 and a signing receipt. A rejected operation may leave an incomplete new output directory; it produces no success receipt and must not be uploaded. The original candidate and keystore are preserved. No timestamping, network access, automatic retries, output overwrite or Play upload is performed.</p>
+<p>References: <a href="https://varlock.dev/reference/cli-commands/" rel="noopener" target="_blank">Varlock CLI and <code>--path</code><span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/specs/man/jarsigner.html" rel="noopener" target="_blank">JDK jarsigner<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/specs/man/keytool.html" rel="noopener" target="_blank">JDK keytool<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</p></div></details>
+      </div>
+      <nav class="docs-pager" aria-label="Documentation pagination">
+        <a class="docs-pager-card" href="apple-native"><span class="docs-pager-dir"><span class="qi qi-arrow-left" aria-hidden="true"></span>Previous</span><span class="docs-pager-title">Apple Native: macOS, iOS &amp; QuenderinKit</span></a>
+        <a class="docs-pager-card docs-pager-card--next" href="desktop-distribution"><span class="docs-pager-dir">Next<span class="qi qi-arrow-right" aria-hidden="true"></span></span><span class="docs-pager-title">Desktop Platforms &amp; Store Channels</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <aside class="docs-toc" aria-label="On this page">
+    <div class="docs-toc-title"><span class="qi qi-list" aria-hidden="true"></span>On this page</div>
+    <ul class="docs-toc-list"><li><a class="is-depth-2" href="#src-android-readme-md">android/README.md</a></li><li><a class="is-depth-3" href="#quenderin-for-android">Quenderin for Android</a></li><li><a class="is-depth-2" href="#src-android-integration-md">android/INTEGRATION.md</a></li><li><a class="is-depth-3" href="#android-integration-native-0-5-0-model-update">Android integration — native 0.5.0 model update</a></li><li><a class="is-depth-2" href="#src-android-quenderin-core-readme-md">android/quenderin-core/README.md</a></li><li><a class="is-depth-3" href="#quenderin-android-kotlin">Quenderin — Android (Kotlin)</a></li><li><a class="is-depth-2" href="#src-docs-build-mobile-md">docs/BUILD_MOBILE.md</a></li><li><a class="is-depth-3" href="#building-running-the-native-apps-ios-android">Building &amp; running the native apps (iOS + Android)</a></li><li><a class="is-depth-2" href="#src-tools-android-release-readme-md">tools/android-release/README.md</a></li><li><a class="is-depth-3" href="#sign-the-verified-android-candidate-locally">Sign the verified Android candidate locally</a></li></ul>
+  </aside>
+</div>
+
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <span>Quenderin Documentation &middot; MIT Licensed &middot; Typography: DINish, ChunkFive, Lucide (self-hosted, free)</span>
+    <nav class="docs-footer-links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="../tell-me-more">Overview</a>
+      <a href="../download">Download</a>
+      <a href="../privacy">Privacy</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="docs-search-dialog" id="docs-search-dialog" aria-labelledby="docs-search-label">
+  <div class="docs-search-wrap">
+    <div class="docs-search-input-row">
+      <span class="qi qi-search" aria-hidden="true"></span>
+      <input class="docs-search-input" id="docs-search-input" type="search" autocomplete="off" placeholder="Search documentation, API endpoints, models, errors..." aria-label="Search documentation" />
+      <span id="docs-search-label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search documentation</span>
+      <button class="docs-search-close" id="docs-search-close" type="button">Esc</button>
+    </div>
+    <div class="docs-search-results" id="docs-search-results"></div>
+  </div>
+</dialog>
+
+<script src="search-index.js?v=20261122-fonts-docs" defer></script>
+<script src="docs.js?v=20261122-fonts-docs" defer></script>
+</body>
+</html>

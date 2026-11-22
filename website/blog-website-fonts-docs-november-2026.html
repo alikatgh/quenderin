@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A self-hosted documentation portal and open-source typography — Quenderin blog</title>
+<meta name="description" content="A 30-page self-hosted documentation portal compiled from 116 repository docs, plus free self-hosted DINish, ChunkFive, and Lucide typography across the site." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<script src="theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/blog-website-fonts-docs-november-2026" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="A self-hosted documentation portal and open-source typography" />
+<meta property="og:description" content="A 30-page self-hosted documentation portal compiled from 116 repository docs, plus free self-hosted DINish, ChunkFive, and Lucide typography across the site." />
+<meta property="og:url" content="https://quenderin.org/blog-website-fonts-docs-november-2026" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-11-22" />
+<meta property="article:modified_time" content="2026-11-22" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css?v=20261122-fonts-docs" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-fonts-docs" />
+<link rel="preload" href="fonts/dinish-variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"A self-hosted documentation portal and open-source typography","description":"A 30-page self-hosted documentation portal compiled from 116 repository docs, plus free self-hosted DINish, ChunkFive, and Lucide typography across the site.","datePublished":"2026-11-22","dateModified":"2026-11-22","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-website-fonts-docs-november-2026"}</script>
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
+      <a href="blog">&larr; Blog</a>
+      <a href="tell-me-more">Explore the app</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="eyebrow"><span class="qi qi-book-open" aria-hidden="true"></span>Website &amp; docs update</p>
+  <h1>A self-hosted documentation portal and open-source typography</h1>
+  <p class="legal-updated"><time datetime="2026-11-22">22 November 2026</time> &middot; Quenderin</p>
+  <p>Quenderin’s website now includes a full technical documentation portal at <a href="docs/">quenderin.org/docs/</a> alongside updated open-source typography and iconography across the homepage, overview, model pages, and blog. Everything remains static, MIT/OFL/ISC-licensed, and 100% self-hosted with zero third-party network calls.</p>
+
+  <h2 id="documentation">30 documentation guides, generated from source</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#website"></use></svg>
+  <p>Until now, deep architecture notes, the HTTP/WebSocket API contract, hardware fit rules, inference 101 walkthroughs, native iOS/Android guides, and the failure-mode ledger lived mainly as Markdown files inside the GitHub repository.</p>
+  <ul>
+    <li><strong>116 canonical Markdown sources in one portal.</strong> Organized into seven tracks: <a href="docs/quickstart">Quickstart &amp; Setup</a>, <a href="docs/cli-and-agent">Governed Local Agent</a>, <a href="docs/models-catalog">Model Catalog</a>, the <a href="docs/inference-101">101 Inference Series</a>, <a href="docs/architecture">Architecture &amp; API</a>, <a href="docs/release-store">Platforms &amp; Releases</a>, and <a href="docs/failure-modes">Known Failure Modes</a>.</li>
+    <li><strong>Backed by shared JSON manifests.</strong> The model, image, experimental runtime (Prism, Muse Spark, Diffusion), remote harness, and performance tables in the docs pull directly from <code>shared/*.json</code> so store status stays separate from source-only integrations.</li>
+    <li><strong>Zero-network search &amp; light/dark parity.</strong> Press <kbd>/</kbd> or <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd> on any docs page to search titles, headings, source file paths, and excerpts from the local search index without calling an external service.</li>
+    <li><strong>Machine-checked links.</strong> <code>python3 scripts/generate_website_docs.py --check</code> verifies deterministic output and confirms zero broken internal links across all 30 HTML files.</li>
+  </ul>
+
+  <h2 id="typography">Three self-hosted fonts: DINish, ChunkFive, Lucide</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#revision"></use></svg>
+  <p>Every marketing, blog, legal, and documentation route now loads three local WOFF2 font families from <code>website/fonts/</code> under the site’s existing <code>font-src 'self'</code> Content Security Policy:</p>
+  <ul>
+    <li><strong>DINish variable sans (SIL OFL 1.1).</strong> Powers UI labels, body copy, tabular numbers in model/benchmark tables, condensed uppercase kickers (<code>wdth: 82</code>), oblique emphasis, and bold headings for non-Latin scripts such as Russian and Arabic.</li>
+    <li><strong>ChunkFive (SIL OFL 1.1).</strong> Gives Latin display headlines on the homepage, detail hero, callout bands, legal pages, and docs titles unmistakable slab character while keeping a crisp single-weight 400 cut.</li>
+    <li><strong>Lucide icon font (ISC).</strong> Scoped under <code>.qi</code> / <code>.qi-*</code> classes across navigation links, the homepage Docs action, feature accordions, roadmap status pills, docs callouts, copy-code buttons, and sidebar categories—keeping existing custom SVG icons untouched.</li>
+  </ul>
+
+  <h2 id="scope">What this update does not change</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#maintenance"></use></svg>
+  <p>This is a website and documentation update. It does not ship a new App Store or Google Play app binary or alter model test status: Mac and iPhone on the App Store remain <strong>0.6.0</strong> (with <strong>0.6.1</strong> prepared in source and unsubmitted), Android remains in closed testing (<strong>0.2.0</strong>), and experimental engines such as Bonsai 2 / Prism and Muse Spark remain labeled by their actual verification boundary.</p>
+  <p>Verified locally across light and dark themes at desktop (1440&nbsp;px) and mobile (390&nbsp;px) viewports including English, Russian, and RTL Arabic layouts, alongside catalog parity checks and website test suites. Ready to explore: <a href="docs/">open the Documentation Portal &rarr;</a> &middot; <a href="changelog#2026-11-22">Read the changelog</a> &middot; <a href="roadmap">View updated roadmap</a>.</p>
+</main>
+</body>
+</html>
