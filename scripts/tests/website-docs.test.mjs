@@ -57,10 +57,20 @@ test('marketing and documentation pages link lucide-icons.css and expose Docs na
         assert.ok(!html.includes('/Users/'), `${file} leaked local checkout path`);
     }
 
+    const stripTags = (s) => {
+        let out = '';
+        let inTag = false;
+        for (const ch of s) {
+            if (ch === '<') { inTag = true; continue; }
+            if (ch === '>') { inTag = false; continue; }
+            if (!inTag) out += ch;
+        }
+        return out;
+    };
     const cliDoc = readFileSync(path.join(docsDir, 'cli-and-agent.html'), 'utf8');
     assert.ok(cliDoc.includes('class="docs-entry"'), 'cli-and-agent.html should group bold-lead logs into .docs-entry cards');
     const longParas = [...cliDoc.matchAll(/<p(?:\s[^>]*)?>(.*?)<\/p>/gs)]
-        .map((m) => m[1].replace(/<[^>]+>/g, ''))
+        .map((m) => stripTags(m[1]))
         .filter((plain) => plain.length > 900);
     assert.deepEqual(longParas, [], 'cli-and-agent.html should chunk oversized >900-char narrative paragraphs');
 });
