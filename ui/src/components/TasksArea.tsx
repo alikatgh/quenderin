@@ -129,7 +129,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                 <div className="max-w-2xl mx-auto space-y-5">
                     <div>
                         <h1 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                            <ListChecks className="w-4 h-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                            <ListChecks className="w-4 h-4 text-qteal-600 dark:text-qteal-300" aria-hidden="true" />
                             Tasks
                         </h1>
                         <p className="mt-1 text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -143,7 +143,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                     type="button"
                                     onClick={() => setShowCapabilities(v => !v)}
                                     aria-expanded={showCapabilities}
-                                    className="flex items-center gap-1 text-[12px] font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded"
+                                    className="flex items-center gap-1 text-[12px] font-semibold text-qteal-600 dark:text-qteal-300 hover:text-qteal-700 dark:hover:text-qteal-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500 rounded"
                                 >
                                     <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showCapabilities ? 'rotate-90' : ''}`} aria-hidden="true" />
                                     What it can do here
@@ -189,7 +189,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                 placeholder="e.g. organize this folder’s files into subfolders by type"
                                 rows={2}
                                 disabled={running}
-                                className="mt-1 w-full resize-none rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-800/80 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 disabled:opacity-60"
+                                className="mt-1 w-full resize-none rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-800/80 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500 disabled:opacity-60"
                             />
                         </label>
                         <label className="block">
@@ -202,7 +202,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                 onChange={(e) => setWorkspace(e.target.value)}
                                 placeholder="~/Downloads — the ONE folder the agent may touch"
                                 disabled={running}
-                                className="mt-1 w-full rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-800/80 px-3 py-2 text-[13px] font-mono text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 placeholder:font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 disabled:opacity-60"
+                                className="mt-1 w-full rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-800/80 px-3 py-2 text-[13px] font-mono text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 placeholder:font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500 disabled:opacity-60"
                             />
                         </label>
                         <div className="flex items-center justify-between gap-3">
@@ -212,7 +212,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                     checked={dryRun}
                                     onChange={(e) => setDryRun(e.target.checked)}
                                     disabled={running}
-                                    className="rounded border-zinc-300 dark:border-zinc-600 text-purple-600 focus:ring-purple-500"
+                                    className="rounded border-zinc-300 dark:border-zinc-600 text-qteal-600 focus:ring-qteal-500"
                                 />
                                 Dry run — show what it would do, change nothing
                             </label>
@@ -229,7 +229,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                     type="button"
                                     onClick={start}
                                     disabled={!wsReady || !goal.trim()}
-                                    className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-[12px] font-semibold text-white transition-colors disabled:opacity-40 disabled:hover:bg-purple-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                                    className="px-4 py-1.5 rounded-lg bg-qteal-600 hover:bg-qteal-700 text-[12px] font-semibold text-white transition-colors disabled:opacity-40 disabled:hover:bg-qteal-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500"
                                 >
                                     Run task
                                 </button>
@@ -254,7 +254,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                 <button
                                     type="button"
                                     onClick={onUndo}
-                                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300/80 dark:border-zinc-700/80 text-[12px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300/80 dark:border-zinc-700/80 text-[12px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500"
                                 >
                                     <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />
                                     Undo everything this task changed
@@ -300,7 +300,7 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
 
             {/* The approval dialog — the heart of the trust loop. */}
             {approval && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60">
                     <div
                         role="dialog"
                         aria-modal="true"
@@ -321,14 +321,14 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                 ref={declineRef}
                                 type="button"
                                 onClick={() => onApprove(approval.id, false)}
-                                className="px-3 py-1.5 rounded-lg border border-zinc-300/80 dark:border-zinc-700/80 text-[12px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                                className="px-3 py-1.5 rounded-lg border border-zinc-300/80 dark:border-zinc-700/80 text-[12px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500"
                             >
                                 Don’t allow
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onApprove(approval.id, true)}
-                                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-[12px] font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                                className="px-3 py-1.5 rounded-lg bg-qteal-600 hover:bg-qteal-700 text-[12px] font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500"
                             >
                                 Allow
                             </button>

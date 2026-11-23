@@ -51,9 +51,7 @@ html[data-theme-mode="dark"] .docs-page {
   top: 0;
   z-index: 60;
   height: var(--doc-header-h);
-  background: color-mix(in srgb, var(--canvas) 92%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--canvas);
   border-bottom: 1px solid var(--border);
 }
 

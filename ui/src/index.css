@@ -18,7 +18,7 @@
     }
 
     body {
-        @apply bg-[var(--surface-page)] text-zinc-900 antialiased selection:bg-purple-500/30 transition-colors duration-500;
+        @apply bg-[var(--surface-page)] text-zinc-900 antialiased selection:bg-qteal-500/30 transition-colors duration-500;
         /* Q-568: 'Inter Variable' is the self-hosted @fontsource family; 'Inter' + system fonts fall back. */
         font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
         overflow: hidden;
@@ -92,7 +92,7 @@
 
 @layer utilities {
     .chat-input-wrapper {
-        @apply relative flex items-end w-full bg-white dark:bg-[var(--surface-card-dark)] border border-zinc-200/80 dark:border-zinc-700/50 rounded-2xl transition-all duration-200 shadow-sm dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:border-zinc-300 dark:hover:border-zinc-600 focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-purple-500/10 dark:focus-within:ring-purple-400/5 focus-within:shadow-md;
+        @apply relative flex items-end w-full bg-white dark:bg-[var(--surface-card-dark)] border border-zinc-200/80 dark:border-zinc-700/50 rounded-2xl transition-all duration-200 shadow-sm dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:border-zinc-300 dark:hover:border-zinc-600 focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-qteal-500/15 dark:focus-within:ring-qteal-400/10 focus-within:shadow-md;
     }
 
     .premium-card {
@@ -100,7 +100,7 @@
     }
 
     .glass-effect {
-        @apply backdrop-blur-md bg-white/80 dark:bg-background border-b border-zinc-200/50 dark:border-zinc-800/50;
+        @apply bg-white dark:bg-background border-b border-zinc-200/70 dark:border-zinc-800;
     }
 
     .chat-textarea {

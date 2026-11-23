@@ -81,7 +81,7 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
                                         <div className="absolute hidden group-hover:block bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/10 px-2.5 py-1.5 rounded-lg text-[10px] whitespace-nowrap z-[100] shadow-lg font-mono text-zinc-300 pointer-events-none">
                                             <span className="text-zinc-500 text-[9px]">{node.className.split('.').pop()}</span><br />
                                             {node.text && <><span className="text-blue-400">{`"${node.text}"`}</span><br /></>}
-                                            {node.contentDesc && <span className="text-purple-400">{`desc:"${node.contentDesc}"`}</span>}
+                                            {node.contentDesc && <span className="text-qteal-300">{`desc:"${node.contentDesc}"`}</span>}
                                         </div>
                                     </div>
                                 )

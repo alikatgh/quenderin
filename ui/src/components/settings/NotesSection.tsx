@@ -34,7 +34,7 @@ export function NotesSection() {
                 type="button"
                 aria-expanded={notesOpen}
                 onClick={() => setNotesOpen(o => !o)}
-                className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
+                className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/40"
             >
                 <div className="flex items-center gap-3">
                     <FileText className="w-5 h-5 text-blue-500" />

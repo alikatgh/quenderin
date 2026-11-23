@@ -303,8 +303,8 @@ python3 -m http.server 8080
 <p>Run from the repository root with Node 20+:</p>
 <div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>sh</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>node --test services/content-report-receiver/receiver.test.mjs</code></pre></div>
 <p>Fixtures use a fake Script Lock, properties, clock, receipts, ContentService, and logging traps.</p>
-<p>They cover normal persistence/readback, canonical retries and conflicts, capacity and overlap, disabled/unknown/corrupt state, byte boundaries and escaping, invalid Unicode/types, quota/lock/write/readback failures, ambiguous-write reconciliation, GET privacy, and the no-scope/no-log/no-network configuration. They install nothing and make no live requests.</p>
-<p>Hosted deployment, actual account/terms, owner UI readback, redirects, and native-client behavior remain separate release checks.</p>
+<p>They cover normal persistence/readback, canonical retries and conflicts, capacity and overlap, disabled/unknown/corrupt state, byte boundaries and escaping, invalid Unicode/types, quota/lock/write/readback failures, ambiguous-write reconciliation, GET privacy, and the no-scope/no-log/no-network configuration.</p>
+<p>They install nothing and make no live requests. Hosted deployment, actual account/terms, owner UI readback, redirects, and native-client behavior remain separate release checks.</p>
 <p>Official documentation verified 2026-10-28:</p>
 <ul>
 <li><a href="https://developers.google.com/apps-script/guides/properties" rel="noopener" target="_blank">Properties Service<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>: script-wide string storage and manual management up to 50 properties.</li>

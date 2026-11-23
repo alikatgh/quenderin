@@ -299,7 +299,7 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: var(--header-su
 .msg { padding: 0.75rem 0.95rem; border-radius: var(--r-lg); font-size: 0.92rem; max-width: 92%; color: #fff; line-height: 1.55; }
 .msg-who { display: block; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #5b7ca0; margin-bottom: 0.3rem; }
 .msg-user { align-self: flex-end; background: var(--ink-700); }
-.msg-ai { align-self: flex-start; background: rgba(122,115,255,0.18); border: 1px solid rgba(122,115,255,0.35); }
+.msg-ai { align-self: flex-start; background: rgba(46,118,128,0.22); border: 1px solid rgba(82,147,154,0.45); }
 .chat-foot { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.2rem; font-family: var(--font-mono); font-size: 0.72rem; color: #5b7ca0; }
 
 /* ---------- Trust strip ---------- */
@@ -797,7 +797,7 @@ table td, table th { font-variant-numeric: tabular-nums; }
 .glossary dd { margin: 0; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; }
 
 /* Back-to-top */
-.to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 40; width: 42px; height: 42px; border-radius: var(--r-full); border: 1px solid var(--border); background: color-mix(in srgb, var(--n-000) 80%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(10,37,64,0.12); opacity: 0; visibility: hidden; transform: translateY(8px); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+.to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 40; width: 42px; height: 42px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(10,37,64,0.12); opacity: 0; visibility: hidden; transform: translateY(8px); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
 .to-top.show { visibility: visible; opacity: 1; transform: translateY(0); pointer-events: auto; }
 .to-top:hover { border-color: var(--brand); color: var(--brand); }
 .to-top:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
@@ -970,4 +970,35 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 }
 
 .split-copy > .btn { max-width: 100%; white-space: normal; }
-.download-intro { font-family: var(--font-sans); font-size: 1.05rem; line-height: 1.7; }
+.download-intro { font-family: var(--font-sans); font-size: 1.05rem; line-height: 1.7; max-width: 62ch; }
+
+/* Download center layout */
+.download-page .btn { border-radius: var(--r-md); white-space: normal; min-height: 44px; }
+.download-hero { padding-block: clamp(2.5rem, 5vw, 3.75rem) clamp(1.75rem, 3vw, 2.5rem); border-bottom: 1px solid var(--border); background: var(--canvas); }
+.download-hero h1 { font-family: var(--font-slab); font-weight: 400; font-size: clamp(2.4rem, 4.8vw, 3.4rem); line-height: 1.08; letter-spacing: -0.012em; margin-top: 0.45rem; }
+.download-version-note { margin-top: 1.1rem; padding: 0.9rem 1.15rem; border: 1px solid var(--border); border-inline-start: 3px solid var(--brand); border-radius: var(--r-md); background: var(--surface-tint); color: var(--text-secondary); font-size: 0.92rem; line-height: 1.65; max-width: 68ch; }
+.download-section { padding-block: clamp(2rem, 4vw, 3rem); background: var(--canvas); }
+.download-section.tint { background: var(--surface-tint); border-block: 1px solid var(--border); }
+.download-section h2 { font-size: clamp(1.45rem, 2.6vw, 1.9rem); margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.6rem; }
+.download-section h2 img { width: 26px; height: 26px; flex: none; }
+.download-lead { color: var(--text-secondary); line-height: 1.7; max-width: 66ch; margin-bottom: 1.35rem; }
+.download-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.download-cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.download-card { display: flex; flex-direction: column; gap: 0.75rem; padding: 1.35rem; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.download-card > img { width: 64px; height: 64px; object-fit: contain; }
+.download-card > img.ios-icon { border-radius: 22%; }
+.download-card h3 { font-size: 1.12rem; display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+.download-card h3 img { width: 22px; height: 22px; flex: none; }
+.download-card p { color: var(--text-secondary); font-size: 0.93rem; line-height: 1.65; margin: 0; }
+.download-card .store-link, .download-card .btn { margin-top: auto; align-self: flex-start; }
+.download-step-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: var(--r-md); background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--brand); font-family: var(--font-mono); font-size: 0.82rem; font-weight: 600; }
+.download-file-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
+.download-file-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.25rem; padding: 1rem 1.2rem; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.download-file-meta { min-width: 0; flex: 1 1 280px; }
+.download-file-meta strong { display: block; color: var(--text); font-size: 0.98rem; }
+.download-file-meta span { display: block; margin-top: 0.2rem; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55; }
+.download-callout { margin-top: 1.25rem; padding: 1rem 1.2rem; border: 1px solid var(--accent-border); border-radius: var(--r-lg); background: var(--accent-soft); color: var(--text-secondary); font-size: 0.9rem; line-height: 1.65; }
+.download-callout strong { color: var(--text); }
+.download-code { max-width: 100%; margin: 1.25rem 0; }
+.download-subnav { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); font-size: 0.92rem; }
+@media (max-width: 860px) { .download-cards, .download-cards-3 { grid-template-columns: 1fr; } }

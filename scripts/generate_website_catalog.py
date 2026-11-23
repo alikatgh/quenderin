@@ -75,7 +75,9 @@ def rows(models: list[dict]) -> str:
         roles = {'Everyday': 'everyday', 'Agent tasks · fast SSD': 'agent', 'Desktop chat': 'desktop',
                  'Multilingual': 'multilingual', 'Reasoning': 'reasoning', 'All-Rounder': 'allrounder',
                  'Coding': 'coding', 'Efficient': 'efficient', 'Balanced': 'balanced',
-                 'Lightweight chat': 'light', 'Low memory': 'lowram'}
+                 'Lightweight chat': 'light', 'Low memory': 'lowram',
+                 'Experimental, text only': 'experimental_text',
+                 'Experimental · Prism runtime': 'experimental_prism'}
         role_key = roles.get(role)
         role_attr = f' data-i18n="catalog.role.{role_key}"' if role_key else ''
         if role_key:
@@ -107,7 +109,7 @@ def release_cards(data: dict) -> str:
         source = (brand[1] + ' · ' if brand else '') + 'GGUF: ' + m['sourceUrl'].split('/')[3]
         cards.append(f'<article class="release-model"><h3>{icon}<a href="{h(m["sourceUrl"])}" rel="noopener">{h(m["name"])}</a></h3>'
                      f'<p class="release-spec">{m["downloadBytes"] / 1e9:.1f} GB · {h(m["quantization"])}</p>'
-                     f'<p class="release-date">Model released {h(m["createdAt"][:10])}</p>'
+                     f'<p class="release-date"><span data-i18n="catalog.published">Model released</span> {h(m["createdAt"][:10])}</p>'
                      f'<p class="release-source">{h(source + license_text)}</p></article>')
     return '\n'.join(cards)
 
@@ -146,7 +148,7 @@ def main() -> int:
         text = re.sub(r'(<div class="release-models" data-release-list>).*?(</div>)',
                       lambda m: m[1] + '\n' + release_cards(releases) + '\n' + m[2], text, flags=re.S)
         text = re.sub(r'(<p class="release-status" data-release-status aria-live="polite">).*?(</p>)',
-                      lambda m: m[1] + 'Saved snapshot · ' + releases['checkedAt'][:16].replace('T', ' ') + ' UTC' + m[2], text, flags=re.S)
+                      lambda m: m[1] + '<span data-i18n="catalog.saved">Saved snapshot</span> · ' + releases['checkedAt'][:16].replace('T', ' ') + ' UTC' + m[2], text, flags=re.S)
         schema = {'@context': 'https://schema.org', '@type': 'ItemList', 'name': 'Quenderin curated model catalog',
                   'itemListElement': [{'@type': 'ListItem', 'position': i + 1, 'name': m['label'],
                                        'url': m['url'].split('/resolve/', 1)[0]} for i, m in enumerate(models)]}

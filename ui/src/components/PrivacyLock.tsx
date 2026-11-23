@@ -98,7 +98,7 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
     const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
 
     return (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-4" role="dialog" aria-modal="true" aria-label="Privacy Lock">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Privacy Lock">
             <div className={`w-full max-w-sm bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500 ${error ? 'animate-shake' : ''}`}>
                 <div className="flex justify-center mb-5">
                     {isLockedOut
@@ -126,7 +126,7 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
                         onChange={e => { setPassphrase(e.target.value); setError(false); }}
                         placeholder="Passphrase"
                         disabled={isLockedOut}
-                        className={`w-full bg-zinc-50 dark:bg-[#09090b] border ${error ? 'border-red-500 ring-2 ring-red-500/20 text-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-2 focus:ring-purple-500/10 text-zinc-900 dark:text-zinc-100'} rounded-xl py-3 pl-5 pr-14 text-center tracking-[0.25em] font-mono text-base placeholder:tracking-normal placeholder:font-sans placeholder:text-zinc-400 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed`}
+                        className={`w-full bg-zinc-50 dark:bg-[#09090b] border ${error ? 'border-red-500 ring-2 ring-red-500/20 text-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-2 focus:ring-qteal-500/15 text-zinc-900 dark:text-zinc-100'} rounded-xl py-3 pl-5 pr-14 text-center tracking-[0.25em] font-mono text-base placeholder:tracking-normal placeholder:font-sans placeholder:text-zinc-400 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed`}
                     />
                     <button type="submit" className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-200 active:bg-zinc-600 dark:active:bg-zinc-300 transition-colors disabled:opacity-50" disabled={!passphrase || isLockedOut}>
                         <ArrowRight className="w-4 h-4" />

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Download — Quenderin</title>
-<meta name="description" content="Get Quenderin free on the App Store for Mac and iPhone. Windows and Linux previews and the Android closed beta are also available." />
+<title data-i18n="dl.meta.title">Download — Quenderin</title>
+<meta name="description" data-i18n-content="dl.meta.description" content="Get Quenderin free on the App Store for Mac and iPhone. Windows and Linux previews and the Android closed beta are also available." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <script src="theme.js"></script>
@@ -14,89 +14,287 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=20261122-polish" />
+<link rel="stylesheet" href="styles.css?v=20261123-ux" />
 <link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
 <link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
-<style>
-  #android-beta .btn { max-width: 100%; white-space: normal; }
-  #android-beta .btn-primary { background: var(--brand-dark); color: #fff; box-shadow: none; }
-  #android-beta .btn-primary:hover { background: var(--brand); }
-</style>
+<style>html[dir="rtl"] .download-file-meta,html[dir="rtl"] .download-card{text-align:right}</style>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to content</a>
-<header class="legal-header">
-  <div class="container container-wide post-header">
-    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
-    <nav class="post-nav" aria-label="Primary">
-      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
-      <a href="models"><span class="qi qi-cpu" aria-hidden="true"></span>Models</a>
-      <a href="blog"><span class="qi qi-file-text" aria-hidden="true"></span>Blog</a>
-      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+<body class="download-page">
+<a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" data-language-link aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <div class="lang-picker">
+        <svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="hi">हिन्दी</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="bn">বাংলা</option>
+          <option value="pt">Português</option>
+          <option value="ru">Русский</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+        <svg class="lang-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <ul class="nav-menu" id="nav-menu">
+        <li><a class="nav-link-icon" href="docs/" data-language-link><span class="qi qi-book-open" aria-hidden="true"></span><span data-i18n="nav.docs">Docs</span></a></li>
+        <li><a href="tell-me-more" data-language-link data-i18n="simple.more">Tell me more</a></li>
+        <li><a href="models" data-language-link data-i18n="nav.models">Models</a></li>
+        <li><a href="blog" data-language-link data-i18n="nav.blog">Blog</a></li>
+        <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:16px;height:16px;margin-right:.45rem"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.575.106.785-.25.785-.555 0-.273-.01-.998-.015-1.96-3.196.694-3.87-1.54-3.87-1.54-.523-1.33-1.276-1.683-1.276-1.683-1.043-.713.08-.699.08-.699 1.153.082 1.76 1.184 1.76 1.184 1.025 1.757 2.69 1.25 3.345.955.103-.743.4-1.25.728-1.538-2.552-.29-5.236-1.276-5.236-5.677 0-1.254.448-2.28 1.183-3.083-.119-.29-.513-1.46.112-3.043 0 0 .965-.309 3.163 1.178a11 11 0 0 1 5.76 0c2.196-1.487 3.16-1.178 3.16-1.178.626 1.583.232 2.753.114 3.043.737.803 1.182 1.829 1.182 3.083 0 4.412-2.688 5.384-5.248 5.668.413.357.78 1.06.78 2.137 0 1.543-.014 2.787-.014 3.166 0 .308.207.668.79.554A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a></li>
+      </ul>
     </nav>
   </div>
 </header>
 
-<main class="container legal" id="main">
-  <h1>Download Quenderin</h1>
-  <p class="legal-updated download-intro">Free native apps for Mac and iPhone. No account or subscription. Install the app, download a model that fits your device, and start chatting offline.</p>
-  <p>Mac and iPhone on the App Store are version <strong>0.6.0</strong>, released 1 November 2026. The newer on-device behavior in the <a href="blog-on-device-november-2026">9 November note</a> is not in that build, and it has not been submitted to the App Store or Play.</p>
-  <div class="download-apple">
-    <section class="download-app" aria-labelledby="mac-download">
-      <img src="assets/app/icon-mac.png" width="80" height="80" alt="Quenderin Mac app icon" />
-      <h2 id="mac-download"><img src="icons/mac.svg" alt="" /> macOS</h2>
-      <p>The native Mac app, built in SwiftUI. Write, learn, and chat with local models on a bigger screen.</p>
-      <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" aria-label="Download Quenderin for Mac on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
-    </section>
-    <section class="download-app" aria-labelledby="ios-download">
-      <img class="ios-icon" src="assets/app/icon-ios.png" width="80" height="80" alt="Quenderin iPhone app icon" />
-      <h2 id="ios-download"><img src="icons/iphone.svg" alt="" /> iOS</h2>
-      <p>Private chat in your pocket. Download a model over Wi-Fi, then take your assistant offline.</p>
-      <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
-    </section>
-  </div>
-  <section class="legal-note" id="android-beta" aria-labelledby="android-beta-title">
-    <h2 class="platform-heading" id="android-beta-title" style="margin-top:0"><img src="icons/android.svg" alt="" /> Android &middot; closed beta</h2>
-    <p>The native Android app is in closed testing on Google Play. The public Play page is not a production listing, and the 9 November source has not been uploaded. Use the same Google account for both steps and on your phone.</p>
-    <ol style="margin:1rem 0">
-      <li><a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener">1. Join the testing group</a></li>
-      <li><a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener">2. Opt in on Google Play</a></li>
-    </ol>
-    <p><a href="blog-android-beta.html">Step-by-step beta guide &rarr;</a></p>
+<main id="main">
+  <section class="download-hero">
+    <div class="container">
+      <p class="eyebrow" data-i18n="dl.eyebrow">Install on your device</p>
+      <h1 data-i18n="dl.h1">Download Quenderin</h1>
+      <p class="download-intro" data-i18n="dl.intro">Free native apps for Mac and iPhone, desktop previews for Windows and Linux, and an Android closed beta. No account or subscription required.</p>
+      <p class="download-version-note" data-i18n-html="dl.ver.note"><strong>Store build note (22 Nov):</strong> Mac and iPhone on the App Store are version <strong>0.6.0</strong> (released 1 November). Newer source additions (<a href="blog-kromoss-hex-november-2026" data-language-link>22 November note</a>) are not in that store build yet, and Android remains on closed-test <strong>0.2.0</strong>.</p>
+    </div>
   </section>
 
-  <h2>Your first offline conversation</h2>
-  <ol><li>Open the app and choose a recommended model. Start with a smaller one if you are unsure.</li><li>Download it over Wi-Fi and wait until it is ready. Models are separate from the app and can take several gigabytes.</li><li>Ask it to rewrite a paragraph or explain a topic. After setup, try a reply with the network off.</li></ol>
-  <p>Smaller models need less memory; larger models can give better answers but take more space and time. <a href="reality.html">See the measured trade-offs</a> or <a href="help.html">get setup help</a>. <a href="blog-apple-launch.html">Read the Apple launch story &rarr;</a></p>
+  <!-- Apple native stores -->
+  <section class="download-section tint" id="apple" aria-labelledby="apple-heading">
+    <div class="container">
+      <h2 id="apple-heading" data-i18n="dl.apple.h2">Mac and iPhone</h2>
+      <p class="download-lead" data-i18n="dl.apple.lead">Native SwiftUI apps signed on the App Store. Download a quantized GGUF model once, then chat offline.</p>
+      <div class="download-cards">
+        <article class="download-card" aria-labelledby="mac-download">
+          <img src="assets/app/icon-mac.png" width="64" height="64" alt="Quenderin Mac app icon" />
+          <h3 id="mac-download"><img src="icons/mac.svg" width="22" height="22" alt="" /> macOS</h3>
+          <p data-i18n="dl.mac.desc">Native Mac app built in SwiftUI. Write, learn, and run local models on Apple Silicon or Intel.</p>
+          <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" aria-label="Download Quenderin for Mac on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
+        </article>
+        <article class="download-card" aria-labelledby="ios-download">
+          <img class="ios-icon" src="assets/app/icon-ios.png" width="64" height="64" alt="Quenderin iPhone app icon" />
+          <h3 id="ios-download"><img src="icons/iphone.svg" width="22" height="22" alt="" /> iOS</h3>
+          <p data-i18n="dl.ios.desc">Private chat in your pocket. Download a model over Wi-Fi, then use it offline.</p>
+          <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
+        </article>
+      </div>
+    </div>
+  </section>
 
-  <h2 class="platform-heading"><img src="icons/windows.svg" alt="" /> Windows &middot; preview</h2>
-  <p><strong>Two channels (same product version):</strong> Microsoft Store (when live — no SmartScreen, store updates) <em>and</em> direct GitHub installers below for portable use and users who prefer no Store account.</p>
-  <ul>
-    <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Setup-x64.exe"><strong>Quenderin-Setup-x64.exe</strong></a> — the installer (recommended from GitHub).</li>
-    <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Portable-x64.exe">Quenderin-Portable-x64.exe</a> — no installation; runs from any folder or USB stick.</li>
-  </ul>
-  <p><strong>About the SmartScreen warning on GitHub builds:</strong> preview <code>.exe</code> files may be unsigned, so Windows can show “unrecognized app” — click <em>More info → Run anyway</em>. The file is built in public CI from this open source. The <strong>Microsoft Store</strong> listing is signed by Microsoft and removes that warning — owner playbook: <a href="docs/desktop-distribution">desktop distribution docs</a> (<a href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener">source</a>).</p>
+  <!-- Android closed beta -->
+  <section class="download-section" id="android-beta" aria-labelledby="android-beta-title">
+    <div class="container">
+      <h2 id="android-beta-title"><img src="icons/android.svg" width="26" height="26" alt="" /><span data-i18n="dl.android.h2">Android &middot; closed beta</span></h2>
+      <p class="download-lead" data-i18n="dl.android.lead">The native Android app is in closed testing on Google Play (build 0.2.0). Use the same Google account on your phone and for both steps below.</p>
+      <div class="download-cards">
+        <article class="download-card">
+          <h3><span class="download-step-num" aria-hidden="true">1</span> <span data-i18n="beta.s1t">Join the testers group</span></h3>
+          <p data-i18n="beta.s1b">Use the same Google account for the testing group and Google Play.</p>
+          <a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener" data-i18n="beta.s1cta">Join the group &rarr;</a>
+        </article>
+        <article class="download-card">
+          <h3><span class="download-step-num" aria-hidden="true">2</span> <span data-i18n="beta.s2t">Opt in on Google Play</span></h3>
+          <p data-i18n="beta.s2b">After joining the group, accept the test on Google Play and install the app. Access may take a few minutes to appear.</p>
+          <a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener" data-i18n="beta.s2cta">Become a tester &rarr;</a>
+        </article>
+      </div>
+      <p class="learn-more"><a href="blog-android-beta" data-language-link data-i18n="dl.android.guide">Step-by-step Android beta guide &rarr;</a></p>
+    </div>
+  </section>
 
-  <h2 class="platform-heading"><img src="icons/linux.svg" alt="" /> Linux &middot; preview</h2>
-  <ul>
-    <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-x86_64.AppImage"><strong>Quenderin-x86_64.AppImage</strong></a> — download, <code>chmod +x</code>, run. Works on any distro.</li>
-    <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-amd64.deb">Quenderin-amd64.deb</a> — for Debian and Ubuntu (<code>sudo apt install ./Quenderin-amd64.deb</code>).</li>
-  </ul>
-  <p>A Flathub listing is planned so <code>flatpak install quenderin</code> works too. Current preview: <strong>v0.2.x</strong>.</p>
+  <!-- Windows & Linux previews -->
+  <section class="download-section tint" id="desktop-previews" aria-labelledby="win-heading">
+    <div class="container">
+      <h2 id="win-heading"><img src="icons/windows.svg" width="26" height="26" alt="" /><span data-i18n="dl.win.h2">Windows &middot; preview (v0.2.x)</span></h2>
+      <p class="download-lead" data-i18n="dl.win.lead">Direct installers from GitHub Releases for x64 Windows. Microsoft Store AppX packaging is documented in the repo for store distribution without SmartScreen warnings.</p>
+      <ul class="download-file-list">
+        <li class="download-file-item">
+          <div class="download-file-meta">
+            <strong>Quenderin-Setup-x64.exe</strong>
+            <span data-i18n="dl.win.setup">Installer for Windows x64 (recommended for desktop install).</span>
+          </div>
+          <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Setup-x64.exe" data-i18n="dl.win.dl">Download</a>
+        </li>
+        <li class="download-file-item">
+          <div class="download-file-meta">
+            <strong>Quenderin-Portable-x64.exe</strong>
+            <span data-i18n="dl.win.portable">No installation required; runs directly from any folder or USB drive.</span>
+          </div>
+          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Portable-x64.exe" data-i18n="dl.win.dl">Download</a>
+        </li>
+      </ul>
+      <p class="download-callout" data-i18n-html="dl.win.smartscreen"><strong>SmartScreen note:</strong> direct preview <code>.exe</code> installers from GitHub are currently unsigned, so Windows may show an unrecognized-app prompt (<em>More info &rarr; Run anyway</em>). Builds come directly from public GitHub Actions CI. Owner Store guide: <a href="docs/desktop-distribution">desktop distribution docs</a>.</p>
 
-  <h2>The terminal</h2>
-  <p>For programmers there's a CLI — the same models, in your shell. <code>git diff | quenderin chat -p "review this change"</code> is code review that never leaves your machine.</p>
-  <p>And on a Mac, <code>quenderin do "&lt;anything&gt;"</code> is a local computer-use agent — a private alternative to cloud agents like Cowork. It can organise a folder (<code>--workspace ~/Downloads</code>), click and type in <strong>any</strong> app via accessibility (<code>--gui</code>), and run any of your <strong>Apple Shortcuts</strong> — but every change is <strong>previewed and approved by you</strong>, logged to a local audit trail (<code>quenderin history</code>, grouped by task), and reversible — even in a new session, an hour later (<code>quenderin undo</code>). Want to look before you leap? <code>--dry-run</code> shows exactly what it would do, touching nothing. See the whole toolkit with <code>quenderin capabilities</code>. Nothing — not your files, not your screen, not your intent — ever leaves the machine.</p>
-  <p>It ships with the source today (<code>npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link</code> from <a href="https://github.com/alikatgh/quenderin" rel="noopener">the repo</a>); an npm package is planned. <a href="blog-cli">Read the announcement →</a> · <a href="why-local-agent">Why a local agent →</a></p>
+      <h2 style="margin-top:2.5rem" id="linux-heading"><img src="icons/linux.svg" width="26" height="26" alt="" /><span data-i18n="dl.lin.h2">Linux &middot; preview (v0.2.x)</span></h2>
+      <p class="download-lead" data-i18n="dl.lin.lead">Prebuilt desktop packages for x86_64 Linux distributions. A Flathub manifest is planned next.</p>
+      <ul class="download-file-list">
+        <li class="download-file-item">
+          <div class="download-file-meta">
+            <strong>Quenderin-x86_64.AppImage</strong>
+            <span data-i18n-html="dl.lin.appimage">Portable universal package &mdash; run <code>chmod +x</code> then launch on any distribution.</span>
+          </div>
+          <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-x86_64.AppImage" data-i18n="dl.win.dl">Download</a>
+        </li>
+        <li class="download-file-item">
+          <div class="download-file-meta">
+            <strong>Quenderin-amd64.deb</strong>
+            <span data-i18n-html="dl.lin.deb">Debian and Ubuntu package &mdash; install via <code>sudo apt install ./Quenderin-amd64.deb</code>.</span>
+          </div>
+          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-amd64.deb" data-i18n="dl.win.dl">Download</a>
+        </li>
+      </ul>
+    </div>
+  </section>
 
-  <h2>Before you download — use with judgement</h2>
-  <p>Quenderin runs open AI models on your own machine, and on-device models are small: they can be <strong>confidently wrong, outdated, or occasionally inappropriate</strong>, and nothing filters them. Nothing Quenderin produces is medical, legal, financial, or safety advice — verify anything that matters with a qualified source. <strong>By downloading or using Quenderin you agree</strong> that the software is provided &ldquo;as is&rdquo; and that, to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce. The app asks for the same agreement on first launch. Full detail: <a href="terms">Terms of Use</a>.</p>
+  <!-- Terminal & local agent -->
+  <section class="download-section" id="terminal" aria-labelledby="cli-heading">
+    <div class="container">
+      <h2 id="cli-heading" data-i18n="dl.cli.h2">Command line &amp; local agent</h2>
+      <p class="download-lead" data-i18n="dl.cli.lead">Use the same local models directly from your terminal, or drive governed file tasks on Mac, Windows, and Linux with approval and undo.</p>
+      <div class="codeblock download-code">
+        <button class="copy-btn" type="button" data-copy-target="dl-cli-cmd"><span data-i18n="gs.copy">Copy</span></button>
+<pre id="dl-cli-cmd"><code>git clone https://github.com/alikatgh/quenderin.git
+cd quenderin &amp;&amp; npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link
+git diff | quenderin chat -p "review this change"
+quenderin do --dry-run "organize my downloads"
+quenderin history</code></pre>
+      </div>
+      <p class="download-lead" style="margin-bottom:0" data-i18n-html="dl.cli.buildnote">Build and link from the open-source repository today; an npm package is planned. <a href="docs/cli-and-agent">CLI &amp; agent docs</a> &middot; <a href="blog-cli" data-language-link>CLI announcement</a> &middot; <a href="why-local-agent" data-language-link>Why a local agent</a></p>
+    </div>
+  </section>
 
-  <h2>What you're downloading</h2>
-  <p>The desktop preview (<strong>v0.2.x</strong>): chat with streaming replies, the full model library (Llama, Qwen, DeepSeek-R1, Mistral, Gemma&nbsp;3 &amp; 4, Phi) with RAM-fit recommendations and SHA-256-verified downloads, and the governed task tools. Everything runs on your machine — <a href="how-it-works">how it works</a>, <a href="reality">the measured numbers</a>. Model downloads happen inside the app after install; expect 0.4–9&nbsp;GB per model, your pick.</p>
+  <!-- First-run checklist & safety notice -->
+  <section class="download-section tint" id="before-you-start" aria-labelledby="start-heading">
+    <div class="container">
+      <h2 id="start-heading" data-i18n="dl.start.h2">Your first offline conversation</h2>
+      <p class="download-lead" data-i18n-html="dl.start.lead">Smaller models fit tighter memory limits; larger models can give stronger answers at higher storage cost. <a href="reality" data-language-link>See measured trade-offs</a> or <a href="help" data-language-link>get setup help</a>.</p>
+      <ol class="start-steps" style="margin-top:1.5rem">
+        <li>
+          <span>01</span>
+          <h3 data-i18n="start.install.title">Get the app</h3>
+          <p data-i18n="start.install.body">Install Quenderin, then choose a model that fits your device.</p>
+        </li>
+        <li>
+          <span>02</span>
+          <h3 data-i18n="start.download.title">Download once</h3>
+          <p data-i18n="start.download.body">Use Wi-Fi. Start small; model download sizes are shown before you begin.</p>
+        </li>
+        <li>
+          <span>03</span>
+          <h3 data-i18n="start.offline.title">Start a conversation</h3>
+          <p data-i18n="start.offline.body">Ask a question or work with text. Once installed, your local model runs offline.</p>
+        </li>
+      </ol>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="docs/">Documentation</a> &middot; <a href="docs/quickstart">Quickstart</a> &middot; <a href="help">Get help</a> &middot; <a href="changelog">What's new</a> &middot; <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">All releases</a></p>
+      <h2 style="margin-top:2.75rem" data-i18n="dl.judge.h2">Before you download</h2>
+      <div class="download-cards download-cards-3" style="margin-top:1rem">
+        <article class="download-card">
+          <h3 data-i18n="dl.judge.1t">Small local models</h3>
+          <p data-i18n="dl.judge.1b">Open on-device models can be confidently wrong, outdated, or unsuitable, and Quenderin applies no server filter.</p>
+        </article>
+        <article class="download-card">
+          <h3 data-i18n="dl.judge.2t">No professional advice</h3>
+          <p data-i18n="dl.judge.2b">Never treat local model output as medical, legal, financial, or safety advice. Verify important facts independently.</p>
+        </article>
+        <article class="download-card">
+          <h3 data-i18n="dl.judge.3t">As-is license</h3>
+          <p data-i18n-html="dl.judge.3b">By downloading Quenderin you agree to the <a href="terms" data-language-link>Terms of Use</a> (no warranty, zero liability); the app confirms this on first launch.</p>
+        </article>
+      </div>
+
+      <h2 style="margin-top:2.75rem" data-i18n="dl.inc.h2">What you're downloading</h2>
+      <div class="download-cards download-cards-3" style="margin-top:1rem">
+        <article class="download-card">
+          <h3 data-i18n="dl.inc.1t">Streaming local chat</h3>
+          <p data-i18n="dl.inc.1b">Desktop v0.2.x and mobile native apps run GGUF chat offline on your hardware with persistent local history.</p>
+        </article>
+        <article class="download-card">
+          <h3 data-i18n="dl.inc.2t">Verified model library</h3>
+          <p data-i18n="dl.inc.2b">Curated Llama, Qwen, DeepSeek-R1, Mistral, Gemma 3 &amp; 4, and Phi models (0.4&ndash;9 GB) with SHA-256 verification and RAM checks.</p>
+        </article>
+        <article class="download-card">
+          <h3 data-i18n="dl.inc.3t">Governed local tools</h3>
+          <p data-i18n-html="dl.inc.3b">File and task workflows ask permission before acting. See <a href="how-it-works" data-language-link>how it works</a> and <a href="docs/models-catalog">full catalog docs</a>.</p>
+        </article>
+      </div>
+
+      <nav class="download-subnav" aria-label="Related resources">
+        <a href="./" data-language-link data-i18n="dl.subnav.home">&larr; Back to Quenderin</a>
+        <a href="docs/" data-language-link data-i18n="nav.docs">Docs</a>
+        <a href="docs/quickstart">Quickstart</a>
+        <a href="help" data-language-link data-i18n="nav.help">Get help</a>
+        <a href="changelog" data-language-link data-i18n="nav.changelog">What's new</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="dl.subnav.releases">All GitHub releases</a>
+      </nav>
+    </div>
+  </section>
 </main>
-<script src="main.js" defer></script>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag" data-i18n="foot.tag">An open-source app for local language models.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.product">Product</h3>
+        <a href="how-it-works" data-i18n="nav.how" data-language-link>How it works</a>
+        <a href="features" data-i18n="nav.features" data-language-link>Features</a>
+        <a href="models" data-i18n="nav.models" data-language-link>Models</a>
+        <a href="blog" data-i18n="nav.blog" data-language-link>Blog</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.project">Project</h3>
+        <a href="download" data-i18n="nav.download" data-language-link>Download</a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="docs/" data-language-link data-i18n="nav.docs">Docs</a>
+        <a href="reality" data-i18n="nav.reality" data-language-link>Measurements and limitations</a>
+        <a href="roadmap" data-i18n="nav.roadmap" data-language-link>Roadmap</a>
+        <a href="why-local-agent" data-i18n="nav.whylocal" data-language-link>Local agents</a>
+        <a href="privacy" data-i18n="nav.privacy" data-language-link>Privacy</a>
+        <a href="faq" data-i18n="nav.faq" data-language-link>FAQ</a>
+        <a href="help" data-i18n="nav.help" data-language-link>Get help</a>
+        <a href="changelog" data-i18n="nav.changelog" data-language-link>What's new</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy" data-i18n="foot.legal.privacy" data-language-link>Privacy</a>
+      <a href="terms" data-i18n="foot.legal.terms" data-language-link>Terms</a>
+      <a href="legal" data-i18n="foot.legal.legal" data-language-link>Legal Notice</a>
+      <a href="accessibility" data-i18n="foot.legal.a11y" data-language-link>Accessibility</a>
+    </nav>
+    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="main.js?v=20261122-polish" defer></script>
+<script src="i18n.js?v=20261123-ux" defer></script>
 </body>
 </html>

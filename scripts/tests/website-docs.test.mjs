@@ -67,12 +67,15 @@ test('marketing and documentation pages link lucide-icons.css and expose Docs na
         }
         return out;
     };
+    for (const file of readdirSync(docsDir).filter((f) => f.endsWith('.html'))) {
+        const html = readFileSync(path.join(docsDir, file), 'utf8');
+        const longParas = [...html.matchAll(/<p(?:\s[^>]*)?>(.*?)<\/p>/gs)]
+            .map((m) => stripTags(m[1]))
+            .filter((plain) => plain.length > 650);
+        assert.deepEqual(longParas, [], `${file} should chunk oversized >650-char narrative paragraphs`);
+    }
     const cliDoc = readFileSync(path.join(docsDir, 'cli-and-agent.html'), 'utf8');
     assert.ok(cliDoc.includes('class="docs-entry"'), 'cli-and-agent.html should group bold-lead logs into .docs-entry cards');
-    const longParas = [...cliDoc.matchAll(/<p(?:\s[^>]*)?>(.*?)<\/p>/gs)]
-        .map((m) => stripTags(m[1]))
-        .filter((plain) => plain.length > 900);
-    assert.deepEqual(longParas, [], 'cli-and-agent.html should chunk oversized >900-char narrative paragraphs');
 });
 
 test('all referenced section-illustrations SVG symbols exist in sprite', () => {

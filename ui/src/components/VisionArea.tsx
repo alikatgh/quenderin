@@ -61,9 +61,9 @@ export function VisionArea({ active, api = (window as Window & { quenderinVision
             <div className="flex flex-wrap gap-2"><button type="button" disabled={busy || !installed || !image || !prompt.trim() || bytes > 8192} onClick={() => void run(async () => {
                 setStatus('Verifying and loading the complete vision model…'); const answer = await api.answer({ modelId, imageHandle: image!.handle, prompt });
                 if (!cancelRequested.current && mounted.current) { setResult(answer.text); setStatus(`Answered locally (${answer.tokens} output tokens).`); }
-            })} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Ask about image</button>
+            })} className="rounded-lg bg-qteal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Ask about image</button>
                 {busy && <button type="button" onClick={() => { cancelRequested.current = true; setStatus('Cancelling vision operation…'); void api.cancel().catch(cause => setError(String(cause))); }} className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Cancel</button>}</div>
-            {busy && progress !== null && <progress aria-label="Vision model installation" value={progress} max={1} className="w-full accent-purple-600" />}
+            {busy && progress !== null && <progress aria-label="Vision model installation" value={progress} max={1} className="w-full accent-qteal-600" />}
             <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">{status}</p>
             {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error} Your question is kept for retry.</p>}
             {result && <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800"><h2 className="text-sm font-semibold">Answer</h2><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7">{result}</p></div>}

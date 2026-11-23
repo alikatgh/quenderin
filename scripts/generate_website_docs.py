@@ -641,7 +641,7 @@ class MarkdownCompiler:
         s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
         s = re.sub(r"__(.+?)__", r"<strong>\1</strong>", s)
         s = re.sub(r"~~(.+?)~~", r"<del>\1</del>", s)
-        s = re.sub(r"(?<![A-Za-z0-9])\*([^\s*](?:.*?[^\s*])?)\*(?![A-Za-z0-9])", r"<em>\1</em>", s)
+        s = re.sub(r"(?<![A-Za-z0-9.])\*([^\s*](?:.*?[^\s*])?)\*(?![A-Za-z0-9])", r"<em>\1</em>", s)
         s = re.sub(r"(?<![A-Za-z0-9/])_([^\s_](?:.*?[^\s_])?)_(?![A-Za-z0-9/])", r"<em>\1</em>", s)
 
         # Restore tokens
@@ -656,7 +656,7 @@ class MarkdownCompiler:
     def format_inline_no_links(self, text: str, code_tokens: list[str]) -> str:
         s = html.escape(text, quote=False)
         s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
-        s = re.sub(r"(?<![A-Za-z0-9])\*([^\s*](?:.*?[^\s*])?)\*(?![A-Za-z0-9])", r"<em>\1</em>", s)
+        s = re.sub(r"(?<![A-Za-z0-9.])\*([^\s*](?:.*?[^\s*])?)\*(?![A-Za-z0-9])", r"<em>\1</em>", s)
         for idx, val in enumerate(code_tokens):
             s = s.replace(f"\x00CODE{idx}\x00", val)
         return s
@@ -882,10 +882,8 @@ class MarkdownCompiler:
             joined = " ".join(para_lines)
             inline = self.format_inline(joined)
             self.plain_chunks.append(re.sub(r"<[^>]+>", "", inline))
-            if getattr(self, "in_callout", False):
-                blocks.append(f"<p>{inline}</p>")
-            else:
-                blocks.append(format_prose_block(inline))
+            in_callout = getattr(self, "in_callout", False)
+            blocks.append(format_prose_block(inline, allow_entry_card=not in_callout))
 
         close_fold()
         return "\n".join(blocks), i
@@ -1182,8 +1180,62 @@ def _split_inline_sentences(inline_html: str) -> list[str]:
     orig_norm = re.sub(r"\s+", "", _plain_text(inline_html))
     joined_norm = re.sub(r"\s+", "", _plain_text(" ".join(sentences)))
     if orig_norm != joined_norm:
-        return [inline_html.strip()]
-    return sentences
+        sentences = [inline_html.strip()]
+
+    # Second pass: break oversized single sentences (>360 plain chars) at balanced
+    # clause boundaries (`; ` or `, <strong>` outside parens/tags) so dense enumerations stay readable.
+    refined: list[str] = []
+    for sent in sentences:
+        if len(_plain_text(sent)) <= 360:
+            refined.append(sent)
+            continue
+        sn = len(sent)
+        s_tag = 0
+        s_paren = 0
+        sub_breaks: list[int] = []
+        k = 0
+        while k < sn:
+            if sent[k] == "<":
+                mt = _TAG_TOKEN_RE.match(sent, k)
+                if mt:
+                    tok = mt.group(0)
+                    if not tok.endswith("/>"):
+                        s_tag = max(0, s_tag - 1) if tok.startswith("</") else s_tag + 1
+                    k = mt.end()
+                    continue
+            c = sent[k]
+            if s_tag == 0:
+                if c == "(":
+                    s_paren += 1
+                elif c == ")":
+                    s_paren = max(0, s_paren - 1)
+                elif s_paren == 0:
+                    prev_len = len(_plain_text(sent[(sub_breaks[-1] if sub_breaks else 0) : k]))
+                    if c == ";" and k + 1 < sn and sent[k + 1].isspace() and prev_len >= 90:
+                        sub_breaks.append(k + 1)
+                    elif sent.startswith(", and the <strong>", k) and prev_len >= 120:
+                        sub_breaks.append(k + 2)
+                    elif sent.startswith(", <strong>", k) and prev_len >= 120:
+                        sub_breaks.append(k + 2)
+            k += 1
+        if not sub_breaks:
+            refined.append(sent)
+            continue
+        parts: list[str] = []
+        p_start = 0
+        for b in sub_breaks:
+            chunk = sent[p_start:b].strip()
+            if chunk:
+                parts.append(chunk)
+            p_start = b
+        tail_part = sent[p_start:].strip()
+        if tail_part:
+            parts.append(tail_part)
+        if len(parts) > 1 and re.sub(r"\s+", "", _plain_text(" ".join(parts))) == re.sub(r"\s+", "", _plain_text(sent)):
+            refined.extend(parts)
+        else:
+            refined.append(sent)
+    return refined
 
 
 def _group_sentences_to_paragraphs(sentences: list[str], target_chars: int = 240) -> list[str]:
@@ -1204,9 +1256,8 @@ def _group_sentences_to_paragraphs(sentences: list[str], target_chars: int = 240
         )
         if cur and (is_pivot or (cur_len >= 55 and slen >= 260)):
             chunks.append(" ".join(cur))
-            cur = [sent]
-            cur_len = slen
-            continue
+            cur = []
+            cur_len = 0
 
         cur.append(sent)
         cur_len += slen
@@ -1250,13 +1301,13 @@ def _render_chunk_tag(chunk: str, cap_first: bool = False) -> str:
     return f"<p{cls_attr}>{chunk}</p>"
 
 
-def format_prose_block(inline_html: str) -> str:
+def format_prose_block(inline_html: str, allow_entry_card: bool = True) -> str:
     """Turn dense walls of text and bold-lead log entries into scannable paragraphs/cards."""
     plain = _plain_text(inline_html).strip()
 
     # Pattern 1: Substantial bold-lead entry paragraph (`**Topic (YYYY-MM-DD):** ...` or `**Topic**: ...`)
     m_entry = re.match(r"^<strong>((?:(?!</strong>).)+?)(?::</strong>|</strong>:)\s+(.+)$", inline_html.strip(), re.S)
-    if m_entry and len(plain) >= 280:
+    if allow_entry_card and m_entry and len(plain) >= 280:
         raw_title = m_entry.group(1).strip()
         body_html = m_entry.group(2).strip()
         date_badge = ""

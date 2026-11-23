@@ -17,6 +17,21 @@ export default {
         border: '#27272a',     // zinc-800
         primary: '#fafafa',    // zinc-50
         muted: '#a1a1aa',      // zinc-400
+        qteal: {
+          50: '#eef6f7',
+          100: '#d7ebed',
+          200: '#b3d7dc',
+          300: '#7ebbc4',
+          400: '#52939a',
+          500: '#2e7680',
+          600: '#1c4e5d',
+          700: '#163f4b',
+        },
+        qcopper: {
+          400: '#eda04f',
+          500: '#c46b2c',
+          600: '#a35620',
+        },
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

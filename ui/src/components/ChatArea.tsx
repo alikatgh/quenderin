@@ -60,7 +60,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
         switch (type) {
             case 'status': return <Activity className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />;
             case 'observe': return <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />;
-            case 'decide': return <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+            case 'decide': return <BrainCircuit className="w-4 h-4 text-qteal-600 dark:text-qteal-300" />;
             case 'action': return <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
             case 'error': return <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />;
             case 'done': return <CheckCircle2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />;
@@ -87,12 +87,12 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             <div className="grid sm:grid-cols-2 gap-2.5 w-full max-w-lg">
                                 <button
                                     onClick={() => setCurrentView('docs')}
-                                    className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all col-span-full group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                                    className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all col-span-full group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/50"
                                 >
                                     <div className="flex items-center gap-2">
                                         <BookOpen className="w-4 h-4 text-zinc-400" />
                                         <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">Read documentation</span>
-                                        <ArrowRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 ml-auto group-hover:text-purple-500 transition-colors" />
+                                        <ArrowRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 ml-auto group-hover:text-qteal-500 transition-colors" />
                                     </div>
                                 </button>
 
@@ -100,7 +100,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                     <button
                                         key={t.id}
                                         onClick={() => setGoal(t.template)}
-                                        className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                                        className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/50"
                                     >
                                         <p className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">{t.label}</p>
                                         <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">{t.template}</p>
@@ -130,7 +130,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             </div>
 
                             <div className="flex gap-3">
-                                <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex flex-shrink-0 items-center justify-center">
+                                <div className="w-7 h-7 rounded-full bg-qteal-100 dark:bg-qteal-500/15 text-qteal-600 dark:text-qteal-300 flex flex-shrink-0 items-center justify-center">
                                     <Sparkles className="w-4 h-4" />
                                 </div>
 

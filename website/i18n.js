@@ -70,9 +70,13 @@
       var k = el.getAttribute('data-i18n-html');
       if (dict[k] != null) el.innerHTML = dict[k];
     });
-    if (dict['meta.title']) document.title = dict['meta.title'];
+    document.querySelectorAll('[data-i18n-content]').forEach(function (el) {
+      var k = el.getAttribute('data-i18n-content');
+      if (dict[k] != null) el.setAttribute('content', dict[k]);
+    });
+    if (!document.querySelector('title[data-i18n]') && dict['meta.title']) document.title = dict['meta.title'];
     var md = document.querySelector('meta[name="description"]');
-    if (md && dict['meta.description']) md.setAttribute('content', dict['meta.description']);
+    if (md && !md.hasAttribute('data-i18n-content') && dict['meta.description']) md.setAttribute('content', dict['meta.description']);
     var sel = selectEl(); if (sel) sel.value = lang;
     updateLanguageLinks(lang);
     document.dispatchEvent(new CustomEvent('quenderin:language', { detail: dict }));
