@@ -774,6 +774,12 @@ jobs:
         run: node --test scripts/tests/model-releases.test.mjs
       - name: Website appearance preference and browser chrome tests
         run: node --test scripts/tests/website-theme.test.mjs
+      - name: Self-hosted documentation portal matches canonical source docs
+        run: python3 scripts/generate_website_docs.py --check
+      - name: Website documentation, self-hosted typography, and 12-language i18n parity tests
+        run: node --test scripts/tests/website-docs.test.mjs
+      - name: UX, anti-slop brand tokens, and A/B baseline invariants
+        run: node --test scripts/tests/ab-ux-audit.test.mjs
       - name: Agent-logic parity suites cover the same vectors (iOS + Android + Desktop)
         run: python3 scripts/check_agent_parity.py
       - name: Turnstone adaptations use the same cases on desktop, Apple, and Android

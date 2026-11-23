@@ -201,7 +201,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
 
     return (
         <div
-            className={`flex-1 flex flex-col relative min-h-0 overflow-hidden ${isDragging ? 'bg-purple-500/5 ring-4 ring-purple-500/20 ring-inset' : ''}`}
+            className={`flex-1 flex flex-col relative min-h-0 overflow-hidden ${isDragging ? 'bg-qteal-500/5 ring-4 ring-qteal-500/20 ring-inset' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleFileDrop}
@@ -243,7 +243,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                     {/* ── Empty state ── */}
                     {chatLogs.length === 0 && (
                         <div className="mt-16 sm:mt-24 flex flex-col items-center animate-fade-in px-2">
-                            <Sparkles className="w-7 h-7 text-purple-500 dark:text-purple-400 mb-5" />
+                            <Sparkles className="w-7 h-7 text-qteal-500 dark:text-qteal-300 mb-5" />
                             <h2 className="text-[22px] sm:text-[26px] font-semibold text-zinc-900 dark:text-white mb-2 tracking-tight text-center">What can I help you with?</h2>
                             <p className="text-zinc-500 dark:text-zinc-400 mb-10 text-[14px] text-center max-w-md leading-relaxed">
                                 Everything runs locally on your machine. Private, offline, yours.
@@ -257,7 +257,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                             className="w-full text-left p-3.5 border border-zinc-200/70 dark:border-zinc-800/70 bg-white/60 dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 group"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <s.icon className="w-4 h-4 text-zinc-400 dark:text-zinc-500 mt-0.5 flex-shrink-0 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors" />
+                                                <s.icon className="w-4 h-4 text-zinc-400 dark:text-zinc-500 mt-0.5 flex-shrink-0 group-hover:text-qteal-500 dark:group-hover:text-qteal-300 transition-colors" />
                                                 <span className="text-[13px] text-zinc-600 dark:text-zinc-300 leading-snug">{s.text}</span>
                                             </div>
                                         </button>
@@ -292,8 +292,8 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                     return (
                                         <div key={log.id} className="py-5 animate-entrance">
                                             <div className="flex gap-3.5">
-                                                <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-500/15 flex flex-shrink-0 items-center justify-center mt-0.5">
-                                                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                                <div className="w-7 h-7 rounded-full bg-qteal-100 dark:bg-qteal-500/15 flex flex-shrink-0 items-center justify-center mt-0.5">
+                                                    <Sparkles className="w-3.5 h-3.5 text-qteal-600 dark:text-qteal-300" />
                                                 </div>
                                                 <div className="flex-1 min-w-0 pt-0.5">
                                                     <div className="text-[15px] text-zinc-800 dark:text-zinc-200 leading-7">
@@ -304,7 +304,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                             >
                                                                 {stripToolCallXml(log.message)}
                                                             </ReactMarkdown>
-                                                            {log.isStreaming && <span className="inline-block w-[2px] h-[1.1em] bg-purple-500 ml-0.5 align-text-bottom animate-pulse" />}
+                                                            {log.isStreaming && <span className="inline-block w-[2px] h-[1.1em] bg-qteal-500 ml-0.5 align-text-bottom animate-pulse" />}
                                                         </div>
                                                     </div>
                                                     {!log.isStreaming && log.meta && (
@@ -340,14 +340,14 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                             {status === 'running' && chatLogs.length > 0 && chatLogs[chatLogs.length - 1].type === 'chat' && (
                                 <div className="py-5">
                                     <div className="flex gap-3.5">
-                                        <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-500/15 flex flex-shrink-0 items-center justify-center mt-0.5">
-                                            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                        <div className="w-7 h-7 rounded-full bg-qteal-100 dark:bg-qteal-500/15 flex flex-shrink-0 items-center justify-center mt-0.5">
+                                            <Sparkles className="w-3.5 h-3.5 text-qteal-600 dark:text-qteal-300" />
                                         </div>
                                         <div className="flex items-center gap-2.5 pt-1.5">
                                             <div className="flex gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-qteal-400 dark:bg-qteal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-qteal-400 dark:bg-qteal-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-qteal-400 dark:bg-qteal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
                                             </div>
                                             {/* Twin of mobile loadingPrompt phase — shown until first assistant tokens stream */}
                                             <span className="text-[12px] text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">
@@ -396,7 +396,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                 onClick={() => onSwitchPreset(p.id)}
                                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all ${
                                     activePresetId === p.id
-                                        ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400'
+                                        ? 'bg-qteal-100 dark:bg-qteal-500/20 text-qteal-700 dark:text-qteal-300'
                                         : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                 }`}
                             >

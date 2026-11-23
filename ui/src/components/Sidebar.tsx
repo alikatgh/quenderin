@@ -65,7 +65,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                 }`}
             >
-                <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-purple-600 dark:text-purple-400' : ''}`} />
+                <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-qteal-600 dark:text-qteal-300' : ''}`} />
                 <span>{label}</span>
             </button>
         );
@@ -83,7 +83,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                     onClick={onNewGoal}
                     className="w-full flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-zinc-800/80 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:bg-zinc-100 dark:active:bg-zinc-700 border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-900 dark:text-zinc-100 text-[13px] font-semibold rounded-xl transition-colors shadow-sm"
                 >
-                    <Sparkles className="w-4 h-4 text-purple-500" />
+                    <Sparkles className="w-4 h-4 text-qteal-500" />
                     <span>New Conversation</span>
                 </button>
 
@@ -102,7 +102,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                             {tierInfo && <span className="text-zinc-400 dark:text-zinc-500"> &middot; {tierInfo.label}</span>}
                         </p>
                     </div>
-                    <BrainCircuit className="w-4 h-4 text-purple-500/50 flex-shrink-0" />
+                    <BrainCircuit className="w-4 h-4 text-qteal-500/60 flex-shrink-0" />
                 </div>
 
                 {/* Recent Sessions */}

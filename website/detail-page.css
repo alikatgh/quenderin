@@ -74,7 +74,11 @@ html[data-theme-mode="dark"] .detail-page .site-header {
 .detail-page .hero-phone__frame { box-shadow: 0 14px 36px rgba(15,27,30,0.14); }
 .detail-page .hero-phone__glare { display: none; }
 .detail-page .hero-phone__caption { color: var(--text-secondary); font-size: 0.78rem; margin-top: 0.95rem; }
-.detail-index { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.65rem; padding-block: 0.75rem; border-block: 1px solid var(--border); }
+.detail-index { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.65rem; padding-block: 0.75rem; border-block: 1px solid var(--border); background: var(--canvas); }
+@media (min-width: 861px) {
+  .detail-index { position: sticky; top: 80px; z-index: 15; }
+}
+.detail-page .btn { border-radius: var(--r-md); }
 .detail-index a { display: inline-flex; align-items: center; min-height: 40px; padding: 0.32rem 0.72rem; border-radius: var(--r-md); border: 1px solid transparent; color: var(--text-secondary); font-size: 0.84rem; font-weight: 500; transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
 .detail-index a:hover { color: var(--brand); background: var(--surface-tint); border-color: var(--border); text-decoration: none; }
 .detail-page section[id] { scroll-margin-top: 96px; }

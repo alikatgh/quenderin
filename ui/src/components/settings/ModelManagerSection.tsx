@@ -164,7 +164,7 @@ export function ModelManagerSection() {
                                     {!runtimeBlocked && m.isDownloaded && m.id === activeModelId ? (
                                         // Active only makes sense for a model that exists on disk — the server pins
                                         // a default id at boot even when nothing is downloaded yet.
-                                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">
+                                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-qteal-100 text-qteal-700 dark:bg-qteal-500/20 dark:text-qteal-300">
                                             <CheckCircle2 className="w-2.5 h-2.5" /> Active
                                         </span>
                                     ) : !runtimeBlocked && m.isDownloaded && (
@@ -200,7 +200,7 @@ export function ModelManagerSection() {
                                                 onClick={() => handleSwitchModel(m.id)}
                                                 disabled={isActing || runtimeBlocked}
                                                 title={runtimeBlocked ? m.runtimeMessage : undefined}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors disabled:opacity-50"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-qteal-700 dark:text-qteal-300 border border-qteal-200 dark:border-qteal-500/30 rounded-lg hover:bg-qteal-50 dark:hover:bg-qteal-500/10 transition-colors disabled:opacity-50"
                                             >
                                                 {isActing && modelActionType === 'switch' ? <span className="animate-spin">⟳</span> : <Zap className="w-3 h-3" />}
                                                 {isActing && modelActionType === 'switch' ? 'Switching...' : 'Use'}

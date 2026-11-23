@@ -13,7 +13,7 @@ const browserPresets: ImagePresetView[] = catalog.models.map(model => ({
         bytes: component.bytes, repository: component.repo, access: component.access,
         license: 'license' in component ? component.license! : model.license })),
 }));
-const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500';
+const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-qteal-500';
 const secondary = `inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-[13px] font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed ${focus}`;
 const bytesLabel = (bytes: number) => `${bytes.toLocaleString('en-US')} bytes · ${(bytes / 1024 ** 3).toFixed(2)} GiB`;
 const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Image operation failed. Try again.').slice(0, 2048);
@@ -185,12 +185,12 @@ export function ImageGenerationArea({ active = true, api = (window as Window & {
                             <p id="image-caption-limit" className={`mt-1 text-[11px] tabular-nums ${promptBytes > 8192 ? 'text-red-600 dark:text-red-400' : 'text-zinc-500 dark:text-zinc-400'}`}>{promptBytes.toLocaleString('en-US')} / 8,192 UTF-8 bytes</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={generate} disabled={!api || !modelsReady || !verified || !folder || !validPrompt || !!busy} className={`inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed ${focus}`}><WandSparkles aria-hidden="true" className="w-4 h-4" />Generate and save PNG…</button>
+                            <button type="button" onClick={generate} disabled={!api || !modelsReady || !verified || !folder || !validPrompt || !!busy} className={`inline-flex items-center justify-center gap-2 rounded-lg bg-qteal-600 hover:bg-qteal-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed ${focus}`}><WandSparkles aria-hidden="true" className="w-4 h-4" />Generate and save PNG…</button>
                             {busy && <button type="button" onClick={cancel} disabled={cancelling} className={secondary}><Square aria-hidden="true" className="h-3.5 w-3.5" />{cancelling ? 'Cancelling…' : 'Cancel operation'}</button>}
                         </div>
                         <div role="status" aria-live="polite" className="text-[12px] leading-5 text-zinc-600 dark:text-zinc-400">
                             <p className="flex items-start gap-2">{busy && <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5 motion-safe:animate-spin" />}{status}</p>
-                            {progress && busy === 'generate' && <progress aria-label="Image generation progress" value={progress.step} max={progress.steps} className="mt-2 w-full accent-purple-600" />}
+                            {progress && busy === 'generate' && <progress aria-label="Image generation progress" value={progress.step} max={progress.steps} className="mt-2 w-full accent-qteal-600" />}
                         </div>
                         {error && <div role="alert" className="text-[12px] leading-5 text-red-700 dark:text-red-400 break-words"><p>{error}</p>{!modelsReady && api && <button type="button" onClick={loadModels} className={`mt-2 underline underline-offset-2 ${focus}`}>Retry loading image presets</button>}</div>}
                     </div>

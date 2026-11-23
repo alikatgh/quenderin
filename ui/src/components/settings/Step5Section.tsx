@@ -59,7 +59,7 @@ export function Step5Section() {
         <p className="text-xs text-zinc-500">{bytes.toLocaleString()} / 8,192 bytes. Up to 8 exchanges, 32 KiB of selected history, and 1,024 output tokens per request.</p>
         {full && <p className="text-sm">This conversation is full. Start a new conversation to continue.</p>}
         <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={!consent || busy || full || !draft.trim() || bytes > 8192} onClick={() => void run('answer')} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Send to Step 5</button>
+            <button type="button" disabled={!consent || busy || full || !draft.trim() || bytes > 8192} onClick={() => void run('answer')} className="rounded-lg bg-qteal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Send to Step 5</button>
             {busy && <button type="button" onClick={() => operation.current?.abort()} className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Cancel request</button>}
             {messages.length > 0 && <button type="button" disabled={busy} onClick={() => { setMessages([]); setError(null); setStatus('New Step 5 conversation.'); }} className="rounded-lg border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-700">New conversation</button>}
         </div>

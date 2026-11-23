@@ -539,7 +539,7 @@ that desktop control only reached AppleScript-scriptable apps + Shortcuts; click
 arbitrary GUI app (Cowork's whole premise: screen → click) had no governed path. Closed it exactly
 the way the Android `app.*` twins are built — a **seam + fake**, so the capability logic is fully
 verifiable headless while the one production-only surface is the osascript bridge (same as every
-mac.*). `MacUi` (accessibility) + `OsascriptMacUi` (System Events, built on the hardened
+`mac.*`). `MacUi` (accessibility) + `OsascriptMacUi` (System Events, built on the hardened
 MacAutomation runner) back four capabilities: `mac.ui.observe` (T1 — read the frontmost app's named
 elements) and `mac.ui.tap` / `mac.ui.type` / `mac.ui.key` (T2 — approved). The load-bearing safety is
 the fs.move / app.tap one: **tap by VISIBLE LABEL, never a fabricated coordinate**; the resolved

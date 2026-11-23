@@ -95,18 +95,18 @@ function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress }: { on
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Welcome Setup Wizard">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Welcome Setup Wizard">
       <div ref={panelRef} tabIndex={-1} className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 focus:outline-none">
 
         {/* Header Progress Bar */}
         <div role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label="Setup step" className="w-full h-1 bg-zinc-100 dark:bg-zinc-800">
-          <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} />
+          <div className="h-full bg-qteal-500 transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} />
         </div>
 
         <div className="p-6">
           {step === 1 && (
             <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <TerminalSquare className="w-6 h-6 text-purple-500 mb-4" />
+              <TerminalSquare className="w-6 h-6 text-qteal-500 mb-4" />
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Welcome to Quenderin</h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
                 A private assistant that runs 100% locally on your computer. It watches your phone screen and controls your apps, just like a human would.
@@ -114,8 +114,8 @@ function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress }: { on
               <button onClick={() => setStep(2)} className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group">
                 Next: Setup AI Knowledge <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button type="button" onClick={onImages} className="mt-3 w-full rounded-lg py-2 text-[13px] font-medium text-purple-600 dark:text-purple-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500">Use images first</button>
-              <button type="button" onClick={onVision} className="mt-1 w-full rounded-lg py-2 text-[13px] font-medium text-purple-600 dark:text-purple-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500">Ask about an image</button>
+              <button type="button" onClick={onImages} className="mt-3 w-full rounded-lg py-2 text-[13px] font-medium text-qteal-600 dark:text-qteal-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-qteal-500">Use images first</button>
+              <button type="button" onClick={onVision} className="mt-1 w-full rounded-lg py-2 text-[13px] font-medium text-qteal-600 dark:text-qteal-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-qteal-500">Ask about an image</button>
             </div>
           )}
 
@@ -543,14 +543,14 @@ function AppContent() {
               <button
                 type="button"
                 autoFocus
-                className="rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+                className="rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-qteal-500"
                 onClick={() => answerMissionApproval(false)}
               >
                 Don&apos;t allow
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+                className="rounded-lg bg-qteal-600 px-3 py-2 text-sm font-medium text-white hover:bg-qteal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-qteal-500"
                 onClick={() => answerMissionApproval(true)}
               >
                 Allow
@@ -560,18 +560,18 @@ function AppContent() {
         </div>
       )}
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-qteal-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-30 xl:hidden backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/55 z-30 xl:hidden transition-opacity"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         {isInspectorOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/55 z-30 md:hidden transition-opacity"
             onClick={() => setIsInspectorOpen(false)}
           />
         )}
@@ -627,7 +627,7 @@ function AppContent() {
           )}
 
           {/* Top Header */}
-          <header className="h-12 flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white/80 dark:bg-background backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
+          <header className="h-12 flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white dark:bg-background z-20 border-b border-zinc-200/70 dark:border-zinc-800 transition-all">
             <div className="flex items-center gap-2">
               <button
                 type="button"

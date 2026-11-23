@@ -34,10 +34,10 @@ export function MemorySection() {
                 type="button"
                 aria-expanded={memoryOpen}
                 onClick={() => setMemoryOpen(o => !o)}
-                className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
+                className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/40"
             >
                 <div className="flex items-center gap-3">
-                    <Brain className="w-5 h-5 text-purple-500" />
+                    <Brain className="w-5 h-5 text-qteal-500" />
                     <div className="text-left">
                         <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Agent Memory</h2>
                         <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Goals the spatial agent has learned to complete successfully.</p>

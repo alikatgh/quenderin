@@ -5,6 +5,9 @@ import { RetryState } from '../src/components/RetryState.js';
 import { ModelManagerSection } from '../src/components/settings/ModelManagerSection.js';
 import { NotesSection } from '../src/components/settings/NotesSection.js';
 import { MemorySection } from '../src/components/settings/MemorySection.js';
+import { Sidebar } from '../src/components/Sidebar.js';
+import { ImageGenerationArea } from '../src/components/ImageGenerationArea.js';
+import { VisionArea } from '../src/components/VisionArea.js';
 
 /**
  * r11 (last open item): automated a11y — axe-core over the rendered components, in CI.
@@ -122,6 +125,68 @@ describe('a11y: MemorySection', () => {
         fireEvent.click(toggle);
         await waitFor(() => expect(screen.getByText('open settings')).toBeTruthy());
         expect(screen.getByRole('button', { name: /Clear All/ })).toBeTruthy();
+        await expectNoAxeViolations(container);
+    });
+});
+
+describe('a11y: Sidebar, Images, and Vision workspaces', () => {
+    it('Sidebar navigation, readiness indicator, and recent sessions pass axe', async () => {
+        mockFetchJson({
+            '/api/sessions': {
+                sessions: [{
+                    id: 'sess-1',
+                    title: 'Summarize release notes',
+                    createdAt: '2026-11-22T10:00:00Z',
+                    updatedAt: '2026-11-22T10:05:00Z',
+                    messageCount: 3,
+                }],
+            },
+        });
+        const { container } = render(
+            <Sidebar
+                isOpen
+                wsReady
+                logs={[]}
+                readinessStage="ready"
+                readinessReady
+                currentView="general_chat"
+                setCurrentView={vi.fn()}
+                onNewGoal={vi.fn()}
+                onSelectSession={vi.fn()}
+                activeModel="qwen3-4b"
+                hardwareTier="standard"
+            />
+        );
+        await waitFor(() => expect(screen.getByText('Summarize release notes')).toBeTruthy());
+        await expectNoAxeViolations(container);
+    });
+
+    it('ImageGenerationArea passes axe', async () => {
+        const { container } = render(<ImageGenerationArea />);
+        expect(screen.getByLabelText('Scene caption')).toBeTruthy();
+        await expectNoAxeViolations(container);
+    });
+
+    it('VisionArea passes axe', async () => {
+        const api = {
+            models: vi.fn(async () => [{
+                id: 'fixture',
+                label: 'Vision fixture',
+                minimumMemoryBytes: 8 * 1024 ** 3,
+                artifacts: [{ role: 'model' as const, filename: 'model.gguf', bytes: 4, url: 'https://example.invalid/model' }],
+            }]),
+            status: vi.fn(async () => ({ installed: true, availableMemoryBytes: 16 * 1024 ** 3 })),
+            chooseImage: vi.fn(async () => null),
+            install: vi.fn(async () => {}),
+            verify: vi.fn(async () => {}),
+            answer: vi.fn(async () => ({ text: 'Fixture', tokens: 2 })),
+            chooseGraniteModel: vi.fn(async () => null),
+            answerGranite: vi.fn(async () => ({ text: 'Fixture' })),
+            cancel: vi.fn(async () => {}),
+            onProgress: vi.fn(() => () => {}),
+        };
+        const { container } = render(<VisionArea active api={api} />);
+        await screen.findByText('Vision fixture');
         await expectNoAxeViolations(container);
     });
 });

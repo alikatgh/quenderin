@@ -99,7 +99,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
 
         return (
             <div className="p-5">
-                <BrainCircuit className="w-5 h-5 text-purple-500 mb-3" aria-hidden="true" />
+                <BrainCircuit className="w-5 h-5 text-qteal-500 mb-3" aria-hidden="true" />
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1.5">Choose an AI Model</h2>
                 <p className="text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed mb-5">
                     Pick a model based on how much RAM your computer has.
@@ -115,11 +115,11 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                         className="mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50"
                     >
                         <div className="flex justify-between text-xs font-semibold mb-2">
-                            <span className="text-purple-600 dark:text-purple-400">Downloading {models.find(m => m.id === activeId)?.label ?? 'model'}...</span>
+                            <span className="text-qteal-600 dark:text-qteal-300">Downloading {models.find(m => m.id === activeId)?.label ?? 'model'}...</span>
                             <span className="text-zinc-500 tabular-nums">{downloadProgress}%</span>
                         </div>
                         <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 overflow-hidden">
-                            <div className="bg-purple-500 h-2 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
+                            <div className="bg-qteal-500 h-2 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
                         </div>
                     </div>
                 )}
@@ -369,7 +369,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Troubleshooter">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/55 dark:bg-black/70 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Troubleshooter">
             <div ref={dialogRef} tabIndex={-1} className="bg-white dark:bg-[#18181b] w-full max-w-lg rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col focus:outline-none">
 
                 {/* Header */}

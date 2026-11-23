@@ -76,7 +76,7 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
             aria-checked={checked}
             aria-label={label}
             onClick={onChange}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-qteal-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
         >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
@@ -223,7 +223,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     <div className="flex items-center gap-4">
                         <button
                             onClick={onBack}
-                            className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
+                            className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/40"
                         >
                             <ArrowLeft className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                         </button>
@@ -239,7 +239,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                         </button>
                         <button
                             onClick={handleSave}
-                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-all"
+                            className="flex items-center gap-2 px-4 py-2 bg-qteal-600 hover:bg-qteal-700 text-white text-sm font-semibold rounded-xl transition-all"
                         >
                             {isSaved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                             {isSaved ? 'Settings Applied' : 'Apply Changes'}
@@ -454,7 +454,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                         value={passphraseDraft}
                                         onChange={(e) => setPassphraseDraft(e.target.value)}
                                         placeholder={settings.privacyPassphrase ? 'Passphrase set — type to change' : 'Enter passphrase'}
-                                        className="w-full bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded-xl py-2 px-4 shadow-inner outline-none transition-all"
+                                        className="w-full bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 focus:border-qteal-500 focus:ring-2 focus:ring-qteal-500/20 rounded-xl py-2 px-4 shadow-inner outline-none transition-all"
                                     />
                                     <p className="mt-2 text-[12px] text-red-500 font-medium">Warning: If lost, local conversation history cannot be un-encrypted.</p>
                                 </div>
@@ -465,8 +465,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     {/* Appearance Section */}
                     <section className="premium-card p-6">
                         <div className="flex items-center gap-3 mb-5">
-                            <Sun className="w-5 h-5 text-purple-500 dark:hidden" />
-                            <Moon className="w-5 h-5 text-purple-500 hidden dark:block" />
+                            <Sun className="w-5 h-5 text-qteal-500 dark:hidden" />
+                            <Moon className="w-5 h-5 text-qteal-400 hidden dark:block" />
                             <div>
                                 <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Appearance</h2>
                                 <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Customize your visual experience.</p>
@@ -487,7 +487,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                         onThemeChange?.(pref);
                                     }}
                                     className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${settings.themePreference === mode.id
-                                        ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-400 ring-2 ring-purple-500/20'
+                                        ? 'bg-qteal-50 dark:bg-qteal-500/15 border-qteal-500 text-qteal-700 dark:text-qteal-300 ring-2 ring-qteal-500/20'
                                         : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                                         }`}
                                 >

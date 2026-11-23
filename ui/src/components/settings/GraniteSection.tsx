@@ -34,7 +34,7 @@ export function GraniteSection({ api = (window as Window & { quenderinVision?: V
                 setStatus('Verifying and loading Granite for local text chat…'); const selected = [...messages, { role: 'user' as const, content: draft }];
                 const answer = await api.answerGranite({ modelHandle: model!.handle, messages: selected });
                 if (mounted.current && !cancelled.current) { setMessages([...selected, { role: 'assistant', content: answer.text }]); setDraft(''); setStatus('Reply generated locally.'); }
-            })} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Ask Granite</button>
+            })} className="rounded-lg bg-qteal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Ask Granite</button>
                 {busy && <button type="button" onClick={() => { cancelled.current = true; setStatus('Cancelling Granite…'); void api.cancel().catch(cause => setError(String(cause))); }} className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">Cancel Granite</button>}
                 {messages.length > 0 && <button type="button" disabled={busy} onClick={() => { setMessages([]); setError(null); setStatus('New Granite conversation.'); }} className="rounded-lg border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-700">New Granite conversation</button>}
             </div>

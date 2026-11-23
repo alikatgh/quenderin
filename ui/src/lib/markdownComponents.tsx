@@ -36,7 +36,7 @@ export const safeMarkdownComponents: Record<string, any> = {
         const arr = children as unknown;
         const textIsUrl = Array.isArray(arr) && typeof arr[0] === 'string' && arr[0] === url;
         return (
-            <a href={url} target="_blank" rel="noopener noreferrer nofollow" title={url} className="text-purple-600 dark:text-purple-400 underline underline-offset-2">
+            <a href={url} target="_blank" rel="noopener noreferrer nofollow" title={url} className="text-qteal-600 dark:text-qteal-300 underline underline-offset-2">
                 {children}{!textIsUrl && <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-1">({url})</span>}
             </a>
         );

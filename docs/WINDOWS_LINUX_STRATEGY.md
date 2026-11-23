@@ -69,8 +69,8 @@ Chat always worked on win/linux (node-llama-cpp prebuilds); the AGENT was macOS-
 the capability library was. First port slice shipped: `platformAutomation.ts` (an argv-only
 `CommandRunner` — fixed commands; user values ride as their own argv elements or as environment
 variables read by fixed PowerShell scripts, so there is NO interpolation layer to escape) and
-`platformCapabilities.ts`: **win.\*** (clipboard.read, explorer.reveal · app.open via the
-`$env:` value channel, url.open via rundll32) and **linux.\*** (clipboard.read with
+`platformCapabilities.ts`: **`win.*`** (clipboard.read, explorer.reveal · app.open via the
+`$env:` value channel, url.open via rundll32) and **`linux.*`** (clipboard.read with
 wl-paste→xclip fallback, files.reveal · url.open via xdg-open, notify.send). Wired into
 `quenderin do` (the macOS-only guard is gone), `quenderin capabilities`, and the dashboard's
 governed Tasks service — same spine, per-run approval, ledger. Next capabilities to grow:

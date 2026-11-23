@@ -85,7 +85,7 @@ export function Docs({ onBack }: DocsProps) {
             <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-background overflow-y-auto relative">
 
                 {/* Mobile Header (Hidden on Desktop) */}
-                <div className="md:hidden sticky top-0 bg-white/90 dark:bg-background backdrop-blur-md z-10 border-b border-zinc-200 dark:border-zinc-800 p-4 shrink-0">
+                <div className="md:hidden sticky top-0 bg-white dark:bg-background z-10 border-b border-zinc-200 dark:border-zinc-800 p-4 shrink-0">
                     <button
                         onClick={onBack}
                         className="flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-400"
