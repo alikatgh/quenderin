@@ -441,6 +441,7 @@ PAGES: tuple[DocPage, ...] = (
             "CHANGELOG.md",
             "docs/social/2026-10-16-muse-bonsai/README.md",
             "docs/social/2026-10-18-open-models/README.md",
+            "docs/social/2026-11-22-kromoss-hex-docs/README.md",
         ),
         fold_subdocs=True,
     ),

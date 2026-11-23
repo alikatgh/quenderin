@@ -1,0 +1,122 @@
+{
+  "date": "2026-11-22",
+  "sourceRevision": "22bc629f4df676b114960bc57ffc12bb2d3b88f8",
+  "websiteUrl": "https://quenderin.org",
+  "blogPostUrl": "https://quenderin.org/blog-kromoss-hex-november-2026",
+  "docsPortalUrl": "https://quenderin.org/docs/",
+  "cloudflareAnalytics": {
+    "status": "disabled",
+    "previousSetting": "Enable, excluding visitor data in the EU",
+    "rumBeaconDetectedOnLiveRoutes": false
+  },
+  "liveUrlChecks": {
+    "/": {
+      "status": 200,
+      "bytes": 10316,
+      "sha256": "8fea483b273bd0f4864089343e50f2e951f0b07eca120e571a4ec791f469210d",
+      "beaconCount": 0
+    },
+    "/tell-me-more": {
+      "status": 200,
+      "bytes": 78951,
+      "sha256": "c175bcff6f7daa2243411e8317f36dafdc9d9cb97a499c1395e2ebeee6693a9b",
+      "beaconCount": 0
+    },
+    "/blog-kromoss-hex-november-2026": {
+      "status": 200,
+      "bytes": 9112,
+      "sha256": "88a5bd504099fd5dd45452fdefcbd85f8fff0433149f3334e8ef74c329778939",
+      "beaconCount": 0
+    },
+    "/blog-website-fonts-docs-november-2026": {
+      "status": 200,
+      "bytes": 8182,
+      "sha256": "d0b3d48a0002c29fd928053eeb225397de835cc45ebebccb0f8a1dd816d8990f",
+      "beaconCount": 0
+    },
+    "/docs/": {
+      "status": 200,
+      "bytes": 33319,
+      "sha256": "d6342838b26a21d85290c7634798e1f07267f181ef407d1b15bb2f0860e976ea",
+      "beaconCount": 0
+    },
+    "/docs/models-catalog": {
+      "status": 200,
+      "bytes": 37029,
+      "sha256": "2cb2236af48835d8a89f16ee03f375df6545e4f440b99ea682c68029080e601e",
+      "beaconCount": 0
+    },
+    "/data/model-catalog.json": {
+      "status": 200,
+      "bytes": 27070,
+      "sha256": "391bfe938d841ebb96e18e2c42f3fb12e5de94785b41f06a496b713518064123",
+      "beaconCount": 0
+    }
+  },
+  "artwork": {
+    "file": "quenderin-kromoss-hex-docs.png",
+    "sourceConversation": "https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a",
+    "sourceTitle": "Generate Header Image Prompt",
+    "chatGptFileId": "file_0000000095f48211a9d4d9ef9eaf90c9",
+    "downloadPath": "~/Downloads/Enchanting Workshop by the Waterfalls.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 2793659,
+    "sha256": "a767b91516449651c8fa451b452b9bbc2cca74eac2ae7606f7c8d82ab1bed3df",
+    "altText": "Editorial illustration of developers and a teal-and-copper braided elf collaborating on local image generation tablet artwork, a desktop microphone receiver, and engineering documentation folios overlooking a sunlit waterfall city."
+  },
+  "publications": {
+    "facebook": {
+      "page": "https://www.facebook.com/quenderin",
+      "pageId": "1185788367957208",
+      "url": "https://www.facebook.com/quenderin/posts/pfbid0AbePC2QDNKijgSaGWZbhiJnF5Y8ds26Acr8eynXvjb4dR85wYz3LGjZGCEwfEoJPl",
+      "aiDisclosure": "AI content",
+      "audience": "Public",
+      "boosted": false,
+      "duplicateSubmitted": false,
+      "proofScreenshot": {
+        "file": "facebook-live.png",
+        "width": 1400,
+        "height": 2572,
+        "bytes": 2890224,
+        "sha256": "e473e280c5dcb0a4dc727fc42bc1558b25c6f3e138581b440ee0e500bd129cad"
+      }
+    },
+    "linkedin": {
+      "page": "https://www.linkedin.com/company/135196272/",
+      "companyId": "135196272",
+      "activityUrl": "https://www.linkedin.com/feed/update/urn:li:activity:7530296322130878464/",
+      "shareUrl": "https://www.linkedin.com/feed/update/urn:li:share:7530296321057091584/",
+      "shortenedLinkRendered": "https://lnkd.in/dMqmKfsA",
+      "c2paContentCredentials": true,
+      "audience": "Anyone",
+      "boosted": false,
+      "duplicateSubmitted": false,
+      "proofScreenshot": {
+        "file": "linkedin-live.png",
+        "width": 1110,
+        "height": 2392,
+        "bytes": 1906370,
+        "sha256": "19e76c3ed83d1efae7cf5970dbd50bd30d42bc6a18e07a080537f5120752575f"
+      }
+    },
+    "homepageProof": {
+      "file": "homepage-live.png",
+      "width": 2994,
+      "height": 1602,
+      "bytes": 4751581,
+      "sha256": "44f7c4ce7260026e58e416d45fe890302901cd6a844aaff4776eb1494ade9829"
+    }
+  },
+  "verificationBoundary": {
+    "catalogParityModels": 28,
+    "inferenceVerified": false,
+    "physicalDeviceOrSimulatorUiVerified": false,
+    "publicStoresUpdated": false,
+    "storeState": {
+      "appStore": "0.6.0 Ready for Sale (0.6.1 Unsubmitted draft)",
+      "googlePlay": "2 (0.2.0) Closed testing - Alpha",
+      "desktop": "v0.2.1"
+    }
+  }
+}
