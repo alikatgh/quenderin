@@ -110,7 +110,7 @@ test('all 12 i18n language files have 100% key parity and cover all HTML data-i1
 
     for (const htmlFile of readdirSync(websiteDir).filter((f) => f.endsWith('.html'))) {
         const html = readFileSync(path.join(websiteDir, htmlFile), 'utf8');
-        for (const match of html.matchAll(/data-i18n(?:-(?:html|placeholder))?="([^"]+)"/g)) {
+        for (const match of html.matchAll(/data-i18n(?:-(?:html|placeholder|content))?="([^"]+)"/g)) {
             const key = match[1];
             assert.ok(key in en, `${htmlFile} uses unknown i18n key: ${key}`);
             for (const [langFile, dict] of dicts) {

@@ -152,9 +152,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
     if (diffusionLibDir != null) sourceSets["main"].jniLibs.srcDir(diffusionLibDir)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 // Release artifacts without native llama silently ship demo-mode chat. Fail closed unless

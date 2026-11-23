@@ -115,19 +115,48 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
     assert.ok(!tmm.includes('9 November update</a>'), 'tell-me-more.html caveat should point to 22 November update');
     assert.ok(tmm.includes('data-i18n="catalog.role.experimental_text"'));
     assert.ok(tmm.includes('data-i18n="catalog.role.experimental_prism"'));
+    for (let c = 1; c <= 6; c += 1) {
+        assert.ok(tmm.includes(`data-i18n="tmm.oct.c${c}.h3"`), `tell-me-more.html missing tmm.oct.c${c}.h3`);
+    }
+    assert.ok(tmm.includes('data-i18n="tmm.oct.notes.sum"'), 'tell-me-more.html missing tmm.oct.notes.sum');
 
-    // 4. download.html: header/theme/i18n parity + structured cards + <=380-char paragraphs
+    // 4. All top-level marketing/legal/blog HTML pages: <=650-char <p>, theme.js, zero analytics
+    const topPages = readdirSync(websiteDir).filter((f) => f.endsWith('.html'));
+    assert.equal(topPages.length, 37);
+    for (const file of topPages) {
+        const html = readFileSync(path.join(websiteDir, file), 'utf8');
+        const stats = paragraphStats(html);
+        assert.equal(stats.over650, 0, `${file} has paragraph >650 chars (max=${stats.max})`);
+        assert.ok(html.includes('<script src="theme.js"></script>'), `${file} must load shared theme.js`);
+        assert.ok(!/<(?:script|link|img|iframe)\b[^>]*(?:src|href)=["']https?:\/\/[^"']*(?:fonts\.googleapis|googletagmanager|google-analytics|mixpanel|amplitude|segment\.com)/i.test(html), `${file} loads external CDN or analytics resource`);
+    }
+
+    // 5. Core interactive marketing & guide pages: shared header/footer/i18n/theme parity
+    for (const file of [
+        'download.html',
+        'faq.html',
+        'features.html',
+        'help.html',
+        'how-it-works.html',
+        'models.html',
+        'reality.html',
+        'roadmap.html',
+        'tell-me-more.html',
+        'why-local-agent.html',
+    ]) {
+        const page = readFileSync(path.join(websiteDir, file), 'utf8');
+        assert.ok(page.includes('class="site-header"'), `${file} must share site-header`);
+        assert.ok(page.includes('class="lang-select"'), `${file} must expose language switcher`);
+        assert.ok(page.includes('class="theme-toggle"'), `${file} must expose theme toggle`);
+        assert.ok(page.includes('class="site-footer"'), `${file} must include full site-footer`);
+        assert.ok(page.includes('i18n.js'), `${file} must load i18n.js`);
+    }
     const dl = readFileSync(path.join(websiteDir, 'download.html'), 'utf8');
-    assert.ok(dl.includes('class="site-header"'), 'download.html must share site-header');
-    assert.ok(dl.includes('class="lang-select"'), 'download.html must expose language switcher');
-    assert.ok(dl.includes('class="theme-toggle"'), 'download.html must expose theme toggle');
-    assert.ok(dl.includes('class="site-footer"'), 'download.html must include full site-footer');
-    assert.ok(dl.includes('i18n.js'), 'download.html must load i18n.js');
     assert.ok(dl.includes('data-copy-target="dl-cli-cmd"'), 'download.html CLI block must include copy button');
     const dlStats = paragraphStats(dl);
     assert.equal(dlStats.over380, 0, `download.html should avoid >380-char text walls (max=${dlStats.max})`);
 
-    // 5. Desktop Electron UI (ui/src + ui/tailwind.config.js): zero purple-* & zero backdrop-blur-*
+    // 6. Desktop Electron UI (ui/src + ui/tailwind.config.js): zero purple-* & zero backdrop-blur-*
     const tailwindCfg = readFileSync(path.join(root, 'ui', 'tailwind.config.js'), 'utf8');
     assert.ok(tailwindCfg.includes('qteal:') && tailwindCfg.includes('qcopper:'), 'ui/tailwind.config.js must define Quenderin brand tokens');
     const uiFiles = walkFiles(uiSrcDir, ['.ts', '.tsx', '.css']);
@@ -204,4 +233,96 @@ test('A/B scorecard compares pre-UX baseline 665bd94 (Variant A) vs current UX o
     assert.ok(curTints < baseTints && curTints === 0);
     assert.ok(curPurple < basePurple && curPurple === 0);
     assert.ok(curBlur < baseBlur && curBlur === 0);
+});
+
+function parseHexToken(block, varName) {
+    const match = block.match(new RegExp(`${varName}\\s*:\\s*(#[0-9a-fA-F]{3,8}|var\\(--[a-zA-Z0-9-]+\\))`));
+    assert.ok(match, `Missing CSS token ${varName}`);
+    return match[1];
+}
+
+function resolveCssHex(block, rootBlock, varName, visited = new Set()) {
+    assert.ok(!visited.has(varName), `Cyclic CSS var reference: ${varName}`);
+    visited.add(varName);
+    const raw = block.includes(`${varName}:`) ? parseHexToken(block, varName) : parseHexToken(rootBlock, varName);
+    if (raw.startsWith('#')) return raw.length === 4 ? `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}` : raw;
+    const ref = raw.match(/^var\((--[a-zA-Z0-9-]+)\)$/);
+    assert.ok(ref, `Cannot resolve non-hex token ${varName}=${raw}`);
+    return resolveCssHex(block, rootBlock, ref[1], visited);
+}
+
+function relativeLuminance(hex) {
+    const clean = hex.replace('#', '');
+    const n = Number.parseInt(clean.slice(0, 6), 16);
+    const channels = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(fgHex, bgHex) {
+    const l1 = relativeLuminance(fgHex);
+    const l2 = relativeLuminance(bgHex);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+test('WCAG 2.1 AA (>= 4.5:1) holds across styles.css, detail-page.css, docs.css, and tailwind.config.js', () => {
+    const stylesCss = readFileSync(path.join(websiteDir, 'styles.css'), 'utf8');
+    const detailCss = readFileSync(path.join(websiteDir, 'detail-page.css'), 'utf8');
+    const docsCss = readFileSync(path.join(docsDir, 'docs.css'), 'utf8');
+    const tailwindCfg = readFileSync(path.join(root, 'ui', 'tailwind.config.js'), 'utf8');
+
+    const rootBlock = stylesCss.match(/:root\s*\{([^}]+)\}/s)?.[1] ?? '';
+    const darkSectionBlock = stylesCss.match(/\n\[data-theme="dark"\]\s*\{([^}]+)\}/s)?.[1] ?? '';
+    const darkModeBlock = stylesCss.match(/html\[data-theme-mode="dark"\]\s*\{([^}]+)\}/s)?.[1] ?? '';
+    const detailLightBlock = detailCss.match(/\.detail-page\s*\{([^}]+)\}/s)?.[1] ?? '';
+    const detailDarkBlock = detailCss.match(/\.detail-page\s+\[data-theme="dark"\]\s*\{([^}]+)\}/s)?.[1] ?? '';
+    const docsLightBlock = docsCss.match(/\.docs-page\s*\{([^}]+)\}/s)?.[1] ?? '';
+    const docsDarkBlock = docsCss.match(/html\[data-theme-mode="dark"\]\s*\.docs-page\s*\{([^}]+)\}/s)?.[1] ?? '';
+
+    assert.ok(rootBlock && darkSectionBlock && darkModeBlock, 'Missing styles.css token blocks');
+    assert.ok(detailLightBlock && detailDarkBlock, 'Missing detail-page.css token blocks');
+    assert.ok(docsLightBlock && docsDarkBlock, 'Missing docs.css token blocks');
+
+    const checks = [
+        ['light body on canvas', resolveCssHex(rootBlock, rootBlock, '--text'), resolveCssHex(rootBlock, rootBlock, '--canvas')],
+        ['light body on tint', resolveCssHex(rootBlock, rootBlock, '--text'), resolveCssHex(rootBlock, rootBlock, '--surface-tint')],
+        ['light secondary on tint', resolveCssHex(rootBlock, rootBlock, '--text-secondary'), resolveCssHex(rootBlock, rootBlock, '--surface-tint')],
+        ['light muted on canvas', resolveCssHex(rootBlock, rootBlock, '--text-muted'), resolveCssHex(rootBlock, rootBlock, '--canvas')],
+        ['light muted on tint', resolveCssHex(rootBlock, rootBlock, '--text-muted'), resolveCssHex(rootBlock, rootBlock, '--surface-tint')],
+        ['light brand on canvas', resolveCssHex(rootBlock, rootBlock, '--brand'), resolveCssHex(rootBlock, rootBlock, '--canvas')],
+        ['light brand on tint', resolveCssHex(rootBlock, rootBlock, '--brand'), resolveCssHex(rootBlock, rootBlock, '--surface-tint')],
+        ['primary CTA text on copper-cta', resolveCssHex(rootBlock, rootBlock, '--on-brand'), resolveCssHex(rootBlock, rootBlock, '--copper-cta')],
+        ['primary CTA text on copper-cta-hover', resolveCssHex(rootBlock, rootBlock, '--on-brand'), resolveCssHex(rootBlock, rootBlock, '--copper-cta-hover')],
+        ['header text on header-surface', resolveCssHex(rootBlock, rootBlock, '--header-text'), resolveCssHex(rootBlock, rootBlock, '--header-surface')],
+        ['header secondary on header-surface', resolveCssHex(rootBlock, rootBlock, '--header-secondary'), resolveCssHex(rootBlock, rootBlock, '--header-surface')],
+        ['header accent on header-surface', resolveCssHex(rootBlock, rootBlock, '--header-accent'), resolveCssHex(rootBlock, rootBlock, '--header-surface')],
+        ['dark section brand on ink-900', resolveCssHex(darkSectionBlock, rootBlock, '--brand'), resolveCssHex(rootBlock, rootBlock, '--ink-900')],
+        ['dark section brand on ink-800', resolveCssHex(darkSectionBlock, rootBlock, '--brand'), resolveCssHex(rootBlock, rootBlock, '--ink-800')],
+        ['dark section muted on ink-800', resolveCssHex(darkSectionBlock, rootBlock, '--text-muted'), resolveCssHex(rootBlock, rootBlock, '--ink-800')],
+        ['dark mode text on surface', resolveCssHex(darkModeBlock, rootBlock, '--text'), resolveCssHex(darkModeBlock, rootBlock, '--surface')],
+        ['dark mode muted on tint', resolveCssHex(darkModeBlock, rootBlock, '--text-muted'), resolveCssHex(darkModeBlock, rootBlock, '--surface-tint')],
+        ['dark mode brand on tint', resolveCssHex(darkModeBlock, rootBlock, '--brand'), resolveCssHex(darkModeBlock, rootBlock, '--surface-tint')],
+        ['detail light brand on tint', parseHexToken(detailLightBlock, '--brand'), parseHexToken(detailLightBlock, '--surface-tint')],
+        ['detail light muted on tint', parseHexToken(detailLightBlock, '--text-muted'), parseHexToken(detailLightBlock, '--surface-tint')],
+        ['detail dark brand on surface', parseHexToken(detailDarkBlock, '--brand'), parseHexToken(detailDarkBlock, '--surface')],
+        ['detail dark muted on tint', parseHexToken(detailDarkBlock, '--text-muted'), parseHexToken(detailDarkBlock, '--surface-tint')],
+        ['docs light link on paper tint', parseHexToken(docsLightBlock, '--doc-link'), resolveCssHex(rootBlock, rootBlock, '--surface-tint')],
+        ['docs light tip label on paper tint', parseHexToken(docsLightBlock, '--doc-tip-border'), resolveCssHex(rootBlock, rootBlock, '--surface-tint')],
+        ['docs dark link on ink-900', parseHexToken(docsDarkBlock, '--doc-link'), resolveCssHex(rootBlock, rootBlock, '--ink-900')],
+    ];
+
+    const qteal500 = tailwindCfg.match(/qteal:\s*\{[^}]*500:\s*'(#[0-9a-fA-F]{6})'/s)?.[1];
+    const qteal600 = tailwindCfg.match(/qteal:\s*\{[^}]*600:\s*'(#[0-9a-fA-F]{6})'/s)?.[1];
+    const qcopper600 = tailwindCfg.match(/qcopper:\s*\{[^}]*600:\s*'(#[0-9a-fA-F]{6})'/s)?.[1];
+    assert.ok(qteal500 && qteal600 && qcopper600, 'Missing Tailwind brand tokens');
+    checks.push(['tailwind qteal-500 on white', qteal500, '#ffffff']);
+    checks.push(['tailwind white on qteal-600', '#ffffff', qteal600]);
+    checks.push(['tailwind white on qcopper-600', '#ffffff', qcopper600]);
+
+    for (const [label, fg, bg] of checks) {
+        const ratio = contrastRatio(fg, bg);
+        assert.ok(ratio >= 4.5, `${label} (${fg} on ${bg}) contrast ${ratio.toFixed(2)}:1 < 4.5:1`);
+    }
 });

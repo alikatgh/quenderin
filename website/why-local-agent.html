@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Why a local agent beats a cloud one — Quenderin</title>
-<meta name="description" content="Cloud computer-use agents are smarter per step. A local, governed agent wins where it matters for real chores: instant stop, whole-task undo, a readable record, and no AI middleman. Here's the honest comparison." />
+<title data-i18n="wla.meta.title">Why a local agent beats a cloud one — Quenderin</title>
+<meta name="description" data-i18n-content="wla.meta.description" content="Cloud computer-use agents are smarter per step. A local, governed agent wins where it matters for real chores: instant stop, whole-task undo, a readable record, and no AI middleman. Here's the honest comparison." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <script src="theme.js"></script>
@@ -14,82 +14,164 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=20261122-polish" />
+<link rel="stylesheet" href="styles.css?v=20261123-ux2" />
 <link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
 <link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
-<header class="legal-header">
-  <div class="container container-wide post-header">
-    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
-    <nav class="post-nav" aria-label="Primary">
-      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
-      <a href="models"><span class="qi qi-cpu" aria-hidden="true"></span>Models</a>
-      <a href="download"><span class="qi qi-download" aria-hidden="true"></span>Download</a>
-      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+<a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" data-language-link aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <div class="lang-picker">
+        <svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="hi">हिन्दी</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="bn">বাংলা</option>
+          <option value="pt">Português</option>
+          <option value="ru">Русский</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+        <svg class="lang-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <ul class="nav-menu" id="nav-menu">
+        <li><a class="nav-link-icon" href="docs/" data-language-link><span class="qi qi-book-open" aria-hidden="true"></span><span data-i18n="nav.docs">Docs</span></a></li>
+        <li><a href="tell-me-more" data-language-link data-i18n="simple.more">Tell me more</a></li>
+        <li><a href="models" data-language-link data-i18n="nav.models">Models</a></li>
+        <li><a href="download" data-language-link data-i18n="nav.download">Download</a></li>
+        <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:16px;height:16px;margin-right:.45rem"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.575.106.785-.25.785-.555 0-.273-.01-.998-.015-1.96-3.196.694-3.87-1.54-3.87-1.54-.523-1.33-1.276-1.683-1.276-1.683-1.043-.713.08-.699.08-.699 1.153.082 1.76 1.184 1.76 1.184 1.025 1.757 2.69 1.25 3.345.955.103-.743.4-1.25.728-1.538-2.552-.29-5.236-1.276-5.236-5.677 0-1.254.448-2.28 1.183-3.083-.119-.29-.513-1.46.112-3.043 0 0 .965-.309 3.163 1.178a11 11 0 0 1 5.76 0c2.196-1.487 3.16-1.178 3.16-1.178.626 1.583.232 2.753.114 3.043.737.803 1.182 1.829 1.182 3.083 0 4.412-2.688 5.384-5.248 5.668.413.357.78 1.06.78 2.137 0 1.543-.014 2.787-.014 3.166 0 .308.207.668.79.554A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a></li>
+      </ul>
     </nav>
   </div>
 </header>
 
 <main class="container legal" id="main">
-  <h1>Why a local agent beats a cloud one</h1>
-  <p class="legal-updated">The honest version — including where we lose.</p>
+  <h1 data-i18n="wla.h1">Why a local agent beats a cloud one</h1>
+  <p class="legal-updated" data-i18n="wla.sub">The honest version — including where we lose.</p>
 
   <div class="legal-note">
-    <p><strong>Where we lose:</strong> a cloud frontier model is smarter per step than a model
+    <p data-i18n-html="wla.note.p"><strong>Where we lose:</strong> a cloud frontier model is smarter per step than a model
     running on your laptop. We don't pretend otherwise. <strong>Where we win:</strong> for the
     everyday chores you'd actually hand to an agent — organize this folder, draft this note,
     add these reminders — reliability and trust matter more than raw IQ, and those are
     <em>architecture</em>, which a local agent controls completely.</p>
   </div>
 
-  <h2>The trust loop: stop, review, roll back</h2>
-  <p>A cloud agent asks you to trust a remote brain with your computer. Quenderin asks you to
+  <h2 data-i18n="wla.s1.h2">The trust loop: stop, review, roll back</h2>
+  <p data-i18n="wla.s1.p">A cloud agent asks you to trust a remote brain with your computer. Quenderin asks you to
   trust nothing — because every action is haltable, legible, and reversible:</p>
   <ul>
-    <li><strong>Stop it dead, mid-task.</strong> A cloud agent's "stop" halts the remote model,
+    <li data-i18n-html="wla.s1.l1"><strong>Stop it dead, mid-task.</strong> A cloud agent's "stop" halts the remote model,
     but it can't un-fire an action already sent to your machine. Quenderin checks a signal on
     <em>your</em> computer between every step — press stop and the next step simply never runs.
     No round-trip, no lag.</li>
-    <li><strong>Read what it did — grouped by task, and including what it refused.</strong> Every
+    <li data-i18n-html="wla.s1.l2"><strong>Read what it did — grouped by task, and including what it refused.</strong> Every
     action lands in a plain, append-only log you own, grouped under the task that caused it
     (<code>quenderin history</code>). The agent's reasoning isn't a remote black box; it's a file
     you can open — where a cloud agent gives you an opaque chat transcript.</li>
-    <li><strong>Undo the whole task — even later.</strong> Changed your mind an hour after it ran,
+    <li data-i18n-html="wla.s1.l3"><strong>Undo the whole task — even later.</strong> Changed your mind an hour after it ran,
     in a brand-new session? <code>quenderin undo</code> reverses everything the agent did,
     newest-first. A cloud service can't offer transactional undo of your local machine; a local
     one can, and it survives closing the app.</li>
-    <li><strong>See it before you commit to it.</strong> <code>--dry-run</code> executes the
+    <li data-i18n-html="wla.s1.l4"><strong>See it before you commit to it.</strong> <code>--dry-run</code> executes the
     read-only steps for real (so the plan is grounded in your actual folder) but only
     <em>previews</em> anything that would change — an exact, side-effect-free rehearsal a cloud
     agent can't give you of your own machine.</li>
-    <li><strong>Nothing writes without your yes.</strong> Every action that changes something
+    <li data-i18n-html="wla.s1.l5"><strong>Nothing writes without your yes.</strong> Every action that changes something
     shows you a plain-language preview and waits for approval — a plan you read before it runs.</li>
   </ul>
 
-  <h2>No AI middleman</h2>
-  <p>This is the part that can't be copied. To use a cloud computer-use agent, your screen,
+  <h2 data-i18n="wla.s2.h2">No AI middleman</h2>
+  <p data-i18n-html="wla.s2.p">This is the part that can't be copied. To use a cloud computer-use agent, your screen,
   your files, and your intent are streamed to the vendor's datacenter for the model to reason
   over. With Quenderin, the model doing that reasoning runs <strong>on your machine</strong>.
   The apps you already use still see what you give them — but no AI company ever gets a copy of
   your files, your contacts, or what you asked for. For anyone in law, medicine, or finance,
   that's not a nice-to-have; it's the difference between "can use an agent" and "can't."</p>
 
-  <h2>And the boring wins</h2>
+  <h2 data-i18n="wla.s3.h2">And the boring wins</h2>
   <ul>
-    <li><strong>Works offline.</strong> On a plane, in a SCIF, on bad hotel wifi — it's your CPU.</li>
-    <li><strong>No per-action billing, no rate limits, no outages.</strong> Run it a thousand times; it costs the same as running it once.</li>
+    <li data-i18n-html="wla.s3.l1"><strong>Works offline.</strong> On a plane, in a SCIF, on bad hotel wifi — it's your CPU.</li>
+    <li data-i18n-html="wla.s3.l2"><strong>No per-action billing, no rate limits, no outages.</strong> Run it a thousand times; it costs the same as running it once.</li>
   </ul>
 
-  <h2>The honest caveat</h2>
-  <p>A smaller local model will sometimes choose a clumsy action. The difference is what happens
+  <h2 data-i18n="wla.s4.h2">The honest caveat</h2>
+  <p data-i18n-html="wla.s4.p">A smaller local model will sometimes choose a clumsy action. The difference is what happens
   when it does: with Quenderin, the worst case is a <em>refused</em> action in your log — never a
   surprise on your disk — because the safety lives in the harness, not in hoping the model is
   smart. We publish <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">every failure mode we know about</a>. That's the whole bet: trust is engineered, not assumed.</p>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="roadmap">Roadmap</a> &middot; <a href="blog-agent-hands">See it in action</a> &middot; <a href="privacy">Privacy</a></p>
+  <p style="margin-top:2.5rem"><a href="./" data-language-link data-i18n="dl.subnav.home">&larr; Back to Quenderin</a></p>
 </main>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag" data-i18n="foot.tag">An open-source app for local language models.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.product">Product</h3>
+        <a href="how-it-works" data-i18n="nav.how" data-language-link>How it works</a>
+        <a href="features" data-i18n="nav.features" data-language-link>Features</a>
+        <a href="models" data-i18n="nav.models" data-language-link>Models</a>
+        <a href="blog" data-i18n="nav.blog" data-language-link>Blog</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.project">Project</h3>
+        <a href="download" data-i18n="nav.download" data-language-link>Download</a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="docs/" data-language-link data-i18n="nav.docs">Docs</a>
+        <a href="reality" data-i18n="nav.reality" data-language-link>Measurements and limitations</a>
+        <a href="roadmap" data-i18n="nav.roadmap" data-language-link>Roadmap</a>
+        <a href="why-local-agent" data-i18n="nav.whylocal" data-language-link>Local agents</a>
+        <a href="privacy" data-i18n="nav.privacy" data-language-link>Privacy</a>
+        <a href="faq" data-i18n="nav.faq" data-language-link>FAQ</a>
+        <a href="help" data-i18n="nav.help" data-language-link>Get help</a>
+        <a href="changelog" data-i18n="nav.changelog" data-language-link>What's new</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy" data-i18n="foot.legal.privacy" data-language-link>Privacy</a>
+      <a href="terms" data-i18n="foot.legal.terms" data-language-link>Terms</a>
+      <a href="legal" data-i18n="foot.legal.legal" data-language-link>Legal Notice</a>
+      <a href="accessibility" data-i18n="foot.legal.a11y" data-language-link>Accessibility</a>
+    </nav>
+    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="main.js?v=20261123-ux" defer></script>
+<script src="i18n.js?v=20261123-ux" defer></script>
 <script src="post.js" defer></script>
 </body>
 </html>
