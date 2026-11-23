@@ -320,6 +320,15 @@ jobs:
       - name: Prepare verified Prism source and versioned addon patch
         run: python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
       - name: Compile the actual desktop addon (bounded CPU backend)
+        if: runner.os != 'Windows'
+        run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
+      - name: Compile the actual desktop addon (bounded CPU backend, Windows STL mismatch guard)
+        if: runner.os == 'Windows'
+        env:
+          # windows-latest upgraded to VS 18 STL (14.52) while LLVM remains Clang 20.1.8, triggering STL1000.
+          # Passing CFLAGS/CXXFLAGS rather than NODE_LLAMA_CPP_CMAKE_OPTION_* preserves the unhashed localBuilds path.
+          CFLAGS: -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH
+          CXXFLAGS: -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH
         run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
       - name: Verify source and probe the built addon
         run: |
