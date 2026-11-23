@@ -88,10 +88,19 @@ jobs:
           npm test
       - name: Build backend + dashboard UI
         run: npm run build
-      - name: Prepare and compile the pinned Prism desktop runtime
+      - name: Prepare the pinned Prism desktop runtime
+        run: python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
+      - name: Compile the pinned Prism desktop runtime
+        if: matrix.os != 'windows-latest'
+        run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
+      - name: Compile the pinned Prism desktop runtime (Windows STL mismatch guard)
+        if: matrix.os == 'windows-latest'
+        env:
+          CFLAGS: -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH
+          CXXFLAGS: -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH
+        run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
+      - name: Verify the compiled Prism desktop runtime
         run: |
-          python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
-          node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
           node scripts/verify_prism_node_runtime.mjs
       - name: Build and seal the pinned isolated image runtime (no model weights)
