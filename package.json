@@ -67,7 +67,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.4",
-    "fast-xml-parser": "^5.10.1",
+    "fast-xml-parser": "^5.12.0",
     "node-llama-cpp": "^3.19.1",
     "open": "^11.0.0",
     "pixelmatch": "^7.2.0",
