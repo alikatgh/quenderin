@@ -27,12 +27,17 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
     // Expose the generated source root in Android's model. Register the binding
     // directly with the external Kotlin compiler tasks below as well.
     sourceSets["main"].java.srcDir(remoteCryptoSdkDirectory.resolve("kotlin"))
     sourceSets["main"].jniLibs.srcDir(remoteCryptoJniDirectory)
     packaging.jniLibs.keepDebugSymbols += setOf("**/libquenderin_remote_crypto.so", "**/libjnidispatch.so")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 require(android.sourceSets["main"].jniLibs.srcDirs.any { it.canonicalFile == remoteCryptoJniDirectory.canonicalFile }) {

@@ -7,14 +7,14 @@
 <meta name="description" content="How Quenderin handles local features, optional DeepSeek and remote-computer connections, Step 5 hosts, downloads, and website requests." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<script src="theme.js"></script>
 <link rel="canonical" href="https://quenderin.org/privacy" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=20261122-polish" />
+<link rel="stylesheet" href="styles.css?v=20261123-ux2" />
 <link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
 <link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 </head>
@@ -75,7 +75,8 @@
 
   <p>Choosing <strong>Send</strong> sends the task text, session and command identifiers, and client time-zone context to the selected computer. Other actions send their corresponding session commands, model selections, or one-time tool approval decisions. The app can receive workspace paths, session history, answers, reasoning, tool events and approval details, and bot information from that computer. Tasks and tools run on the computer; its configured AI providers, tools, and services may receive data according to the task and its configuration. The app does not automatically import local chats or its direct DeepSeek API key into this connection.</p>
 
-  <p>The app saves connection details, trusted fingerprints, selected sessions, drafts, received history, and command recovery records separately on this device. These records have no automatic expiry. An authorized connection may reconnect and refresh remote history when the app returns to the foreground. <strong>Disconnect</strong> stops the connection and automatic recovery; it keeps saved credentials, drafts, and history. It does not delete the server account, revoke the device's server authorization, stop an already-running task, or delete computer/provider records. The server administrator and computer operator control their own records and deletion; contact them and any downstream provider about retained copies.</p>
+  <p>The app saves connection details, trusted fingerprints, selected sessions, drafts, received history, and command recovery records separately on this device. These records have no automatic expiry. An authorized connection may reconnect and refresh remote history when the app returns to the foreground.</p>
+  <p><strong>Disconnect</strong> stops the connection and automatic recovery; it keeps saved credentials, drafts, and history. It does not delete the server account, revoke the device's server authorization, stop an already-running task, or delete computer/provider records. The server administrator and computer operator control their own records and deletion; contact them and any downstream provider about retained copies.</p>
 
   <h3>Optional Step 5 CUDA host</h3>
 

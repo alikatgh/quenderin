@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Get help — Quenderin</title>
-<meta name="description" content="Help with Quenderin: quick fixes for the most common questions, and how to reach a human. No chatbot, no ticket portal — an email that gets read." />
+<title data-i18n="help.meta.title">Get help — Quenderin</title>
+<meta name="description" data-i18n-content="help.meta.description" content="Help with Quenderin: quick fixes for the most common questions, and how to reach a human. No chatbot, no ticket portal — an email that gets read." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <script src="theme.js"></script>
@@ -14,64 +14,146 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=20261122-polish" />
+<link rel="stylesheet" href="styles.css?v=20261123-ux2" />
 <link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
 <link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
-<header class="legal-header">
-  <div class="container container-wide post-header">
-    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
-    <nav class="post-nav" aria-label="Primary">
-      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
-      <a href="models"><span class="qi qi-cpu" aria-hidden="true"></span>Models</a>
-      <a href="download"><span class="qi qi-download" aria-hidden="true"></span>Download</a>
-      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+<a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" data-language-link aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <div class="lang-picker">
+        <svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="hi">हिन्दी</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="bn">বাংলা</option>
+          <option value="pt">Português</option>
+          <option value="ru">Русский</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+        <svg class="lang-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <ul class="nav-menu" id="nav-menu">
+        <li><a class="nav-link-icon" href="docs/" data-language-link><span class="qi qi-book-open" aria-hidden="true"></span><span data-i18n="nav.docs">Docs</span></a></li>
+        <li><a href="tell-me-more" data-language-link data-i18n="simple.more">Tell me more</a></li>
+        <li><a href="models" data-language-link data-i18n="nav.models">Models</a></li>
+        <li><a href="download" data-language-link data-i18n="nav.download">Download</a></li>
+        <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:16px;height:16px;margin-right:.45rem"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.575.106.785-.25.785-.555 0-.273-.01-.998-.015-1.96-3.196.694-3.87-1.54-3.87-1.54-.523-1.33-1.276-1.683-1.276-1.683-1.043-.713.08-.699.08-.699 1.153.082 1.76 1.184 1.76 1.184 1.025 1.757 2.69 1.25 3.345.955.103-.743.4-1.25.728-1.538-2.552-.29-5.236-1.276-5.236-5.677 0-1.254.448-2.28 1.183-3.083-.119-.29-.513-1.46.112-3.043 0 0 .965-.309 3.163 1.178a11 11 0 0 1 5.76 0c2.196-1.487 3.16-1.178 3.16-1.178.626 1.583.232 2.753.114 3.043.737.803 1.182 1.829 1.182 3.083 0 4.412-2.688 5.384-5.248 5.668.413.357.78 1.06.78 2.137 0 1.543-.014 2.787-.014 3.166 0 .308.207.668.79.554A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a></li>
+      </ul>
     </nav>
   </div>
 </header>
 
 <main class="container legal" id="main">
-  <h1>Get help</h1>
-  <p class="legal-updated">The short list first — most questions end here.</p>
+  <h1 data-i18n="help.h1">Get help</h1>
+  <p class="legal-updated" data-i18n="help.sub">The short list first — most questions end here.</p>
 
-  <h2>The model gives a slow or strange first answer</h2>
-  <p>The first message after loading a model is always the slowest — the model is warming up. If replies stay slow, open the <strong>Model library</strong> and pick a smaller model; the fit dot next to each one tells you what your machine runs comfortably. If an answer loops or comes back empty, the app says so and suggests the fix — usually rephrasing, or a larger model.</p>
+  <h2 data-i18n="help.s1.h2">The model gives a slow or strange first answer</h2>
+  <p data-i18n-html="help.s1.p">The first message after loading a model is always the slowest — the model is warming up. If replies stay slow, open the <strong>Model library</strong> and pick a smaller model; the fit dot next to each one tells you what your machine runs comfortably. If an answer loops or comes back empty, the app says so and suggests the fix — usually rephrasing, or a larger model.</p>
 
-  <h2>Which model should I download?</h2>
-  <p>The one the app recommends — the recommendation is computed from your RAM, not from marketing. If you have disk to spare, download several: with <strong>“Suggest the best model”</strong> on, Quenderin proposes the right installed model per task (code questions go to the coder model, and so on). It suggests; it never switches silently.</p>
+  <h2 data-i18n="help.s2.h2">Which model should I download?</h2>
+  <p data-i18n-html="help.s2.p">The one the app recommends — the recommendation is computed from your RAM, not from marketing. If you have disk to spare, download several: with <strong>“Suggest the best model”</strong> on, Quenderin proposes the right installed model per task (code questions go to the coder model, and so on). It suggests; it never switches silently.</p>
 
-  <h2>Where are my chats? Can you see them?</h2>
-  <p>On your device, and no. There is no account, no server, no telemetry. Deleting the app deletes everything. That's the entire architecture — the <a href="privacy">privacy policy</a> is short because there's nothing to disclose.</p>
+  <h2 data-i18n="help.s3.h2">Where are my chats? Can you see them?</h2>
+  <p data-i18n-html="help.s3.p">On your device, and no. There is no account, no server, no telemetry. Deleting the app deletes everything. That's the entire architecture — the <a href="privacy" data-language-link>privacy policy</a> is short because there's nothing to disclose.</p>
 
-  <h2>How do I free up disk space?</h2>
-  <p>Every installed model shows its on-disk size in the <strong>Model library</strong> and in <strong>Settings → Storage</strong>; right-click (or use the ⋯ menu) to delete it or reveal the file. Models re-download any time.</p>
+  <h2 data-i18n="help.s4.h2">How do I free up disk space?</h2>
+  <p data-i18n-html="help.s4.p">Every installed model shows its on-disk size in the <strong>Model library</strong> and in <strong>Settings → Storage</strong>; right-click (or use the ⋯ menu) to delete it or reveal the file. Models re-download any time.</p>
 
-  <h2>Understand what you're running</h2>
-  <p>Quenderin runs real AI models on your own machine — no cloud, no account, nothing leaves the
+  <h2 data-i18n="help.s5.h2">Understand what you're running</h2>
+  <p data-i18n="help.s5.p">Quenderin runs real AI models on your own machine — no cloud, no account, nothing leaves the
   device. It's worth knowing the honest trade-offs and where this is all headed:</p>
   <ul>
-    <li><strong>The honest pros and cons</strong> of a local agent versus a cloud one, including
-    where we lose: <a href="why-local-agent">why a local agent beats a cloud one</a>.</li>
-    <li><strong>How good your model is, and what your Mac can run</strong> — the app tells you right
-    on the Agent screen; the deeper version is in <a href="models">the model library</a> and
-    <a href="how-it-works">how it works</a>.</li>
-    <li><strong>Where this is going</strong> — the vision of local autonomous computer use, stage by
-    stage, with nothing hidden: <a href="roadmap">the roadmap</a>.</li>
-    <li><strong>Help build the future</strong> — we believe AI belongs on your machine, and we're
+    <li data-i18n-html="help.s5.l1"><strong>The honest pros and cons</strong> of a local agent versus a cloud one, including
+    where we lose: <a href="why-local-agent" data-language-link>why a local agent beats a cloud one</a>.</li>
+    <li data-i18n-html="help.s5.l2"><strong>How good your model is, and what your Mac can run</strong> — the app tells you right
+    on the Agent screen; the deeper version is in <a href="models" data-language-link>the model library</a> and
+    <a href="how-it-works" data-language-link>how it works</a>.</li>
+    <li data-i18n-html="help.s5.l3"><strong>Where this is going</strong> — the vision of local autonomous computer use, stage by
+    stage, with nothing hidden: <a href="roadmap" data-language-link>the roadmap</a>.</li>
+    <li data-i18n-html="help.s5.l4"><strong>Help build the future</strong> — we believe AI belongs on your machine, and we're
     <a href="research">hiring researchers</a> to prove it.</li>
   </ul>
 
-  <h2>Something else, or something broken?</h2>
+  <h2 data-i18n="help.s6.h2">Something else, or something broken?</h2>
   <ul>
-    <li><strong>Email a human:</strong> <a href="mailto:quenderin@aulenor.com">quenderin@aulenor.com</a> — this address gets read, not routed.</li>
-    <li><strong>Report a bug in the open:</strong> <a href="https://github.com/alikatgh/quenderin/issues" rel="noopener">GitHub issues</a>.</li>
-    <li><strong>Longer answers:</strong> the <a href="faq">FAQ</a>, or <a href="how-it-works">how it works</a>.</li>
-    <li><strong>Known limitations:</strong> we publish <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">every failure mode we know about</a> — check whether yours is already on the list.</li>
+    <li data-i18n-html="help.s6.l1"><strong>Email a human:</strong> <a href="mailto:quenderin@aulenor.com">quenderin@aulenor.com</a> — this address gets read, not routed.</li>
+    <li data-i18n-html="help.s6.l2"><strong>Report a bug in the open:</strong> <a href="https://github.com/alikatgh/quenderin/issues" rel="noopener">GitHub issues</a>.</li>
+    <li data-i18n-html="help.s6.l3"><strong>Longer answers:</strong> the <a href="faq" data-language-link>FAQ</a>, or <a href="how-it-works" data-language-link>how it works</a>.</li>
+    <li data-i18n-html="help.s6.l4"><strong>Known limitations:</strong> we publish <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">every failure mode we know about</a> — check whether yours is already on the list.</li>
   </ul>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="faq">FAQ</a> &middot; <a href="changelog">Changelog</a> &middot; <a href="privacy">Privacy</a></p>
+  <p style="margin-top:2.5rem"><a href="./" data-language-link data-i18n="dl.subnav.home">&larr; Back to Quenderin</a></p>
 </main>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag" data-i18n="foot.tag">An open-source app for local language models.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.product">Product</h3>
+        <a href="how-it-works" data-i18n="nav.how" data-language-link>How it works</a>
+        <a href="features" data-i18n="nav.features" data-language-link>Features</a>
+        <a href="models" data-i18n="nav.models" data-language-link>Models</a>
+        <a href="blog" data-i18n="nav.blog" data-language-link>Blog</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.project">Project</h3>
+        <a href="download" data-i18n="nav.download" data-language-link>Download</a>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="docs/" data-language-link data-i18n="nav.docs">Docs</a>
+        <a href="reality" data-i18n="nav.reality" data-language-link>Measurements and limitations</a>
+        <a href="roadmap" data-i18n="nav.roadmap" data-language-link>Roadmap</a>
+        <a href="why-local-agent" data-i18n="nav.whylocal" data-language-link>Local agents</a>
+        <a href="privacy" data-i18n="nav.privacy" data-language-link>Privacy</a>
+        <a href="faq" data-i18n="nav.faq" data-language-link>FAQ</a>
+        <a href="help" data-i18n="nav.help" data-language-link>Get help</a>
+        <a href="changelog" data-i18n="nav.changelog" data-language-link>What's new</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy" data-i18n="foot.legal.privacy" data-language-link>Privacy</a>
+      <a href="terms" data-i18n="foot.legal.terms" data-language-link>Terms</a>
+      <a href="legal" data-i18n="foot.legal.legal" data-language-link>Legal Notice</a>
+      <a href="accessibility" data-i18n="foot.legal.a11y" data-language-link>Accessibility</a>
+    </nav>
+    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="main.js?v=20261123-ux" defer></script>
+<script src="i18n.js?v=20261123-ux" defer></script>
 </body>
 </html>

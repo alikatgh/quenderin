@@ -74,10 +74,10 @@
   repository that didn&rsquo;t actually host that quantization. The URL 404&rsquo;d. And the downloader, at that
   point, wrote <em>whatever the server sent</em> to disk before anyone checked the status code. So Hugging
   Face&rsquo;s plain-text <code>Entry not found</code> body landed on disk, failed the GGUF magic check, and
-  surfaced to the user as a cryptic <code>ModelIntegrityError error 0</code>. It was the model
-  <em>auto-recommended</em> for a 16 GB MacBook Air &mdash; exactly the machine Apple reviews on. They
-  rejected the build with &ldquo;the app delivered an error message upon the model downloading process,&rdquo;
-  and they were right.</p>
+  surfaced to the user as a cryptic <code>ModelIntegrityError error 0</code>.</p>
+  <p>It was the model <em>auto-recommended</em> for a 16 GB MacBook Air &mdash; exactly the machine Apple
+  reviews on. They rejected the build with &ldquo;the app delivered an error message upon the model downloading
+  process,&rdquo; and they were right.</p>
   <p>The integrity gate did its job &mdash; it refused to load a non-model &mdash; but the diagnosis was
   backwards: a <em>network</em> failure was being reported as a <em>corruption</em> failure. The fix is to
   reject a non-2xx response <strong>before writing a single byte</strong>, so an error page can never become
