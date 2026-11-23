@@ -140,22 +140,23 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
     }
 });
 
-test('A/B scorecard compares origin/main baseline (Variant A) vs current UX overhaul (Variant B) when git history is present', (t) => {
-    let hasOriginMain = false;
+test('A/B scorecard compares pre-UX baseline 665bd94 (Variant A) vs current UX overhaul (Variant B) when git history is present', (t) => {
+    const baselineRef = '665bd94';
+    let hasBaseline = false;
     try {
-        execFileSync('git', ['-C', root, 'rev-parse', '--verify', 'origin/main'], { stdio: 'ignore' });
-        hasOriginMain = true;
+        execFileSync('git', ['-C', root, 'cat-file', '-e', `${baselineRef}^{commit}`], { stdio: 'ignore' });
+        hasBaseline = true;
     } catch {
-        hasOriginMain = false;
+        hasBaseline = false;
     }
-    if (!hasOriginMain) {
-        t.skip('origin/main ref unavailable in shallow CI checkout');
+    if (!hasBaseline) {
+        t.skip(`baseline commit ${baselineRef} unavailable in shallow CI checkout`);
         return;
     }
 
-    const baseDocs = gitListTree('origin/main', 'website/docs', '.html');
+    const baseDocs = gitListTree(baselineRef, 'website/docs', '.html');
     const baseMaxDocPara = baseDocs.reduce((acc, rel) => {
-        const html = gitShow('origin/main', rel);
+        const html = gitShow(baselineRef, rel);
         return html ? Math.max(acc, paragraphStats(html).max) : acc;
     }, 0);
 
@@ -163,21 +164,21 @@ test('A/B scorecard compares origin/main baseline (Variant A) vs current UX over
         .filter((f) => f.endsWith('.html'))
         .reduce((acc, f) => Math.max(acc, paragraphStats(readFileSync(path.join(docsDir, f), 'utf8')).max), 0);
 
-    const baseDl = gitShow('origin/main', 'website/download.html') ?? '';
+    const baseDl = gitShow(baselineRef, 'website/download.html') ?? '';
     const curDl = readFileSync(path.join(websiteDir, 'download.html'), 'utf8');
     const baseDlMax = paragraphStats(baseDl).max;
     const curDlMax = paragraphStats(curDl).max;
     const baseDlI18n = (baseDl.match(/data-i18n/g) ?? []).length;
     const curDlI18n = (curDl.match(/data-i18n/g) ?? []).length;
 
-    const baseTmm = gitShow('origin/main', 'website/tell-me-more.html') ?? '';
+    const baseTmm = gitShow(baselineRef, 'website/tell-me-more.html') ?? '';
     const curTmm = readFileSync(path.join(websiteDir, 'tell-me-more.html'), 'utf8');
     const baseTints = adjacentTintCollisions(baseTmm);
     const curTints = adjacentTintCollisions(curTmm);
 
     const uiFilesRel = walkFiles(uiSrcDir, ['.ts', '.tsx', '.css']).map((p) => path.relative(root, p));
     const countPattern = (files, useGit, regex) => files.reduce((acc, rel) => {
-        const text = useGit ? gitShow('origin/main', rel) : readFileSync(path.join(root, rel), 'utf8');
+        const text = useGit ? gitShow(baselineRef, rel) : readFileSync(path.join(root, rel), 'utf8');
         if (!text) return acc;
         return acc + (text.match(regex) ?? []).length;
     }, 0);
@@ -189,7 +190,7 @@ test('A/B scorecard compares origin/main baseline (Variant A) vs current UX over
     const baseBlur = countPattern(uiFilesRel, true, blurRe);
     const curBlur = countPattern(uiFilesRel, false, blurRe);
 
-    console.log('\n--- A/B Engineering & UX Scorecard (Variant A: origin/main -> Variant B: HEAD/working tree) ---');
+    console.log(`\n--- A/B Engineering & UX Scorecard (Variant A: ${baselineRef} -> Variant B: HEAD/working tree) ---`);
     console.log(`Docs max <p> length      : A=${baseMaxDocPara} chars -> B=${curMaxDocPara} chars`);
     console.log(`download.html max <p>    : A=${baseDlMax} chars -> B=${curDlMax} chars`);
     console.log(`download.html i18n attrs : A=${baseDlI18n} -> B=${curDlI18n}`);
