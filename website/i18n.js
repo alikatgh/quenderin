@@ -74,6 +74,14 @@
       var k = el.getAttribute('data-i18n-content');
       if (dict[k] != null) el.setAttribute('content', dict[k]);
     });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+      var k = el.getAttribute('data-i18n-placeholder');
+      if (dict[k] != null) el.setAttribute('placeholder', dict[k]);
+    });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(function (el) {
+      var k = el.getAttribute('data-i18n-aria-label');
+      if (dict[k] != null) el.setAttribute('aria-label', dict[k]);
+    });
     if (!document.querySelector('title[data-i18n]') && dict['meta.title']) document.title = dict['meta.title'];
     var md = document.querySelector('meta[name="description"]');
     if (md && !md.hasAttribute('data-i18n-content') && dict['meta.description']) md.setAttribute('content', dict['meta.description']);

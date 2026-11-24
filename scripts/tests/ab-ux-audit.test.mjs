@@ -120,7 +120,7 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
     }
     assert.ok(tmm.includes('data-i18n="tmm.oct.notes.sum"'), 'tell-me-more.html missing tmm.oct.notes.sum');
 
-    // 4. All top-level marketing/legal/blog HTML pages: <=650-char <p>, theme.js, zero analytics
+    // 4. All top-level marketing/legal/blog HTML pages: <=650-char <p>, theme.js, theme-toggle, unified styles cache-buster, zero analytics
     const topPages = readdirSync(websiteDir).filter((f) => f.endsWith('.html'));
     assert.equal(topPages.length, 37);
     for (const file of topPages) {
@@ -128,7 +128,20 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
         const stats = paragraphStats(html);
         assert.equal(stats.over650, 0, `${file} has paragraph >650 chars (max=${stats.max})`);
         assert.ok(html.includes('<script src="theme.js"></script>'), `${file} must load shared theme.js`);
+        assert.ok(html.includes('class="theme-toggle"'), `${file} must expose theme-toggle button`);
+        assert.ok(html.includes('href="styles.css?v=20261124-craft"'), `${file} must load unified styles.css?v=20261124-craft`);
         assert.ok(!/<(?:script|link|img|iframe)\b[^>]*(?:src|href)=["']https?:\/\/[^"']*(?:fonts\.googleapis|googletagmanager|google-analytics|mixpanel|amplitude|segment\.com)/i.test(html), `${file} loads external CDN or analytics resource`);
+    }
+
+    // 4b. Homepage localization & interactive curated catalog explorer parity
+    const indexHtml = readFileSync(path.join(websiteDir, 'index.html'), 'utf8');
+    assert.ok(indexHtml.includes('data-i18n="simple.update.latest.title"'), 'index.html latest update headline must be localized');
+    assert.ok(indexHtml.includes('href="blog" data-language-link data-i18n="nav.blog"'), 'index.html footer blog link must persist language and localize');
+    for (const file of ['models.html', 'tell-me-more.html']) {
+        const page = readFileSync(path.join(websiteDir, file), 'utf8');
+        assert.ok(page.includes('data-catalog-explorer'), `${file} must include interactive curated catalog explorer`);
+        assert.ok(page.includes('data-catalog-search'), `${file} must include catalog search input`);
+        assert.ok(page.includes('data-catalog-tier="phone"'), `${file} must include hardware tier filters`);
     }
 
     // 5. Core interactive marketing & guide pages: shared header/footer/i18n/theme parity

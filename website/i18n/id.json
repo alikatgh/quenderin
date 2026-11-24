@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "Buat gambar lokal",
   "tmm.oct.c6.p": "Gunakan ruang kerja Images terpisah; setiap hasil menulis PNG baru tanpa menimpa berkas lama.",
   "tmm.oct.c6.sum": "Berkas, memori & akses",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein dan MOSS Image Base/SFT butuh set lengkap dan minimal 24 GiB memori.",
+  "tmm.oct.c6.d1": "Kromoss (DMD2 8 langkah), FLUX 3 Image Klein, dan MOSS Image Base/SFT memerlukan set komponen lengkap dan memori perangkat yang besar.",
   "tmm.oct.c6.d2": "Berkas FLUX memerlukan akses penerbit dan keputusan lisensi Anda sendiri.",
   "tmm.oct.notes.sum": "Catatan katalog & runtime",
   "tmm.oct.notes.p1": "28 pilihan teks mencakup Bonsai 2, LFM2.5, Jais 3, Nemotron 3.5 Bolt, dan MiniCPM-V 4.7 dengan pemeriksaan runtime serta memori.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>Berjalan offline</strong> di CPU Anda.",
   "wla.s3.l2": "<strong>Tanpa biaya per aksi, batas laju, atau server down.</strong>",
   "wla.s4.h2": "Catatan jujur",
-  "wla.s4.p": "Kasus terburuk hanyalah aksi <em>ditolak</em> di log, bukan kerusakan disk. Lihat <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">daftar kegagalan</a>."
+  "wla.s4.p": "Kasus terburuk hanyalah aksi <em>ditolak</em> di log, bukan kerusakan disk. Lihat <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">daftar kegagalan</a>.",
+  "simple.update.latest.title": "Gambar lokal Kromoss, suara native Hex, dan portal dokumentasi lengkap",
+  "catalog.filter.search": "Filter model berdasarkan nama, tugas, atau kuantisasi…",
+  "catalog.filter.clear": "Hapus pencarian",
+  "catalog.filter.all": "Semua (28)",
+  "catalog.filter.phone": "Ponsel · ≤4 GB RAM",
+  "catalog.filter.laptop": "Laptop · ≤12 GB RAM",
+  "catalog.filter.workstation": "Workstation · 16+ GB",
+  "catalog.filter.stable": "Harian saja",
+  "catalog.filter.count": "Menampilkan {shown} dari {total} model",
+  "catalog.filter.empty": "Tidak ada model yang cocok dengan filter ini.",
+  "catalog.filter.reset": "Atur ulang filter",
+  "catalog.choicecaveat": "Setelah Anda memilih model, Quenderin mempertahankan pilihan tersebut. Jika berkasnya hilang atau build ini tidak dapat menjalankannya, aplikasi akan memberi tahu dan tidak otomatis beralih ke model lain. Saat pertama kali dibuka tanpa pilihan, aplikasi tetap menyarankan model yang cocok dengan perangkat Anda. Dukungan mesin eksperimental adalah integrasi kode sumber: bukan inferensi teruji, dan terpisah dari versi yang tersedia di App Store atau Google Play."
 }

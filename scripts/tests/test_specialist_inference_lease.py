@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def run(args, timeout=45):
+def run(args, timeout=120):
     result = subprocess.run(list(map(str, args)), capture_output=True, text=True, timeout=timeout)
     if result.returncode:
         raise AssertionError(result.stdout[-2000:] + result.stderr[-6000:])

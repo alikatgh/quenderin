@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "Criar imagem local",
   "tmm.oct.c6.p": "Use o espaço separado de Imagens. Cada geração cria um novo PNG preservando arquivos existentes.",
   "tmm.oct.c6.sum": "Arquivos, memória e acesso",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein e MOSS Image Base/SFT exigem conjuntos completos e ao menos 24 GiB de memória.",
+  "tmm.oct.c6.d1": "Kromoss (DMD2 em 8 passos), FLUX 3 Image Klein e MOSS Image Base/SFT exigem conjuntos completos de componentes e bastante memória.",
   "tmm.oct.c6.d2": "Arquivos FLUX exigem seu próprio acesso do editor e decisão de licença.",
   "tmm.oct.notes.sum": "Notas de catálogo e runtime",
   "tmm.oct.notes.p1": "As 28 opções incluem Bonsai 2, LFM2.5, Jais 3, Nemotron 3.5 Bolt e MiniCPM-V 4.7, com checagem de runtime e memória.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>Funciona offline</strong> usando sua CPU.",
   "wla.s3.l2": "<strong>Sem cobrança por ação, limites ou quedas.</strong>",
   "wla.s4.h2": "Ressalva honesta",
-  "wla.s4.p": "No pior caso, a ação é <em>recusada</em> no registro. Veja <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">modos de falha conhecidos</a>."
+  "wla.s4.p": "No pior caso, a ação é <em>recusada</em> no registro. Veja <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">modos de falha conhecidos</a>.",
+  "simple.update.latest.title": "Imagens locais com Kromoss, voz nativa Hex e portal de documentação",
+  "catalog.filter.search": "Filtrar modelos por nome, tarefa ou quantização…",
+  "catalog.filter.clear": "Limpar busca",
+  "catalog.filter.all": "Todos (28)",
+  "catalog.filter.phone": "Celular · ≤4 GB RAM",
+  "catalog.filter.laptop": "Notebook · ≤12 GB RAM",
+  "catalog.filter.workstation": "Estação · 16+ GB",
+  "catalog.filter.stable": "Apenas uso diário",
+  "catalog.filter.count": "Mostrando {shown} de {total} modelos",
+  "catalog.filter.empty": "Nenhum modelo corresponde a este filtro.",
+  "catalog.filter.reset": "Redefinir filtros",
+  "catalog.choicecaveat": "Depois que você escolhe um modelo, o Quenderin mantém essa escolha. Se o arquivo estiver ausente ou esta versão não puder executá-lo, o app avisa e não troca para outro modelo automaticamente. Na primeira execução sem escolha, ainda sugere um modelo adequado ao seu dispositivo. O suporte experimental a motores é integração de código-fonte: não é inferência testada e é separado do que está na App Store ou Google Play."
 }
