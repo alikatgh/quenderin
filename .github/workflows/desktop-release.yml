@@ -116,6 +116,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxtst-dev
       - name: Package
+        env:
+          # robotjs 0.9.x src/xdisplay.c calls strdup() without <string.h>, which GCC 14 on ubuntu-latest rejects.
+          CFLAGS: ${{ matrix.os == 'ubuntu-latest' && '-D_GNU_SOURCE -include string.h' || '' }}
         run: npx electron-builder ${{ matrix.args }} --publish never
       - name: Probe the shipped Prism addon inside the packaged ASAR
         run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
