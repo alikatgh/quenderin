@@ -2,7 +2,7 @@ import java.security.MessageDigest
 
 plugins {
     id("com.android.library") version "8.10.1"
-    kotlin("android") version "2.2.21"
+    kotlin("android") version "2.4.21"
 }
 
 // Avoid AGP's sdkDirectory property, which shadows that name inside android {}.
