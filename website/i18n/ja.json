@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "ローカル画像生成",
   "tmm.oct.c6.p": "専用の Images ワークスペースを使用し、既存ファイルを保ったまま新しい PNG を出力します。",
   "tmm.oct.c6.sum": "ファイル・メモリ・アクセス",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein と MOSS Image Base/SFT には全コンポーネントと 24 GiB 以上の空きメモリが必要です。",
+  "tmm.oct.c6.d1": "Kromoss（8ステップ DMD2）、FLUX 3 Image Klein、MOSS Image Base/SFT には完全なコンポーネント一式と十分なデバイスメモリが必要です。",
   "tmm.oct.c6.d2": "FLUX ファイルには発行元のアクセス権とご自身のライセンス判断が必要です。",
   "tmm.oct.notes.sum": "カタログとランタイム注記",
   "tmm.oct.notes.p1": "厳選された28のテキストモデルには Bonsai 2、LFM2.5、Jais 3、Nemotron 3.5 Bolt、MiniCPM-V 4.7 が含まれ、読み込み前にランタイムとメモリを確認します。",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>完全オフライン動作</strong>（機内や閉域網でもOK）。",
   "wla.s3.l2": "<strong>従量課金・回数制限・サーバー障害なし。</strong>",
   "wla.s4.h2": "率直な注意点",
-  "wla.s4.p": "小規模モデルが誤っても最悪でログへの<em>拒否</em>にとどまります。<a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">既知の制限</a>を公開しています。"
+  "wla.s4.p": "小規模モデルが誤っても最悪でログへの<em>拒否</em>にとどまります。<a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">既知の制限</a>を公開しています。",
+  "simple.update.latest.title": "Kromoss ローカル画像生成、ネイティブ Hex 音声、完全ドキュメントポータル",
+  "catalog.filter.search": "モデル名・用途・量子化で絞り込み…",
+  "catalog.filter.clear": "検索をクリア",
+  "catalog.filter.all": "すべて (28)",
+  "catalog.filter.phone": "スマホ · ≤4 GB RAM",
+  "catalog.filter.laptop": "ノートPC · ≤12 GB RAM",
+  "catalog.filter.workstation": "ワークステーション · 16+ GB",
+  "catalog.filter.stable": "通常モデルのみ",
+  "catalog.filter.count": "{total} 件中 {shown} 件のモデルを表示",
+  "catalog.filter.empty": "この条件に一致するモデルはありません。",
+  "catalog.filter.reset": "フィルターをリセット",
+  "catalog.choicecaveat": "一度モデルを選ぶと、Quenderin はその選択を維持します。ファイルが見つからない場合やこのビルドで実行できない場合でも、勝手に別のモデルへ切り替えずその旨を表示します。未選択の初回起動時にはデバイスに合うモデルを提案します。実験的エンジン対応はソース統合であり、実機推論の検証済みや App Store / Google Play 公開版とは別です。"
 }

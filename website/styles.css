@@ -506,6 +506,32 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: var(--header-su
 @media (max-width: 800px) { .release-models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 500px) { .release-models { grid-template-columns: 1fr; } .release-model { padding-inline-end: 0; } .release-toolbar label { width: 100%; flex-wrap: wrap; } }
 
+/* Curated catalog interactive filter bar (progressive enhancement, zero layout shift) */
+.catalog-filter-bar { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0 1.1rem; }
+.catalog-filter-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; }
+.catalog-search-wrap { position: relative; flex: 1 1 17rem; max-width: 26rem; display: flex; align-items: center; }
+.catalog-search-icon { position: absolute; inset-inline-start: 0.85rem; color: var(--text-muted); font-size: 0.95rem; pointer-events: none; }
+.catalog-search { width: 100%; min-height: 44px; padding: 0.55rem 2.5rem 0.55rem 2.35rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-md); font: inherit; font-size: 0.9rem; transition: border-color var(--dur-fast) var(--ease-out); }
+.catalog-search::-webkit-search-cancel-button,
+.catalog-search::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.catalog-search::placeholder { color: var(--text-muted); }
+.catalog-search:hover { border-color: var(--brand); }
+.catalog-search:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-color: var(--brand); }
+.catalog-search-clear { position: absolute; inset-inline-end: 0.25rem; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.15rem; line-height: 1; }
+.catalog-search-clear:hover { color: var(--text); background: var(--accent-soft); }
+.catalog-search-clear[hidden] { display: none; }
+.catalog-count { margin: 0; font-size: 0.84rem; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.catalog-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.catalog-chip { min-height: 40px; padding: 0.42rem 0.85rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-secondary); font: inherit; font-size: 0.84rem; font-weight: 500; cursor: pointer; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.catalog-chip:hover { color: var(--text); border-color: var(--brand); }
+.catalog-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.catalog-chip.is-active { background: var(--brand-dark); border-color: var(--brand-dark); color: #ffffff; }
+html[data-theme-mode="dark"] .catalog-chip.is-active { background: var(--brand); border-color: var(--brand); color: #0b1619; }
+.catalog-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.85rem; margin-top: 0.85rem; padding: 1rem 1.2rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-secondary); font-size: 0.92rem; }
+.catalog-empty p { margin: 0; }
+.catalog-empty[hidden] { display: none; }
+.model-spec-table tbody tr[hidden] { display: none; }
+
 /* ===================================================================
    Dark mode — toggled via [data-theme-mode="dark"] on <html>
    =================================================================== */
@@ -597,10 +623,20 @@ html.js .reveal.in { opacity: 1; transform: none; }
   /* Compact the lang-picker so the navbar fits a phone (was overflowing ~21px past 375): globe-only,
      the closed "English" label is hidden but the native dropdown still lists all 12 languages on tap
      (option color is set separately, so the menu stays readable). Tighter nav gap too. */
-  .nav { gap: 0.4rem; }
-  .lang-select { width: 3rem; color: transparent; padding: 0.46rem 0.4rem 0.46rem 1.85rem; }
+  .nav { gap: 0.35rem; }
+  .lang-select,
+  html[dir="rtl"] .lang-select { width: 2.5rem; color: transparent; padding: 0; }
+  .lang-picker .lang-globe,
+  html[dir="rtl"] .lang-picker .lang-globe { left: 50%; right: auto; transform: translateX(-50%); }
   .lang-picker .lang-chev { display: none; }
   .footer-cols { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .header-inner { gap: 0.5rem; }
+  .brand-name { font-size: 1rem; }
+  .nav { gap: 0.2rem; }
+  .nav > a:not(.btn) { padding: 0.35rem 0.45rem; font-size: 0.82rem; gap: 0.28rem; }
+  .site-header .nav > a.btn { padding: 0.42rem 0.65rem; font-size: 0.82rem; }
 }
 
 /* ===================================================================
@@ -697,9 +733,11 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .legal { max-width: 760px; padding-block: clamp(2.5rem, 6vw, 4.5rem); }
 /* Blog post navigation — the in/out nav the site was missing. */
 .post-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem 1.5rem; flex-wrap: wrap; }
-.post-nav { display: flex; flex-wrap: wrap; gap: 0.65rem 1.4rem; font-size: 0.92rem; }
+.post-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem 1.25rem; font-size: 0.92rem; }
 .post-nav a { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--text-secondary); transition: color var(--dur-base) var(--ease-out); }
 .post-nav a:hover { color: var(--text); }
+.post-nav .theme-toggle { width: 40px; height: 40px; border-color: var(--border); color: var(--text-secondary); }
+.post-nav .theme-toggle:hover { color: var(--text); border-color: var(--brand); }
 .post-kicker { display: inline-flex; align-items: center; gap: 0.35rem; font-family: var(--font-display); font-stretch: 82%; font-variation-settings: "wdth" 82; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand); margin: 0 0 0.4rem; }
 .post-kicker a { color: inherit; }
 .post-foot { display: flex; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.95rem; }
