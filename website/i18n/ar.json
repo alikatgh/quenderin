@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "أنشئ صورة محلياً",
   "tmm.oct.c6.p": "استخدم مساحة الصور المستقلة؛ كل عملية تولّد ملف PNG جديداً وتحافظ على ملفاتك.",
   "tmm.oct.c6.sum": "الملفات والذاكرة والوصول",
-  "tmm.oct.c6.d1": "يتطلب FLUX 3 Image Klein وMOSS Image Base/SFT جميع المكونات و24 غيبيبايت من الذاكرة المتاحة.",
+  "tmm.oct.c6.d1": "تتطلب نماذج Kromoss (8 خطوات DMD2) وFLUX 3 Image Klein وMOSS Image Base/SFT مجموعات مكونات كاملة وذاكرة جهاز كبيرة.",
   "tmm.oct.c6.d2": "تتطلب ملفات FLUX إذن الناشر الخاص بك وقرار الترخيص.",
   "tmm.oct.notes.sum": "ملاحظات الكتالوج والتشغيل",
   "tmm.oct.notes.p1": "تشمل الخيارات الـ 28 Bonsai 2 وLFM2.5 وJais 3 وNemotron 3.5 Bolt وMiniCPM-V 4.7، مع فحص الدعم والذاكرة قبل التحميل.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>يعمل دون إنترنت</strong> في أي مكان على معالجك.",
   "wla.s3.l2": "<strong>بلا رسوم أو حدود استخدام أو انقطاع خوادم.</strong>",
   "wla.s4.h2": "التحذير الصادق",
-  "wla.s4.p": "أسوأ احتمال عند خطأ النموذج هو فعل <em>مرفوض</em> في السجل. ننشر <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">كل الأعطال المعروفة</a>."
+  "wla.s4.p": "أسوأ احتمال عند خطأ النموذج هو فعل <em>مرفوض</em> في السجل. ننشر <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">كل الأعطال المعروفة</a>.",
+  "simple.update.latest.title": "توليد الصور المحلي عبر Kromoss، وإملاء Hex الأصلي، وبوابة التوثيق الكاملة",
+  "catalog.filter.search": "تصفية النماذج بالاسم أو المهمة أو التكميم…",
+  "catalog.filter.clear": "مسح البحث",
+  "catalog.filter.all": "الكل (28)",
+  "catalog.filter.phone": "هاتف · ≤4 غيغابايت",
+  "catalog.filter.laptop": "حاسوب محمول · ≤12 غيغابايت",
+  "catalog.filter.workstation": "محطة عمل · 16+ غيغابايت",
+  "catalog.filter.stable": "الاستخدام اليومي فقط",
+  "catalog.filter.count": "عرض {shown} من {total} نموذجاً",
+  "catalog.filter.empty": "لا توجد نماذج تطابق هذا الفلتر.",
+  "catalog.filter.reset": "إعادة ضبط الفلاتر",
+  "catalog.choicecaveat": "بمجرد اختيارك لنموذج، يحتفظ Quenderin بهذا الاختيار. إذا كان الملف مفقوداً أو لم يتمكن هذا الإصدار من تشغيله، يُعلمك التطبيق بذلك ولا ينتقل تلقائياً إلى نموذج آخر. وعند التشغيل الأول دون اختيار، يواصل اقتراح نموذج مناسب لجهازك. دعم المحركات التجريبية هو تكامل في الشيفرة المصدرية فقط: ليس استدلالاً مُختبَراً، وهو منفصل عن الإصدارات المنشورة على App Store أو Google Play."
 }

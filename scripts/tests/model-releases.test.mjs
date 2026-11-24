@@ -2,7 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { candidate, chooseQuant, discoverReleases } from '../../workers/model-releases.mjs';
 import { releaseResponse } from '../../workers/site.mjs';
-import { startingModel, visibleReleases, releaseBrand } from '../../website/model-catalog.js';
+import {
+  startingModel,
+  visibleReleases,
+  releaseBrand,
+  parseRowRamGb,
+  isExperimentalModelRow,
+  filterCuratedRow,
+} from '../../website/model-catalog.js';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -212,4 +219,24 @@ test('RAM-only calculator never recommends an experimental custom runtime', () =
     assert.equal(startingModel({ ...catalog, models: [experimental] }, 128), null, id);
     assert.equal(startingModel({ ...catalog, models: [experimental, catalog.models[1]] }, 128).model.id, 'small', id);
   }
+});
+
+test('curated catalog explorer parses RAM estimates and filters by hardware tier and search query', () => {
+  assert.equal(parseRowRamGb('~3.6 GB'), 3.6);
+  assert.equal(parseRowRamGb('~5.5 GB resident*'), 5.5);
+  assert.equal(parseRowRamGb('~330 GB'), 330);
+  assert.equal(isExperimentalModelRow('bonsai2-9b', 'Experimental · Prism runtime'), true);
+  assert.equal(isExperimentalModelRow('qwen3-4b', 'Everyday chat'), false);
+
+  const phone = { id: 'qwen3-4b', name: 'Qwen3 4B', role: 'Everyday chat', download: '2.4 GB', ram: '~3.6 GB', quant: 'Q4_K_M', ramGb: 3.6, experimental: false };
+  const laptop = { id: 'gemma4-12b', name: 'Gemma 4 12B', role: 'Multilingual', download: '7.1 GB', ram: '~9 GB', quant: 'Q4_K_M', ramGb: 9, experimental: false };
+  const workstation = { id: 'muse-spark-open-q2-k', name: 'Muse Spark Open Q2_K', role: 'Experimental, text only', download: '304.08 GB · 22 files', ram: '~330 GB', quant: 'Q2_K', ramGb: 330, experimental: true };
+
+  assert.equal(filterCuratedRow(phone, '', 'phone'), true);
+  assert.equal(filterCuratedRow(laptop, '', 'phone'), false);
+  assert.equal(filterCuratedRow(laptop, '', 'laptop'), true);
+  assert.equal(filterCuratedRow(workstation, '', 'workstation'), true);
+  assert.equal(filterCuratedRow(workstation, '', 'stable'), false);
+  assert.equal(filterCuratedRow(phone, 'qwen q4', 'all'), true);
+  assert.equal(filterCuratedRow(phone, 'coding', 'all'), false);
 });

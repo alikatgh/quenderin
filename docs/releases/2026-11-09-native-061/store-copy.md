@@ -1,35 +1,48 @@
 # Native 0.6.1 store drafts
 
-Updated 9 November 2026 from main `6e87618908b2f919c929d9cf7ae4cfa87df0885f`.
-This text is the 0.6.1 draft. It is not a submitted update and it is not the
-version on the store.
+Updated 24 November 2026 from `main` (original 9 November 2026 draft from
+`6e87618908b2f919c929d9cf7ae4cfa87df0885f`, refreshed for the 22–24 November
+source integrations and dependency/build-floor updates). This text is the 0.6.1
+draft. It is not a submitted update and it is not the version currently on the
+stores.
 
 ## What is on the store now
 
-- Apple public version is **0.6.0**, released 1 November 2026. Its description
-  and What's New were left unchanged.
-- Google Play has no public page for `ai.quenderin.app` (HTTP 404 on
-  9 November 2026). No 0.6.1 bundle was uploaded.
+- Apple live App Store versions (per PR `#247` / `5e7b4d1`): iOS **0.6.2** and
+  macOS **0.6.1** are Ready for Sale, so Apple source now targets marketing
+  version **0.6.3** with `CURRENT_PROJECT_VERSION` floor **35**
+  (`apple/QuenderinApp/project.yml` and `Quenderin.xcodeproj`; Xcode Cloud
+  assigns live build numbers above prior processed build `34`).
+- Google Play has no public production listing for `ai.quenderin.app`. Closed
+  testing - Alpha remains live on build **2 (0.2.0)** across 178 countries;
+  upload key reset `88:0A:CA:18…84:F8:B6:F` was verified active on 22 November
+  2026, and Android source sets `compileSdk = 36`, `targetSdk = 36`,
+  `versionCode = 7`, `versionName = "0.6.1"`.
 
 ## What this draft describes
 
-The 0.6.1 candidate on main, including model roles, the on-device checker,
-Look and Listen, local tools, Doctor, and Practice. No Quenderin account.
-Local model files stay on the device.
+The 0.6.1 candidate on `main`, including model roles, the on-device checker,
+Look and Listen, local tools, Doctor, Practice, plus 22 November source
+integrations for Kromoss 8-step local image generation (Apache-2.0) and Hex /
+`transcribe.cpp` local speech & dictation formatting (MIT, 20 presets + Silero
+VAD v6.2). No Quenderin account. Local model files stay on the device.
 
 ## What was checked
 
-GitHub CI run 42587997731 succeeded on `6e876189`. That is hosted compilation
-and fixtures. It is not tested inference, not a simulator or physical-device
-run, and not a signed archive.
+Hosted GitHub CI passes on `main` (Android Gradle/AndroidX updates, Kotlin
+core + debug APK, Apple Prism XCFramework + QuenderinKit tests + iOS simulator
+SDK compile, desktop native runtimes, model/catalog/agent/router parity). That
+is hosted compilation and synthetic host fixtures (`inferenceVerified: false`).
+It is not tested full-weight inference, not a simulator or physical-device run,
+and not a signed store archive.
 
 An experimental catalog entry means the app can select that engine. It is not
 tested inference, and it is not a claim about the 0.6.0 build already on the
 App Store.
 
-The same description, What's New, and review notes below were saved on the
-App Store Connect 0.6.1 iOS and macOS versions. Both versions are **Prepare
-for Submission**. No build is selected and neither version was submitted.
+The App Store Connect 0.6.1 iOS and macOS versions were saved on 9 November at
+**Prepare for Submission**. Refresh their What's New / App Review notes below
+before attaching build **35** and submitting.
 
 ## Apple description
 
@@ -56,22 +69,22 @@ This chat can use a different model already on the device for chat, for an outpu
 
 When a checker model is already installed, a reply or a tool result is checked before it is shown. Look and Listen use a photo or speech model that is already on the device, then restore the previous local model. If that file is missing, nothing is downloaded. Those replies are not tested inference.
 
-Local tools are optional, and each tool can be turned off. Doctor does not start a chat. Practice scores tool use on saved questions and does not score the model.
+Includes source integrations for Kromoss 8-step local image generation and Hex / transcribe.cpp local speech presets (experimental manual choices; not tested full-weight inference). Local tools are optional, and each tool can be turned off. Doctor does not start a chat. Practice scores tool use on saved questions and does not score the model.
 
 No Quenderin account is required. Optional remote destinations are unchanged and still send data only when you choose them. An experimental catalog engine is a manual choice, not a tested model.
 
 ## App Review notes
 
-0.6.1 adds on-device model roles, an output check, Look and Listen, local tools, Doctor, and Practice. No Quenderin account is required. Choose and download a small compatible model over Wi-Fi for ordinary local chat. No model download or server provisioning starts automatically.
+0.6.1 adds on-device model roles, an output check, Look and Listen, local tools, Doctor, Practice, and experimental Kromoss image / Hex speech source integrations. No Quenderin account is required. Choose and download a small compatible model over Wi-Fi for ordinary local chat. No model download or server provisioning starts automatically.
 
 A checker, photo, or speech model is used only when its file is already on the device. Nothing is downloaded for those roles. Look and Listen do not present their reply as tested inference. Doctor does not run a model. Practice scores saved tool questions and does not score the model.
 
 DeepSeek, My computer, and Step 5 are the same optional destinations as 0.6.0. Each sends data only after the person chooses it. An experimental catalog entry is a manual engine choice, not tested inference.
 
-Host fixtures and hosted compilation passed for source 6e87618908b2f919c929d9cf7ae4cfa87df0885f. This build is not tested full-weight inference, and no simulator or physical device was run for this submission.
+Host fixtures and hosted compilation passed on `main` (build floor 35). This build is not tested full-weight inference, and no simulator or physical device was run for this submission.
 
 ## Google Play release notes
 
-This chat can use a different on-device model for chat, for a check, and for photos or speech. Files stay on the device. A checker that is already installed reviews a reply before it is shown. Look and Listen use a photo or speech model already on the device. Local tools can be turned off. Doctor does not start a chat. Practice scores saved tool questions, not the model. No account. This is not tested inference.
+0.6.1 (versionCode 7, targetSdk 36): Use separate on-device models for chat, output checks, and photos or speech, plus experimental Kromoss image and Hex speech source support. Files stay on the device. Local tools can be turned off; Doctor does not start a chat; Practice scores saved tool questions, not the model. No account. Not tested full-weight inference.
 
-The existing available track is Closed testing - Alpha. These notes were not pasted into Play Console. A draft or unsigned bundle is not a published Google Play update.
+The existing available track is Closed testing - Alpha (serving 0.2.0 / versionCode 2). Uploading a signed 0.6.1 / versionCode 7 AAB targeting API 36 resolves the Play Console API 36 policy enforcement banner on the active closed-test track. A draft or unsigned bundle is not a published Google Play update.

@@ -4,6 +4,38 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 24 November 2026 — Apple 0.6.3 / build floor (35), Android updates, and store handoff refresh
+
+Source preparation refreshed on `main` ahead of store uploads (no signed store
+archive was created or submitted from this workspace, no model weights were
+downloaded locally, and no simulator or physical device was run):
+
+- **Apple marketing version `0.6.3` (PR `#247`) and build floor raised `31 -> 35`.**
+  PR `#247` (`5e7b4d1`) bumped `MARKETING_VERSION` to `0.6.3` because iOS `0.6.2`
+  and macOS `0.6.1` are already Ready for Sale on the App Store. This update
+  raises `CURRENT_PROJECT_VERSION` from `31` to `35` in
+  `apple/QuenderinApp/project.yml` (both `Quenderin` iOS and `QuenderinMac`
+  macOS targets) and all four matching build configurations in
+  `apple/QuenderinApp/Quenderin.xcodeproj/project.pbxproj`, keeping the source
+  floor strictly above processed App Store Connect build `34` while Xcode Cloud
+  workflow **Bonsai 2 App Store** (`76741952-1095-40B7-AA3D-9DA19B3682F2`, Chrome
+  profile **Apple Developer**) assigns live cloud build numbers.
+- **Android 0.6.1 / `versionCode = 7` / `targetSdk = 36` refreshed.** PR `#227`
+  (`ee63104`) landed 21 Android Gradle/AndroidX updates (`27/27` CI checks green,
+  including `Android app (assembleDebug)` and `Android core (Kotlin)`) on top of
+  the Kotlin 2.x `compilerOptions` DSL migration (`ecdafcf`) and the 22 November
+  Kromoss + Hex speech source integrations (`3364a3c`). Play upload certificate
+  `88:0A:CA:18…84:F8:B6:F` remains active on `ai.quenderin.app` (Chrome profile
+  **Albert - Main - CMax**); `android/keystore.properties` stays outside git.
+- **Store copy & open compliance gates.** Refreshed
+  [the 0.6.1 store draft](releases/2026-11-09-native-061/store-copy.md) to reflect
+  Kromoss and Hex as experimental source integrations (`inferenceVerified: false`),
+  separate from live store builds (`0.6.0` on App Store, `0.2.0` on Play Closed
+  testing - Alpha). Open owner gates remain unchanged: Apple export compliance /
+  French encryption filing (Issue `#217`), Play `Declare your trader status`
+  banner, and Play Production 12-tester / 14-day threshold (`7` opted-in as of
+  22 November).
+
 ## 22 November 2026 — Google Play upload-key verification & live console refresh
 
 Google Play Console (`ai.quenderin.app`, checked read-only in **Albert - Main - CMax**)

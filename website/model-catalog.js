@@ -48,12 +48,133 @@ export function releaseBrand(model) {
   return Object.hasOwn(authors, author) ? authors[author] : null;
 }
 
+export function parseRowRamGb(text) {
+  var m = /([\d.]+)\s*GB/i.exec(String(text || ''));
+  return m ? Number.parseFloat(m[1]) : Number.POSITIVE_INFINITY;
+}
+
+export function isExperimentalModelRow(modelId, roleText) {
+  return /^(?:bonsai2-|muse-|beam-|nemotron|jais3-|minicpm-|lfm25-)/i.test(String(modelId || ''))
+    || /experimental/i.test(String(roleText || ''));
+}
+
+export function filterCuratedRow(rowMeta, query, tier) {
+  var mode = tier || 'all';
+  if (mode === 'phone' && !(rowMeta.ramGb <= 4)) return false;
+  if (mode === 'laptop' && !(rowMeta.ramGb <= 12)) return false;
+  if (mode === 'workstation' && !(rowMeta.ramGb > 12)) return false;
+  if (mode === 'stable' && rowMeta.experimental) return false;
+  var terms = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  var haystack = [rowMeta.id, rowMeta.name, rowMeta.role, rowMeta.download, rowMeta.ram, rowMeta.quant]
+    .join(' ').toLowerCase();
+  return terms.every(function (term) { return haystack.includes(term); });
+}
+
 function start() {
   var root = document.querySelector('[data-model-releases]');
   var saved;
   var dict = {};
   function t(key, fallback) { return dict[key] || fallback; }
   var last;
+  function initCatalogExplorer() {
+    var explorers = document.querySelectorAll('[data-catalog-explorer]');
+    if (!explorers.length) return;
+    explorers.forEach(function (explorer) {
+      var search = explorer.querySelector('[data-catalog-search]');
+      var clearBtn = explorer.querySelector('[data-catalog-clear]');
+      var chips = Array.prototype.slice.call(explorer.querySelectorAll('[data-catalog-tier]'));
+      var countEl = explorer.querySelector('[data-catalog-count]');
+      var emptyEl = explorer.querySelector('[data-catalog-empty]');
+      var resetBtn = explorer.querySelector('[data-catalog-reset]');
+      var table = explorer.querySelector('.model-spec-table');
+      if (!table) return;
+      var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+      var activeTier = 'all';
+
+      function readMeta(tr) {
+        var cells = tr.children;
+        var id = tr.getAttribute('data-model-id') || '';
+        var name = cells[0] ? cells[0].textContent.trim() : '';
+        var role = cells[1] ? cells[1].textContent.trim() : '';
+        var download = cells[2] ? cells[2].textContent.trim() : '';
+        var ram = cells[3] ? cells[3].textContent.trim() : '';
+        var quant = cells[4] ? cells[4].textContent.trim() : '';
+        return {
+          id: id,
+          name: name,
+          role: role,
+          download: download,
+          ram: ram,
+          quant: quant,
+          ramGb: parseRowRamGb(ram),
+          experimental: isExperimentalModelRow(id, role)
+        };
+      }
+
+      function applyFilter() {
+        var q = search ? search.value : '';
+        var shown = 0;
+        rows.forEach(function (tr) {
+          var matched = filterCuratedRow(readMeta(tr), q, activeTier);
+          tr.hidden = !matched;
+          if (matched) shown += 1;
+        });
+        if (clearBtn) clearBtn.hidden = q.trim().length === 0;
+        if (countEl) {
+          var tpl = t('catalog.filter.count', 'Showing {shown} of {total} models');
+          countEl.textContent = tpl.replace('{shown}', String(shown)).replace('{total}', String(rows.length));
+        }
+        if (emptyEl) emptyEl.hidden = shown > 0;
+      }
+
+      if (search) {
+        search.addEventListener('input', applyFilter);
+        search.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && search.value) {
+            search.value = '';
+            applyFilter();
+          }
+        });
+      }
+      if (clearBtn && search) {
+        clearBtn.addEventListener('click', function () {
+          search.value = '';
+          search.focus();
+          applyFilter();
+        });
+      }
+      chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          activeTier = chip.getAttribute('data-catalog-tier') || 'all';
+          chips.forEach(function (btn) {
+            var active = btn === chip;
+            btn.classList.toggle('is-active', active);
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+          });
+          applyFilter();
+        });
+      });
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+          if (search) search.value = '';
+          activeTier = 'all';
+          chips.forEach(function (btn) {
+            var isAll = btn.getAttribute('data-catalog-tier') === 'all';
+            btn.classList.toggle('is-active', isAll);
+            btn.setAttribute('aria-pressed', isAll ? 'true' : 'false');
+          });
+          applyFilter();
+          if (search) search.focus();
+        });
+      }
+      document.addEventListener('quenderin:language', function (e) {
+        if (e && e.detail) dict = e.detail;
+        applyFilter();
+      });
+      applyFilter();
+    });
+  }
   function render(data) {
     last = data;
     if (!root) return;
@@ -142,5 +263,6 @@ function start() {
     ram.addEventListener('input', renderFit);
     renderFit();
   }).catch(function () {});
+  initCatalogExplorer();
 }
 if (typeof document !== 'undefined') start();

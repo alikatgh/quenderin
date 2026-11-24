@@ -13,7 +13,7 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=20261122-polish" />
+<link rel="stylesheet" href="styles.css?v=20261124-craft" />
 <link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
 <style>
   .notfound { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1rem; }
@@ -21,7 +21,22 @@
 </style>
 </head>
 <body>
-<main class="container notfound">
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Primary">
+      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
+      <a href="models"><span class="qi qi-cpu" aria-hidden="true"></span>Models</a>
+      <a href="download"><span class="qi qi-download" aria-hidden="true"></span>Download</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<main class="container notfound" id="main">
   <p class="code"><span class="qi qi-wifi-off" aria-hidden="true"></span><span>404</span></p>
   <h1>This page went off-grid.</h1>
   <p style="color: var(--text-muted); max-width: 36ch;">The page you&rsquo;re looking for isn&rsquo;t here&mdash;but Quenderin still works without a signal.</p>

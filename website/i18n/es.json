@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "Crea una imagen local",
   "tmm.oct.c6.p": "Usa el espacio independiente de Imágenes. Cada generación escribe un nuevo PNG y conserva los archivos previos.",
   "tmm.oct.c6.sum": "Archivos, memoria y acceso",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein y MOSS Image Base/SFT requieren conjuntos completos de componentes y al menos 24 GiB de memoria disponible.",
+  "tmm.oct.c6.d1": "Kromoss (DMD2 de 8 pasos), FLUX 3 Image Klein y MOSS Image Base/SFT requieren conjuntos completos de componentes y memoria abundante.",
   "tmm.oct.c6.d2": "Los archivos FLUX requieren tu propio acceso de editor y decisión de licencia.",
   "tmm.oct.notes.sum": "Notas de catálogo y entorno",
   "tmm.oct.notes.p1": "Las 28 opciones curadas de texto incluyen Bonsai 2, LFM2.5 24B-A2B, cinco tamaños Jais 3, Nemotron 3.5 Bolt y MiniCPM-V 4.7. Las opciones experimentales son manuales; la app verifica soporte, archivos y memoria antes de cargar.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>Funciona sin conexión.</strong> Avión, entorno aislado o wifi malo: usa tu CPU.",
   "wla.s3.l2": "<strong>Sin pagos por acción, límites ni caídas externas.</strong>",
   "wla.s4.h2": "La advertencia honesta",
-  "wla.s4.p": "Si el modelo se equivoca, el peor caso es una acción <em>rechazada</em> en tu registro, no una sorpresa en tu disco. Publicamos <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">todos los fallos conocidos</a>."
+  "wla.s4.p": "Si el modelo se equivoca, el peor caso es una acción <em>rechazada</em> en tu registro, no una sorpresa en tu disco. Publicamos <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">todos los fallos conocidos</a>.",
+  "simple.update.latest.title": "Imágenes locales con Kromoss, voz nativa Hex y portal de documentación",
+  "catalog.filter.search": "Filtrar modelos por nombre, tarea o cuantización…",
+  "catalog.filter.clear": "Borrar búsqueda",
+  "catalog.filter.all": "Todos (28)",
+  "catalog.filter.phone": "Teléfono · ≤4 GB RAM",
+  "catalog.filter.laptop": "Portátil · ≤12 GB RAM",
+  "catalog.filter.workstation": "Estación · 16+ GB",
+  "catalog.filter.stable": "Solo uso diario",
+  "catalog.filter.count": "Mostrando {shown} de {total} modelos",
+  "catalog.filter.empty": "Ningún modelo coincide con este filtro.",
+  "catalog.filter.reset": "Restablecer filtros",
+  "catalog.choicecaveat": "Una vez eliges un modelo, Quenderin mantiene esa elección. Si falta el archivo o esta compilación no puede ejecutarlo, la app lo indica y no cambia a otro modelo por su cuenta. Al iniciar por primera vez sin elección, sigue sugiriendo uno adecuado para tu dispositivo. El soporte experimental de motores es integración de código fuente: no es inferencia probada y es independiente de la versión publicada en App Store o Google Play."
 }
