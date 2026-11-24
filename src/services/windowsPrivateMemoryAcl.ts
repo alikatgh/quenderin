@@ -68,7 +68,7 @@ export class WindowsPrivateMemoryAcl implements PrivateMemoryAclPort {
             const child = spawn(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_MEMORY_ACL_SCRIPT], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], shell: false });
             let output = '', bytes = 0, settled = false;
             const finish = (ok: boolean) => { if (settled) return; settled = true; clearTimeout(timer); if (ok) resolve(); else reject(new Error('Windows private-memory ACL verification failed. No selected fact was written.')); };
-            const timer = setTimeout(() => { child.kill(); finish(false); }, 10_000);
+            const timer = setTimeout(() => { child.kill(); finish(false); }, 30_000);
             child.on('error', () => finish(false));
             child.stdout.on('data', (data: Buffer) => { bytes += data.length; if (bytes > 4096) { child.kill(); finish(false); } else output += data.toString('utf8'); });
             child.stderr.on('data', (data: Buffer) => { bytes += data.length; if (bytes > 4096) { child.kill(); finish(false); } });

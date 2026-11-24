@@ -349,6 +349,9 @@ jobs:
           native_arch="$(node -p process.arch)"
           native_os="$(node -p "({win32:'win',darwin:'mac',linux:'linux'})[process.platform]")"
           python scripts/build_desktop_diffusion.py joint-load --directory "build/diffusion/$native_os-$native_arch" --prism node_modules/node-llama-cpp/llama/localBuilds
+      - name: Install Linux X11 development headers for native desktop packaging
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxtst-dev
       - name: Build and package the desktop application
         shell: bash
         env:
@@ -415,7 +418,8 @@ jobs:
           java-version: '17'
       - name: Install Kotlin compiler
         run: |
-          curl -sSLO https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors \
+            -O https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
           # Verify the download before trusting it (audit MEDIUM: a network-fetched toolchain ran
           # unverified). Pinned sha256 of the official v2.0.21 release asset; fail closed on mismatch.
           echo "0352c0a45bd22f80f6b26e485cd04da8047baa5de54865281fb9f89a4a7bcf2a  kotlin-compiler-2.0.21.zip" | sha256sum -c -
@@ -529,8 +533,8 @@ jobs:
           python3 -m unittest scripts.tests.test_beam_native_prompt scripts.tests.test_jni_exception_boundary scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_jni_utf8_boundary scripts.tests.test_granite_native
       - name: Verify Android Step 5 transport policy and conversation boundary (no models)
         run: |
-          curl --fail --silent --show-error --location https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar -o "$RUNNER_TEMP/okhttp-4.12.0.jar"
-          curl --fail --silent --show-error --location https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar -o "$RUNNER_TEMP/okio-jvm-3.6.0.jar"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar -o "$RUNNER_TEMP/okhttp-4.12.0.jar"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar -o "$RUNNER_TEMP/okio-jvm-3.6.0.jar"
           echo "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0  $RUNNER_TEMP/okhttp-4.12.0.jar" | sha256sum -c -
           echo "67543f0736fc422ae927ed0e504b98bc5e269fda0d3500579337cb713da28412  $RUNNER_TEMP/okio-jvm-3.6.0.jar" | sha256sum -c -
           step5_cp="$RUNNER_TEMP/okhttp-4.12.0.jar:$RUNNER_TEMP/okio-jvm-3.6.0.jar:$HOME/kotlin/kotlinc/lib/kotlinx-coroutines-core-jvm.jar"
@@ -570,7 +574,7 @@ jobs:
       - name: Verify native discovery snapshot and Android offline catalog
         run: |
           python3 scripts/generate_website_catalog.py --check
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors \
             https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar -o /tmp/org-json.jar
           echo "3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed  /tmp/org-json.jar" | sha256sum -c -
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
