@@ -112,6 +112,9 @@ jobs:
         run: |
           native_os="$(node -p "({win32:'win',linux:'linux'})[process.platform]")"
           python scripts/build_desktop_diffusion.py joint-load --directory "build/diffusion/$native_os-x64" --prism node_modules/node-llama-cpp/llama/localBuilds
+      - name: Install Linux X11 development headers for native desktop packaging
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxtst-dev
       - name: Package
         run: npx electron-builder ${{ matrix.args }} --publish never
       - name: Probe the shipped Prism addon inside the packaged ASAR
