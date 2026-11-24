@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "로컬 이미지 만들기",
   "tmm.oct.c6.p": "별도의 Images 작업 공간을 사용하세요. 매 생성마다 기존 파일을 보존하며 새 PNG를 저장합니다.",
   "tmm.oct.c6.sum": "파일, 메모리 및 접근",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein 및 MOSS Image Base/SFT는 전체 구성 요소와 최소 24 GiB 메모리가 필요합니다.",
+  "tmm.oct.c6.d1": "Kromoss(8단계 DMD2), FLUX 3 Image Klein 및 MOSS Image Base/SFT는 전체 구성 파일과 충분한 기기 메모리가 필요합니다.",
   "tmm.oct.c6.d2": "FLUX 파일은 본인의 게시자 접근 권한과 라이선스 결정이 필요합니다.",
   "tmm.oct.notes.sum": "카탈로그 및 런타임 참고",
   "tmm.oct.notes.p1": "28개 텍스트 선택지에는 Bonsai 2, LFM2.5, Jais 3, Nemotron 3.5 Bolt, MiniCPM-V 4.7이 포함되며 로드 전 런타임과 메모리를 확인합니다.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>완전 오프라인 작동</strong>(기내·보안망에서도 CPU로 동작).",
   "wla.s3.l2": "<strong>사용량 과금·속도 제한·서버 장애 없음.</strong>",
   "wla.s4.h2": "솔직한 단서",
-  "wla.s4.p": "소형 모델이 서툰 결정을 내려도 최악의 경우는 디스크 변경이 아니라 로그에 남는 <em>거부</em>입니다. <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">알려진 실패 모드</a>를 공개합니다."
+  "wla.s4.p": "소형 모델이 서툰 결정을 내려도 최악의 경우는 디스크 변경이 아니라 로그에 남는 <em>거부</em>입니다. <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">알려진 실패 모드</a>를 공개합니다.",
+  "simple.update.latest.title": "Kromoss 로컬 이미지 생성, 네이티브 Hex 음성, 전체 문서 포털",
+  "catalog.filter.search": "이름, 용도 또는 양자화로 모델 필터링…",
+  "catalog.filter.clear": "검색 지우기",
+  "catalog.filter.all": "전체 (28)",
+  "catalog.filter.phone": "휴대폰 · ≤4 GB RAM",
+  "catalog.filter.laptop": "노트북 · ≤12 GB RAM",
+  "catalog.filter.workstation": "워크스테이션 · 16+ GB",
+  "catalog.filter.stable": "일반 모델만",
+  "catalog.filter.count": "총 {total}개 중 {shown}개 모델 표시",
+  "catalog.filter.empty": "이 필터와 일치하는 모델이 없습니다.",
+  "catalog.filter.reset": "필터 초기화",
+  "catalog.choicecaveat": "모델을 선택하면 Quenderin은 그 선택을 유지합니다. 파일이 없거나 현재 빌드에서 실행할 수 없는 경우 이를 안내하며 임의로 다른 모델로 전환하지 않습니다. 선택이 없는 첫 실행 시에는 기기에 맞는 모델을 제안합니다. 실험적 엔진 지원은 소스 코드 통합일 뿐 검증된 추론 결과가 아니며 App Store 또는 Google Play 출시 버전과 별개입니다."
 }
