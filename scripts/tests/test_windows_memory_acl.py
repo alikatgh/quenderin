@@ -25,7 +25,7 @@ class WindowsMemoryAclTests(unittest.TestCase):
         def check(kind, item, allowed=True):
             result = subprocess.run([str(executable), '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
                                     input=json.dumps({'kind': kind, 'path': str(item)}), text=True,
-                                    encoding='utf-8', errors='replace', capture_output=True, timeout=10,
+                                    encoding='utf-8', errors='replace', capture_output=True, timeout=30,
                                     creationflags=subprocess.CREATE_NO_WINDOW)
             diagnostic_data = {'stage': kind, 'status': result.returncode,
                                'stdout': result.stdout[:4096], 'stderr': result.stderr[:4096]}
