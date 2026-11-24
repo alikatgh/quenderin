@@ -356,6 +356,8 @@ jobs:
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # robotjs 0.9.x src/xdisplay.c calls strdup() without <string.h>, which GCC 14 on ubuntu-latest rejects.
+          CFLAGS: ${{ runner.os == 'Linux' && '-D_GNU_SOURCE -include string.h' || '' }}
         run: |
           npm run build
           native_arch="$(node -p process.arch)"
