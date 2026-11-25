@@ -20,13 +20,16 @@ downloaded locally, and no simulator or physical device was run):
   floor strictly above processed App Store Connect build `34` while Xcode Cloud
   workflow **Bonsai 2 App Store** (`76741952-1095-40B7-AA3D-9DA19B3682F2`, Chrome
   profile **Apple Developer**) assigns live cloud build numbers.
-- **Android 0.6.1 / `versionCode = 7` / `targetSdk = 36` refreshed.** PR `#227`
-  (`ee63104`) landed 21 Android Gradle/AndroidX updates (`27/27` CI checks green,
-  including `Android app (assembleDebug)` and `Android core (Kotlin)`) on top of
-  the Kotlin 2.x `compilerOptions` DSL migration (`ecdafcf`) and the 22 November
-  Kromoss + Hex speech source integrations (`3364a3c`). Play upload certificate
-  `88:0A:CA:18…84:F8:B6:F` remains active on `ai.quenderin.app` (Chrome profile
-  **Albert - Main - CMax**); `android/keystore.properties` stays outside git.
+- **Android bumped to `0.6.3` / `versionCode = 8` / `targetSdk = 36` (matching Apple `0.6.3`).**
+  Aligned `android/app/build.gradle.kts` (`versionCode = 8`, `versionName = "0.6.3"`,
+  `compileSdk = 36`, `targetSdk = 36`) with Apple's `0.6.3` release train on top of
+  PR `#227` (`ee63104`, 21 Android Gradle/AndroidX updates), Kotlin 2.x `compilerOptions`
+  (`ecdafcf`), the 22 November Kromoss + Hex speech source integrations (`3364a3c`), and
+  the 24 November `model-releases.json` refresh (`4260046`). Live Play Console check on
+  25 November (Chrome profile **Albert - Main - CMax**) confirmed Closed testing - Alpha
+  still serves `2 (0.2.0)` (Jul 12, 2026) with an empty draft `6 (0.6.0)` and `7` opted-in
+  testers; active Play upload certificate `88:0A:CA:18…84:F8:B6:F` matches the local reset
+  keystore (`upload-keystore.p12`, outside git).
 - **Store copy & open compliance gates.** Refreshed
   [the 0.6.1 store draft](releases/2026-11-09-native-061/store-copy.md) to reflect
   Kromoss and Hex as experimental source integrations (`inferenceVerified: false`),
