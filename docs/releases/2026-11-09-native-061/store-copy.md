@@ -14,10 +14,10 @@ stores.
   (`apple/QuenderinApp/project.yml` and `Quenderin.xcodeproj`; Xcode Cloud
   assigns live build numbers above prior processed build `34`).
 - Google Play has no public production listing for `ai.quenderin.app`. Closed
-  testing - Alpha remains live on build **2 (0.2.0)** across 178 countries;
-  upload key reset `88:0A:CA:18…84:F8:B6:F` was verified active on 22 November
-  2026, and Android source sets `compileSdk = 36`, `targetSdk = 36`,
-  `versionCode = 7`, `versionName = "0.6.1"`.
+  testing - Alpha remains live on build **2 (0.2.0)** (Jul 12, 2026) across 178
+  countries; upload key reset `88:0A:CA:18…84:F8:B6:F` is active, and Android
+  source now targets `compileSdk = 36`, `targetSdk = 36`, `versionCode = 8`,
+  `versionName = "0.6.3"` (matching Apple `0.6.3`).
 
 ## What this draft describes
 
@@ -85,6 +85,6 @@ Host fixtures and hosted compilation passed on `main` (build floor 35). This bui
 
 ## Google Play release notes
 
-0.6.1 (versionCode 7, targetSdk 36): Use separate on-device models for chat, output checks, and photos or speech, plus experimental Kromoss image and Hex speech source support. Files stay on the device. Local tools can be turned off; Doctor does not start a chat; Practice scores saved tool questions, not the model. No account. Not tested full-weight inference.
+0.6.3 (versionCode 8, targetSdk 36): Feature-aligned with iOS 0.6.3 — use separate on-device models for chat, output checks, and photos or speech, plus experimental Kromoss image and Hex speech source support, Turnstone local chat controls, and updated AndroidX dependencies. Files stay on the device. Local tools can be turned off; Doctor does not start a chat; Practice scores saved tool questions, not the model. No account. Not tested full-weight inference.
 
-The existing available track is Closed testing - Alpha (serving 0.2.0 / versionCode 2). Uploading a signed 0.6.1 / versionCode 7 AAB targeting API 36 resolves the Play Console API 36 policy enforcement banner on the active closed-test track. A draft or unsigned bundle is not a published Google Play update.
+The existing available track is Closed testing - Alpha (serving 0.2.0 / versionCode 2). Uploading a signed 0.6.3 / versionCode 8 AAB targeting API 36 resolves the Play Console API 36 policy enforcement banner on the active closed-test track. A draft or unsigned bundle is not a published Google Play update.
