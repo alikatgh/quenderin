@@ -423,7 +423,7 @@ public actor LlamaEngine: InferenceEngine {
 
         // No-think: close an empty <think> block after the assistant turn (Qwen3's
         // enable_thinking=false behaviour); normalize whether the template already opened one.
-        if tmpl.contains("enable_thinking") || tmpl.contains("<think>") {
+        if ThinkingMode.supports(template: tmpl) {
             let lastOpen = result.range(of: "<think>", options: .backwards)
             let lastClose = result.range(of: "</think>", options: .backwards)
             let openUnclosed = lastOpen != nil && (lastClose == nil || lastClose!.lowerBound < lastOpen!.lowerBound)
