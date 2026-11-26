@@ -208,6 +208,10 @@ fun ChatScreen(
         val entry = installedModels.firstOrNull { it.id == decision.modelId } ?: return@remember null
         decision to entry
     }
+    // TODO(vision-in-chat): When ai.quenderin.core.FeatureFlags.visionInChatAvailable(...) becomes
+    // true after physical Galaxy S23 full-weight verification (see docs/VISION_IN_CHAT.md), route
+    // attached still images + prompts through VisionController / VisionEngine with memory gating
+    // and the exclusive specialist lease. Disabled today; keep existing document picker behavior.
     val pickDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->

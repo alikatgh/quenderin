@@ -3112,6 +3112,30 @@ fun main() {
             exported.contains("4") && !exported.contains("two plus two")
     })
 
+    // --- FeatureFlags (vision-in-chat, shipped OFF until physical-device verification) ---
+    check("FeatureFlags.visionInChat ships disabled by default",
+        !FeatureFlags.visionInChat &&
+            !FeatureFlags.visionInChatAvailable(runtimeAvailable = true, modelInstalled = true))
+    check("FeatureFlags.visionInChatAvailable matches full 8-row truth table", run {
+        val cases = listOf(
+            Triple(false, false, false) to false,
+            Triple(false, false, true) to false,
+            Triple(false, true, false) to false,
+            Triple(false, true, true) to false,
+            Triple(true, false, false) to false,
+            Triple(true, false, true) to false,
+            Triple(true, true, false) to false,
+            Triple(true, true, true) to true,
+        )
+        cases.all { (inputs, expected) ->
+            FeatureFlags.visionInChatAvailable(
+                flag = inputs.first,
+                runtimeAvailable = inputs.second,
+                modelInstalled = inputs.third,
+            ) == expected
+        }
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

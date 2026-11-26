@@ -47,15 +47,47 @@ public struct ChatView: View {
     private let onSwitchModel: ((ModelEntry) -> Void)?
     /// When set, this conversation's appearance overrides (ChatPrefsStore) beat the globals.
     private let conversationID: String?
+    /// Gated vision-in-chat dependencies (unused while `FeatureFlags.visionInChat` is `false`).
+    private let visionEngine: any VisionInferencePort
+    private let visionInstaller: VisionModelInstaller
+    private let visionBudget: @Sendable () -> ImageResourceBudget
+    private let suspendForSpecialist: @Sendable () async throws -> SpecialistInferenceLease
+    @State private var installedVisionModel: VisionModelDescriptor?
+    @State private var pendingImageURL: URL?
+    @State private var pendingImageLabel: String?
+    @State private var visionBusy = false
+    @State private var visionTask: Task<Void, Never>?
     @ObservedObject private var chatPrefs = ChatPrefsStore.shared
 
-    public init(model: ChatModel, activeModel: ModelEntry? = nil,
-                onSwitchModel: ((ModelEntry) -> Void)? = nil, conversationID: String? = nil) {
+    public init(
+        model: ChatModel,
+        activeModel: ModelEntry? = nil,
+        onSwitchModel: ((ModelEntry) -> Void)? = nil,
+        conversationID: String? = nil,
+        visionEngine: any VisionInferencePort = NativeVisionEngine(),
+        visionInstaller: VisionModelInstaller = VisionModelInstaller(),
+        visionBudget: @escaping @Sendable () -> ImageResourceBudget = { .current() },
+        suspendForSpecialist: @escaping @Sendable () async throws -> SpecialistInferenceLease = {
+            throw VisionWorkflowError.invalid("The app has not supplied exclusive specialist engine coordination.")
+        }
+    ) {
         self.model = model
         self.composer = model.composer
         self.activeModel = activeModel
         self.onSwitchModel = onSwitchModel
         self.conversationID = conversationID
+        self.visionEngine = visionEngine
+        self.visionInstaller = visionInstaller
+        self.visionBudget = visionBudget
+        self.suspendForSpecialist = suspendForSpecialist
+    }
+
+    private var visionInChatEnabled: Bool {
+        FeatureFlags.visionInChatAvailable(
+            flag: FeatureFlags.visionInChat,
+            runtimeAvailable: visionEngine.visionAvailable,
+            modelInstalled: installedVisionModel != nil
+        )
     }
 
     /// This chat's font: per-conversation override where present, the Settings default otherwise.
@@ -89,10 +121,18 @@ public struct ChatView: View {
     private func send() {
         suggestionDismissed = false
         let prompt = composer.draft.trimmingCharacters(in: .whitespaces)
+        let hasPendingImage = visionInChatEnabled && pendingImageURL != nil && installedVisionModel != nil
         // Documents alone are a legitimate send ("summarize this file" with no extra words).
-        guard !prompt.isEmpty || !composer.pendingDocuments.isEmpty, !model.isGenerating else { return }
-        let documents = composer.pendingDocuments
+        guard !prompt.isEmpty || !composer.pendingDocuments.isEmpty || hasPendingImage,
+              !model.isGenerating, !visionBusy else { return }
         composerFocused = true   // Return-to-send must not drop keyboard focus mid-conversation
+
+        if hasPendingImage {
+            sendVision(prompt: prompt)
+            return
+        }
+
+        let documents = composer.pendingDocuments
 
         // Computer task → educate + handoff button. Do NOT call the model (it only produces
         // "I cannot fulfill…" walls). Code owns the path so the user always gets a real CTA.
@@ -119,6 +159,99 @@ public struct ChatView: View {
                 }
             )
         }
+    }
+
+    /// Gated still-image route (never active while `FeatureFlags.visionInChat` is `false`).
+    /// Respects the vision memory gate and the exclusive specialist lease before appending the reply.
+    private func sendVision(prompt: String) {
+        guard visionInChatEnabled, let imageURL = pendingImageURL, let descriptor = installedVisionModel else { return }
+        let question = prompt.isEmpty ? "Describe this image." : prompt
+        let imageLabel = pendingImageLabel ?? imageURL.lastPathComponent
+        let submittedDraft = composer.draft
+        composer.draft = ""
+        composer.attachmentNotice = nil
+        pendingImageURL = nil
+        pendingImageLabel = nil
+        visionBusy = true
+        visionTask = Task {
+            defer {
+                visionBusy = false
+                visionTask = nil
+                try? FileManager.default.removeItem(at: imageURL)
+            }
+            do {
+                let lease = try await suspendForSpecialist()
+                let answerResult: Result<String, Error>
+                do {
+                    try Task.checkCancellation()
+                    let files = try await visionInstaller.verify(descriptor, budget: visionBudget())
+                    try Task.checkCancellation()
+                    let fresh = visionBudget()
+                    try VisionModelInstaller.checkResources(
+                        descriptor,
+                        memory: fresh.availableMemoryBytes,
+                        disk: fresh.freeDiskBytes
+                    )
+                    answerResult = .success(try await visionEngine.answer(
+                        model: descriptor,
+                        modelURL: files.modelURL,
+                        projectorURL: files.projectorURL,
+                        imageURL: imageURL,
+                        prompt: question,
+                        availableMemoryBytes: fresh.availableMemoryBytes
+                    ))
+                } catch {
+                    answerResult = .failure(error)
+                }
+                do {
+                    try await Task.detached { try await lease.resume() }.value
+                } catch {
+                    throw VisionWorkflowError.invalid(
+                        "Vision stopped, but the previous text model could not be restored. Retry text-model setup. \(String(error.localizedDescription.prefix(512)))"
+                    )
+                }
+                let reply = try answerResult.get()
+                try Task.checkCancellation()
+                let trimmedReply = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedReply.isEmpty else {
+                    throw VisionWorkflowError.invalid("The vision runtime did not return a complete answer.")
+                }
+                model.recordGuidedTurn(
+                    userText: "[\(imageLabel)] \(question)",
+                    assistantText: trimmedReply
+                )
+            } catch is CancellationError {
+                if composer.draft.isEmpty { composer.draft = submittedDraft }
+                composer.attachmentNotice = "Vision request cancelled."
+            } catch {
+                if composer.draft.isEmpty { composer.draft = submittedDraft }
+                composer.attachmentNotice = String(error.localizedDescription.prefix(512))
+            }
+        }
+    }
+
+    private func cancelVision() {
+        visionTask?.cancel()
+        visionEngine.cancel()
+    }
+
+    private func clearPendingImage() {
+        if let old = pendingImageURL {
+            try? FileManager.default.removeItem(at: old)
+        }
+        pendingImageURL = nil
+        pendingImageLabel = nil
+    }
+
+    private func refreshInstalledVisionModel() async {
+        guard FeatureFlags.visionInChat, visionEngine.visionAvailable else { return }
+        for descriptor in VisionModels.all {
+            if await visionInstaller.hasComponents(descriptor) {
+                installedVisionModel = descriptor
+                return
+            }
+        }
+        installedVisionModel = nil
     }
 
     /// Latest computer-task handoff target — O(n) once per body, not O(n²) per bubble.
@@ -391,6 +524,8 @@ public struct ChatView: View {
         }
         .onAppear { syncJobSeat() }
         .onChange(of: conversationID) { _ in syncJobSeat() }
+        .task { await refreshInstalledVisionModel() }
+        .onDisappear { cancelVision(); clearPendingImage() }
         .quenderinDarkChrome()
         .toolbar {
             #if os(iOS)
@@ -427,9 +562,27 @@ public struct ChatView: View {
     private func composer(palette p: QuenderinPalette) -> some View {
         VStack(spacing: 6) {
             // Queued attachments + any rejection notice — visible BEFORE sending, removable.
-            if !composer.pendingDocuments.isEmpty || composer.attachmentNotice != nil {
+            let hasImageChip = visionInChatEnabled && pendingImageURL != nil
+            if !composer.pendingDocuments.isEmpty || hasImageChip || composer.attachmentNotice != nil {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
+                        if hasImageChip, let imageLabel = pendingImageLabel {
+                            HStack(spacing: 4) {
+                                Image(systemName: "photo").font(.caption2)
+                                Text(imageLabel).font(.caption)
+                                Button {
+                                    clearPendingImage()
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(imageLabel)")
+                            }
+                            .foregroundStyle(p.onSurfaceVariant)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(p.surface, in: Capsule())
+                        }
                         ForEach(composer.pendingDocuments, id: \.name) { doc in
                             HStack(spacing: 4) {
                                 Image(systemName: "doc.text").font(.caption2)
@@ -494,6 +647,21 @@ public struct ChatView: View {
             for url in urls {
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                if visionInChatEnabled,
+                   let type = UTType(filenameExtension: url.pathExtension),
+                   type.conforms(to: .image) {
+                    let folder = VisionModelInstaller.defaultDirectory.appendingPathComponent("chat-selected", isDirectory: true)
+                    do {
+                        let copied = try VisionSelectedImage.copy(url, into: folder)
+                        clearPendingImage()
+                        pendingImageURL = copied
+                        pendingImageLabel = String(url.lastPathComponent.prefix(200))
+                        composer.attachmentNotice = nil
+                    } catch {
+                        composer.attachmentNotice = error.localizedDescription
+                    }
+                    continue
+                }
                 switch DocumentTextExtractor.extract(name: url.lastPathComponent, url: url) {
                 case .document(let doc): composer.pendingDocuments.append(doc)
                 case .rejected(let reason): composer.attachmentNotice = reason
@@ -504,6 +672,7 @@ public struct ChatView: View {
 
     @ViewBuilder
     private func composerRow(palette p: QuenderinPalette) -> some View {
+        let isBusy = model.isGenerating || visionBusy
         HStack(spacing: 8) {
             Button {
                 showAttachPicker = true
@@ -515,8 +684,10 @@ public struct ChatView: View {
                     .glassChrome(in: Circle())
             }
             .buttonStyle(.plain)
-            .disabled(model.isGenerating)
-            .help(String(localized: "Attach a text, PDF, or image (images: vision not available yet)"))
+            .disabled(isBusy)
+            .help(visionInChatEnabled
+                  ? String(localized: "Attach a text, PDF, or still image")
+                  : String(localized: "Attach a text, PDF, or image (images: vision not available yet)"))
             .accessibilityLabel(String(localized: "Attach a file"))
 
             TextField(String(localized: "Message"), text: $composer.draft)   // the empty state already says "Try one" — a long hint truncated here on every iPhone width
@@ -534,22 +705,24 @@ public struct ChatView: View {
                 // over the transcript, not part of the content.
                 .glassChrome(in: Capsule())
 
-            let canSend = (!composer.draft.trimmingCharacters(in: .whitespaces).isEmpty || !composer.pendingDocuments.isEmpty) && !model.isGenerating
+            let canSend = (!composer.draft.trimmingCharacters(in: .whitespaces).isEmpty
+                           || !composer.pendingDocuments.isEmpty
+                           || (visionInChatEnabled && pendingImageURL != nil)) && !isBusy
             Button {
-                if model.isGenerating { model.stopGenerating() } else { send() }
+                if visionBusy { cancelVision() } else if model.isGenerating { model.stopGenerating() } else { send() }
             } label: {
-                Image(systemName: model.isGenerating ? "stop.fill" : "arrow.up")
-                    .font(.system(size: model.isGenerating ? 15 : 18, weight: .semibold))
+                Image(systemName: isBusy ? "stop.fill" : "arrow.up")
+                    .font(.system(size: isBusy ? 15 : 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(p.primary.opacity(canSend || model.isGenerating ? 1 : 0.4), in: Circle())
+                    .background(p.primary.opacity(canSend || isBusy ? 1 : 0.4), in: Circle())
             }
             .buttonStyle(.plain)
             // Sendable state is signalled by COLOUR only (primary → 40% opacity, above) — never
             // geometry. UI_DESIGN_RULES §1: state must not drive transform/scale.
-            .disabled(!canSend && !model.isGenerating)
-            .help(model.isGenerating ? String(localized: "Stop generating") : String(localized: "Send message"))
-            .accessibilityLabel(model.isGenerating ? String(localized: "Stop generating") : String(localized: "Send message"))
+            .disabled(!canSend && !isBusy)
+            .help(isBusy ? String(localized: "Stop generating") : String(localized: "Send message"))
+            .accessibilityLabel(isBusy ? String(localized: "Stop generating") : String(localized: "Send message"))
         }
     }
 

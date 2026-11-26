@@ -31,6 +31,7 @@ import { ExecFileRunner } from './services/capability/platformAutomation.js';
 import { platformCapabilities } from './services/capability/platformCapabilities.js';
 import { registerImageCommands } from './commands/images.js';
 import { registerVoiceCommands } from './commands/voice.js';
+import { planRun } from './commands/run.js';
 
 const program = new Command();
 
@@ -133,6 +134,93 @@ async function readAllStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8').trim();
 }
 
+async function downloadCatalogModel(
+  id: string,
+  llm: LlmService,
+  out: { write(chunk: string): unknown } = process.stdout,
+): Promise<boolean> {
+  const onProgress = (p: { progress: number }) => {
+    out.write(`\r  downloading ${id} · ${String(p.progress).padStart(3)}%`);
+  };
+  llm.on('model_download_progress', onProgress);
+  try {
+    await llm.downloadModel(id);
+    out.write(`\n  ✓ ${id} installed\n`);
+    return true;
+  } catch (e: unknown) {
+    console.error(`\nDownload failed: ${e instanceof Error ? e.message : String(e)}`);
+    process.exitCode = 1;
+    return false;
+  } finally {
+    llm.off('model_download_progress', onProgress);
+  }
+}
+
+async function runPrintChat(llm: LlmService, argPrompt: string): Promise<void> {
+  const piped = !process.stdin.isTTY ? await readAllStdin() : '';
+  const prompt = [argPrompt, piped].filter(Boolean).join('\n\n');
+  if (!prompt) {
+    console.error('Nothing to answer: pass a prompt (`-p "…"`) or pipe input.');
+    process.exitCode = 1;
+    await llm.shutdown({ processExit: true });
+    return;
+  }
+  await llm.generalChat(prompt, tok => process.stdout.write(tok), { plainChat: true });
+  process.stdout.write('\n');
+  // Full engine dispose before exit — ggml-metal's atexit destructor asserts if the
+  // device is still alive (llama.cpp #17869), turning a good run into exit 134.
+  await llm.shutdown({ processExit: true });
+  process.exit(0);
+}
+
+function runReplChat(llm: LlmService): void {
+  console.log(`\n${bold('Quenderin')} ${dim('— on-device · private · nothing leaves this machine')}`);
+  console.log(dim(`model: ${llm.getActiveModelLabel()} · /help for commands\n`));
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  let closing = false;
+  const ask = (): void => {
+    if (closing) return;
+    rl.question('› ', async (line: string) => {
+      const input = line.trim();
+      if (!input) return ask();
+
+      if (input === '/exit' || input === '/quit') { rl.close(); return; }
+      if (input === '/help') {
+        console.log(dim('  /model <id>   switch model      /models   list models'));
+        console.log(dim('  /clear        new conversation  /exit     leave\n'));
+        return ask();
+      }
+      if (input === '/models') { printModelTable(); return ask(); }
+      if (input === '/clear') { llm.resetChat(); console.log(dim('  conversation cleared\n')); return ask(); }
+      if (input.startsWith('/model ')) {
+        const id = input.slice(7).trim();
+        if (!MODEL_CATALOG.some(m => m.id === id)) {
+          console.log(dim(`  unknown model "${id}" — /models for the list\n`));
+          return ask();
+        }
+        try {
+          await llm.switchModel(id);
+          console.log(dim(`  now talking to ${llm.getActiveModelLabel()}\n`));
+        } catch (e: unknown) {
+          console.log(dim(`  could not switch: ${e instanceof Error ? e.message : String(e)}\n`));
+        }
+        return ask();
+      }
+
+      try {
+        const { meta } = await llm.generalChat(input, tok => process.stdout.write(tok), { plainChat: true });
+        console.log(`\n${dim(`· ${meta.tokensPerSecond.toFixed(0)} tok/s`)}\n`);
+      } catch (e: unknown) {
+        console.error(`\n${e instanceof Error ? e.message : String(e)}\n`);
+      }
+      ask();
+    });
+  };
+  rl.on('close', () => { closing = true; void llm.shutdown({ processExit: true }).then(() => process.exit(0), () => process.exit(1)); });
+  ask();
+}
+
 program
   .command('models')
   .description('List the model catalog: what is installed, active, and downloadable.')
@@ -149,16 +237,7 @@ program
       return;
     }
     const llm = new LlmService();
-    llm.on('model_download_progress', (p: { progress: number }) => {
-      process.stdout.write(`\r  downloading ${id} · ${String(p.progress).padStart(3)}%`);
-    });
-    try {
-      await llm.downloadModel(id);
-      console.log(`\n  ✓ ${id} installed`);
-    } catch (e: unknown) {
-      console.error(`\nDownload failed: ${e instanceof Error ? e.message : String(e)}`);
-      process.exitCode = 1;
-    }
+    await downloadCatalogModel(id, llm, process.stdout);
   });
 
 program
@@ -184,69 +263,64 @@ program
 
       // ── -p print mode: one answer, plain stdout, exit. The pipe-friendly path.
       if (options.print !== undefined) {
-        const piped = !process.stdin.isTTY ? await readAllStdin() : '';
         const arg = typeof options.print === 'string' ? options.print : '';
-        const prompt = [arg, piped].filter(Boolean).join('\n\n');
-        if (!prompt) {
-          console.error('Nothing to answer: pass a prompt (`-p "…"`) or pipe input.');
-          process.exitCode = 1;
-          await llm.shutdown({ processExit: true });
-          return;
-        }
-        await llm.generalChat(prompt, tok => process.stdout.write(tok), { plainChat: true });
-        process.stdout.write('\n');
-        // Full engine dispose before exit — ggml-metal's atexit destructor asserts if the
-        // device is still alive (llama.cpp #17869), turning a good run into exit 134.
-        await llm.shutdown({ processExit: true });
-        process.exit(0);
+        await runPrintChat(llm, arg);
+        return;
       }
 
       // ── Interactive REPL.
-      console.log(`\n${bold('Quenderin')} ${dim('— on-device · private · nothing leaves this machine')}`);
-      console.log(dim(`model: ${llm.getActiveModelLabel()} · /help for commands\n`));
+      runReplChat(llm);
+    } catch (e: unknown) {
+      console.error(e instanceof Error ? e.message : String(e));
+      process.exitCode = 1;
+      try { await llm.shutdown({ processExit: true }); } catch { /* failed native join must not free its backend */ }
+    }
+  });
 
-      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-      let closing = false;
-      const ask = (): void => {
-        if (closing) return;
-        rl.question('› ', async (line: string) => {
-          const input = line.trim();
-          if (!input) return ask();
+program
+  .command('run')
+  .description('Download (if needed) and run a local model — one-shot with a prompt, or interactive REPL.')
+  .argument('<id>', 'catalog model id, e.g. llama32-1b')
+  .argument('[prompt...]', 'optional prompt for a one-shot answer (omit for interactive REPL)')
+  .option('--no-download', 'fail instead of downloading if the model is not installed')
+  .action(async (id: string, promptArgs: string[], options: { download?: boolean }) => {
+    const plan = planRun({
+      id,
+      promptArgs,
+      stdinIsTTY: Boolean(process.stdin.isTTY),
+      installed: installedModelIds().has(id),
+      known: MODEL_CATALOG.some(m => m.id === id),
+      allowDownload: options.download !== false,
+    });
+    if (plan.kind === 'error') {
+      console.error(plan.message);
+      process.exitCode = 1;
+      return;
+    }
 
-          if (input === '/exit' || input === '/quit') { rl.close(); return; }
-          if (input === '/help') {
-            console.log(dim('  /model <id>   switch model      /models   list models'));
-            console.log(dim('  /clear        new conversation  /exit     leave\n'));
-            return ask();
-          }
-          if (input === '/models') { printModelTable(); return ask(); }
-          if (input === '/clear') { llm.resetChat(); console.log(dim('  conversation cleared\n')); return ask(); }
-          if (input.startsWith('/model ')) {
-            const id = input.slice(7).trim();
-            if (!MODEL_CATALOG.some(m => m.id === id)) {
-              console.log(dim(`  unknown model "${id}" — /models for the list\n`));
-              return ask();
-            }
-            try {
-              await llm.switchModel(id);
-              console.log(dim(`  now talking to ${llm.getActiveModelLabel()}\n`));
-            } catch (e: unknown) {
-              console.log(dim(`  could not switch: ${e instanceof Error ? e.message : String(e)}\n`));
-            }
-            return ask();
-          }
-
-          try {
-            const { meta } = await llm.generalChat(input, tok => process.stdout.write(tok), { plainChat: true });
-            console.log(`\n${dim(`· ${meta.tokensPerSecond.toFixed(0)} tok/s`)}\n`);
-          } catch (e: unknown) {
-            console.error(`\n${e instanceof Error ? e.message : String(e)}\n`);
-          }
-          ask();
-        });
-      };
-      rl.on('close', () => { closing = true; void llm.shutdown({ processExit: true }).then(() => process.exit(0), () => process.exit(1)); });
-      ask();
+    const isPrint = plan.kind === 'print' || (plan.kind === 'download-then' && plan.next === 'print');
+    if (isPrint) setLogLevel('error');
+    const llm = new LlmService();
+    try {
+      if (plan.kind === 'download-then') {
+        const out = isPrint ? process.stderr : process.stdout;
+        out.write(`Model ${id} is not installed — downloading (SHA-256 verified)…\n`);
+        const ok = await downloadCatalogModel(id, llm, out);
+        if (!ok) {
+          try { await llm.shutdown({ processExit: true }); } catch { /* ignore */ }
+          return;
+        }
+      }
+      await llm.switchModel(id);
+      if (plan.kind === 'print') {
+        await runPrintChat(llm, plan.prompt);
+        return;
+      }
+      if (plan.kind === 'download-then' && plan.next === 'print') {
+        await runPrintChat(llm, plan.prompt ?? '');
+        return;
+      }
+      runReplChat(llm);
     } catch (e: unknown) {
       console.error(e instanceof Error ? e.message : String(e));
       process.exitCode = 1;
@@ -465,6 +539,7 @@ if (process.argv.length === 2) {
   console.log('  quenderin undo            - Reverse your last `do` task (works in a new session)');
   console.log('  quenderin chat            - Chat with a local model in this terminal');
   console.log('  quenderin chat -p "…"     - One answer, pipe-friendly (git diff | quenderin chat -p "review")');
+  console.log('  quenderin run <id> ["…"]  - Download (if needed) and chat or answer once');
   console.log('  quenderin models          - What is installed / downloadable');
   console.log('  quenderin image models    - Local FLUX 3 / MOSS / Kromoss image presets (experimental)');
   console.log('  quenderin voice models    - Local Hex / transcribe.cpp speech models (experimental)');
