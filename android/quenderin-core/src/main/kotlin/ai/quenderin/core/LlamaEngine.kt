@@ -77,6 +77,27 @@ class LlamaEngine(
     @Volatile
     var enableThinking: Boolean = false
 
+    /**
+     * Three-state thinking preference ([ThinkingMode.OFF] / [ThinkingMode.SHOW] / [ThinkingMode.HIDE]).
+     * Kept in sync with [enableThinking] so legacy callers and new Settings stay consistent.
+     */
+    @Volatile
+    private var thinkingModeValue: ThinkingMode = ThinkingMode.OFF
+
+    /**
+     * User-selected context-window preference applied on the next [load]. Default [ContextLengthChoice.AUTO]
+     * produces the exact existing [ContextWindow.recommend] value.
+     */
+    @Volatile
+    private var contextLengthChoiceValue: ContextLengthChoice = ContextLengthChoice.AUTO
+
+    /**
+     * Optional GBNF grammar applied to ordinary chat turns (for example [JSONOutputGrammar.ANY_JSON_OBJECT]).
+     * Ignored for models that refuse grammar decoding (Beam, Jais, Muse). Default null (unconstrained).
+     */
+    @Volatile
+    private var chatGrammarValue: String? = null
+
     /** The unthrottled (big-core) thread count chosen at load — the governor's baseline for
      *  [recommendedThreads]'s in-flight thermal re-tuning during generation (mirrors iOS
      *  `loadedBaseThreads`). Set under [lock] in [load]; read by the native decode loop via JNI. */
@@ -146,13 +167,13 @@ class LlamaEngine(
     /** Same load configuration used by candidate admission; requested offload is never called actual GPU. */
     fun plannedContext(model: ModelEntry): Int {
         val kv = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
-        val tokens = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kv)
-        return when {
-            ModelRuntimeSupport.isBeam(model) -> minOf(tokens, 4096)
-            ModelRuntimeSupport.isMuse(model) -> minOf(tokens, ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS)
-            ModelRuntimeSupport.isBonsai(model) -> minOf(tokens, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS)
-            else -> tokens
+        val cap = when {
+            ModelRuntimeSupport.isBeam(model) -> 4096
+            ModelRuntimeSupport.isMuse(model) -> ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS
+            ModelRuntimeSupport.isBonsai(model) -> ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS
+            else -> null
         }
+        return ContextWindow.resolveForLoad(contextLengthChoiceValue, deviceBudgetGb, model.ramGB, kv, cap)
     }
     fun candidateEnvironment(model: ModelEntry, contextTokens: Int = plannedContext(model)): String {
         val base = if (threads > 0) threads else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
@@ -198,7 +219,7 @@ class LlamaEngine(
                     .append(clean(message.text)).append('\u001E')
             }
         }
-        return nativeChatExecutionProfile(handle, payload, ChatTier.of(model).maxTokens, !enableThinking)
+        return nativeChatExecutionProfile(handle, payload, ChatTier.of(model).maxTokens, !thinkingEnabled())
     }
     override fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = synchronized(lock) {
         if (!NATIVE_AVAILABLE || !supportsPerformance || loadedModelId != model.id || handle == 0L) return false
@@ -207,13 +228,26 @@ class LlamaEngine(
         actual.size == 4 && actual[0] == context.toLong() && actual[2] >= 0 && actual[2] + ChatTier.of(model).maxTokens <= actual[0]
     }
     private fun environment(context: Int, kv: Int, baseThreads: Int): String = performanceEnvironment(
-        "ctx=$context;kv=$kv;threads=$baseThreads;gpuLayersRequested=$gpuLayers;temperature=$temperature;topP=$topP;thinking=$enableThinking;batch=512;warmup=1")
+        "ctx=$context;kv=$kv;threads=$baseThreads;gpuLayersRequested=$gpuLayers;temperature=$temperature;topP=$topP;thinking=${thinkingEnabled()};batch=512;warmup=1")
 
     /** Interrupt a running [complete] (the native loop polls [cancelRequested]); lock-free (M3). */
     override fun requestCancel() { cancelRequested = true }
     override fun setChatTokenBudget(tokens: Int) { chatMaxTokensOverride = tokens }
-    override fun thinkingEnabled(): Boolean = enableThinking
-    override fun setThinkingEnabled(enabled: Boolean) { enableThinking = enabled }
+    override fun thinkingEnabled(): Boolean = enableThinking || thinkingModeValue.allowsThinking
+    override fun setThinkingEnabled(enabled: Boolean) {
+        enableThinking = enabled
+        thinkingModeValue = if (enabled) ThinkingMode.SHOW else ThinkingMode.OFF
+    }
+    override fun thinkingMode(): ThinkingMode =
+        if (thinkingModeValue != ThinkingMode.OFF) thinkingModeValue else if (enableThinking) ThinkingMode.SHOW else ThinkingMode.OFF
+    override fun setThinkingMode(mode: ThinkingMode) {
+        thinkingModeValue = mode
+        enableThinking = mode.allowsThinking
+    }
+    override fun contextLengthChoice(): ContextLengthChoice = contextLengthChoiceValue
+    override fun setContextLengthChoice(choice: ContextLengthChoice) { contextLengthChoiceValue = choice }
+    override fun chatGrammar(): String? = chatGrammarValue
+    override fun setChatGrammar(grammar: String?) { chatGrammarValue = grammar }
 
     /**
      * True when the most recent native generation reports a token-budget stop. This is the legacy
@@ -255,15 +289,9 @@ class LlamaEngine(
         // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
         // per-token memory, near-lossless), which the cache-aware n_ctx turns into ~2× context.
         val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
-        // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
-        val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType).let {
-            when {
-                ModelRuntimeSupport.isBeam(model) -> minOf(it, 4096)
-                ModelRuntimeSupport.isMuse(model) -> minOf(it, ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS)
-                ModelRuntimeSupport.isBonsai(model) -> minOf(it, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS)
-                else -> it
-            }
-        }
+        // n_ctx from the real app-memory budget, this model's footprint, the cache dtype, and the
+        // user's context-length preference (AUTO matches exact recommend(...) behaviour).
+        val nctx = plannedContext(model)
         if (ModelRuntimeSupport.isBeam(model)) {
             val free = minOf(deviceBudgetGb, NativeModelResources.availableMemoryBytes().toDouble() / (1024.0 * 1024 * 1024))
             check(MemoryFitness.check(model, deviceBudgetGb, free).canLoad) { ModelRuntimeSupport.BEAM_UNAVAILABLE_MESSAGE }
@@ -406,6 +434,8 @@ class LlamaEngine(
                             if (cache == 0) "cold" else "prefix", generationThermalLevel.name.lowercase(), System.currentTimeMillis())
                     })
             }
+            val activeGrammar = if (loadedBeam || loadedMuse || loadedJais) null else chatGrammarValue
+            val disableThinking = shouldDisableThinking(thinkingMode(), activeGrammar != null)
             val result =
             if (loadedBeam) {
                 val filter = BeamOutputFilter(onToken)
@@ -418,19 +448,33 @@ class LlamaEngine(
             } else if (loadedMuse) {
                 val filter = MuseOutputFilter(onToken)
                 val wire = try {
-                    generate(!enableThinking, TokenSink { filter.accept(it) })
+                    generate(disableThinking, TokenSink { filter.accept(it) })
                 } finally { filter.finish() }
                 MuseOutputFilter.finalText(wire)
             } else if (loadedJais) {
                 val filter = JaisOutputFilter(onToken)
                 val wire = try {
-                    generate(!enableThinking, TokenSink { filter.accept(it) })
+                    generate(disableThinking, TokenSink { filter.accept(it) })
                 } finally { filter.finish() }
                 val final = JaisOutputFilter.finalText(wire)
                 check(final.isNotEmpty() || cancelRequested) { "Jais reached its generation limit before producing a final answer. Try a shorter question or a larger token budget." }
                 final
+            } else if (activeGrammar != null) {
+                val flat = buildString {
+                    if (systemPrompt.isNotEmpty()) { append(systemPrompt); append("\n\n") }
+                    history.forEach {
+                        append(if (it.role == Role.USER) "User: " else "Assistant: ").append(it.text).append("\n")
+                    }
+                    append("Assistant:")
+                }
+                val out = nativeCompleteWithGrammar(
+                    handle, flat, cap, activeGrammar,
+                    topP.toFloat(), 40, temperature.toFloat(), 1.1f, 256,
+                )
+                if (out.isNotEmpty()) onToken(out)
+                out
             } else {
-                generate(!enableThinking, TokenSink { onToken(it) })
+                generate(disableThinking, TokenSink { onToken(it) })
             }
             // Filtering/validation above must finish successfully before the evidence leaves the engine.
             if (myCapRun == capRun) {
@@ -533,6 +577,13 @@ class LlamaEngine(
     }
 
     companion object {
+        /**
+         * Engine-side decision: whether chat prompt building must close an empty `<think>` block.
+         * Grammar-constrained paths always disable thinking; otherwise delegates to [ThinkingMode.allowsThinking].
+         */
+        fun shouldDisableThinking(mode: ThinkingMode, hasGrammar: Boolean): Boolean =
+            hasGrammar || !mode.allowsThinking
+
         /**
          * Map the pinned native measured completion to the public contract. Only a measured status
          * 0 is a clean completion, where the native budget flag is trustworthy. Status 3 is known

@@ -29,29 +29,38 @@ enum class ThinkingMode(val rawValue: String) {
          */
         fun supports(template: String): Boolean =
             template.contains("enable_thinking") || template.contains("<think>")
+
+        /**
+         * Returns true when the chat prompt builder should close an empty `<think>` block after the
+         * assistant turn: only when [mode] disallows thinking ([OFF]) AND the template supports it.
+         * Twin of Swift `ThinkingMode.shouldCloseThinkBlock(mode:template:)`.
+         */
+        fun shouldCloseThinkBlock(mode: ThinkingMode, template: String): Boolean =
+            !mode.allowsThinking && supports(template)
     }
 }
 
 /**
  * Streaming splitter that separates `<think>…</think>` reasoning from the visible answer across
  * arbitrary token boundaries. Holds back only a possible partial tag suffix (like
- * `StopSequenceScanner`), holds leading ASCII whitespace until the first non-whitespace char
- * (dropping it if `<think>` follows, or emitting it verbatim into `answer` otherwise), supports
- * pre-opened templates ([startsInsideThinking]), routes unclosed thinking to `thinking` on
- * [finish], and passes non-thinking output straight through to `answer`.
+ * `StopSequenceScanner`), holds leading ASCII whitespace at stream start until the first
+ * non-whitespace char (dropping it if `<think>` immediately follows, or preserving it in `answer`
+ * otherwise), routes every `<think>…</think>` block anywhere in the stream (even after a preamble
+ * or across multiple blocks) into `thinking`, supports pre-opened templates
+ * ([startsInsideThinking]), and routes unclosed thinking to `thinking` on [finish].
  * Pure + deterministic → byte-identical twin of Swift `ThinkingSplitter`.
  */
 class ThinkingSplitter(startsInsideThinking: Boolean = false) {
     data class Chunk(val thinking: String, val answer: String)
 
     private enum class State {
-        AWAITING_OPEN,
+        AWAITING_INITIAL_OPEN,
+        OUTSIDE,
         THINKING,
-        ANSWER,
         FINISHED,
     }
 
-    private var state: State = if (startsInsideThinking) State.THINKING else State.AWAITING_OPEN
+    private var state: State = if (startsInsideThinking) State.THINKING else State.AWAITING_INITIAL_OPEN
     private var buffer: String = ""
 
     /** True while the splitter is currently inside a `<think>…</think>` block. */
@@ -60,25 +69,14 @@ class ThinkingSplitter(startsInsideThinking: Boolean = false) {
 
     /** Feed the next streamed text piece. Returns incremental `(thinking, answer)` deltas. */
     fun feed(piece: String): Chunk {
-        if (piece.isEmpty()) return Chunk("", "")
-
-        return when (state) {
-            State.FINISHED -> Chunk("", "")
-            State.ANSWER -> Chunk("", piece)
-            State.THINKING -> {
-                buffer += piece
-                drainThinking()
-            }
-            State.AWAITING_OPEN -> {
-                buffer += piece
-                drainAwaitingOpen()
-            }
-        }
+        if (piece.isEmpty() || state == State.FINISHED) return Chunk("", "")
+        buffer += piece
+        return drain()
     }
 
     /**
      * Flush any held-back text at end of stream. Unclosed thinking flushes to `thinking` with
-     * an empty `answer`; unconfirmed pre-open text (no `<think>` ever arrived) flushes to `answer`.
+     * an empty `answer`; unconfirmed pre-open or trailing partial open-tag text flushes to `answer`.
      */
     fun finish(): Chunk {
         val pending = buffer
@@ -88,60 +86,84 @@ class ThinkingSplitter(startsInsideThinking: Boolean = false) {
                 state = State.FINISHED
                 Chunk(pending, "")
             }
-            State.AWAITING_OPEN -> {
+            State.AWAITING_INITIAL_OPEN, State.OUTSIDE -> {
                 state = State.FINISHED
                 Chunk("", pending)
             }
-            State.ANSWER, State.FINISHED -> {
-                state = State.FINISHED
-                Chunk("", "")
+            State.FINISHED -> Chunk("", "")
+        }
+    }
+
+    private fun drain(): Chunk {
+        val thinkingOut = StringBuilder()
+        val answerOut = StringBuilder()
+
+        loop@ while (buffer.isNotEmpty()) {
+            when (state) {
+                State.FINISHED -> break@loop
+
+                State.AWAITING_INITIAL_OPEN -> {
+                    var idx = 0
+                    while (idx < buffer.length && isAsciiWhitespace(buffer[idx])) {
+                        idx++
+                    }
+                    if (idx == buffer.length) {
+                        break@loop
+                    }
+
+                    val remainder = buffer.substring(idx)
+                    if (remainder.startsWith(OPEN_TAG)) {
+                        buffer = remainder.substring(OPEN_TAG.length)
+                        state = State.THINKING
+                        continue@loop
+                    }
+                    if (OPEN_TAG.startsWith(remainder)) {
+                        break@loop
+                    }
+
+                    state = State.OUTSIDE
+                    continue@loop
+                }
+
+                State.OUTSIDE -> {
+                    val openIdx = buffer.indexOf(OPEN_TAG)
+                    if (openIdx >= 0) {
+                        if (openIdx > 0) answerOut.append(buffer, 0, openIdx)
+                        buffer = buffer.substring(openIdx + OPEN_TAG.length)
+                        state = State.THINKING
+                        continue@loop
+                    }
+
+                    val holdLen = longestPrefixSuffixLength(buffer, OPEN_TAG)
+                    val emitCount = buffer.length - holdLen
+                    if (emitCount > 0) {
+                        answerOut.append(buffer, 0, emitCount)
+                        buffer = buffer.substring(emitCount)
+                    }
+                    break@loop
+                }
+
+                State.THINKING -> {
+                    val closeIdx = buffer.indexOf(CLOSE_TAG)
+                    if (closeIdx >= 0) {
+                        if (closeIdx > 0) thinkingOut.append(buffer, 0, closeIdx)
+                        buffer = buffer.substring(closeIdx + CLOSE_TAG.length)
+                        state = State.OUTSIDE
+                        continue@loop
+                    }
+
+                    val holdLen = longestPrefixSuffixLength(buffer, CLOSE_TAG)
+                    val emitCount = buffer.length - holdLen
+                    if (emitCount > 0) {
+                        thinkingOut.append(buffer, 0, emitCount)
+                        buffer = buffer.substring(emitCount)
+                    }
+                    break@loop
+                }
             }
         }
-    }
 
-    private fun drainAwaitingOpen(): Chunk {
-        var idx = 0
-        while (idx < buffer.length && isAsciiWhitespace(buffer[idx])) {
-            idx++
-        }
-        if (idx == buffer.length) {
-            return Chunk("", "")
-        }
-
-        val remainder = buffer.substring(idx)
-        if (remainder.startsWith(OPEN_TAG)) {
-            buffer = remainder.substring(OPEN_TAG.length)
-            state = State.THINKING
-            return drainThinking()
-        }
-
-        if (OPEN_TAG.startsWith(remainder)) {
-            return Chunk("", "")
-        }
-
-        val out = buffer
-        buffer = ""
-        state = State.ANSWER
-        return Chunk("", out)
-    }
-
-    private fun drainThinking(): Chunk {
-        val closeIdx = buffer.indexOf(CLOSE_TAG)
-        if (closeIdx >= 0) {
-            val thinkText = buffer.substring(0, closeIdx)
-            val answerText = buffer.substring(closeIdx + CLOSE_TAG.length)
-            buffer = ""
-            state = State.ANSWER
-            return Chunk(thinkText, answerText)
-        }
-
-        val holdLen = longestPrefixSuffixLength(buffer, CLOSE_TAG)
-        val emitCount = buffer.length - holdLen
-        if (emitCount <= 0) return Chunk("", "")
-
-        val thinkText = buffer.substring(0, emitCount)
-        buffer = buffer.substring(emitCount)
-        return Chunk(thinkText, "")
+        return Chunk(thinkingOut.toString(), answerOut.toString())
     }
 
     companion object {

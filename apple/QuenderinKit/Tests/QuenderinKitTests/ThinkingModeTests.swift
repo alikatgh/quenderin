@@ -20,6 +20,50 @@ final class ThinkingModeTests: XCTestCase {
         XCTAssertFalse(ThinkingMode.supports(template: ""))
     }
 
+    func testShouldCloseThinkBlockDecision() {
+        let qwenTmpl = "{% if enable_thinking %}<think>{% endif %}"
+        let r1Tmpl = "assistant\n<think>\n"
+        let plainTmpl = "<|im_start|>assistant\n"
+
+        XCTAssertTrue(ThinkingMode.shouldCloseThinkBlock(mode: .off, template: qwenTmpl))
+        XCTAssertTrue(ThinkingMode.shouldCloseThinkBlock(mode: .off, template: r1Tmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .show, template: qwenTmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .hide, template: qwenTmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .show, template: r1Tmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .hide, template: r1Tmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .off, template: plainTmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .show, template: plainTmpl))
+        XCTAssertFalse(ThinkingMode.shouldCloseThinkBlock(mode: .hide, template: ""))
+    }
+
+    func testGenerationOptionsThinkingModeDefaultAndConversationStoreRoundTrip() throws {
+        let defaults = GenerationOptions()
+        XCTAssertEqual(defaults.thinkingMode, .off)
+        let custom = GenerationOptions(maxTokens: 128, thinkingMode: .show)
+        XCTAssertEqual(custom.thinkingMode, .show)
+        XCTAssertEqual(custom.maxTokens, 128)
+
+        let store = ConversationStore()
+        // Old saved JSON without `thinking` decodes cleanly via decodeIfPresent.
+        let legacyJSON = Data(#"[{"role":"user","text":"hi"},{"role":"assistant","text":"hello"}]"#.utf8)
+        let legacy = try store.decode(legacyJSON)
+        XCTAssertEqual(legacy.count, 2)
+        XCTAssertNil(legacy[1].thinking)
+
+        // New message with `thinking` round-trips cleanly and exporter ignores thinking without crashing.
+        let withThinking = [
+            ChatMessage(role: .user, text: "2+2?"),
+            ChatMessage(role: .assistant, text: "4", thinking: "adding two and two"),
+        ]
+        let roundTripped = try store.decode(try store.encode(withThinking))
+        XCTAssertEqual(roundTripped.count, 2)
+        XCTAssertEqual(roundTripped[1].text, "4")
+        XCTAssertEqual(roundTripped[1].thinking, "adding two and two")
+        let exported = ConversationExporter.markdown(roundTripped)
+        XCTAssertTrue(exported.contains("4"))
+        XCTAssertFalse(exported.contains("adding two and two"))
+    }
+
     func testSingleChunkThinkAndAnswer() {
         var splitter = ThinkingSplitter()
         XCTAssertFalse(splitter.isThinking)
@@ -178,5 +222,96 @@ final class ThinkingModeTests: XCTestCase {
         let poTail = partialOpen.finish()
         XCTAssertEqual(poTail.thinking, "")
         XCTAssertEqual(poTail.answer, "<thi")
+    }
+
+    func testPreambleAndMultipleThinkBlocksAcrossAnySplit() {
+        // Single-chunk preamble + think + answer.
+        var single = ThinkingSplitter()
+        let s1 = single.feed("Intro <think>reason</think>Done")
+        let s2 = single.finish()
+        XCTAssertEqual(s1.thinking + s2.thinking, "reason")
+        XCTAssertEqual(s1.answer + s2.answer, "Intro Done")
+        XCTAssertFalse(single.isThinking)
+
+        // Multiple blocks + preamble streamed one scalar at a time and at every 2-chunk split point.
+        let full = "  Intro <think>r1</think> mid <think>r2</think>Done"
+        var byChar = ThinkingSplitter()
+        var ct = ""
+        var ca = ""
+        for scalar in full.unicodeScalars {
+            let d = byChar.feed(String(scalar))
+            ct += d.thinking
+            ca += d.answer
+        }
+        let ctTail = byChar.finish()
+        ct += ctTail.thinking
+        ca += ctTail.answer
+        XCTAssertEqual(ct, "r1r2")
+        XCTAssertEqual(ca, "  Intro  mid Done")
+
+        let scalars = Array(full.unicodeScalars)
+        for split in 0...scalars.count {
+            var sp = ThinkingSplitter()
+            let p1 = String(String.UnicodeScalarView(scalars[..<split]))
+            let p2 = String(String.UnicodeScalarView(scalars[split...]))
+            let d1 = sp.feed(p1)
+            let d2 = sp.feed(p2)
+            let d3 = sp.finish()
+            XCTAssertEqual(d1.thinking + d2.thinking + d3.thinking, "r1r2", "split=\(split)")
+            XCTAssertEqual(d1.answer + d2.answer + d3.answer, "  Intro  mid Done", "split=\(split)")
+        }
+
+        // Unclosed second block flushes to thinking; startsInsideThinking followed by a second block.
+        var unclosedSecond = ThinkingSplitter()
+        let u1 = unclosedSecond.feed("Intro <think>r1</think>mid<think>unclosed</thi")
+        XCTAssertTrue(unclosedSecond.isThinking)
+        let u2 = unclosedSecond.finish()
+        XCTAssertFalse(unclosedSecond.isThinking)
+        XCTAssertEqual(u1.thinking + u2.thinking, "r1unclosed</thi")
+        XCTAssertEqual(u1.answer + u2.answer, "Intro mid")
+
+        var preOpenedMulti = ThinkingSplitter(startsInsideThinking: true)
+        let m1 = preOpenedMulti.feed("first</think>mid<think>second</think>end")
+        let m2 = preOpenedMulti.finish()
+        XCTAssertEqual(m1.thinking + m2.thinking, "firstsecond")
+        XCTAssertEqual(m1.answer + m2.answer, "midend")
+
+        // Trailing partial open tag after preamble flushes to answer on finish.
+        var trailingPartial = ThinkingSplitter()
+        let tp1 = trailingPartial.feed("Intro <thi")
+        XCTAssertEqual(tp1.answer, "Intro ")
+        let tp2 = trailingPartial.finish()
+        XCTAssertEqual(tp1.thinking + tp2.thinking, "")
+        XCTAssertEqual(tp1.answer + tp2.answer, "Intro <thi")
+    }
+
+    func testCombiningMarkAfterTagsIsChunkBoundaryIndependent() {
+        let oneChunkText = "<think>\u{0301}x</think>A"
+        var whole = ThinkingSplitter()
+        let w1 = whole.feed(oneChunkText)
+        let w2 = whole.finish()
+        XCTAssertEqual(w1.thinking + w2.thinking, "\u{0301}x")
+        XCTAssertEqual(w1.answer + w2.answer, "A")
+
+        var split = ThinkingSplitter()
+        let a = split.feed("<think>")
+        let b = split.feed("\u{0301}x</think>A")
+        let c = split.finish()
+        XCTAssertEqual(a.thinking + b.thinking + c.thinking, "\u{0301}x")
+        XCTAssertEqual(a.answer + b.answer + c.answer, "A")
+
+        // Also combining mark immediately after closing tag.
+        let closeWholeText = "<think>a</think>\u{0301}B"
+        var cw = ThinkingSplitter()
+        let cw1 = cw.feed(closeWholeText)
+        let cw2 = cw.finish()
+        var cs = ThinkingSplitter()
+        let cs1 = cs.feed("<think>a</think>")
+        let cs2 = cs.feed("\u{0301}B")
+        let cs3 = cs.finish()
+        XCTAssertEqual(cw1.thinking + cw2.thinking, "a")
+        XCTAssertEqual(cw1.answer + cw2.answer, "\u{0301}B")
+        XCTAssertEqual(cs1.thinking + cs2.thinking + cs3.thinking, "a")
+        XCTAssertEqual(cs1.answer + cs2.answer + cs3.answer, "\u{0301}B")
     }
 }

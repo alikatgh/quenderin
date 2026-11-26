@@ -62,12 +62,12 @@ public enum JSONOutputGrammar {
     /// - `array` (with optional `items` schema object)
     /// - nested objects and arrays
     ///
-    /// Property order determinism in Swift:
-    /// - Pass `"properties"` as `[(String, Any)]`, `[(String, [String: Any])]`, or `OrderedObject`
-    ///   to preserve exact declared order (matching Kotlin `LinkedHashMap` and `grammar(forSchemaJSON:)`).
-    /// - If a plain unordered Swift `[String: Any]` is passed for `"properties"` with >1 entries,
-    ///   keys are sorted lexicographically ONLY as a deterministic fallback because Swift `Dictionary`
-    ///   has randomized per-process iteration order.
+    /// Property order determinism (parity with Kotlin `JSONOutputGrammar.grammar(schema:)`):
+    /// - Native `[String: Any]` dictionaries ALWAYS sort keys by unsigned UTF-8 bytes on BOTH Swift
+    ///   and Kotlin so map/dictionary schema APIs produce byte-identical grammars across platforms.
+    /// - Pass `"properties"` as `OrderedObject`, non-empty `[(String, Any)]`, or
+    ///   `[(String, [String: Any])]`, OR use `grammar(forSchemaJSON:)`, to preserve exact declared
+    ///   property order.
     public static func grammar(forSchema schema: Any) -> Result<String, SchemaError> {
         switch toNode(schema) {
         case .failure(let err):
@@ -80,7 +80,7 @@ public enum JSONOutputGrammar {
     /// Parses a JSON Schema string preserving exact declared property order and compiles it to GBNF.
     /// Byte-identical to Kotlin `JSONOutputGrammar.grammarFromJson(json)`.
     public static func grammar(forSchemaJSON json: String) -> Result<String, SchemaError> {
-        var parser = MiniJSONParser(json)
+        var parser = MiniJSONParser(json, allowLoneSurrogates: false)
         guard let value = parser.parseDocument(), case .object = value else {
             return .failure(.invalid("Schema JSON must be a valid JSON object"))
         }
@@ -88,9 +88,10 @@ public enum JSONOutputGrammar {
     }
 
     /// Minimal RFC-8259 validator: returns `true` iff `json` parses cleanly as a top-level JSON object
-    /// with no trailing non-whitespace characters. Twin of Kotlin `JSONOutputGrammar.validate(json)`.
+    /// with no trailing non-whitespace characters (including syntactically valid lone `\uD800`–`\uDFFF`
+    /// escapes per RFC 8259). Twin of Kotlin `JSONOutputGrammar.validate(json)`.
     public static func validate(json: String) -> Bool {
-        var parser = MiniJSONParser(json)
+        var parser = MiniJSONParser(json, allowLoneSurrogates: true)
         guard let value = parser.parseDocument() else { return false }
         if case .object = value {
             return true
@@ -121,7 +122,9 @@ public enum JSONOutputGrammar {
             }
             return .success(.object(out))
         }
-        if let pairs = any as? [(String, Any)] {
+        // Guard `!pairs.isEmpty`: in Swift an empty array (e.g. `[String]()`) bridges to any `[T]`,
+        // including `[(String, Any)]`. Empty arrays must fall through to `.array([])` below.
+        if let pairs = any as? [(String, Any)], !pairs.isEmpty {
             var out: [(String, JSONValue)] = []
             out.reserveCapacity(pairs.count)
             for (k, v) in pairs {
@@ -132,7 +135,7 @@ public enum JSONOutputGrammar {
             }
             return .success(.object(out))
         }
-        if let pairs = any as? [(String, [String: Any])] {
+        if let pairs = any as? [(String, [String: Any])], !pairs.isEmpty {
             var out: [(String, JSONValue)] = []
             out.reserveCapacity(pairs.count)
             for (k, v) in pairs {
@@ -144,7 +147,9 @@ public enum JSONOutputGrammar {
             return .success(.object(out))
         }
         if let dict = any as? [String: Any] {
-            let keys = dict.count > 1 ? dict.keys.sorted() : Array(dict.keys)
+            let keys = dict.count > 1
+                ? dict.keys.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+                : Array(dict.keys)
             var out: [(String, JSONValue)] = []
             out.reserveCapacity(keys.count)
             for k in keys {
@@ -336,7 +341,8 @@ public enum JSONOutputGrammar {
                 return .failure(.invalid("'properties' must be an object"))
             }
 
-            var requiredSet: Set<String> = []
+            var requiredByUTF8: Set<[UInt8]> = []
+            var requiredEntries: [([UInt8], String)] = []
             if let reqVal = map["required"] {
                 guard case .array(let reqItems) = reqVal else {
                     return .failure(.invalid("'required' must be an array of property names"))
@@ -345,13 +351,24 @@ public enum JSONOutputGrammar {
                     guard case .string(let name) = item else {
                         return .failure(.invalid("'required' entries must be strings"))
                     }
-                    requiredSet.insert(name)
+                    let keyBytes = Array(name.utf8)
+                    if requiredByUTF8.insert(keyBytes).inserted {
+                        requiredEntries.append((keyBytes, name))
+                    }
                 }
             }
 
-            let declaredNames = Set(propEntries.map(\.0))
-            for reqName in requiredSet.sorted() where !declaredNames.contains(reqName) {
+            let declaredUTF8 = Set(propEntries.map { Array($0.0.utf8) })
+            let sortedRequired = requiredEntries.sorted { $0.0.lexicographicallyPrecedes($1.0) }
+            for (reqBytes, reqName) in sortedRequired where !declaredUTF8.contains(reqBytes) {
                 return .failure(.invalid("Required property '\(reqName)' not found in properties"))
+            }
+
+            let optionalCount = propEntries.reduce(0) { count, entry in
+                count + (requiredByUTF8.contains(Array(entry.0.utf8)) ? 0 : 1)
+            }
+            if optionalCount > JSONOutputGrammar.maxOptionalProperties {
+                return .failure(.unsupported("too many optional properties; using generic JSON grammar"))
             }
 
             // Emit required props in declared order, then optional props in declared order.
@@ -364,7 +381,7 @@ public enum JSONOutputGrammar {
                 case .success(let propRef):
                     let keyLit = JSONOutputGrammar.gbnfQuotedJSONString(propName)
                     let kv = "\(keyLit) ws \":\" ws \(propRef)"
-                    if requiredSet.contains(propName) {
+                    if requiredByUTF8.contains(Array(propName.utf8)) {
                         reqKV.append(kv)
                     } else {
                         optKV.append(kv)
@@ -456,7 +473,11 @@ public enum JSONOutputGrammar {
         }
     }
 
+    private static let maxOptionalProperties = 16
+
     /// Encodes a string as a GBNF double-quoted literal matching that JSON-encoded string.
+    /// Iterates `unicodeScalars` (never `Character`) so a quote or backslash followed by a
+    /// combining mark such as U+0301 is still escaped identically to Kotlin.
     private static func gbnfQuotedJSONString(_ value: String) -> String {
         var jsonEscaped = ""
         for scalar in value.unicodeScalars {
@@ -476,13 +497,13 @@ public enum JSONOutputGrammar {
         }
         let jsonLiteral = "\"\(jsonEscaped)\""
         var gbnfEscaped = ""
-        for ch in jsonLiteral {
-            if ch == "\\" {
+        for scalar in jsonLiteral.unicodeScalars {
+            if scalar.value == 0x5C {
                 gbnfEscaped += "\\\\"
-            } else if ch == "\"" {
+            } else if scalar.value == 0x22 {
                 gbnfEscaped += "\\\""
             } else {
-                gbnfEscaped.append(ch)
+                gbnfEscaped.unicodeScalars.append(scalar)
             }
         }
         return "\"\(gbnfEscaped)\""
@@ -492,11 +513,13 @@ public enum JSONOutputGrammar {
 
     private struct MiniJSONParser {
         private let bytes: [UInt8]
+        private let allowLoneSurrogates: Bool
         private var pos: Int = 0
         private static let maxDepth = 128
 
-        init(_ s: String) {
+        init(_ s: String, allowLoneSurrogates: Bool = false) {
             self.bytes = Array(s.utf8)
+            self.allowLoneSurrogates = allowLoneSurrogates
         }
 
         mutating func parseDocument() -> JSONValue? {
@@ -617,14 +640,30 @@ public enum JSONOutputGrammar {
                         guard let u1 = parseHex4() else { return nil }
                         let scalarValue: UInt32
                         if (0xD800...0xDBFF).contains(u1) {
-                            guard pos + 1 < bytes.count,
-                                  bytes[pos] == 0x5C,
-                                  bytes[pos + 1] == 0x75 else { return nil }
-                            pos += 2
-                            guard let u2 = parseHex4(), (0xDC00...0xDFFF).contains(u2) else { return nil }
-                            scalarValue = 0x10000 + ((u1 - 0xD800) << 10) + (u2 - 0xDC00)
+                            let savedPos = pos
+                            if pos + 1 < bytes.count,
+                               bytes[pos] == 0x5C,
+                               bytes[pos + 1] == 0x75 {
+                                pos += 2
+                                if let u2 = parseHex4(), (0xDC00...0xDFFF).contains(u2) {
+                                    scalarValue = 0x10000 + ((u1 - 0xD800) << 10) + (u2 - 0xDC00)
+                                } else if allowLoneSurrogates {
+                                    pos = savedPos
+                                    scalarValue = 0xFFFD
+                                } else {
+                                    return nil
+                                }
+                            } else if allowLoneSurrogates {
+                                scalarValue = 0xFFFD
+                            } else {
+                                return nil
+                            }
                         } else if (0xDC00...0xDFFF).contains(u1) {
-                            return nil
+                            if allowLoneSurrogates {
+                                scalarValue = 0xFFFD
+                            } else {
+                                return nil
+                            }
                         } else {
                             scalarValue = u1
                         }

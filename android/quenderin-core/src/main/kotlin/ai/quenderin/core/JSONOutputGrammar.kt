@@ -42,8 +42,12 @@ object JSONOutputGrammar {
 
     /**
      * Converts a JSON Schema subset into a deterministic GBNF grammar.
-     * Preserves exact declared property order from Kotlin `LinkedHashMap` (`mapOf` / `linkedMapOf`)
-     * or `List<Pair<String, Any?>>`. Never sorts properties implicitly.
+     *
+     * Property order determinism (parity with Swift `JSONOutputGrammar.grammar(forSchema:)`):
+     * - Native Kotlin `Map` objects ALWAYS sort property keys by unsigned UTF-8 bytes so map/dictionary
+     *   schema APIs produce byte-identical grammars across Swift and Kotlin.
+     * - Pass `"properties"` as `List<Pair<String, Any?>>`, or use [grammarFromJson], to preserve exact
+     *   declared property order.
      */
     fun grammar(schema: Map<String, Any?>): GrammarResult {
         val node = toNode(schema) ?: return GrammarResult.Failure("Unsupported value type in schema")
@@ -55,7 +59,7 @@ object JSONOutputGrammar {
      * Byte-identical to Swift `JSONOutputGrammar.grammar(forSchemaJSON:)`.
      */
     fun grammarFromJson(json: String): GrammarResult {
-        val value = MiniJsonParser(json).parseDocument()
+        val value = MiniJsonParser(json, allowLoneSurrogates = false).parseDocument()
             ?: return GrammarResult.Failure("Schema JSON must be a valid JSON object")
         if (value !is JsonValue.Obj) {
             return GrammarResult.Failure("Schema JSON must be a valid JSON object")
@@ -65,11 +69,23 @@ object JSONOutputGrammar {
 
     /**
      * Minimal RFC-8259 validator: returns `true` iff [json] parses cleanly as a top-level JSON object
-     * with no trailing non-whitespace characters. Twin of Swift `JSONOutputGrammar.validate(json:)`.
+     * with no trailing non-whitespace characters (including syntactically valid lone `\uD800`–`\uDFFF`
+     * escapes per RFC 8259). Twin of Swift `JSONOutputGrammar.validate(json:)`.
      */
     fun validate(json: String): Boolean {
-        val value = MiniJsonParser(json).parseDocument() ?: return false
+        val value = MiniJsonParser(json, allowLoneSurrogates = true).parseDocument() ?: return false
         return value is JsonValue.Obj
+    }
+
+    private fun compareUtf8(a: String, b: String): Int {
+        val ba = a.toByteArray(Charsets.UTF_8)
+        val bb = b.toByteArray(Charsets.UTF_8)
+        val n = minOf(ba.size, bb.size)
+        for (i in 0 until n) {
+            val diff = (ba[i].toInt() and 0xFF) - (bb[i].toInt() and 0xFF)
+            if (diff != 0) return diff
+        }
+        return ba.size - bb.size
     }
 
     // --- Internal ordered JSON AST ---
@@ -94,6 +110,9 @@ object JSONOutputGrammar {
                 val key = k as? String ?: return null
                 val node = toNode(v) ?: return null
                 entries.add(key to node)
+            }
+            if (entries.size > 1) {
+                entries.sortWith { a, b -> compareUtf8(a.first, b.first) }
             }
             JsonValue.Obj(entries)
         }
@@ -286,10 +305,15 @@ object JSONOutputGrammar {
             }
 
             val declaredNames = propsVal.entries.map { it.first }.toSet()
-            for (reqName in requiredSet.sorted()) {
+            for (reqName in requiredSet.sortedWith { a, b -> compareUtf8(a, b) }) {
                 if (reqName !in declaredNames) {
                     return GrammarResult.Failure("Required property '$reqName' not found in properties")
                 }
+            }
+
+            val optionalCount = propsVal.entries.count { it.first !in requiredSet }
+            if (optionalCount > MAX_OPTIONAL_PROPERTIES) {
+                return GrammarResult.Failure("too many optional properties; using generic JSON grammar")
             }
 
             val reqKv = mutableListOf<String>()
@@ -421,9 +445,11 @@ object JSONOutputGrammar {
         return "\"$gbnfEscaped\""
     }
 
+    private const val MAX_OPTIONAL_PROPERTIES = 16
+
     // --- Minimal RFC-8259 recursive-descent JSON parser (zero external deps, order-preserving) ---
 
-    private class MiniJsonParser(s: String) {
+    private class MiniJsonParser(s: String, private val allowLoneSurrogates: Boolean = false) {
         private val bytes: ByteArray = s.toByteArray(Charsets.UTF_8)
         private var pos: Int = 0
 
@@ -541,16 +567,28 @@ object JSONOutputGrammar {
                         0x75 -> {
                             val u1 = parseHex4() ?: return null
                             val cp = if (u1 in 0xD800..0xDBFF) {
-                                if (pos + 1 >= bytes.size ||
-                                    (bytes[pos].toInt() and 0xFF) != 0x5C ||
-                                    (bytes[pos + 1].toInt() and 0xFF) != 0x75
-                                ) return null
-                                pos += 2
-                                val u2 = parseHex4() ?: return null
-                                if (u2 !in 0xDC00..0xDFFF) return null
-                                0x10000 + ((u1 - 0xD800) shl 10) + (u2 - 0xDC00)
+                                val savedPos = pos
+                                if (pos + 1 < bytes.size &&
+                                    (bytes[pos].toInt() and 0xFF) == 0x5C &&
+                                    (bytes[pos + 1].toInt() and 0xFF) == 0x75
+                                ) {
+                                    pos += 2
+                                    val u2 = parseHex4()
+                                    if (u2 != null && u2 in 0xDC00..0xDFFF) {
+                                        0x10000 + ((u1 - 0xD800) shl 10) + (u2 - 0xDC00)
+                                    } else if (allowLoneSurrogates) {
+                                        pos = savedPos
+                                        0xFFFD
+                                    } else {
+                                        return null
+                                    }
+                                } else if (allowLoneSurrogates) {
+                                    0xFFFD
+                                } else {
+                                    return null
+                                }
                             } else if (u1 in 0xDC00..0xDFFF) {
-                                return null
+                                if (allowLoneSurrogates) 0xFFFD else return null
                             } else {
                                 u1
                             }

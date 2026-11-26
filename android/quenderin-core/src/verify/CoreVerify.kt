@@ -2699,6 +2699,65 @@ fun main() {
         val t2 = s2.finish()
         t1.thinking.isEmpty() && t1.answer == "   " && t2.thinking.isEmpty() && t2.answer == "<thi"
     })
+    check("ThinkingSplitter preamble and multiple think blocks across any split", run {
+        val single = ThinkingSplitter()
+        val s1 = single.feed("Intro <think>reason</think>Done")
+        val s2 = single.finish()
+        val full = "  Intro <think>r1</think> mid <think>r2</think>Done"
+        val byChar = ThinkingSplitter()
+        val ct = StringBuilder()
+        val ca = StringBuilder()
+        for (ch in full) {
+            val d = byChar.feed(ch.toString())
+            ct.append(d.thinking); ca.append(d.answer)
+        }
+        val cTail = byChar.finish()
+        ct.append(cTail.thinking); ca.append(cTail.answer)
+        val allSplitsOk = (0..full.length).all { split ->
+            val sp = ThinkingSplitter()
+            val d1 = sp.feed(full.substring(0, split))
+            val d2 = sp.feed(full.substring(split))
+            val d3 = sp.finish()
+            (d1.thinking + d2.thinking + d3.thinking) == "r1r2" &&
+                (d1.answer + d2.answer + d3.answer) == "  Intro  mid Done"
+        }
+        val unclosed = ThinkingSplitter()
+        val u1 = unclosed.feed("Intro <think>r1</think>mid<think>unclosed</thi")
+        val uMid = unclosed.isThinking
+        val u2 = unclosed.finish()
+        val preMulti = ThinkingSplitter(startsInsideThinking = true)
+        val m1 = preMulti.feed("first</think>mid<think>second</think>end")
+        val m2 = preMulti.finish()
+        val trailing = ThinkingSplitter()
+        val tp1 = trailing.feed("Intro <thi")
+        val tp2 = trailing.finish()
+        (s1.thinking + s2.thinking) == "reason" && (s1.answer + s2.answer) == "Intro Done" && !single.isThinking &&
+            ct.toString() == "r1r2" && ca.toString() == "  Intro  mid Done" && allSplitsOk &&
+            uMid && !unclosed.isThinking && (u1.thinking + u2.thinking) == "r1unclosed</thi" &&
+            (u1.answer + u2.answer) == "Intro mid" &&
+            (m1.thinking + m2.thinking) == "firstsecond" && (m1.answer + m2.answer) == "midend" &&
+            tp1.answer == "Intro " && (tp1.answer + tp2.answer) == "Intro <thi" && (tp1.thinking + tp2.thinking).isEmpty()
+    })
+    check("ThinkingSplitter combining mark after tags is chunk-boundary independent", run {
+        val whole = ThinkingSplitter()
+        val w1 = whole.feed("<think>\u0301x</think>A")
+        val w2 = whole.finish()
+        val split = ThinkingSplitter()
+        val a = split.feed("<think>")
+        val b = split.feed("\u0301x</think>A")
+        val c = split.finish()
+        val cw = ThinkingSplitter()
+        val cw1 = cw.feed("<think>a</think>\u0301B")
+        val cw2 = cw.finish()
+        val cs = ThinkingSplitter()
+        val cs1 = cs.feed("<think>a</think>")
+        val cs2 = cs.feed("\u0301B")
+        val cs3 = cs.finish()
+        (w1.thinking + w2.thinking) == "\u0301x" && (w1.answer + w2.answer) == "A" &&
+            (a.thinking + b.thinking + c.thinking) == "\u0301x" && (a.answer + b.answer + c.answer) == "A" &&
+            (cw1.thinking + cw2.thinking) == "a" && (cw1.answer + cw2.answer) == "\u0301B" &&
+            (cs1.thinking + cs2.thinking + cs3.thinking) == "a" && (cs1.answer + cs2.answer + cs3.answer) == "\u0301B"
+    })
 
     // --- Part 1: JSONOutputGrammar (twin of Swift JSONOutputGrammarTests) ---
     check("JSONOutputGrammar.ANY_JSON_OBJECT SHA-256 matches Swift pin", run {
@@ -2709,7 +2768,7 @@ fun main() {
     check("JSONOutputGrammar 3-property schema matches exact pinned GBNF and declared order", run {
         val schema = mapOf(
             "type" to "object",
-            "properties" to linkedMapOf(
+            "properties" to listOf(
                 "title" to mapOf("type" to "string"),
                 "count" to mapOf("type" to "integer"),
                 "verified" to mapOf("type" to "boolean"),
@@ -2737,12 +2796,12 @@ fun main() {
     check("JSONOutputGrammar enum, array, and nested object", run {
         val schema = mapOf(
             "type" to "object",
-            "properties" to linkedMapOf(
+            "properties" to listOf(
                 "status" to mapOf("type" to "string", "enum" to listOf("open", "closed")),
                 "tags" to mapOf("type" to "array", "items" to mapOf("type" to "string")),
                 "meta" to mapOf(
                     "type" to "object",
-                    "properties" to linkedMapOf(
+                    "properties" to listOf(
                         "score" to mapOf("type" to "number"),
                         "empty" to mapOf("type" to "null"),
                     ),
@@ -2760,7 +2819,7 @@ fun main() {
     check("JSONOutputGrammar all-optional properties produce valid comma chain", run {
         val schema = mapOf(
             "type" to "object",
-            "properties" to linkedMapOf(
+            "properties" to listOf(
                 "z" to mapOf("type" to "string"),
                 "a" to mapOf("type" to "integer"),
             ),
@@ -2781,10 +2840,16 @@ fun main() {
             res is JSONOutputGrammar.GrammarResult.Failure && res.reason.contains(kw)
         }
     })
-    check("JSONOutputGrammar.validate accepts valid JSON objects and rejects non-objects/invalid JSON",
+    check("JSONOutputGrammar.validate accepts valid JSON objects and lone surrogates, rejects non-objects/invalid JSON",
         JSONOutputGrammar.validate("{}") &&
             JSONOutputGrammar.validate(""" { "a": 1, "b": -3.14e+2, "c": [true, false, null, "hi\n\"\\u00e9"] } """) &&
             JSONOutputGrammar.validate("""{"emoji":"\uD83D\uDE00","nested":{"ok":true}}""") &&
+            JSONOutputGrammar.validate("""{"loneHigh":"\uD800"}""") &&
+            JSONOutputGrammar.validate("""{"loneLow":"\uDFFF"}""") &&
+            JSONOutputGrammar.validate("""{"highThenAscii":"\uD800\u0041"}""") &&
+            JSONOutputGrammar.validate("""{"twoHigh":"\uD800\uD800"}""") &&
+            JSONOutputGrammar.validate("""{"highThenPair":"\uD800\uD83D\uDE00"}""") &&
+            !JSONOutputGrammar.validate("""{"badAfterHigh":"\uD800\uZZZZ"}""") &&
             !JSONOutputGrammar.validate("") &&
             !JSONOutputGrammar.validate("[1, 2, 3]") &&
             !JSONOutputGrammar.validate("\"just a string\"") &&
@@ -2796,6 +2861,84 @@ fun main() {
             !JSONOutputGrammar.validate("""{"a": 01}""") &&
             !JSONOutputGrammar.validate("{unquoted: 1}") &&
             !JSONOutputGrammar.validate("{\"bad\":\"\n\"}"))
+    check("JSONOutputGrammar combining mark escaping in enum and property names matches Swift bytes", run {
+        val acute = "\u0301"
+        val quotedAcute = "\"\u0301"
+        val schema = mapOf(
+            "type" to "object",
+            "properties" to listOf(
+                acute to mapOf("type" to "string", "enum" to listOf(acute)),
+                quotedAcute to mapOf("type" to "string", "enum" to listOf(quotedAcute)),
+            ),
+            "required" to listOf(acute, quotedAcute),
+        )
+        val g = JSONOutputGrammar.grammar(schema).gbnfOrNull ?: ""
+        val expected = listOf(
+            "root ::= \"{\" ws \"\\\"" + acute + "\\\"\" ws \":\" ws node-1 \",\" ws \"\\\"\\\\\\\"" + acute + "\\\"\" ws \":\" ws node-2 \"}\" ws",
+            "node-1 ::= \"\\\"" + acute + "\\\"\" ws",
+            "node-2 ::= \"\\\"\\\\\\\"" + acute + "\\\"\" ws",
+            "ws ::= ([ \\t\\n\\r] ([ \\t\\n\\r] ([ \\t\\n\\r] [ \\t\\n\\r]?)?)?)?",
+        ).joinToString("\n")
+        g.toByteArray(Charsets.UTF_8).contentEquals(expected.toByteArray(Charsets.UTF_8))
+    })
+    check("JSONOutputGrammar required set uses exact scalar sequence (NFC vs NFD)", run {
+        val nfc = "\u00e9"
+        val nfd = "e\u0301"
+        val jsonSchema = """{"type":"object","properties":{"$nfc":{"type":"string"},"$nfd":{"type":"integer"}},"required":["$nfc"]}"""
+        val g = JSONOutputGrammar.grammarFromJson(jsonSchema).gbnfOrNull ?: ""
+        val expectedRoot = "root ::= \"{\" ws \"\\\"" + nfc + "\\\"\" ws \":\" ws string ( \",\" ws \"\\\"" + nfd + "\\\"\" ws \":\" ws integer )? \"}\" ws"
+        val missing = JSONOutputGrammar.grammarFromJson("""{"type":"object","properties":{"$nfd":{"type":"integer"}},"required":["$nfc"]}""")
+        g.startsWith(expectedRoot) &&
+            missing is JSONOutputGrammar.GrammarResult.Failure &&
+            missing.reason.contains("not found in properties")
+    })
+    check("JSONOutputGrammar native map sorts keys by UTF-8 bytes and accepts empty required list", run {
+        val acuteE = "\u00e9"
+        val mapSchema = mapOf(
+            "type" to "object",
+            "properties" to linkedMapOf(
+                "z" to mapOf("type" to "string"),
+                acuteE to mapOf("type" to "boolean"),
+                "a" to mapOf("type" to "integer"),
+                "B" to mapOf("type" to "number"),
+            ),
+            "required" to listOf("z", acuteE, "a", "B"),
+        )
+        val gMap = JSONOutputGrammar.grammar(mapSchema).gbnfOrNull ?: ""
+        val expectedUtf8Root = "root ::= \"{\" ws \"\\\"B\\\"\" ws \":\" ws number \",\" ws \"\\\"a\\\"\" ws \":\" ws integer \",\" ws \"\\\"z\\\"\" ws \":\" ws string \",\" ws \"\\\"" + acuteE + "\\\"\" ws \":\" ws boolean \"}\" ws"
+        val jsonSchema = """{"type":"object","properties":{"z":{"type":"string"},"$acuteE":{"type":"boolean"},"a":{"type":"integer"},"B":{"type":"number"}},"required":["z","$acuteE","a","B"]}"""
+        val gJson = JSONOutputGrammar.grammarFromJson(jsonSchema).gbnfOrNull ?: ""
+        val expectedDeclaredRoot = "root ::= \"{\" ws \"\\\"z\\\"\" ws \":\" ws string \",\" ws \"\\\"" + acuteE + "\\\"\" ws \":\" ws boolean \",\" ws \"\\\"a\\\"\" ws \":\" ws integer \",\" ws \"\\\"B\\\"\" ws \":\" ws number \"}\" ws"
+        val emptyReq = JSONOutputGrammar.grammar(mapOf(
+            "type" to "object",
+            "properties" to mapOf("name" to mapOf("type" to "string")),
+            "required" to emptyList<String>(),
+        )).gbnfOrNull ?: ""
+        val emptyReqNoProps = JSONOutputGrammar.grammar(mapOf(
+            "type" to "object",
+            "required" to emptyList<String>(),
+        )).gbnfOrNull ?: ""
+        gMap.startsWith(expectedUtf8Root) &&
+            gJson.startsWith(expectedDeclaredRoot) &&
+            emptyReq.startsWith("root ::= \"{\" ws ( \"\\\"name\\\"\" ws \":\" ws string )? \"}\" ws") &&
+            emptyReqNoProps.startsWith("root ::= object\n")
+    })
+    check("JSONOutputGrammar fails cleanly when a single object has >16 optional properties", run {
+        val props16 = (1..16).associate { String.format("p%02d", it) to mapOf("type" to "string") }
+        val ok16 = JSONOutputGrammar.grammar(mapOf("type" to "object", "properties" to props16))
+        val props17 = props16 + ("p17" to mapOf("type" to "string"))
+        val fail17 = JSONOutputGrammar.grammar(mapOf("type" to "object", "properties" to props17))
+        val props1Req17Opt = props17 + ("req" to mapOf("type" to "integer"))
+        val failMixed = JSONOutputGrammar.grammar(mapOf(
+            "type" to "object",
+            "properties" to props1Req17Opt,
+            "required" to listOf("req"),
+        ))
+        val expectedReason = "too many optional properties; using generic JSON grammar"
+        ok16 is JSONOutputGrammar.GrammarResult.Success &&
+            fail17 is JSONOutputGrammar.GrammarResult.Failure && fail17.reason == expectedReason &&
+            failMixed is JSONOutputGrammar.GrammarResult.Failure && failMixed.reason == expectedReason
+    })
 
     // --- Part 1: ContextLengthChoice (twin of Swift ContextLengthChoiceTests) ---
     check("ContextLengthChoice raw values and default",
@@ -2820,30 +2963,153 @@ fun main() {
             resolved.tokens == expected && resolved.warning == null && resolved.warningText == null
         }
     })
-    check("ContextWindow.resolve manual at or below auto has no warning", run {
+    check("ContextWindow.resolve manual at or below auto checks memory estimate", run {
         val below = ContextWindow.resolve(ContextLengthChoice.K2, 6.0, 2.0, KVCacheType.F16)
-        val equal = ContextWindow.resolve(ContextLengthChoice.K4, 4.0, 2.0, KVCacheType.F16)
+        val equalFits = ContextWindow.resolve(ContextLengthChoice.K4, 6.0, 2.0, KVCacheType.F16)
+        val equalExceeds = ContextWindow.resolve(ContextLengthChoice.K4, 4.0, 2.0, KVCacheType.F16)
         below.tokens == 2048 && below.warning == null && below.warningText == null &&
-            equal.tokens == 4096 && equal.warning == null && equal.warningText == null
+            equalFits.tokens == 4096 && equalFits.warning == null && equalFits.warningText == null &&
+            equalExceeds.tokens == 2048 && equalExceeds.warning == ContextWarning.EXCEEDS_BUDGET &&
+            equalExceeds.warningText == "Not enough memory on this device for this length; using 2048 tokens."
     })
     check("ContextWindow.resolve manual above auto that fits returns MORE_MEMORY", run {
         val res = ContextWindow.resolve(ContextLengthChoice.K8, 12.0, 4.0, KVCacheType.F16)
         res.tokens == 8192 && res.warning == ContextWarning.MORE_MEMORY &&
             res.warningText == "Uses more memory. Long chats may be slower."
     })
-    check("ContextWindow.resolve manual exceeding headroom clamps to auto with EXCEEDS_BUDGET", run {
-        val c4 = ContextWindow.resolve(ContextLengthChoice.K8, 4.0, 2.0, KVCacheType.F16)
-        val c1 = ContextWindow.resolve(ContextLengthChoice.K2, 2.0, 1.5, KVCacheType.F16)
+    check("ContextWindow.resolve manual exceeding headroom clamps to largest fitting tier (min 2048)", run {
+        val c4 = ContextWindow.resolve(ContextLengthChoice.K8, 6.0, 2.0, KVCacheType.F16)
+        val c2 = ContextWindow.resolve(ContextLengthChoice.K8, 4.0, 2.0, KVCacheType.F16)
+        val cFloor = ContextWindow.resolve(ContextLengthChoice.K2, 2.0, 1.5, KVCacheType.F16)
         c4.tokens == 4096 && c4.warning == ContextWarning.EXCEEDS_BUDGET &&
             c4.warningText == "Not enough memory on this device for this length; using 4096 tokens." &&
-            c1.tokens == 1024 && c1.warning == ContextWarning.EXCEEDS_BUDGET &&
-            c1.warningText == "Not enough memory on this device for this length; using 1024 tokens."
+            c2.tokens == 2048 && c2.warning == ContextWarning.EXCEEDS_BUDGET &&
+            c2.warningText == "Not enough memory on this device for this length; using 2048 tokens." &&
+            cFloor.tokens == 2048 && cFloor.warning == ContextWarning.EXCEEDS_BUDGET &&
+            cFloor.warningText == "Not enough memory on this device for this length; using 2048 tokens."
     })
     check("ContextWindow.resolve q8_0 unlocks longer manual context than f16", run {
         val f16 = ContextWindow.resolve(ContextLengthChoice.K4, 3.4, 2.0, KVCacheType.F16)
         val q8 = ContextWindow.resolve(ContextLengthChoice.K4, 3.4, 2.0, KVCacheType.Q8_0)
         f16.tokens == 2048 && f16.warning == ContextWarning.EXCEEDS_BUDGET &&
             q8.tokens == 4096 && q8.warning == ContextWarning.MORE_MEMORY
+    })
+
+    // --- Part 2: Engine + ChatModel + ConversationStore wiring checks ---
+    check("ThinkingMode.shouldCloseThinkBlock closes only on OFF + thinking template", run {
+        val qwenTmpl = "{% if enable_thinking %}<think>{% endif %}"
+        val r1Tmpl = "assistant\n<think>\n"
+        val plainTmpl = "<|im_start|>assistant\n"
+        ThinkingMode.shouldCloseThinkBlock(ThinkingMode.OFF, qwenTmpl) &&
+            ThinkingMode.shouldCloseThinkBlock(ThinkingMode.OFF, r1Tmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.SHOW, qwenTmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.HIDE, qwenTmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.SHOW, r1Tmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.HIDE, r1Tmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.OFF, plainTmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.SHOW, plainTmpl)
+    })
+    check("LlamaEngine.shouldDisableThinking forces OFF whenever grammar is set", run {
+        LlamaEngine.shouldDisableThinking(ThinkingMode.OFF, hasGrammar = false) &&
+            !LlamaEngine.shouldDisableThinking(ThinkingMode.SHOW, hasGrammar = false) &&
+            !LlamaEngine.shouldDisableThinking(ThinkingMode.HIDE, hasGrammar = false) &&
+            LlamaEngine.shouldDisableThinking(ThinkingMode.SHOW, hasGrammar = true) &&
+            LlamaEngine.shouldDisableThinking(ThinkingMode.HIDE, hasGrammar = true)
+    })
+    check("ContextWindow.resolveForLoad matches recommend on AUTO and respects model caps", run {
+        val auto = ContextWindow.resolveForLoad(ContextLengthChoice.AUTO, 12.0, 4.0, KVCacheType.F16)
+        val k8 = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 12.0, 4.0, KVCacheType.F16)
+        val capped = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 12.0, 4.0, KVCacheType.F16, maxContextTokens = 4096)
+        val mid = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 6.0, 2.0, KVCacheType.F16, maxContextTokens = 8192)
+        val tight = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 4.0, 2.0, KVCacheType.F16, maxContextTokens = 8192)
+        auto == ContextWindow.recommend(12.0, 4.0, KVCacheType.F16) &&
+            k8 == 8192 && capped == 4096 && mid == 4096 && tight == 2048
+    })
+    check("LlamaEngine.plannedContext uses ContextWindow.resolveForLoad and defaults to AUTO", run {
+        val ordinary = ModelCatalog.smallest // ~1 GB
+        val roomy = LlamaEngine(deviceBudgetGb = 12.0)
+        val defaultCtx = roomy.plannedContext(ordinary)
+        val expectedAuto = ContextWindow.recommend(12.0, ordinary.ramGB, KVCachePolicy.recommend(12.0, ordinary.ramGB))
+        roomy.setContextLengthChoice(ContextLengthChoice.K8)
+        val expanded = roomy.plannedContext(ordinary)
+        roomy.setContextLengthChoice(ContextLengthChoice.K2)
+        val shrunk = roomy.plannedContext(ordinary)
+        val tight = LlamaEngine(deviceBudgetGb = 2.0).apply { setContextLengthChoice(ContextLengthChoice.K8) }
+        val tightExpected = ContextWindow.resolve(
+            ContextLengthChoice.K8,
+            2.0,
+            ordinary.ramGB,
+            KVCachePolicy.recommend(2.0, ordinary.ramGB),
+        ).tokens
+        defaultCtx == expectedAuto && expanded == 8192 && shrunk == 2048 && tight.plannedContext(ordinary) == tightExpected
+    })
+    check("CoordinatedInferenceEngine forwards thinkingMode, contextLengthChoice, and chatGrammar", run {
+        val raw = LlamaEngine(deviceBudgetGb = 12.0)
+        val coord = CoordinatedInferenceEngine(raw)
+        coord.setThinkingMode(ThinkingMode.HIDE)
+        coord.setContextLengthChoice(ContextLengthChoice.K8)
+        coord.setChatGrammar(JSONOutputGrammar.ANY_JSON_OBJECT)
+        coord.thinkingMode() == ThinkingMode.HIDE &&
+            coord.thinkingEnabled() &&
+            raw.thinkingMode() == ThinkingMode.HIDE &&
+            coord.contextLengthChoice() == ContextLengthChoice.K8 &&
+            raw.contextLengthChoice() == ContextLengthChoice.K8 &&
+            coord.chatGrammar() == JSONOutputGrammar.ANY_JSON_OBJECT &&
+            raw.chatGrammar() == JSONOutputGrammar.ANY_JSON_OBJECT
+    })
+    check("ChatModel splits <think>...</think> on SHOW, drops thinking on HIDE, keeps raw on OFF", run {
+        class ThinkingTestEngine(private val scripted: String) : InferenceEngine {
+            override var loadedModelId: String? = "test"
+            private var mode: ThinkingMode = ThinkingMode.OFF
+            override fun thinkingEnabled(): Boolean = mode.allowsThinking
+            override fun setThinkingEnabled(enabled: Boolean) { mode = if (enabled) ThinkingMode.SHOW else ThinkingMode.OFF }
+            override fun thinkingMode(): ThinkingMode = mode
+            override fun setThinkingMode(mode: ThinkingMode) { this.mode = mode }
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = scripted
+            override fun complete(prompt: String, onToken: (String) -> Unit): String {
+                scripted.chunked(3).forEach(onToken)
+                return scripted
+            }
+        }
+        val showEngine = ThinkingTestEngine("<think>step 1</think>Final answer").apply { setThinkingMode(ThinkingMode.SHOW) }
+        val showChat = ChatModel(showEngine)
+        showChat.send("hi")
+        val showMsg = showChat.messages.last()
+
+        val hideEngine = ThinkingTestEngine("<think>secret</think>Clean answer").apply { setThinkingMode(ThinkingMode.HIDE) }
+        val hideChat = ChatModel(hideEngine)
+        hideChat.send("hi")
+        val hideMsg = hideChat.messages.last()
+
+        val offEngine = ThinkingTestEngine("Plain answer")
+        val offChat = ChatModel(offEngine)
+        offChat.send("hi")
+        val offMsg = offChat.messages.last()
+
+        val ok = showMsg.thinking == "step 1" && showMsg.text == "Final answer" &&
+            hideMsg.thinking == null && hideMsg.text == "Clean answer" &&
+            offMsg.thinking == null && offMsg.text == "Plain answer"
+        if (!ok) {
+            println("    DEBUG show=(${showMsg.thinking}|${showMsg.text}) hide=(${hideMsg.thinking}|${hideMsg.text}) off=(${offMsg.thinking}|${offMsg.text}) checker=${RoleSeat.checkerModelId}")
+        }
+        ok
+    })
+    check("ConversationStore round-trips thinking and decodes legacy transcripts cleanly", run {
+        val store = ConversationStore()
+        val legacy = store.decode("USER\thi\nASSISTANT\thello")
+        val msgs = listOf(
+            ChatMessage(Role.USER, "2+2?"),
+            ChatMessage(Role.ASSISTANT, "4", thinking = "two plus two"),
+        )
+        val encoded = store.encode(msgs)
+        val decoded = store.decode(encoded)
+        val exported = ConversationExporter.markdown(decoded)
+        legacy.size == 2 && legacy[1].thinking == null &&
+            decoded.size == 2 && decoded[1].text == "4" && decoded[1].thinking == "two plus two" &&
+            decoded[1].documents.isEmpty() &&
+            exported.contains("4") && !exported.contains("two plus two")
     })
 
     println()

@@ -61,6 +61,8 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     public func chatCapStatus() async -> ChatCapStatus { held == nil ? capState.withLock { $0.status } : .unknown }
     public func loadedModelID() async -> String? { held == nil ? await underlying.loadedModelID() : nil }
     public func loadedContextTokens() async -> Int? { held == nil ? await underlying.loadedContextTokens() : nil }
+    public func contextLengthChoice() async -> ContextLengthChoice { await underlying.contextLengthChoice() }
+    public func setContextLengthChoice(_ choice: ContextLengthChoice) async { await underlying.setContextLengthChoice(choice) }
     public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
         guard held == nil else { return nil }
         return await underlying.loadedExecutionProfile(system: system, history: history, options: options)

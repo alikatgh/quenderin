@@ -62,10 +62,11 @@ object ContextWindow {
     /**
      * Resolves a user's [ContextLengthChoice] against the device's app-memory headroom.
      * - [ContextLengthChoice.AUTO]: exact 3-arg [recommend] result, `warning == null`.
-     * - Manual (`K2`/`K4`/`K8`):
-     *   - If `requested <= autoTokens`, returns `requested` with `warning == null`.
-     *   - If `requested > autoTokens` and `estimatedKvGb <= headroomGb`, returns `requested` with [ContextWarning.MORE_MEMORY].
-     *   - Otherwise clamps down to `autoTokens` and reports [ContextWarning.EXCEEDS_BUDGET].
+     * - Manual (`K2`/`K4`/`K8`): ALWAYS checked against the estimated KV headroom:
+     *   - If `estimatedKvGb(requested) <= headroomGb`, returns `requested`, with
+     *     [ContextWarning.MORE_MEMORY] when `requested > autoTokens` or `null` otherwise.
+     *   - Otherwise clamps to the largest of `8192 / 4096 / 2048` that fits (never below `2048`;
+     *     if even `2048` does not fit, returns `2048`) with [ContextWarning.EXCEEDS_BUDGET].
      */
     fun resolve(
         choice: ContextLengthChoice,
@@ -75,15 +76,33 @@ object ContextWindow {
     ): ContextResolution {
         val autoTokens = recommend(appBudgetGb, modelWeightsGb, kvCacheType)
         val requested = choice.requestedTokens ?: return ContextResolution(autoTokens, null)
-        if (requested <= autoTokens) {
-            return ContextResolution(requested, null)
-        }
         val headroomGb = appBudgetGb - modelWeightsGb * 1.15
-        val requiredKvGb = estimatedKvGb(requested, kvCacheType)
-        if (headroomGb > 0.0 && requiredKvGb <= headroomGb) {
-            return ContextResolution(requested, ContextWarning.MORE_MEMORY)
+        fun fits(tokens: Int): Boolean = headroomGb > 0.0 && estimatedKvGb(tokens, kvCacheType) <= headroomGb
+        if (fits(requested)) {
+            val warning = if (requested > autoTokens) ContextWarning.MORE_MEMORY else null
+            return ContextResolution(requested, warning)
         }
-        return ContextResolution(autoTokens, ContextWarning.EXCEEDS_BUDGET)
+        val clamped = MANUAL_TIERS_DESC.firstOrNull(::fits) ?: 2048
+        return ContextResolution(clamped, ContextWarning.EXCEEDS_BUDGET)
+    }
+
+    private val MANUAL_TIERS_DESC = intArrayOf(8192, 4096, 2048)
+
+    /**
+     * Engine load-time sizing: resolves [choice] via [resolve] and applies an optional model- or
+     * specialist-specific context ceiling ([maxContextTokens]). For [ContextLengthChoice.AUTO],
+     * produces the exact same token count as [recommend] clamped to [maxContextTokens].
+     * Twin of Swift `ContextWindow.resolveForLoad`.
+     */
+    fun resolveForLoad(
+        choice: ContextLengthChoice,
+        appBudgetGb: Double,
+        modelWeightsGb: Double,
+        kvCacheType: KVCacheType,
+        maxContextTokens: Int? = null,
+    ): Int {
+        val resolved = resolve(choice, appBudgetGb, modelWeightsGb, kvCacheType).tokens
+        return if (maxContextTokens != null) minOf(resolved, maxContextTokens) else resolved
     }
 }
 

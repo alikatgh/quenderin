@@ -108,6 +108,13 @@ public final class AppSettings: ObservableObject {
     /// user to ("…or allow cellular downloads in settings"). This IS that setting.
     @Published public var allowCellularDownloads: Bool { didSet { defaults.set(allowCellularDownloads, forKey: Self.key("allowCellularDownloads")) } }
 
+    /// How reasoning models (Qwen3, DeepSeek-R1, …) handle `<think>…</think>` chains. Default OFF.
+    @Published public var thinkingMode: ThinkingMode { didSet { save(thinkingMode.rawValue, "thinkingMode") } }
+    /// Preferred context window length (`n_ctx`). Default `.auto` matches existing device-budget sizing.
+    @Published public var contextLength: ContextLengthChoice { didSet { save(contextLength.rawValue, "contextLength") } }
+    /// Constrain chat replies to valid JSON via GBNF grammar where the loaded model supports it. Default OFF.
+    @Published public var replyAsJSON: Bool { didSet { defaults.set(replyAsJSON, forKey: Self.key("replyAsJSON")) } }
+
     /// The active download network policy, derived from the toggle above. The onboarding + model-library
     /// download gates read THIS (honoring the journal rule: a setting ships only when something reads it).
     public var downloadPolicy: DownloadPolicy { allowCellularDownloads ? .wifiOrCellular : .wifiOnly }
@@ -131,6 +138,9 @@ public final class AppSettings: ObservableObject {
         chatFontSize = ChatFontSize(rawValue: defaults.string(forKey: Self.key("chatFontSize")) ?? "") ?? .standard
         suggestBestModel = defaults.object(forKey: Self.key("suggestBestModel")) as? Bool ?? true
         allowCellularDownloads = defaults.object(forKey: Self.key("allowCellularDownloads")) as? Bool ?? false
+        thinkingMode = ThinkingMode(rawValue: defaults.string(forKey: Self.key("thinkingMode")) ?? "") ?? .off
+        contextLength = ContextLengthChoice(rawValue: defaults.string(forKey: Self.key("contextLength")) ?? "") ?? .auto
+        replyAsJSON = defaults.object(forKey: Self.key("replyAsJSON")) as? Bool ?? false
     }
 }
 #endif

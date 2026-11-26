@@ -24,6 +24,9 @@ public struct GenerationOptions: Sendable, Equatable {
     /// parse becomes unsampleable, the decoder-level fix for "the small model emitted prose
     /// instead of the JSON contract". Engines without grammar support ignore the field.
     public var gbnfGrammar: String?
+    /// Controls `<think>…</think>` handling for chat templates that support thinking.
+    /// Default `.off` preserves direct replies; agent/grammar/specialist paths always use `.off`.
+    public var thinkingMode: ThinkingMode
 
     /// Defaults match `shared/sampling-profiles.json` → `chat` (CI: `check:sampling-parity`).
     public init(
@@ -35,7 +38,8 @@ public struct GenerationOptions: Sendable, Equatable {
         repeatLastN: Int = 256,
         stopSequences: [String] = [],
         gbnfGrammar: String? = nil,
-        collectPerformance: Bool = false
+        collectPerformance: Bool = false,
+        thinkingMode: ThinkingMode = .off
     ) {
         self.collectPerformance = collectPerformance
         self.maxTokens = maxTokens
@@ -46,6 +50,7 @@ public struct GenerationOptions: Sendable, Equatable {
         self.repeatLastN = repeatLastN
         self.stopSequences = stopSequences
         self.gbnfGrammar = gbnfGrammar
+        self.thinkingMode = thinkingMode
     }
 }
 
@@ -140,10 +145,16 @@ public protocol InferenceEngine: Sendable {
     /// Why the most recent generation ended. Default `.unknown`: an engine that has not positively
     /// observed its completion reason must not turn "no cap signal" into a NOT_HIT claim.
     func chatCapStatus() async -> ChatCapStatus
+
+    /// Preferred context-window choice applied on the next model load. Default `.auto`.
+    func contextLengthChoice() async -> ContextLengthChoice
+    func setContextLengthChoice(_ choice: ContextLengthChoice) async
 }
 
 public extension InferenceEngine {
     func chatCapStatus() async -> ChatCapStatus { .unknown }
+    func contextLengthChoice() async -> ContextLengthChoice { .auto }
+    func setContextLengthChoice(_ choice: ContextLengthChoice) async {}
 }
 
 /// The flat "User:/Assistant:" transcript prompt — the template-less fallback shared by the

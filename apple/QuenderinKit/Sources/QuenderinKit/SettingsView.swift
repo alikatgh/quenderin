@@ -150,6 +150,7 @@ public struct SettingsView: View {
                 case .model:
                     speedSection
                     modelSection
+                    modelBehaviourSection
                     routingSection
                 case .appearance:
                     appearancePreviewSection
@@ -185,6 +186,7 @@ public struct SettingsView: View {
         List {
             speedSection
             modelSection
+            modelBehaviourSection
             routingSection
             appearancePreviewSection
             appearanceSection
@@ -505,6 +507,43 @@ public struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
         } header: {
             Text("Model")
+        }
+    }
+
+    private var modelBehaviourSection: some View {
+        let budgetGB = HardwareProbe.appMemoryBudgetGB()
+        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: budgetGB, modelWeightsGB: model.ramGB)
+        let contextResolution = ContextWindow.resolve(
+            choice: appSettings.contextLength,
+            appBudgetGB: budgetGB,
+            modelWeightsGB: model.ramGB,
+            kvCacheType: kvCacheType
+        )
+        return Section("Model behaviour") {
+            Picker("Thinking", selection: $appSettings.thinkingMode) {
+                Text("Off").tag(ThinkingMode.off)
+                Text("Show thinking").tag(ThinkingMode.show)
+                Text("Hide thinking").tag(ThinkingMode.hide)
+            }
+            Text("Only for models that can think (for example Qwen3, DeepSeek-R1). Thinking takes longer and uses more battery.")
+                .font(.footnote).foregroundStyle(.secondary)
+
+            Picker("Context length", selection: $appSettings.contextLength) {
+                Text("Auto (recommended)").tag(ContextLengthChoice.auto)
+                Text("2K").tag(ContextLengthChoice.k2)
+                Text("4K").tag(ContextLengthChoice.k4)
+                Text("8K").tag(ContextLengthChoice.k8)
+            }
+            if let warning = contextResolution.warningText {
+                Text(warning)
+                    .font(.footnote).foregroundStyle(.orange)
+            }
+            Text("Applies the next time the model loads.")
+                .font(.footnote).foregroundStyle(.secondary)
+
+            Toggle("Reply as JSON", isOn: $appSettings.replyAsJSON)
+            Text("Constrains replies to valid JSON. Useful for apps and scripts.")
+                .font(.footnote).foregroundStyle(.secondary)
         }
     }
 

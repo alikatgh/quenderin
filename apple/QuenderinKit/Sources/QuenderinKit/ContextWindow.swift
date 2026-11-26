@@ -55,10 +55,11 @@ public enum ContextWindow {
 
     /// Resolves a user's `ContextLengthChoice` against the device's app-memory headroom.
     /// - `.auto`: exact 3-arg `recommend(...)` result, `warning == nil`.
-    /// - Manual (`k2`/`k4`/`k8`):
-    ///   - If `requested <= autoTokens`, returns `requested` with `warning == nil`.
-    ///   - If `requested > autoTokens` and `estimatedKVGB <= headroomGB`, returns `requested` with `.moreMemory`.
-    ///   - Otherwise clamps down to `autoTokens` and reports `.exceedsBudget`.
+    /// - Manual (`k2`/`k4`/`k8`): ALWAYS checked against the estimated KV headroom:
+    ///   - If `estimatedKVGB(requested) <= headroomGB`: returns `requested`, with `.moreMemory`
+    ///     when `requested > autoTokens` or `nil` when `requested <= autoTokens`.
+    ///   - Otherwise clamps to the largest of `8192 / 4096 / 2048` that fits (never below `2048`;
+    ///     if even `2048` does not fit, returns `2048`) with `.exceedsBudget`.
     public static func resolve(
         choice: ContextLengthChoice,
         appBudgetGB: Double,
@@ -73,15 +74,39 @@ public enum ContextWindow {
         guard let requested = choice.requestedTokens else {
             return ContextResolution(tokens: autoTokens, warning: nil)
         }
-        if requested <= autoTokens {
-            return ContextResolution(tokens: requested, warning: nil)
-        }
         let headroomGB = appBudgetGB - modelWeightsGB * 1.15
-        let requiredKVGB = estimatedKVGB(tokens: requested, kvCacheType: kvCacheType)
-        if headroomGB > 0 && requiredKVGB <= headroomGB {
-            return ContextResolution(tokens: requested, warning: .moreMemory)
+        func fits(_ tokens: Int) -> Bool {
+            headroomGB > 0 && estimatedKVGB(tokens: tokens, kvCacheType: kvCacheType) <= headroomGB
         }
-        return ContextResolution(tokens: autoTokens, warning: .exceedsBudget)
+        if fits(requested) {
+            let warning: ContextWarning? = requested > autoTokens ? .moreMemory : nil
+            return ContextResolution(tokens: requested, warning: warning)
+        }
+        let clamped = [8192, 4096, 2048].first(where: fits) ?? 2048
+        return ContextResolution(tokens: clamped, warning: .exceedsBudget)
+    }
+
+    /// Engine load-time sizing: resolves `choice` via `resolve(...)` and applies an optional
+    /// model- or specialist-specific context ceiling (`maxContextTokens`). For `.auto`, produces
+    /// the exact same token count as `recommend(...)` clamped to `maxContextTokens`.
+    /// Twin of Android `ContextWindow.resolveForLoad`.
+    public static func resolveForLoad(
+        choice: ContextLengthChoice,
+        appBudgetGB: Double,
+        modelWeightsGB: Double,
+        kvCacheType: KVCacheType,
+        maxContextTokens: Int? = nil
+    ) -> Int {
+        let resolved = resolve(
+            choice: choice,
+            appBudgetGB: appBudgetGB,
+            modelWeightsGB: modelWeightsGB,
+            kvCacheType: kvCacheType
+        ).tokens
+        if let cap = maxContextTokens {
+            return min(resolved, cap)
+        }
+        return resolved
     }
 }
 

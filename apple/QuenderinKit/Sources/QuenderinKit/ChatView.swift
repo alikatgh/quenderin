@@ -106,11 +106,18 @@ public struct ChatView: View {
         agentSuggestion = nil
         let submittedDraft = composer.draft
         Task {
-            await model.send(prompt, documents: documents, model: activeModel, onAccepted: {
-                if composer.draft == submittedDraft { composer.draft = "" }
-                if composer.pendingDocuments == documents { composer.pendingDocuments = [] }
-                composer.attachmentNotice = nil
-            })
+            await model.send(
+                prompt,
+                documents: documents,
+                model: activeModel,
+                thinkingMode: settings.thinkingMode,
+                replyAsJSON: settings.replyAsJSON,
+                onAccepted: {
+                    if composer.draft == submittedDraft { composer.draft = "" }
+                    if composer.pendingDocuments == documents { composer.pendingDocuments = [] }
+                    composer.attachmentNotice = nil
+                }
+            )
         }
     }
 
@@ -186,7 +193,7 @@ public struct ChatView: View {
                                 // the typing indicator below — two thinking bubbles at once
                                 // (user report, 0.2.0(6)). Exactly one owns each moment: the
                                 // TypingBubble before the first token, this bubble from then on.
-                                if !(message.role == .assistant && message.text.isEmpty && model.isGenerating) {
+                                if !(message.role == .assistant && message.text.isEmpty && (message.thinking?.isEmpty ?? true) && model.isGenerating) {
                                 ChatBubble(message: message, palette: p,
                                            accent: settings.bubbleAccent.colors(dark: scheme == .dark))
                                     .id(message.id)
@@ -207,7 +214,7 @@ public struct ChatView: View {
                             // Only while NOTHING has streamed yet — once the reply bubble has
                             // text, it is its own progress signal and the dots would just
                             // double it below.
-                            if model.isGenerating, model.messages.last?.text.isEmpty != false {
+                            if model.isGenerating, model.messages.last?.text.isEmpty != false, model.messages.last?.thinking?.isEmpty != false {
                                 TypingBubble(palette: p, phase: model.generationPhase)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .id("typing")
@@ -275,6 +282,13 @@ public struct ChatView: View {
                 }
                 // Stream follow: throttled + only while near bottom (user scrolled up = leave them).
                 .onChange(of: model.messages.last?.text) { _ in
+                    guard nearBottom, model.isGenerating else { return }
+                    let now = Date()
+                    guard now.timeIntervalSince(lastStreamFollowAt) >= 0.18 else { return }
+                    lastStreamFollowAt = now
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+                .onChange(of: model.messages.last?.thinking) { _ in
                     guard nearBottom, model.isGenerating else { return }
                     let now = Date()
                     guard now.timeIntervalSince(lastStreamFollowAt) >= 0.18 else { return }
@@ -444,7 +458,13 @@ public struct ChatView: View {
             // only appears when lastHitTokenCap is set; no layout shift on other replies.
             if model.lastHitTokenCap && !model.isGenerating {
                 Button {
-                    Task { await model.continueLast(model: activeModel) }
+                    Task {
+                        await model.continueLast(
+                            model: activeModel,
+                            thinkingMode: settings.thinkingMode,
+                            replyAsJSON: settings.replyAsJSON
+                        )
+                    }
                 } label: {
                     Label(String(localized: "Continue"), systemImage: "arrow.forward.circle")
                         .font(.caption.weight(.semibold))
@@ -591,13 +611,27 @@ private struct ChatBubble: View {
                         .foregroundStyle(accent?.text ?? palette.onUserBubble)
                         .textSelection(.enabled)
                 }
-            } else if message.text.isEmpty {
+            } else if message.text.isEmpty && (message.thinking?.isEmpty ?? true) {
                 Text("…").foregroundStyle(palette.onAssistantBubble)
             } else {
-                // A held reply shows the on-device notice, not the text. Other replies
-                // rewrite old "I cannot fulfill…" walls to the guided handoff.
-                MarkdownText(text: shown, color: palette.onAssistantBubble)
-                    .textSelection(.enabled)
+                if !message.isFlagged, let thinking = message.thinking, !thinking.isEmpty {
+                    DisclosureGroup("Thinking") {
+                        Text(thinking)
+                            .font(.callout)
+                            .foregroundStyle(palette.onAssistantBubble.opacity(0.85))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(palette.onAssistantBubble.opacity(0.85))
+                    .padding(.bottom, message.text.isEmpty ? 0 : 4)
+                }
+                if !message.text.isEmpty || message.isFlagged {
+                    // A held reply shows the on-device notice, not the text. Other replies
+                    // rewrite old "I cannot fulfill…" walls to the guided handoff.
+                    MarkdownText(text: shown, color: palette.onAssistantBubble)
+                        .textSelection(.enabled)
+                }
             }
         }
         .padding(.horizontal, 13)

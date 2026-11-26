@@ -274,7 +274,7 @@ fun ChatScreen(
     // never changes — a size-only key would never re-fire and the growing bubble scrolls off the bottom.
     // The scroll target accounts for the always-present DayDivider at LazyColumn index 0 (line ~164), so
     // the last item index is messages.size + (busy?1:0); the old count-1 stopped one row short.
-    LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length ?: 0, busy) {
+    LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length ?: 0, messages.lastOrNull()?.thinking?.length ?: 0, busy) {
         val lastIndex = messages.size + if (busy) 1 else 0
         if (lastIndex > 0) listState.animateScrollToItem(lastIndex)
     }
@@ -939,15 +939,39 @@ private fun MessageBubble(msg: ChatMessage) {
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         } else {
-                            // Rewrite old "I cannot fulfill… use the Agent" walls to guided education.
-                            val shown = ActionIntent.displayAssistantText(
-                                msg.text,
-                                java.util.Locale.getDefault().language,
-                            )
-                            AssistantResponseText(
-                                text = shown,
-                                color = colors.onAssistantBubble,
-                            )
+                            val thinking = msg.thinking
+                            if (!thinking.isNullOrEmpty()) {
+                                var thinkingExpanded by remember(msg.id) { mutableStateOf(false) }
+                                TextButton(
+                                    onClick = { thinkingExpanded = !thinkingExpanded },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                                ) {
+                                    Text(
+                                        if (thinkingExpanded) "Hide thinking" else "Thinking",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colors.assistantTimestamp,
+                                    )
+                                }
+                                if (thinkingExpanded) {
+                                    Text(
+                                        text = thinking,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onAssistantBubble.copy(alpha = 0.85f),
+                                        modifier = Modifier.padding(bottom = 6.dp),
+                                    )
+                                }
+                            }
+                            if (msg.text.isNotEmpty() || thinking.isNullOrEmpty()) {
+                                // Rewrite old "I cannot fulfill… use the Agent" walls to guided education.
+                                val shown = ActionIntent.displayAssistantText(
+                                    msg.text,
+                                    java.util.Locale.getDefault().language,
+                                )
+                                AssistantResponseText(
+                                    text = shown,
+                                    color = colors.onAssistantBubble,
+                                )
+                            }
                         }
                     }
                 }

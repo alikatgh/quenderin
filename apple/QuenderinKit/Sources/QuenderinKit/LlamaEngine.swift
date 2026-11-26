@@ -86,6 +86,9 @@ public actor LlamaEngine: InferenceEngine {
     /// Device app-memory budget (GB); `n_ctx` is sized from this + the model's footprint at load so
     /// the KV cache doesn't OOM memory-tight phones (M1 + footprint-aware).
     private let deviceBudgetGB: Double
+    /// User's preferred context length choice (applied on the next `load`). Default `.auto` matches
+    /// existing device-budget sizing.
+    private var preferredContextLength: ContextLengthChoice
 
     /// Completion reason for the "Continue" affordance. `capState` is a `let` lock so the
     /// nonisolated `runGeneration` can record a reason without touching actor-isolated state.
@@ -136,9 +139,10 @@ public actor LlamaEngine: InferenceEngine {
     private let cancelState = OSAllocatedUnfairLock(initialState: GenerationCancelLedger())
     #endif
 
-    public init(deviceBudgetGB: Double = 4.0, performance: InferencePerformanceCallback? = nil) {
+    public init(deviceBudgetGB: Double = 4.0, performance: InferencePerformanceCallback? = nil, contextLengthChoice: ContextLengthChoice = .auto) {
         self.performance = performance
         self.deviceBudgetGB = deviceBudgetGB
+        self.preferredContextLength = contextLengthChoice
     }
 
     public func loadedModelID() async -> String? { loaded }
@@ -146,6 +150,12 @@ public actor LlamaEngine: InferenceEngine {
     /// The real `n_ctx` of the loaded context — an actor-property read, so it never waits on
     /// `nativeLock` (a decode in flight can't stall the chat layer asking for the window size).
     public func loadedContextTokens() async -> Int? { loadedNCtx }
+
+    public func contextLengthChoice() async -> ContextLengthChoice { preferredContextLength }
+
+    public func setContextLengthChoice(_ choice: ContextLengthChoice) async {
+        preferredContextLength = choice
+    }
 
     public func chatCapStatus() async -> ChatCapStatus {
         capState.withLock { $0.status }
@@ -156,9 +166,10 @@ public actor LlamaEngine: InferenceEngine {
     public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
         guard let id = loaded, let receipt = effectiveProfiles.last(where: { $0.modelID == id }) else { return nil }
         #if canImport(llama)
+        let effectiveThinking: ThinkingMode = options.gbnfGrammar != nil ? .off : options.thinkingMode
         let prompt = loadedBeam ? BeamChatPrompt.build(system: system, history: history)
             : loadedMuse ? MuseChatPrompt.build(system: system, history: history)
-            : (buildChatPrompt(system: system, history: history) ?? flatTranscriptPrompt(system: system, history: history))
+            : (buildChatPrompt(system: system, history: history, thinkingMode: effectiveThinking) ?? flatTranscriptPrompt(system: system, history: history))
         let muse = loadedMuse, beam = loadedBeam, hy = loadedSpecialist
         let request = try? await ModelArtifactSet.inBackground {
             self.expectedRequestProfile(prompt: prompt, addBOS: !muse && !beam && !hy)
@@ -212,7 +223,8 @@ public actor LlamaEngine: InferenceEngine {
             }
         }
         let loadStarted = ContinuousClock.now
-        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
+        let ctxChoice = preferredContextLength
+        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path, contextLengthChoice: ctxChoice)
         loaded = entry.id
         if let artifact = InferencePerformanceIdentity.verifiedArtifact(entry, firstFile: fileURL) {
             loadedPerformance = (entry, artifact, Self.ms(ContinuousClock.now - loadStarted), loadedEnvironmentID)
@@ -313,9 +325,10 @@ public actor LlamaEngine: InferenceEngine {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
         guard !loadedSpecialist else { throw InferenceError.generationFailed(reason: "This specialist requires its dedicated workflow.") }
         #if canImport(llama)
+        let effectiveThinking: ThinkingMode = options.gbnfGrammar != nil ? .off : options.thinkingMode
         let prompt = loadedBeam ? BeamChatPrompt.build(system: system, history: history)
             : loadedMuse ? MuseChatPrompt.build(system: system, history: history)
-            : (buildChatPrompt(system: system, history: history)
+            : (buildChatPrompt(system: system, history: history, thinkingMode: effectiveThinking)
             ?? flatTranscriptPrompt(system: system, history: history))   // model exposes no template
         return try await startGeneration(prompt: prompt, options: options)
         #else
@@ -385,7 +398,7 @@ public actor LlamaEngine: InferenceEngine {
     /// transcript). For "thinking" models (template gates `enable_thinking`/`<think>`), an empty
     /// think block is closed right after the assistant turn so replies are direct — Android parity
     /// (default thinking OFF). Reads the model pointer under `nativeLock`.
-    nonisolated private func buildChatPrompt(system: String, history: [ChatMessage]) -> String? {
+    nonisolated private func buildChatPrompt(system: String, history: [ChatMessage], thinkingMode: ThinkingMode = .off) -> String? {
         nativeLock.lock()
         defer { nativeLock.unlock() }
         guard let model, let tmplC = llama_model_chat_template(model, nil) else { return nil }
@@ -423,7 +436,8 @@ public actor LlamaEngine: InferenceEngine {
 
         // No-think: close an empty <think> block after the assistant turn (Qwen3's
         // enable_thinking=false behaviour); normalize whether the template already opened one.
-        if ThinkingMode.supports(template: tmpl) {
+        // Only when thinkingMode disallows thinking (.off) and the template supports it.
+        if ThinkingMode.shouldCloseThinkBlock(mode: thinkingMode, template: tmpl) {
             let lastOpen = result.range(of: "<think>", options: .backwards)
             let lastClose = result.range(of: "</think>", options: .backwards)
             let openUnclosed = lastOpen != nil && (lastClose == nil || lastClose!.lowerBound < lastOpen!.lowerBound)
@@ -437,7 +451,7 @@ public actor LlamaEngine: InferenceEngine {
     /// failure, leaving `model`/`context`/`vocab` nil so the engine reports "not loaded".
     /// Returns the `n_ctx` the context was created with, for `loadedContextTokens()` (the caller
     /// stores it on the actor — this nonisolated helper can't write actor state itself).
-    nonisolated private func loadLocked(entry: ModelEntry, path: String, specialist: Bool = false, cancellation: (@Sendable () -> Bool)? = nil) throws -> Int {
+    nonisolated private func loadLocked(entry: ModelEntry, path: String, specialist: Bool = false, contextLengthChoice: ContextLengthChoice = .auto, cancellation: (@Sendable () -> Bool)? = nil) throws -> Int {
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
@@ -532,14 +546,21 @@ public actor LlamaEngine: InferenceEngine {
         // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
         // per-token memory, near-lossless), which the cache-aware n_ctx then turns into ~2× context.
         let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
-        // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype
-        // (footprint-aware M1): a 1B gets a big context, a 7B on the same phone is capped tight.
-        var nctx = ContextWindow.recommend(
-            appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
-        if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
-        if ModelRuntimeSupport.isMuse(entry) { nctx = min(nctx, ModelRuntimeSupport.museMaxContextTokens) }
-        if ModelRuntimeSupport.isBeam(entry) { nctx = min(nctx, 4096) }
-        if specialist { nctx = min(nctx, 4096) }
+        // n_ctx from the real app-memory budget, this model's footprint, the cache dtype, and the
+        // user's context-length preference (`.auto` produces exact `recommend(...)` behaviour).
+        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
+        var contextCap: Int? = nil
+        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
+        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
+        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
+        var nctx = ContextWindow.resolveForLoad(
+            choice: effectiveChoice,
+            appBudgetGB: deviceBudgetGB,
+            modelWeightsGB: entry.ramGB,
+            kvCacheType: kvCacheType,
+            maxContextTokens: contextCap
+        )
         ctxParams.n_ctx = UInt32(nctx)
         // Bound the logical and physical prefill batches, as on Android. Native calls
         // can then return to the Stop check every 512 tokens, instead of 2048.
@@ -576,10 +597,13 @@ public actor LlamaEngine: InferenceEngine {
             // nativeLoadedNCtx).
             ctxParams.type_k = GGML_TYPE_F16
             ctxParams.type_v = GGML_TYPE_F16
-            nctx = ContextWindow.recommend(
-                appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: .f16)
-            if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
-            if specialist || ModelRuntimeSupport.isBeam(entry) { nctx = min(nctx, 4096) }
+            nctx = ContextWindow.resolveForLoad(
+                choice: effectiveChoice,
+                appBudgetGB: deviceBudgetGB,
+                modelWeightsGB: entry.ramGB,
+                kvCacheType: .f16,
+                maxContextTokens: contextCap
+            )
             ctxParams.n_ctx = UInt32(nctx)
             ctxParams.n_batch = min(ctxParams.n_batch, UInt32(nctx))
             ctxParams.n_ubatch = ctxParams.n_batch

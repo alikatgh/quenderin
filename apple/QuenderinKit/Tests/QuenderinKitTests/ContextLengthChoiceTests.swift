@@ -28,16 +28,24 @@ final class ContextLengthChoiceTests: XCTestCase {
         }
     }
 
-    func testManualAtOrBelowAutoHasNoWarning() {
+    func testManualAtOrBelowAutoHasNoWarningWhenItFits() {
         let resolved = ContextWindow.resolve(choice: .k2, appBudgetGB: 6.0, modelWeightsGB: 2.0, kvCacheType: .f16)
         XCTAssertEqual(resolved.tokens, 2048)
         XCTAssertNil(resolved.warning)
         XCTAssertNil(resolved.warningText)
 
-        let equalAuto = ContextWindow.resolve(choice: .k4, appBudgetGB: 4.0, modelWeightsGB: 2.0, kvCacheType: .f16)
-        XCTAssertEqual(equalAuto.tokens, 4096)
-        XCTAssertNil(equalAuto.warning)
-        XCTAssertNil(equalAuto.warningText)
+        // Roomy device: headroom = 6.0 - 2.3 = 3.7 GiB; 4096 f16 KV = 2.0 GiB <= 3.7 GiB, auto = 4096.
+        let equalAutoFits = ContextWindow.resolve(choice: .k4, appBudgetGB: 6.0, modelWeightsGB: 2.0, kvCacheType: .f16)
+        XCTAssertEqual(equalAutoFits.tokens, 4096)
+        XCTAssertNil(equalAutoFits.warning)
+        XCTAssertNil(equalAutoFits.warningText)
+
+        // Manual choice <= auto MUST STILL be checked against estimated KV headroom:
+        // headroom = 4.0 - 2.3 = 1.7 GiB; 4096 f16 KV = 2.0 GiB > 1.7 GiB -> clamps to 2048 with .exceedsBudget.
+        let equalAutoExceeds = ContextWindow.resolve(choice: .k4, appBudgetGB: 4.0, modelWeightsGB: 2.0, kvCacheType: .f16)
+        XCTAssertEqual(equalAutoExceeds.tokens, 2048)
+        XCTAssertEqual(equalAutoExceeds.warning, .exceedsBudget)
+        XCTAssertEqual(equalAutoExceeds.warningText, "Not enough memory on this device for this length; using 2048 tokens.")
     }
 
     func testManualAboveAutoThatFitsReturnsMoreMemoryWarning() {
@@ -47,16 +55,24 @@ final class ContextLengthChoiceTests: XCTestCase {
         XCTAssertEqual(resolved.warningText, "Uses more memory. Long chats may be slower.")
     }
 
-    func testManualExceedingHeadroomClampsToAutoWithWarning() {
-        let clamped4k = ContextWindow.resolve(choice: .k8, appBudgetGB: 4.0, modelWeightsGB: 2.0, kvCacheType: .f16)
+    func testManualExceedingHeadroomClampsToLargestFittingTierWithWarning() {
+        // headroom = 6.0 - 2.3 = 3.7 GiB; 8192 f16 needs 4.0 GiB (no), 4096 needs 2.0 GiB (yes) -> 4096.
+        let clamped4k = ContextWindow.resolve(choice: .k8, appBudgetGB: 6.0, modelWeightsGB: 2.0, kvCacheType: .f16)
         XCTAssertEqual(clamped4k.tokens, 4096)
         XCTAssertEqual(clamped4k.warning, .exceedsBudget)
         XCTAssertEqual(clamped4k.warningText, "Not enough memory on this device for this length; using 4096 tokens.")
 
-        let clamped1k = ContextWindow.resolve(choice: .k2, appBudgetGB: 2.0, modelWeightsGB: 1.5, kvCacheType: .f16)
-        XCTAssertEqual(clamped1k.tokens, 1024)
-        XCTAssertEqual(clamped1k.warning, .exceedsBudget)
-        XCTAssertEqual(clamped1k.warningText, "Not enough memory on this device for this length; using 1024 tokens.")
+        // headroom = 4.0 - 2.3 = 1.7 GiB; 8192 (4.0) and 4096 (2.0) don't fit; 2048 (1.0) fits -> 2048.
+        let clamped2k = ContextWindow.resolve(choice: .k8, appBudgetGB: 4.0, modelWeightsGB: 2.0, kvCacheType: .f16)
+        XCTAssertEqual(clamped2k.tokens, 2048)
+        XCTAssertEqual(clamped2k.warning, .exceedsBudget)
+        XCTAssertEqual(clamped2k.warningText, "Not enough memory on this device for this length; using 2048 tokens.")
+
+        // Very tight device: headroom = 2.0 - 1.725 = 0.275 GiB; even 2048 doesn't fit -> never below 2048.
+        let clampedFloor = ContextWindow.resolve(choice: .k2, appBudgetGB: 2.0, modelWeightsGB: 1.5, kvCacheType: .f16)
+        XCTAssertEqual(clampedFloor.tokens, 2048)
+        XCTAssertEqual(clampedFloor.warning, .exceedsBudget)
+        XCTAssertEqual(clampedFloor.warningText, "Not enough memory on this device for this length; using 2048 tokens.")
     }
 
     func testQuantizedKVCacheUnlocksLongerManualContext() {
@@ -67,5 +83,28 @@ final class ContextLengthChoiceTests: XCTestCase {
         let q8Res = ContextWindow.resolve(choice: .k4, appBudgetGB: 3.4, modelWeightsGB: 2.0, kvCacheType: .q8_0)
         XCTAssertEqual(q8Res.tokens, 4096)
         XCTAssertEqual(q8Res.warning, .moreMemory)
+    }
+
+    func testResolveForLoadAppliesOptionalModelCap() {
+        XCTAssertEqual(
+            ContextWindow.resolveForLoad(choice: .auto, appBudgetGB: 12.0, modelWeightsGB: 4.0, kvCacheType: .f16),
+            ContextWindow.recommend(appBudgetGB: 12.0, modelWeightsGB: 4.0, kvCacheType: .f16)
+        )
+        XCTAssertEqual(
+            ContextWindow.resolveForLoad(choice: .k8, appBudgetGB: 12.0, modelWeightsGB: 4.0, kvCacheType: .f16),
+            8192
+        )
+        XCTAssertEqual(
+            ContextWindow.resolveForLoad(choice: .k8, appBudgetGB: 12.0, modelWeightsGB: 4.0, kvCacheType: .f16, maxContextTokens: 4096),
+            4096
+        )
+        XCTAssertEqual(
+            ContextWindow.resolveForLoad(choice: .k8, appBudgetGB: 6.0, modelWeightsGB: 2.0, kvCacheType: .f16, maxContextTokens: 8192),
+            4096
+        )
+        XCTAssertEqual(
+            ContextWindow.resolveForLoad(choice: .k8, appBudgetGB: 4.0, modelWeightsGB: 2.0, kvCacheType: .f16, maxContextTokens: 8192),
+            2048
+        )
     }
 }

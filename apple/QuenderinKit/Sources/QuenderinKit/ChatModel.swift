@@ -23,12 +23,16 @@ public struct ChatMessage: Sendable, Identifiable, Equatable {
     /// Documents attached to this (user) message. The transcript shows chips + the typed text;
     /// `engineText` is what the model gets.
     public var documents: [AttachedDocument]
+    /// Optional reasoning chain extracted from `<think>…</think>` when Thinking is set to `.show`.
+    /// Nil for user messages, `.off`, `.hide`, and older saved transcripts.
+    public var thinking: String?
 
-    public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = []) {
+    public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = [], thinking: String? = nil) {
         self.id = id
         self.role = role
         self.text = text
         self.documents = documents
+        self.thinking = thinking
     }
 
     /// The text the ENGINE sees: attached documents first (clearly labeled), then the typed
@@ -190,9 +194,20 @@ public final class ChatModel: ObservableObject {
     ///   `send()` so the continuation uses the SAME tier (system prompt + token budget) as the
     ///   turn it's extending, instead of `send()`'s `model: nil` default (which resolves to
     ///   `.small` regardless of what actually generated the original reply).
-    public func continueLast(options: GenerationOptions = .init(), model: ModelEntry? = nil) async {
+    public func continueLast(
+        options: GenerationOptions = .init(),
+        model: ModelEntry? = nil,
+        thinkingMode: ThinkingMode? = nil,
+        replyAsJSON: Bool = false
+    ) async {
         guard lastHitTokenCap, !isGenerating else { return }
-        await send(ChatUserFacing.continueCue(), options: options, model: model)
+        await send(
+            ChatUserFacing.continueCue(),
+            options: options,
+            model: model,
+            thinkingMode: thinkingMode,
+            replyAsJSON: replyAsJSON
+        )
     }
 
     @Published public private(set) var automaticSelectionStatus: String?
@@ -242,6 +257,8 @@ public final class ChatModel: ObservableObject {
         documents: [AttachedDocument] = [],
         options: GenerationOptions? = nil,
         model: ModelEntry? = nil,
+        thinkingMode: ThinkingMode? = nil,
+        replyAsJSON: Bool = false,
         onAccepted: (() -> Void)? = nil
     ) async {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -305,6 +322,20 @@ public final class ChatModel: ObservableObject {
         }
         let tier = ChatTier.of(model: selectedModel)
         var resolvedOptions = options ?? tier.chatOptions
+        if let thinkingMode {
+            resolvedOptions.thinkingMode = thinkingMode
+        }
+        if replyAsJSON, resolvedOptions.gbnfGrammar == nil {
+            let grammarSupported = selectedModel.map {
+                !ModelRuntimeSupport.isBeam($0) && !ModelRuntimeSupport.isJais($0) && !ModelRuntimeSupport.isMuse($0)
+            } ?? true
+            if grammarSupported {
+                resolvedOptions.gbnfGrammar = JSONOutputGrammar.anyJSONObject
+            }
+        }
+        if resolvedOptions.gbnfGrammar != nil {
+            resolvedOptions.thinkingMode = .off
+        }
         resolvedOptions.collectPerformance = true
         let systemPrompt = NamedGuidance.append(
             tier.systemPrompt,
@@ -353,6 +384,18 @@ public final class ChatModel: ObservableObject {
 
         var tokenCount = 0
         var hitDegeneration = false
+        var heldByShape = false
+        let activeThinkingMode = resolvedOptions.thinkingMode
+        var splitter: ThinkingSplitter? = activeThinkingMode.allowsThinking ? ThinkingSplitter() : nil
+        var thinkingBuffer = ""
+        func flushSplitterTail() {
+            guard !heldByShape, var activeSplitter = splitter else { return }
+            let tail = activeSplitter.finish()
+            splitter = activeSplitter
+            if !tail.thinking.isEmpty { thinkingBuffer += tail.thinking }
+            if !tail.answer.isEmpty { assistant.text += tail.answer }
+            assistant.thinking = (activeThinkingMode == .show && !thinkingBuffer.isEmpty) ? thinkingBuffer : nil
+        }
         // Pace transcript writes to display frames (~30 Hz): every write is a full list diff plus a
         // Markdown re-parse of the reply, and at 80 tok/s that — not the engine — is the stall users
         // see. The first piece always lands; the settle write below always lands (StreamFlushGate).
@@ -374,11 +417,20 @@ public final class ChatModel: ObservableObject {
                 // repetition penalty, stop paying for tokens — the collapse below cleans up.
                 tokenCount += 1
                 if tokenCount == 1 { generationPhase = .writing }
-                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(assistant.text) {
+                let degenSample = assistant.text.isEmpty ? thinkingBuffer : assistant.text
+                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(degenSample) {
                     hitDegeneration = true
                     break
                 }
-                assistant.text += token
+                if var activeSplitter = splitter {
+                    let delta = activeSplitter.feed(token)
+                    splitter = activeSplitter
+                    if !delta.thinking.isEmpty { thinkingBuffer += delta.thinking }
+                    if !delta.answer.isEmpty { assistant.text += delta.answer }
+                    assistant.thinking = (activeThinkingMode == .show && !thinkingBuffer.isEmpty) ? thinkingBuffer : nil
+                } else {
+                    assistant.text += token
+                }
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
                 // message up by id each token: a captured index would crash (out of range) or write
@@ -388,10 +440,13 @@ public final class ChatModel: ObservableObject {
                 // or a short burst spills across frames and the transcript writes once per token.
                 guard flushGate.shouldFlush() else { continue }
                 let shaped = OutputCheck.shape(assistant.text, kind: .reply)
-                if shaped.held { assistant.text = shaped.text }
+                if shaped.held {
+                    assistant.text = shaped.text
+                    heldByShape = true
+                }
                 let checkerSelected = RoleSeat.shared.hasChecker
                 if checkerSelected, !shaped.held { continue }
-                if messages[i].text != assistant.text {
+                if messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
@@ -403,12 +458,13 @@ public final class ChatModel: ObservableObject {
             if stopRequested {
                 // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
                 // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
+                flushSplitterTail()
                 assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
                 if !assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
                 }
                 if let i = messages.firstIndex(where: { $0.id == assistantID }),
-                   messages[i].text != assistant.text {
+                   messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
@@ -448,18 +504,18 @@ public final class ChatModel: ObservableObject {
             discardCancelledAssistant()
             return
         }
-        // Settle: collapse any exact-duplicate paragraph runs that slipped through (covers
-        // the guard's between-checkpoints window and the Stop path alike), and never leave a
-        // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
+        // Settle: flush any held-back thinking/tag suffix, collapse exact-duplicate paragraph runs,
+        // and never leave a silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
+        flushSplitterTail()
         assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
         if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if !stopRequested { assistant.text = ChatUserFacing.emptyReply() }
+            if !stopRequested && (assistant.thinking?.isEmpty ?? true) { assistant.text = ChatUserFacing.emptyReply() }
         } else {
             assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
         }
         lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {
-            if messages[i].text != assistant.text {
+            if messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                 messages[i] = assistant
                 transcriptRevision &+= 1
             }

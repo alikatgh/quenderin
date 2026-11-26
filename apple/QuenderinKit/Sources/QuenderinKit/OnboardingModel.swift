@@ -430,6 +430,9 @@ public final class OnboardingModel: ObservableObject {
         // load() itself also cancels, but requesting it here ends generation sooner and keeps
         // the switch snappy, consistent with the Stop-cancel fix (Q-005/Q-217).
         engine.requestCancel()
+        #if canImport(SwiftUI)
+        await engine.setContextLengthChoice(AppSettings.shared.contextLength)
+        #endif
         do {
             try await engine.load(model: model, at: destination)
             phase = .ready(model)
@@ -529,6 +532,9 @@ public final class OnboardingModel: ObservableObject {
                 try InferencePerformanceIdentity.verifyInstalled(model, firstFile: destination)
             }
             guard isCurrent(), !Task.isCancelled else { throw CancellationError() }
+            #if canImport(SwiftUI)
+            await engine.setContextLengthChoice(AppSettings.shared.contextLength)
+            #endif
             // No download branch is reachable here, even if a candidate disappeared after admission.
             // The coordinated engine atomically refuses if an agent/specialist owns generation.
             attemptedLoad = true
@@ -600,6 +606,9 @@ public final class OnboardingModel: ObservableObject {
         guard let destination = Self.resolveModelFile(model: model, primary: modelsDir) else {
             return false
         }
+        #if canImport(SwiftUI)
+        await engine.setContextLengthChoice(AppSettings.shared.contextLength)
+        #endif
         do { try await engine.load(model: model, at: destination); return true }
         catch { return false }
     }

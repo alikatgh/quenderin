@@ -132,6 +132,132 @@ final class JSONOutputGrammarTests: XCTestCase {
         XCTAssertFalse(JSONOutputGrammar.validate(json: #"{"a": 01}"#))
         XCTAssertFalse(JSONOutputGrammar.validate(json: "{unquoted: 1}"))
         XCTAssertFalse(JSONOutputGrammar.validate(json: "{\"bad\":\"\n\"}"))
+
+        // RFC 8259 grammar allows syntactically valid lone surrogate escapes \uD800-\uDFFF.
+        XCTAssertTrue(JSONOutputGrammar.validate(json: #"{"loneHigh":"\uD800"}"#))
+        XCTAssertTrue(JSONOutputGrammar.validate(json: #"{"loneLow":"\uDFFF"}"#))
+        XCTAssertTrue(JSONOutputGrammar.validate(json: #"{"highThenAscii":"\uD800\u0041"}"#))
+        XCTAssertTrue(JSONOutputGrammar.validate(json: #"{"twoHigh":"\uD800\uD800"}"#))
+        XCTAssertTrue(JSONOutputGrammar.validate(json: #"{"highThenPair":"\uD800\uD83D\uDE00"}"#))
+        XCTAssertFalse(JSONOutputGrammar.validate(json: #"{"badAfterHigh":"\uD800\uZZZZ"}"#))
+    }
+
+    func testCombiningMarkEscapingInEnumAndPropertyNamesMatchesKotlinBytes() throws {
+        let acute = "\u{0301}"
+        let quotedAcute = "\"\u{0301}"
+        let schema: [String: Any] = [
+            "type": "object",
+            "properties": [
+                (acute, ["type": "string", "enum": [acute]]),
+                (quotedAcute, ["type": "string", "enum": [quotedAcute]]),
+            ] as [(String, Any)],
+            "required": [acute, quotedAcute],
+        ]
+        let g = try JSONOutputGrammar.grammar(forSchema: schema).get()
+        let expected = [
+            "root ::= \"{\" ws \"\\\"" + acute + "\\\"\" ws \":\" ws node-1 \",\" ws \"\\\"\\\\\\\"" + acute + "\\\"\" ws \":\" ws node-2 \"}\" ws",
+            "node-1 ::= \"\\\"" + acute + "\\\"\" ws",
+            "node-2 ::= \"\\\"\\\\\\\"" + acute + "\\\"\" ws",
+            #"ws ::= ([ \t\n\r] ([ \t\n\r] ([ \t\n\r] [ \t\n\r]?)?)?)?"#,
+        ].joined(separator: "\n")
+        XCTAssertEqual(Array(g.utf8), Array(expected.utf8))
+    }
+
+    func testRequiredSetUsesExactScalarSequenceNotCanonicalEquivalence() throws {
+        // U+00E9 ("é") required, "e" + U+0301 ("é") optional — canonically equivalent in Swift String,
+        // but distinct JSON property keys by exact Unicode scalar sequence.
+        let nfc = "\u{00E9}"
+        let nfd = "e\u{0301}"
+        let jsonSchema = """
+        {"type":"object","properties":{"\(nfc)":{"type":"string"},"\(nfd)":{"type":"integer"}},"required":["\(nfc)"]}
+        """
+        let g = try JSONOutputGrammar.grammar(forSchemaJSON: jsonSchema).get()
+        let expectedRoot = "root ::= \"{\" ws \"\\\"" + nfc + "\\\"\" ws \":\" ws string ( \",\" ws \"\\\"" + nfd + "\\\"\" ws \":\" ws integer )? \"}\" ws"
+        XCTAssertTrue(Array(g.utf8).starts(with: Array(expectedRoot.utf8)), "Got:\n\(g)")
+
+        // Only NFD in properties while NFC is required MUST fail.
+        let missingSchema = """
+        {"type":"object","properties":{"\(nfd)":{"type":"integer"}},"required":["\(nfc)"]}
+        """
+        switch JSONOutputGrammar.grammar(forSchemaJSON: missingSchema) {
+        case .success:
+            XCTFail("Expected missing required property failure for NFC vs NFD")
+        case .failure(let err):
+            XCTAssertTrue(err.reason.contains("not found in properties"))
+        }
+    }
+
+    func testNativeDictionarySortsByUTF8BytesAndAcceptsEmptyRequiredArray() throws {
+        let acuteE = "\u{00E9}" // UTF-8: 0xC3 0xA9 (sorts after ASCII 'z' = 0x7A)
+        let dictSchema: [String: Any] = [
+            "type": "object",
+            "properties": [
+                "z": ["type": "string"],
+                acuteE: ["type": "boolean"],
+                "a": ["type": "integer"],
+                "B": ["type": "number"],
+            ] as [String: Any],
+            "required": ["z", acuteE, "a", "B"],
+        ]
+        let gDict = try JSONOutputGrammar.grammar(forSchema: dictSchema).get()
+        let expectedUTF8Root = "root ::= \"{\" ws \"\\\"B\\\"\" ws \":\" ws number \",\" ws \"\\\"a\\\"\" ws \":\" ws integer \",\" ws \"\\\"z\\\"\" ws \":\" ws string \",\" ws \"\\\"" + acuteE + "\\\"\" ws \":\" ws boolean \"}\" ws"
+        XCTAssertTrue(Array(gDict.utf8).starts(with: Array(expectedUTF8Root.utf8)), "Got:\n\(gDict)")
+
+        // JSON-text entry point preserves declared order instead of sorting.
+        let jsonSchema = """
+        {"type":"object","properties":{"z":{"type":"string"},"\(acuteE)":{"type":"boolean"},"a":{"type":"integer"},"B":{"type":"number"}},"required":["z","\(acuteE)","a","B"]}
+        """
+        let gJson = try JSONOutputGrammar.grammar(forSchemaJSON: jsonSchema).get()
+        let expectedDeclaredRoot = "root ::= \"{\" ws \"\\\"z\\\"\" ws \":\" ws string \",\" ws \"\\\"" + acuteE + "\\\"\" ws \":\" ws boolean \",\" ws \"\\\"a\\\"\" ws \":\" ws integer \",\" ws \"\\\"B\\\"\" ws \":\" ws number \"}\" ws"
+        XCTAssertTrue(Array(gJson.utf8).starts(with: Array(expectedDeclaredRoot.utf8)), "Got:\n\(gJson)")
+
+        // Empty `required: [String]()` must be accepted as "no required" (never mistaken for OrderedObject).
+        let emptyReqSchema: [String: Any] = [
+            "type": "object",
+            "properties": ["name": ["type": "string"]] as [String: Any],
+            "required": [String](),
+        ]
+        let gEmptyReq = try JSONOutputGrammar.grammar(forSchema: emptyReqSchema).get()
+        XCTAssertTrue(gEmptyReq.hasPrefix(#"root ::= "{" ws ( "\"name\"" ws ":" ws string )? "}" ws"#))
+
+        let emptyReqNoProps: [String: Any] = [
+            "type": "object",
+            "required": [String](),
+        ]
+        let gNoProps = try JSONOutputGrammar.grammar(forSchema: emptyReqNoProps).get()
+        XCTAssertTrue(gNoProps.hasPrefix("root ::= object\n"))
+    }
+
+    func testMoreThan16OptionalPropertiesFailsCleanlyForFallback() throws {
+        var props16: [String: Any] = [:]
+        for i in 1...16 {
+            props16[String(format: "p%02d", i)] = ["type": "string"]
+        }
+        let ok16 = JSONOutputGrammar.grammar(forSchema: ["type": "object", "properties": props16])
+        XCTAssertNotNil(try? ok16.get(), "16 optional properties should succeed")
+
+        var props17 = props16
+        props17["p17"] = ["type": "string"]
+        switch JSONOutputGrammar.grammar(forSchema: ["type": "object", "properties": props17]) {
+        case .success:
+            XCTFail("Expected failure for 17 optional properties")
+        case .failure(let err):
+            XCTAssertEqual(err.reason, "too many optional properties; using generic JSON grammar")
+        }
+
+        // 1 required + 17 optional also exceeds the cap of 16 optional properties.
+        var props1Req17Opt = props17
+        props1Req17Opt["req"] = ["type": "integer"]
+        switch JSONOutputGrammar.grammar(forSchema: [
+            "type": "object",
+            "properties": props1Req17Opt,
+            "required": ["req"],
+        ]) {
+        case .success:
+            XCTFail("Expected failure for 1 required + 17 optional properties")
+        case .failure(let err):
+            XCTAssertEqual(err.reason, "too many optional properties; using generic JSON grammar")
+        }
     }
 
     // Minimal pure-Swift FIPS 180-4 SHA-256 helper so the exact same test runs on both Linux and macOS.
