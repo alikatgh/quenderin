@@ -20,6 +20,7 @@ on-device AI agent.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, data flow, the OODA agent loop, the two products |
 | [BACKEND.md](BACKEND.md) | The `src/` services — LLM, agent, session, memory, voice, OCR, daemons, tools, device providers |
 | [API.md](API.md) | The REST routes **and** the full WebSocket message protocol |
+| [LOCAL_API.md](LOCAL_API.md) | Opt-in macOS loopback OpenAI-compatible API (`127.0.0.1:11435/v1`) |
 | [FRONTEND.md](FRONTEND.md) | The React/Vite UI — components, state, the agent socket hook, theming |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, scripts, build, test, lint, project layout |
 | [AGENT_AUTONOMY_PLAN.md](AGENT_AUTONOMY_PLAN.md) | **The plan for the mission** — local autonomous computer usage: the Shortcuts-shaped capability ladder, the consent/safety spine, and Milestone 0 (`fs.read`) |

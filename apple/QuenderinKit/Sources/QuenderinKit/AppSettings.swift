@@ -115,6 +115,24 @@ public final class AppSettings: ObservableObject {
     /// Constrain chat replies to valid JSON via GBNF grammar where the loaded model supports it. Default OFF.
     @Published public var replyAsJSON: Bool { didSet { defaults.set(replyAsJSON, forKey: Self.key("replyAsJSON")) } }
 
+    #if os(macOS)
+    /// Opt-in loopback-only OpenAI-compatible HTTP API on 127.0.0.1. Default OFF.
+    @Published public var localAPIEnabled: Bool { didSet { defaults.set(localAPIEnabled, forKey: Self.key("localAPIEnabled")) } }
+    /// Loopback port for the macOS local API (1024...65535). Default 11435 (avoids Ollama's 11434).
+    @Published public var localAPIPort: Int {
+        didSet {
+            let clamped = Int(LocalAPIGuard.clampPort(localAPIPort))
+            if localAPIPort != clamped {
+                localAPIPort = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.key("localAPIPort"))
+        }
+    }
+    /// Optional Bearer API key for the macOS local API. Blank accepts any/no Authorization header.
+    @Published public var localAPIKey: String { didSet { save(localAPIKey, "localAPIKey") } }
+    #endif
+
     /// The active download network policy, derived from the toggle above. The onboarding + model-library
     /// download gates read THIS (honoring the journal rule: a setting ships only when something reads it).
     public var downloadPolicy: DownloadPolicy { allowCellularDownloads ? .wifiOrCellular : .wifiOnly }
@@ -141,6 +159,12 @@ public final class AppSettings: ObservableObject {
         thinkingMode = ThinkingMode(rawValue: defaults.string(forKey: Self.key("thinkingMode")) ?? "") ?? .off
         contextLength = ContextLengthChoice(rawValue: defaults.string(forKey: Self.key("contextLength")) ?? "") ?? .auto
         replyAsJSON = defaults.object(forKey: Self.key("replyAsJSON")) as? Bool ?? false
+        #if os(macOS)
+        localAPIEnabled = defaults.object(forKey: Self.key("localAPIEnabled")) as? Bool ?? false
+        let storedPort = defaults.object(forKey: Self.key("localAPIPort")) as? Int ?? Int(LocalAPIGuard.defaultPort)
+        localAPIPort = Int(LocalAPIGuard.clampPort(storedPort))
+        localAPIKey = defaults.string(forKey: Self.key("localAPIKey")) ?? ""
+        #endif
     }
 }
 #endif

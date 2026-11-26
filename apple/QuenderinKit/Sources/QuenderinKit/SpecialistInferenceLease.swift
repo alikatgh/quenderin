@@ -31,6 +31,7 @@ public actor SpecialistInferenceLease {
 public actor CoordinatedInferenceEngine: InferenceEngine {
     private let underlying: any InferenceEngine
     private var held: UUID?
+    private var exclusiveOwner: UUID?
     private var starts = 0
     private var automaticSwitching = false
     private var activeStreams: Set<UUID> = []
@@ -58,6 +59,9 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     }
     public init(_ underlying: any InferenceEngine) { self.underlying = underlying }
     public func isSuspendedForSpecialist() async -> Bool { held != nil }
+    public func hasActiveInference() async -> Bool {
+        held != nil || automaticSwitching || starts > 0 || !activeStreams.isEmpty || exclusiveOwner != nil
+    }
     public func chatCapStatus() async -> ChatCapStatus { held == nil ? capState.withLock { $0.status } : .unknown }
     public func loadedModelID() async -> String? { held == nil ? await underlying.loadedModelID() : nil }
     public func loadedContextTokens() async -> Int? { held == nil ? await underlying.loadedContextTokens() : nil }
@@ -72,7 +76,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         invalidateCapStatus()
         underlying.requestCancel()
     }
-    private func begin() throws { guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }; starts += 1 }
+    private func begin() throws { guard held == nil, !automaticSwitching, exclusiveOwner == nil else { throw SpecialistCoordinationError.busy }; starts += 1 }
     private func end() {
         starts -= 1
         if starts == 0 { let pending = waiters; waiters = []; pending.forEach { $0.resume() } }
@@ -84,7 +88,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         selected = (model, fileURL)
     }
     public func unload() async {
-        guard held == nil, !automaticSwitching else { return }
+        guard held == nil, !automaticSwitching, exclusiveOwner == nil else { return }
         invalidateCapStatus()
         starts += 1; defer { end() }
         await underlying.unload(); selected = nil
@@ -126,15 +130,65 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         }
     }
     public func retainModelForAgentRun() async throws -> SpecialistInferenceLease {
-        guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }
+        guard held == nil, !automaticSwitching, exclusiveOwner == nil else { throw SpecialistCoordinationError.busy }
         let id = UUID(); agentModelOwners.insert(id)
         return SpecialistInferenceLease { await self.releaseAgentModel(id) }
     }
     private func releaseAgentModel(_ id: UUID) { agentModelOwners.remove(id) }
+    public func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
+        let clampedMs = max(0, Int(timeoutSeconds * 1000))
+        let deadline = ContinuousClock.now + .milliseconds(clampedMs)
+        while held != nil || automaticSwitching || starts > 0 || !activeStreams.isEmpty || exclusiveOwner != nil {
+            try Task.checkCancellation()
+            if ContinuousClock.now >= deadline {
+                throw SpecialistCoordinationError.busy
+            }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        try Task.checkCancellation()
+        let ownerID = UUID()
+        exclusiveOwner = ownerID
+        let cleanup = SpecialistInferenceLease { await self.releaseExclusive(ownerID) }
+        return ExclusiveInferenceLease(
+            loadedModelID: { [self] in await self.exclusiveLoadedModelID(owner: ownerID) },
+            loadedExecutionProfile: { [self] system, history, options in
+                await self.exclusiveLoadedExecutionProfile(owner: ownerID, system: system, history: history, options: options)
+            },
+            generateChat: { [self] system, history, options in
+                try await self.exclusiveGenerateChat(owner: ownerID, system: system, history: history, options: options)
+            },
+            chatCapStatus: { [self] in await self.exclusiveChatCapStatus(owner: ownerID) },
+            requestCancel: { [self] in self.requestCancel() },
+            release: { try? await cleanup.resume() }
+        )
+    }
+    private func releaseExclusive(_ id: UUID) {
+        if exclusiveOwner == id { exclusiveOwner = nil }
+    }
+    private func exclusiveLoadedModelID(owner: UUID) async -> String? {
+        guard exclusiveOwner == owner, held == nil else { return nil }
+        return await underlying.loadedModelID()
+    }
+    private func exclusiveLoadedExecutionProfile(owner: UUID, system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
+        guard exclusiveOwner == owner, held == nil else { return nil }
+        return await underlying.loadedExecutionProfile(system: system, history: history, options: options)
+    }
+    private func exclusiveChatCapStatus(owner: UUID) async -> ChatCapStatus {
+        guard exclusiveOwner == owner, held == nil else { return .unknown }
+        return capState.withLock { $0.status }
+    }
+    private func exclusiveGenerateChat(owner: UUID, system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        guard exclusiveOwner == owner, held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }
+        starts += 1; defer { end() }
+        let myCapRun = invalidateCapStatus()
+        let id = UUID(); activeStreams.insert(id)
+        do { return track(try await underlying.generateChat(system: system, history: history, options: options), id: id, capRun: myCapRun) }
+        catch { activeStreams.remove(id); throw error }
+    }
     public func loadForAutomaticIfIdle(model: ModelEntry, at fileURL: URL,
                                        stillCurrent: @escaping @Sendable () async -> Bool,
                                        accept: @escaping @Sendable () async -> Bool) async throws -> Bool {
-        guard held == nil, !automaticSwitching, starts == 0, activeStreams.isEmpty, agentModelOwners.isEmpty else { return false }
+        guard held == nil, !automaticSwitching, starts == 0, activeStreams.isEmpty, agentModelOwners.isEmpty, exclusiveOwner == nil else { return false }
         invalidateCapStatus()
         automaticSwitching = true
         defer { automaticSwitching = false; invalidateCapStatus() }
@@ -167,7 +221,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         }
     }
     public func suspendForSpecialist() async throws -> SpecialistInferenceLease {
-        guard held == nil, !automaticSwitching else { throw SpecialistCoordinationError.busy }
+        guard held == nil, !automaticSwitching, exclusiveOwner == nil else { throw SpecialistCoordinationError.busy }
         let id = UUID(); held = id
         invalidateCapStatus()
         underlying.requestCancel()

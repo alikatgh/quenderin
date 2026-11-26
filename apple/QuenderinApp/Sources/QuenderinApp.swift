@@ -51,6 +51,7 @@ final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        LocalAPIServer.shared.stopImmediately()
         UserDefaults.standard.synchronize()
         _exit(0)
     }
@@ -143,6 +144,9 @@ struct QuenderinApp: App {
             })
         _conversations = StateObject(wrappedValue: conversationCoordinator)
         onboardingModel.onManualSelectionCommitted = { model in conversationCoordinator.chooseModelManually(model.id) }
+        #if os(macOS)
+        LocalAPIServer.shared.configure(engine: engine, onboarding: onboardingModel)
+        #endif
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
         // Tools come from the ONE toolkit the Settings pane also reads; capabilities execute
         // through the runner — consent from UserDefaults (the pane's toggles), every action
