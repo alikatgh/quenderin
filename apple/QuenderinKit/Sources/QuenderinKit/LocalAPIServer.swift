@@ -50,10 +50,13 @@ public final class LocalAPIServer: ObservableObject {
     }
 
     private static let busyTimeoutSeconds: Double = 30.0
+    private static let writeTimeoutSeconds: Double = 15.0
+    private static let maxConcurrentConnections: Int = 16
 
     private let queue = DispatchQueue(label: "ai.quenderin.local-api")
     private let requestGate = LocalAPIRequestGate()
     private var listener: NWListener?
+    private var listenerGeneration: UInt64 = 0
     private var activePort: UInt16 = LocalAPIGuard.defaultPort
     private var connections: [ObjectIdentifier: LocalAPIConnection] = [:]
     private var cancellables: Set<AnyCancellable> = []
@@ -122,6 +125,7 @@ public final class LocalAPIServer: ObservableObject {
 
     /// Stops accepting new connections and cancels active ones.
     public func stop() {
+        listenerGeneration &+= 1
         listener?.stateUpdateHandler = nil
         listener?.newConnectionHandler = nil
         listener?.cancel()
@@ -141,6 +145,7 @@ public final class LocalAPIServer: ObservableObject {
 
     private func start(port: UInt16) {
         stop()
+        let generation = listenerGeneration
         activePort = port
         status = .starting(port: port)
 
@@ -155,9 +160,9 @@ public final class LocalAPIServer: ObservableObject {
 
         do {
             let newListener = try NWListener(using: params)
-            newListener.stateUpdateHandler = { [weak self] state in
+            newListener.stateUpdateHandler = { @Sendable [weak self] state in
                 Task { @MainActor [weak self] in
-                    guard let self, self.listener === newListener else { return }
+                    guard let self, self.listener === newListener, self.listenerGeneration == generation else { return }
                     switch state {
                     case .ready:
                         self.status = .listening(port: port)
@@ -178,9 +183,13 @@ public final class LocalAPIServer: ObservableObject {
                     }
                 }
             }
-            newListener.newConnectionHandler = { [weak self] nwConnection in
+            newListener.newConnectionHandler = { @Sendable [weak self] nwConnection in
                 Task { @MainActor [weak self] in
-                    self?.accept(nwConnection, port: port)
+                    guard let self else {
+                        nwConnection.cancel()
+                        return
+                    }
+                    self.accept(nwConnection, port: port, from: newListener, generation: generation)
                 }
             }
             listener = newListener
@@ -190,29 +199,62 @@ public final class LocalAPIServer: ObservableObject {
         }
     }
 
-    private func accept(_ nwConnection: NWConnection, port: UInt16) {
-        let conn = LocalAPIConnection(connection: nwConnection, queue: queue)
+    private func accept(
+        _ nwConnection: NWConnection,
+        port: UInt16,
+        from originatingListener: NWListener,
+        generation: UInt64
+    ) {
+        guard AppSettings.shared.localAPIEnabled,
+              listener === originatingListener,
+              listenerGeneration == generation else {
+            nwConnection.cancel()
+            return
+        }
+        guard connections.count < Self.maxConcurrentConnections else {
+            nwConnection.cancel()
+            return
+        }
+
+        let conn = LocalAPIConnection(
+            connection: nwConnection,
+            queue: queue,
+            writeTimeoutSeconds: Self.writeTimeoutSeconds
+        )
         let id = ObjectIdentifier(conn)
         connections[id] = conn
-        conn.onFinished = { [weak self] in
+        conn.onFinished = { @Sendable [weak self] in
             Task { @MainActor [weak self] in
                 self?.connections.removeValue(forKey: id)
             }
         }
-        conn.onRequest = { [weak self, weak conn] request in
-            guard let self, let conn else { return }
-            let task = Task { [weak self, weak conn] in
+        conn.onRequest = { @Sendable [weak self, weak conn] request in
+            let task = Task { @MainActor [weak self, weak conn] in
                 guard let self, let conn else { return }
-                await self.handleRequest(request, port: port, connection: conn)
+                await self.handleRequest(request, port: port, generation: generation, connection: conn)
             }
-            conn.attachWorkTask(task)
+            conn?.attachWorkTask(task)
         }
         conn.start()
     }
 
     // MARK: - Request Handling (privacy: never log prompts or replies)
 
-    private func handleRequest(_ request: LocalHTTPRequest, port: UInt16, connection: LocalAPIConnection) async {
+    private func isListenerActive(generation: UInt64) -> Bool {
+        AppSettings.shared.localAPIEnabled && listener != nil && listenerGeneration == generation
+    }
+
+    private func handleRequest(
+        _ request: LocalHTTPRequest,
+        port: UInt16,
+        generation: UInt64,
+        connection: LocalAPIConnection
+    ) async {
+        guard isListenerActive(generation: generation) else {
+            connection.cancel()
+            return
+        }
+
         let requiredKey = AppSettings.shared.localAPIKey
         if let rejection = LocalAPIGuard.check(request, port: port, requiredAPIKey: requiredKey.isEmpty ? nil : requiredKey) {
             connection.sendAndClose(LocalHTTPResponse.error(rejection))
@@ -222,11 +264,15 @@ public final class LocalAPIServer: ObservableObject {
         switch (request.method, request.path) {
         case ("GET", "/v1/models"):
             let models = await availableModels()
+            guard isListenerActive(generation: generation) else {
+                connection.cancel()
+                return
+            }
             requestsServed += 1
             connection.sendAndClose(LocalHTTPResponse.json(statusCode: 200, body: LocalAPICodec.encodeModelsList(models)))
 
         case ("POST", "/v1/chat/completions"):
-            await handleChatCompletions(request, connection: connection)
+            await handleChatCompletions(request, generation: generation, connection: connection)
 
         case (_, "/v1/models"), (_, "/v1/chat/completions"):
             connection.sendAndClose(LocalHTTPResponse.error(.methodNotAllowed()))
@@ -236,7 +282,15 @@ public final class LocalAPIServer: ObservableObject {
         }
     }
 
-    private func handleChatCompletions(_ request: LocalHTTPRequest, connection: LocalAPIConnection) async {
+    private func handleChatCompletions(
+        _ request: LocalHTTPRequest,
+        generation: UInt64,
+        connection: LocalAPIConnection
+    ) async {
+        guard isListenerActive(generation: generation) else {
+            connection.cancel()
+            return
+        }
         guard let engine else {
             connection.sendAndClose(LocalHTTPResponse.error(.serviceUnavailable("Inference engine is not ready yet.")))
             return
@@ -255,26 +309,48 @@ public final class LocalAPIServer: ObservableObject {
             chatReq = decoded
         }
 
+        // Reject grammar-constrained response_format up front for models that refuse GBNF grammars.
+        if chatReq.responseFormat.gbnfGrammar != nil,
+           let targetEntry = lookupModelEntry(id: chatReq.model),
+           !Self.supportsGrammar(targetEntry) {
+            connection.sendAndClose(LocalHTTPResponse.error(.badRequest(
+                "The model '\(chatReq.model)' does not support response_format / grammar-constrained JSON output.",
+                code: "unsupported_response_format"
+            )))
+            return
+        }
+
         let deadline = ContinuousClock.now + .milliseconds(Int(Self.busyTimeoutSeconds * 1000))
 
         // Serialize API requests one at a time (waiting up to 30 s).
         let acquiredGate = await requestGate.acquire(deadline: deadline)
         guard acquiredGate else {
-            if !Task.isCancelled && !connection.isDisconnected {
+            if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
                 connection.sendAndClose(LocalHTTPResponse.error(.serverBusy()))
             }
             return
         }
         defer { Task { await requestGate.release() } }
 
-        // Ensure the requested (or active) model is loaded through the existing load path.
-        if let loadErr = await ensureModelLoaded(modelID: chatReq.model, engine: engine, deadline: deadline) {
-            if !Task.isCancelled && !connection.isDisconnected {
-                connection.sendAndClose(LocalHTTPResponse.error(loadErr))
-            }
+        guard isListenerActive(generation: generation) else {
+            connection.cancel()
             return
         }
 
+        // Wait for any in-flight app install or specialist workflow before acquiring the engine lease.
+        while (onboarding?.isInstalling ?? false) || (onboarding?.isSpecialistActive ?? false) {
+            if Task.isCancelled || connection.isDisconnected || !isListenerActive(generation: generation) {
+                return
+            }
+            if ContinuousClock.now >= deadline {
+                connection.sendAndClose(LocalHTTPResponse.error(.serverBusy()))
+                return
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        // Acquire the exclusive lease BEFORE checking/switching the model so model load and
+        // generation execute inside the same exclusive ownership interval.
         let remaining = remainingSeconds(until: deadline)
         let lease: ExclusiveInferenceLease
         do {
@@ -282,22 +358,61 @@ public final class LocalAPIServer: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
-            if !connection.isDisconnected {
+            if !connection.isDisconnected && isListenerActive(generation: generation) {
                 connection.sendAndClose(LocalHTTPResponse.error(.serverBusy()))
             }
             return
         }
 
-        connection.setCancelInferenceHook {
+        var leaseReleased = false
+        let releaseLease: () async -> Void = {
+            guard !leaseReleased else { return }
+            leaseReleased = true
+            connection.setCancelInferenceHook(nil)
+            await lease.release()
+        }
+
+        connection.setCancelInferenceHook { @Sendable in
             lease.requestCancel()
         }
         defer {
-            connection.setCancelInferenceHook(nil)
-            Task { await lease.release() }
+            if !leaseReleased {
+                leaseReleased = true
+                connection.setCancelInferenceHook(nil)
+                Task { await lease.release() }
+            }
         }
 
-        if connection.isDisconnected || Task.isCancelled {
+        if connection.isDisconnected || Task.isCancelled || !isListenerActive(generation: generation) {
             lease.requestCancel()
+            await releaseLease()
+            return
+        }
+
+        // Ensure the requested model is already loaded, or load the already-installed, hash-verified
+        // file exclusively inside this lease — never delete, never download, never cancel another owner.
+        if let loadErr = await ensureModelLoadedInsideLease(modelID: chatReq.model, lease: lease) {
+            await releaseLease()
+            if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
+                connection.sendAndClose(LocalHTTPResponse.error(loadErr))
+            }
+            return
+        }
+
+        if connection.isDisconnected || Task.isCancelled || !isListenerActive(generation: generation) {
+            lease.requestCancel()
+            await releaseLease()
+            return
+        }
+
+        // Verify the engine actually has the requested model loaded before generating.
+        guard let verifiedModelID = await lease.loadedModelID(), verifiedModelID == chatReq.model else {
+            await releaseLease()
+            if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
+                connection.sendAndClose(LocalHTTPResponse.error(
+                    .serviceUnavailable("Model '\(chatReq.model)' is not loaded in Quenderin.")
+                ))
+            }
             return
         }
 
@@ -315,81 +430,106 @@ public final class LocalAPIServer: ObservableObject {
             thinkingMode: chatReq.effectiveThinkingMode
         )
 
+        let splitThinking = chatReq.effectiveThinkingMode.allowsThinking
+        let includeReasoning = chatReq.effectiveThinkingMode == .show
+        let startsInsideThinking = splitThinking
+            ? await lease.chatPromptStartsInsideThinking(system: systemPrompt, history: history, options: options)
+            : false
+
         let stream: AsyncThrowingStream<String, Error>
         do {
             stream = try await lease.generateChat(system: systemPrompt, history: history, options: options)
         } catch InferenceError.modelNotLoaded {
+            await releaseLease()
             connection.sendAndClose(LocalHTTPResponse.error(.serviceUnavailable("No model is loaded in Quenderin.")))
             return
         } catch InferenceError.cancelled {
+            await releaseLease()
+            return
+        } catch InferenceError.generationFailed(let reason) where options.gbnfGrammar != nil && reason.lowercased().contains("grammar") {
+            await releaseLease()
+            connection.sendAndClose(LocalHTTPResponse.error(.badRequest(reason, code: "unsupported_response_format")))
             return
         } catch {
+            await releaseLease()
             connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
             return
         }
 
         let completionID = LocalAPICodec.makeCompletionID()
         let created = Int(Date().timeIntervalSince1970)
-        let splitThinking = chatReq.think && chatReq.effectiveThinkingMode == .show
 
         if chatReq.stream {
             await streamResponse(
                 stream: stream,
                 lease: lease,
+                releaseLease: releaseLease,
                 connection: connection,
                 id: completionID,
                 created: created,
-                model: chatReq.model,
-                splitThinking: splitThinking
+                model: verifiedModelID,
+                splitThinking: splitThinking,
+                includeReasoning: includeReasoning,
+                startsInsideThinking: startsInsideThinking
             )
         } else {
             await bufferedResponse(
                 stream: stream,
                 lease: lease,
+                releaseLease: releaseLease,
                 connection: connection,
                 id: completionID,
                 created: created,
-                model: chatReq.model,
-                splitThinking: splitThinking
+                model: verifiedModelID,
+                splitThinking: splitThinking,
+                includeReasoning: includeReasoning,
+                startsInsideThinking: startsInsideThinking
             )
         }
-        await lease.release()
+        await releaseLease()
     }
 
     private func streamResponse(
         stream: AsyncThrowingStream<String, Error>,
         lease: ExclusiveInferenceLease,
+        releaseLease: () async -> Void,
         connection: LocalAPIConnection,
         id: String,
         created: Int,
         model: String,
-        splitThinking: Bool
+        splitThinking: Bool,
+        includeReasoning: Bool,
+        startsInsideThinking: Bool
     ) async {
         guard await connection.send(LocalHTTPResponse.sseHeaders()) else {
             lease.requestCancel()
+            await releaseLease()
             return
         }
         let roleChunk = LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant")
         guard await connection.send(roleChunk) else {
             lease.requestCancel()
+            await releaseLease()
             return
         }
 
-        var splitter = ThinkingSplitter()
+        var splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
         do {
             for try await piece in stream {
                 if Task.isCancelled || connection.isDisconnected {
                     lease.requestCancel()
+                    await releaseLease()
                     return
                 }
                 if splitThinking {
                     let delta = splitter.feed(piece)
-                    if !delta.thinking.isEmpty {
+                    if includeReasoning && !delta.thinking.isEmpty {
                         let chunk = LocalAPICodec.encodeStreamChunk(
                             id: id, created: created, model: model, reasoningContent: delta.thinking
                         )
                         guard await connection.send(chunk) else {
                             lease.requestCancel()
+                            await releaseLease()
                             return
                         }
                     }
@@ -399,6 +539,7 @@ public final class LocalAPIServer: ObservableObject {
                         )
                         guard await connection.send(chunk) else {
                             lease.requestCancel()
+                            await releaseLease()
                             return
                         }
                     }
@@ -408,37 +549,42 @@ public final class LocalAPIServer: ObservableObject {
                     )
                     guard await connection.send(chunk) else {
                         lease.requestCancel()
+                        await releaseLease()
                         return
                     }
                 }
             }
 
+            let cap = await lease.chatCapStatus()
+            // Release the exclusive engine lease promptly once generation finishes so flushing
+            // final socket bytes cannot starve in-app chat.
+            await releaseLease()
+
+            var tailData = Data()
             if splitThinking {
                 let tail = splitter.finish()
-                if !tail.thinking.isEmpty {
-                    let chunk = LocalAPICodec.encodeStreamChunk(
+                if includeReasoning && !tail.thinking.isEmpty {
+                    tailData.append(LocalAPICodec.encodeStreamChunk(
                         id: id, created: created, model: model, reasoningContent: tail.thinking
-                    )
-                    _ = await connection.send(chunk)
+                    ))
                 }
                 if !tail.answer.isEmpty {
-                    let chunk = LocalAPICodec.encodeStreamChunk(
+                    tailData.append(LocalAPICodec.encodeStreamChunk(
                         id: id, created: created, model: model, content: tail.answer
-                    )
-                    _ = await connection.send(chunk)
+                    ))
                 }
             }
 
-            let cap = await lease.chatCapStatus()
             let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
-            var tailData = LocalAPICodec.encodeStreamChunk(
+            tailData.append(LocalAPICodec.encodeStreamChunk(
                 id: id, created: created, model: model, finishReason: finishReason
-            )
+            ))
             tailData.append(LocalAPICodec.streamDoneFrame)
             requestsServed += 1
             connection.sendAndClose(tailData)
         } catch {
             lease.requestCancel()
+            await releaseLease()
             connection.cancel()
         }
     }
@@ -446,24 +592,28 @@ public final class LocalAPIServer: ObservableObject {
     private func bufferedResponse(
         stream: AsyncThrowingStream<String, Error>,
         lease: ExclusiveInferenceLease,
+        releaseLease: () async -> Void,
         connection: LocalAPIConnection,
         id: String,
         created: Int,
         model: String,
-        splitThinking: Bool
+        splitThinking: Bool,
+        includeReasoning: Bool,
+        startsInsideThinking: Bool
     ) async {
-        var splitter = ThinkingSplitter()
+        var splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
         var reasoning = ""
         var answer = ""
         do {
             for try await piece in stream {
                 if Task.isCancelled || connection.isDisconnected {
                     lease.requestCancel()
+                    await releaseLease()
                     return
                 }
                 if splitThinking {
                     let delta = splitter.feed(piece)
-                    if !delta.thinking.isEmpty { reasoning += delta.thinking }
+                    if includeReasoning && !delta.thinking.isEmpty { reasoning += delta.thinking }
                     if !delta.answer.isEmpty { answer += delta.answer }
                 } else {
                     answer += piece
@@ -471,14 +621,18 @@ public final class LocalAPIServer: ObservableObject {
             }
             if splitThinking {
                 let tail = splitter.finish()
-                if !tail.thinking.isEmpty { reasoning += tail.thinking }
+                if includeReasoning && !tail.thinking.isEmpty { reasoning += tail.thinking }
                 if !tail.answer.isEmpty { answer += tail.answer }
             }
             if Task.isCancelled || connection.isDisconnected {
                 lease.requestCancel()
+                await releaseLease()
                 return
             }
             let cap = await lease.chatCapStatus()
+            // Release the exclusive engine lease before flushing the buffered HTTP response.
+            await releaseLease()
+
             let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
             let body = LocalAPICodec.encodeChatCompletion(
                 id: id,
@@ -486,7 +640,7 @@ public final class LocalAPIServer: ObservableObject {
                 model: model,
                 content: answer,
                 reasoningContent: reasoning.isEmpty ? nil : reasoning,
-                includeReasoning: splitThinking,
+                includeReasoning: includeReasoning,
                 finishReason: finishReason,
                 usage: nil
             )
@@ -494,15 +648,27 @@ public final class LocalAPIServer: ObservableObject {
             connection.sendAndClose(LocalHTTPResponse.json(statusCode: 200, body: body))
         } catch is CancellationError {
             lease.requestCancel()
+            await releaseLease()
         } catch {
             lease.requestCancel()
+            await releaseLease()
             if !connection.isDisconnected {
                 connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
             }
         }
     }
 
-    // MARK: - Model Discovery & On-Demand Load (existing load path only; never downloads)
+    // MARK: - Model Discovery & Installed-Only Load (never downloads, never deletes)
+
+    private static func supportsGrammar(_ entry: ModelEntry) -> Bool {
+        !ModelRuntimeSupport.isBeam(entry)
+            && !ModelRuntimeSupport.isJais(entry)
+            && !ModelRuntimeSupport.isMuse(entry)
+    }
+
+    private func lookupModelEntry(id: String) -> ModelEntry? {
+        ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id)
+    }
 
     private func currentActiveModelID() async -> String? {
         if let loaded = await engine?.loadedModelID(), !loaded.isEmpty {
@@ -548,7 +714,7 @@ public final class LocalAPIServer: ObservableObject {
     }
 
     private func resolveInstalledEntry(id: String) -> ModelEntry? {
-        guard let entry = ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
+        guard let entry = lookupModelEntry(id: id),
               ModelRuntimeSupport.supports(entry),
               OnboardingModel.resolveModelFile(model: entry) != nil else {
             return nil
@@ -556,45 +722,54 @@ public final class LocalAPIServer: ObservableObject {
         return entry
     }
 
-    private func ensureModelLoaded(
+    /// Loads an already-installed, hash-verified model exclusively inside `lease`.
+    /// Never calls `onboarding.install`, never deletes a corrupt file, never starts a download,
+    /// and never calls `requestCancel()` outside the exclusive lease.
+    private func ensureModelLoadedInsideLease(
         modelID: String,
-        engine: InferenceEngine,
-        deadline: ContinuousClock.Instant
+        lease: ExclusiveInferenceLease
     ) async -> LocalAPIError? {
-        if await engine.loadedModelID() == modelID {
+        if await lease.loadedModelID() == modelID {
             return nil
         }
 
-        // Wait if another generation, install, or specialist workflow is active.
-        while await engine.hasActiveInference() || (onboarding?.isInstalling ?? false) || (onboarding?.isSpecialistActive ?? false) {
-            if Task.isCancelled { return nil }
-            if ContinuousClock.now >= deadline {
-                return .serverBusy()
+        guard let entry = lookupModelEntry(id: modelID),
+              ModelRuntimeSupport.supports(entry),
+              let fileURL = OnboardingModel.resolveModelFile(model: entry) else {
+            return .notFound(
+                "The model '\(modelID)' is not installed on this Mac. Download it in Quenderin first.",
+                code: "model_not_found"
+            )
+        }
+
+        // Hash-verify the installed file(s) before touching the currently loaded model.
+        // Failures return 404 without deleting files or triggering downloads.
+        do {
+            try await ModelArtifactSet.inBackground {
+                try InferencePerformanceIdentity.verifyInstalled(entry, firstFile: fileURL)
             }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        } catch {
+            return .notFound(
+                "The installed model '\(entry.id)' failed integrity verification and cannot be loaded. Re-download it in Quenderin.",
+                code: "model_not_found"
+            )
         }
 
-        if await engine.loadedModelID() == modelID {
-            return nil
+        if Task.isCancelled { return nil }
+
+        await lease.setContextLengthChoice(AppSettings.shared.contextLength)
+        do {
+            try await lease.load(model: entry, at: fileURL)
+        } catch {
+            return .serviceUnavailable("Could not load model '\(entry.id)': \(OnboardingModel.describe(error))")
         }
 
-        guard let entry = resolveInstalledEntry(id: modelID) else {
-            return .serviceUnavailable("No installed model file found for '\(modelID)'. Download a model in Quenderin first.")
+        guard await lease.loadedModelID() == entry.id else {
+            return .serviceUnavailable("Could not load model '\(entry.id)'. Open Quenderin to check model status.")
         }
 
-        guard let onboarding else {
-            return .serviceUnavailable("Quenderin is still starting up. Try again shortly.")
-        }
-
-        // Load through the existing onboarding load path (file is verified on disk above, so no download occurs).
-        await onboarding.install(entry)
-        if await engine.loadedModelID() == entry.id {
-            return nil
-        }
-        if case .failed(let reason) = onboarding.phase {
-            return .serviceUnavailable("Could not load model '\(entry.id)': \(reason)")
-        }
-        return .serviceUnavailable("Could not load model '\(entry.id)'. Open Quenderin to check model status.")
+        onboarding?.syncExternallyLoadedModel(entry)
+        return nil
     }
 
     private func remainingSeconds(until deadline: ContinuousClock.Instant) -> Double {
@@ -631,17 +806,21 @@ private actor LocalAPIRequestGate {
 private final class LocalAPIConnection: @unchecked Sendable {
     private let connection: NWConnection
     private let queue: DispatchQueue
+    private let writeTimeoutSeconds: Double
     private let lock = NSLock()
     private var buffer = Data()
     private var parsedRequest = false
+    private var sendingFinal = false
     private var finished = false
     private var disconnected = false
     private var workTask: Task<Void, Never>?
-    private var cancelInferenceHook: (() -> Void)?
+    private var cancelInferenceHook: (@Sendable () -> Void)?
     private var readTimeoutItem: DispatchWorkItem?
+    private var finalWriteTimeoutItem: DispatchWorkItem?
+    private var pendingWrite: (continuation: CheckedContinuation<Bool, Never>, timeout: DispatchWorkItem)?
 
-    var onRequest: ((LocalHTTPRequest) -> Void)?
-    var onFinished: (() -> Void)?
+    var onRequest: (@Sendable (LocalHTTPRequest) -> Void)?
+    var onFinished: (@Sendable () -> Void)?
 
     var isDisconnected: Bool {
         lock.lock()
@@ -649,9 +828,10 @@ private final class LocalAPIConnection: @unchecked Sendable {
         return disconnected
     }
 
-    init(connection: NWConnection, queue: DispatchQueue) {
+    init(connection: NWConnection, queue: DispatchQueue, writeTimeoutSeconds: Double) {
         self.connection = connection
         self.queue = queue
+        self.writeTimeoutSeconds = writeTimeoutSeconds
     }
 
     func attachWorkTask(_ task: Task<Void, Never>) {
@@ -666,7 +846,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
         }
     }
 
-    func setCancelInferenceHook(_ hook: (() -> Void)?) {
+    func setCancelInferenceHook(_ hook: (@Sendable () -> Void)?) {
         lock.lock()
         let alreadyDisconnected = disconnected
         cancelInferenceHook = alreadyDisconnected ? nil : hook
@@ -677,7 +857,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
     }
 
     func start() {
-        connection.stateUpdateHandler = { [weak self] state in
+        connection.stateUpdateHandler = { @Sendable [weak self] state in
             guard let self else { return }
             switch state {
             case .failed, .cancelled:
@@ -705,7 +885,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
     }
 
     private func receiveNext() {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { @Sendable [weak self] data, _, isComplete, error in
             guard let self else { return }
             if error != nil {
                 self.markDisconnected()
@@ -719,6 +899,9 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 self.cancelReadTimeout(markParsed: true)
                 self.buffer.removeAll(keepingCapacity: false)
                 self.onRequest?(request)
+                // Keep a pending receive open so an orderly peer close (EOF) cancels generation
+                // immediately, even during buffered non-streaming responses.
+                self.monitorPeerDisconnect()
             case .error(let parseErr):
                 self.cancelReadTimeout(markParsed: true)
                 self.sendAndClose(LocalHTTPResponse.error(.fromParseError(parseErr)))
@@ -737,6 +920,33 @@ private final class LocalAPIConnection: @unchecked Sendable {
         }
     }
 
+    private func monitorPeerDisconnect() {
+        lock.lock()
+        let stopMonitoring = disconnected || sendingFinal
+        lock.unlock()
+        guard !stopMonitoring else { return }
+
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { @Sendable [weak self] _, _, isComplete, error in
+            guard let self else { return }
+            if error != nil {
+                self.markDisconnected()
+                return
+            }
+            if isComplete {
+                self.lock.lock()
+                let flushingFinal = self.sendingFinal
+                self.lock.unlock()
+                if !flushingFinal {
+                    self.markDisconnected()
+                    self.connection.cancel()
+                }
+                return
+            }
+            // Discard any pipelined trailing bytes (one request per connection) and keep watching for EOF.
+            self.monitorPeerDisconnect()
+        }
+    }
+
     private func cancelReadTimeout(markParsed: Bool) {
         lock.lock()
         if markParsed { parsedRequest = true }
@@ -746,27 +956,83 @@ private final class LocalAPIConnection: @unchecked Sendable {
         item?.cancel()
     }
 
+    private func cancelFinalWriteTimeout() {
+        lock.lock()
+        let item = finalWriteTimeoutItem
+        finalWriteTimeoutItem = nil
+        lock.unlock()
+        item?.cancel()
+    }
+
+    /// Sends one SSE/response chunk with a bounded write deadline so a stalled reader cannot
+    /// block inference or starve in-app chat.
     func send(_ data: Data) async -> Bool {
         if isDisconnected { return false }
         return await withCheckedContinuation { continuation in
-            connection.send(content: data, completion: .contentProcessed { [weak self] error in
+            let timeoutItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                let timedOut = self.takePendingWrite()
+                if let timedOut {
+                    self.markDisconnected()
+                    self.connection.cancel()
+                    timedOut.continuation.resume(returning: false)
+                }
+            }
+
+            lock.lock()
+            if disconnected {
+                lock.unlock()
+                continuation.resume(returning: false)
+                return
+            }
+            pendingWrite = (continuation, timeoutItem)
+            lock.unlock()
+
+            queue.asyncAfter(deadline: .now() + writeTimeoutSeconds, execute: timeoutItem)
+            connection.send(content: data, completion: .contentProcessed { @Sendable [weak self] error in
+                guard let self else { return }
+                guard let pending = self.takePendingWrite() else { return }
+                pending.timeout.cancel()
                 if error != nil {
-                    self?.markDisconnected()
-                    continuation.resume(returning: false)
+                    self.markDisconnected()
+                    pending.continuation.resume(returning: false)
                 } else {
-                    continuation.resume(returning: true)
+                    pending.continuation.resume(returning: true)
                 }
             })
         }
     }
 
+    private func takePendingWrite() -> (continuation: CheckedContinuation<Bool, Never>, timeout: DispatchWorkItem)? {
+        lock.lock()
+        let pending = pendingWrite
+        pendingWrite = nil
+        lock.unlock()
+        return pending
+    }
+
     func sendAndClose(_ data: Data) {
         cancelReadTimeout(markParsed: false)
+        lock.lock()
+        if disconnected {
+            lock.unlock()
+            return
+        }
+        sendingFinal = true
+        let timeoutItem = DispatchWorkItem { [weak self] in
+            self?.cancel()
+        }
+        finalWriteTimeoutItem?.cancel()
+        finalWriteTimeoutItem = timeoutItem
+        lock.unlock()
+
+        queue.asyncAfter(deadline: .now() + writeTimeoutSeconds, execute: timeoutItem)
         connection.send(
             content: data,
             contentContext: .finalMessage,
             isComplete: true,
-            completion: .contentProcessed { [weak self] _ in
+            completion: .contentProcessed { @Sendable [weak self] _ in
+                self?.cancelFinalWriteTimeout()
                 self?.cancel()
             }
         )
@@ -774,6 +1040,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
 
     func cancel() {
         cancelReadTimeout(markParsed: false)
+        cancelFinalWriteTimeout()
         markDisconnected()
         connection.cancel()
     }
@@ -786,10 +1053,16 @@ private final class LocalAPIConnection: @unchecked Sendable {
         workTask = nil
         let hook = cancelInferenceHook
         cancelInferenceHook = nil
+        let pending = pendingWrite
+        pendingWrite = nil
         let shouldNotifyFinished = !finished
         finished = true
         lock.unlock()
 
+        if let pending {
+            pending.timeout.cancel()
+            pending.continuation.resume(returning: false)
+        }
         if !wasDisconnected {
             hook?()
             task?.cancel()

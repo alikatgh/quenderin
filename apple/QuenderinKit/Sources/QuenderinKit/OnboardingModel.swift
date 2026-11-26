@@ -482,6 +482,15 @@ public final class OnboardingModel: ObservableObject {
     func knownExecutionProfiles() async -> [InferenceExecutionProfile] { await engine.knownExecutionProfiles() }
     func loadedAutomaticModelID() async -> String? { await engine.loadedModelID() }
     func loadedAutomaticContextTokens() async -> Int? { await engine.loadedContextTokens() }
+    func engineContextLengthChoice() async -> ContextLengthChoice { await engine.contextLengthChoice() }
+
+    /// Mirrors an already-loaded model switched inside an exclusive lease (e.g. Local API)
+    /// without touching files, downloading, or cancelling inference.
+    func syncExternallyLoadedModel(_ model: ModelEntry) {
+        guard !isInstalling, !isSpecialistActive else { return }
+        phase = .ready(model)
+        rememberActiveModelID(model.id)
+    }
 
     public func requireReadyForChat() throws {
         guard !isInstalling, pendingManualRequestID == nil else { throw InferenceError.loadFailed(reason: "A model selection is still being prepared. Try again when it is ready.") }

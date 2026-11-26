@@ -249,6 +249,24 @@ class LlamaEngine(
     override fun chatGrammar(): String? = chatGrammarValue
     override fun setChatGrammar(grammar: String?) { chatGrammarValue = grammar }
 
+    override fun chatPromptStartsInsideThinking(systemPrompt: String, history: List<ChatMessage>): Boolean =
+        synchronized(lock) {
+            if (!NATIVE_AVAILABLE || handle == 0L || loadedBeam || loadedMuse || loadedSpecialist) return false
+            val activeGrammar = if (loadedJais) null else chatGrammarValue
+            val disableThinking = shouldDisableThinking(thinkingMode(), activeGrammar != null)
+            if (disableThinking) return false
+            fun clean(s: String) = s.replace('\u001E', ' ').replace('\u001F', ' ')
+            val payload = buildString {
+                if (systemPrompt.isNotEmpty()) append("system").append('\u001F').append(clean(systemPrompt)).append('\u001E')
+                history.forEach { m ->
+                    append(if (m.role == Role.USER) "user" else "assistant")
+                        .append('\u001F').append(clean(m.text)).append('\u001E')
+                }
+            }
+            val rendered = runCatching { nativeBuildChatPrompt(handle, payload, false) }.getOrNull() ?: return false
+            ThinkingMode.promptEndsInsideThinking(rendered)
+        }
+
     /**
      * True when the most recent native generation reports a token-budget stop. This is the legacy
      * boolean contract and is intentionally independent of [chatCapStatus]: it can be true even
@@ -558,6 +576,7 @@ class LlamaEngine(
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeCompleteChatMeasured(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink, performance: PerformanceSink): String
+    private external fun nativeBuildChatPrompt(handle: Long, payload: String, disableThinking: Boolean): String
     private external fun nativeLoadedKVCache(handle: Long): Int
     private external fun nativeChatExecutionProfile(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean): LongArray
     private external fun nativeLastHitTokenCap(handle: Long): Boolean

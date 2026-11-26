@@ -3096,6 +3096,53 @@ fun main() {
         }
         ok
     })
+    check("ThinkingMode.promptEndsInsideThinking detects unclosed trailing <think> only", run {
+        ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n") &&
+            ThinkingMode.promptEndsInsideThinking("<｜Assistant｜><think>") &&
+            ThinkingMode.promptEndsInsideThinking("assistant:<think>  \r\n\t") &&
+            !ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n\n</think>\n\n") &&
+            !ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant:\n") &&
+            !ThinkingMode.promptEndsInsideThinking("")
+    })
+    check("ChatModel Hide/Show strips reasoning when template pre-opened <think> in prompt", run {
+        class PreOpenedThinkingEngine(private val scripted: String) : InferenceEngine {
+            override var loadedModelId: String? = "test-r1"
+            private var mode: ThinkingMode = ThinkingMode.OFF
+            override fun thinkingEnabled(): Boolean = mode.allowsThinking
+            override fun setThinkingEnabled(enabled: Boolean) { mode = if (enabled) ThinkingMode.SHOW else ThinkingMode.OFF }
+            override fun thinkingMode(): ThinkingMode = mode
+            override fun setThinkingMode(mode: ThinkingMode) { this.mode = mode }
+            override fun chatPromptStartsInsideThinking(systemPrompt: String, history: List<ChatMessage>): Boolean =
+                mode.allowsThinking && ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n")
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = scripted
+            override fun complete(prompt: String, onToken: (String) -> Unit): String {
+                scripted.chunked(4).forEach(onToken)
+                return scripted
+            }
+        }
+        val hideEngine = PreOpenedThinkingEngine("secret chain of thought</think>Clean visible answer")
+            .apply { setThinkingMode(ThinkingMode.HIDE) }
+        val hideChat = ChatModel(hideEngine)
+        hideChat.send("solve")
+        val hideMsg = hideChat.messages.last()
+
+        val showEngine = PreOpenedThinkingEngine("step A then step B</think>42")
+            .apply { setThinkingMode(ThinkingMode.SHOW) }
+        val showChat = ChatModel(showEngine)
+        showChat.send("solve")
+        val showMsg = showChat.messages.last()
+
+        val splitterFromPrompt = ThinkingSplitter.forRenderedPrompt("<|im_start|>assistant\n<think>\n")
+        val d1 = splitterFromPrompt.feed("hidden</think>ok")
+        val d2 = splitterFromPrompt.finish()
+
+        hideMsg.thinking == null && hideMsg.text == "Clean visible answer" &&
+            !hideMsg.text.contains("secret") &&
+            showMsg.thinking == "step A then step B" && showMsg.text == "42" &&
+            d1.thinking + d2.thinking == "hidden" && d1.answer + d2.answer == "ok"
+    })
     check("ConversationStore round-trips thinking and decodes legacy transcripts cleanly", run {
         val store = ConversationStore()
         val legacy = store.decode("USER\thi\nASSISTANT\thello")

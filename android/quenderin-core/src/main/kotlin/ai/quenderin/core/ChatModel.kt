@@ -325,7 +325,11 @@ class ChatModel(
             val sb = StringBuilder()
             val thinkingSb = StringBuilder()
             val activeThinkingMode = if (engine.chatGrammar() != null) ThinkingMode.OFF else engine.thinkingMode()
-            val splitter = if (activeThinkingMode.allowsThinking) ThinkingSplitter() else null
+            val startsInsideThinking = activeThinkingMode.allowsThinking &&
+                engine.chatPromptStartsInsideThinking(systemPrompt, history)
+            val splitter = if (activeThinkingMode.allowsThinking) {
+                ThinkingSplitter(startsInsideThinking = startsInsideThinking)
+            } else null
             var tokenCount = 0
             var hitDegeneration = false
             // Whether the engine invoked onToken AT ALL. The return value is the fallback only for a
@@ -361,11 +365,13 @@ class ChatModel(
                     tokenCount += 1
                     beganWriting = tokenCount == 1
                     // Check BEFORE appending: exclude the piece crossing the degeneration checkpoint.
-                    val degenSample = if (sb.isEmpty()) thinkingSb.toString() else sb.toString()
-                    if (tokenCount % 32 == 0 && DegenerationGuard.looksDegenerate(degenSample)) {
-                        hitDegeneration = true
-                        cancelDegeneration = true
-                        return@synchronized null
+                    if (tokenCount % 32 == 0) {
+                        val degenSample = if (sb.isEmpty()) thinkingSb.toString() else sb.toString()
+                        if (DegenerationGuard.looksDegenerate(degenSample)) {
+                            hitDegeneration = true
+                            cancelDegeneration = true
+                            return@synchronized null
+                        }
                     }
                     if (splitter != null) {
                         val delta = splitter.feed(piece)

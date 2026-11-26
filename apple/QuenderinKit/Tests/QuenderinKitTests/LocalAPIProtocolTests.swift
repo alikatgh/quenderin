@@ -311,6 +311,67 @@ final class LocalAPIProtocolTests: XCTestCase {
         } else {
             XCTFail("Expected 400 for boolean max_tokens")
         }
+
+        // Explicit JSON null for tools / tool_choice must also be rejected.
+        let withNullTools = Data(#"{"messages":[{"role":"user","content":"hi"}],"tools":null}"#.utf8)
+        if case .failure(let err) = LocalAPICodec.decodeChatRequest(withNullTools, availableModelIDs: ["m1"], activeModelID: "m1") {
+            XCTAssertEqual(err.statusCode, 400)
+            XCTAssertEqual(err.message, "tools are not supported yet")
+        } else {
+            XCTFail("Expected 400 for tools: null")
+        }
+
+        let withNullToolChoice = Data(#"{"messages":[{"role":"user","content":"hi"}],"tool_choice":null}"#.utf8)
+        if case .failure(let err) = LocalAPICodec.decodeChatRequest(withNullToolChoice, availableModelIDs: ["m1"], activeModelID: "m1") {
+            XCTAssertEqual(err.statusCode, 400)
+            XCTAssertEqual(err.message, "tools are not supported yet")
+        } else {
+            XCTFail("Expected 400 for tool_choice: null")
+        }
+    }
+
+    func testDecodeJSONSchemaPreservesCanonicallyEquivalentUnicodePropertyKeys() throws {
+        let schemaJSON = #"""
+        {
+          "type": "object",
+          "properties": {
+            "\u00e9": {"type": "string"},
+            "e\u0301": {"type": "integer"}
+          },
+          "required": ["\u00e9", "e\u0301"]
+        }
+        """#
+        let reqJSON = #"""
+        {
+          "messages": [{"role": "user", "content": "accented keys"}],
+          "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+              "name": "unicode_keys",
+              "schema": \#(schemaJSON)
+            }
+          }
+        }
+        """#
+        let req = try LocalAPICodec.decodeChatRequest(Data(reqJSON.utf8), availableModelIDs: ["m1"], activeModelID: "m1").get()
+        let expectedGrammar = try JSONOutputGrammar.grammar(forSchemaJSON: schemaJSON).get()
+        XCTAssertEqual(req.responseFormat, .jsonSchema(grammar: expectedGrammar, fellBackToGeneric: false))
+        let grammar = try XCTUnwrap(req.responseFormat.gbnfGrammar)
+        let nfcBytes = Array("\u{00e9}".utf8)
+        let nfdBytes = Array("e\u{0301}".utf8)
+        let grammarBytes = Array(grammar.utf8)
+        func containsBytes(_ needle: [UInt8], in haystack: [UInt8]) -> Bool {
+            guard !needle.isEmpty, haystack.count >= needle.count else { return false }
+            for i in 0...(haystack.count - needle.count) {
+                if Array(haystack[i..<(i + needle.count)]) == needle { return true }
+            }
+            return false
+        }
+        XCTAssertNotEqual(nfcBytes, nfdBytes)
+        XCTAssertTrue(containsBytes(nfcBytes, in: grammarBytes))
+        XCTAssertTrue(containsBytes(nfdBytes, in: grammarBytes))
+        XCTAssertTrue(grammar.contains("string"))
+        XCTAssertTrue(grammar.contains("integer"))
     }
 
     func testResponseFormatJSONObjectAndJSONSchemaMapping() throws {

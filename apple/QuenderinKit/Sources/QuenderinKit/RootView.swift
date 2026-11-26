@@ -126,10 +126,15 @@ public struct RootView: View {
                 MacRootView(onboarding: onboarding, conversations: conversations, agent: agent, model: model)
                 #else
                 TabView(selection: $tab) {
-                    ChatHomeView(coordinator: conversations, model: model, onSelectModel: { picked in
-                        // Same install flow the Settings picker uses: download (if needed) → load → swap.
-                        onboarding.beginInstall(picked)
-                    })
+                    ChatHomeView(
+                        coordinator: conversations,
+                        model: model,
+                        onSelectModel: { picked in
+                            // Same install flow the Settings picker uses: download (if needed) → load → swap.
+                            onboarding.beginInstall(picked)
+                        },
+                        suspendForSpecialist: { try await onboarding.suspendForSpecialist() }
+                    )
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
                         .tag(0)
                     DeepSeekView()

@@ -159,6 +159,8 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
     override fun setContextLengthChoice(choice: ContextLengthChoice) = underlying.setContextLengthChoice(choice)
     override fun chatGrammar(): String? = underlying.chatGrammar()
     override fun setChatGrammar(grammar: String?) = underlying.setChatGrammar(grammar)
+    override fun chatPromptStartsInsideThinking(systemPrompt: String, history: List<ChatMessage>): Boolean =
+        ordinary { underlying.chatPromptStartsInsideThinking(systemPrompt, history) }
     override fun suspendForSpecialist(): SpecialistInferenceLease {
         state.withLock { check(!held) { BUSY }; held = true }
         invalidateCapStatus()

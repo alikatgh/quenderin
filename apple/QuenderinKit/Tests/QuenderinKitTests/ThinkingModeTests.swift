@@ -314,4 +314,31 @@ final class ThinkingModeTests: XCTestCase {
         XCTAssertEqual(cs1.thinking + cs2.thinking + cs3.thinking, "a")
         XCTAssertEqual(cs1.answer + cs2.answer + cs3.answer, "\u{0301}B")
     }
+
+    func testPromptEndsInsideThinkingAndRenderedPromptSplitter() {
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n"))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("<｜Assistant｜><think>"))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("assistant:<think>  \r\n\t"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n\n</think>\n\n"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant:\n"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(""))
+
+        // Pre-opened prompt: Hide/Show consumers initialize from rendered prompt so reasoning
+        // before `</think>` never leaks into the visible answer / API content.
+        var preOpened = ThinkingSplitter(renderedPrompt: "<|im_start|>assistant\n<think>\n")
+        XCTAssertTrue(preOpened.isThinking)
+        let d1 = preOpened.feed("secret reasoning </thi")
+        let d2 = preOpened.feed("nk>Visible answer")
+        let d3 = preOpened.finish()
+        XCTAssertEqual(d1.thinking + d2.thinking + d3.thinking, "secret reasoning ")
+        XCTAssertEqual(d1.answer + d2.answer + d3.answer, "Visible answer")
+
+        // Closed prompt: starts outside thinking.
+        var closed = ThinkingSplitter(renderedPrompt: "<|im_start|>assistant\n<think>\n\n</think>\n\n")
+        XCTAssertFalse(closed.isThinking)
+        let c1 = closed.feed("Direct reply")
+        let c2 = closed.finish()
+        XCTAssertEqual(c1.thinking + c2.thinking, "")
+        XCTAssertEqual(c1.answer + c2.answer, "Direct reply")
+    }
 }

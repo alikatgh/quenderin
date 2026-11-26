@@ -157,6 +157,20 @@ public actor LlamaEngine: InferenceEngine {
         preferredContextLength = choice
     }
 
+    public func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool {
+        guard loaded != nil, !loadedSpecialist, !loadedBeam, !loadedMuse else { return false }
+        let effectiveThinking: ThinkingMode = options.gbnfGrammar != nil ? .off : options.thinkingMode
+        guard effectiveThinking.allowsThinking else { return false }
+        #if canImport(llama)
+        guard let prompt = buildChatPrompt(system: system, history: history, thinkingMode: effectiveThinking) else {
+            return false
+        }
+        return ThinkingMode.promptEndsInsideThinking(prompt)
+        #else
+        return false
+        #endif
+    }
+
     public func chatCapStatus() async -> ChatCapStatus {
         capState.withLock { $0.status }
     }
@@ -438,9 +452,7 @@ public actor LlamaEngine: InferenceEngine {
         // enable_thinking=false behaviour); normalize whether the template already opened one.
         // Only when thinkingMode disallows thinking (.off) and the template supports it.
         if ThinkingMode.shouldCloseThinkBlock(mode: thinkingMode, template: tmpl) {
-            let lastOpen = result.range(of: "<think>", options: .backwards)
-            let lastClose = result.range(of: "</think>", options: .backwards)
-            let openUnclosed = lastOpen != nil && (lastClose == nil || lastClose!.lowerBound < lastOpen!.lowerBound)
+            let openUnclosed = ThinkingMode.promptEndsInsideThinking(result)
             result += openUnclosed ? "\n</think>\n\n" : "<think>\n\n</think>\n\n"
         }
         return result

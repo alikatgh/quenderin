@@ -43,6 +43,9 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         var status: ChatCapStatus = .unknown
     }
     private let capState = OSAllocatedUnfairLock(initialState: CapSnapshot())
+    /// Lock-mirrored active exclusive owner so lease-scoped `requestCancel()` is a guaranteed no-op
+    /// after release and can never cancel a subsequent owner's generation.
+    private let exclusiveOwnerState = OSAllocatedUnfairLock<UUID?>(initialState: nil)
     @discardableResult
     private nonisolated func invalidateCapStatus() -> UInt64 {
         capState.withLock {
@@ -60,13 +63,17 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     public init(_ underlying: any InferenceEngine) { self.underlying = underlying }
     public func isSuspendedForSpecialist() async -> Bool { held != nil }
     public func hasActiveInference() async -> Bool {
-        held != nil || automaticSwitching || starts > 0 || !activeStreams.isEmpty || exclusiveOwner != nil
+        held != nil || automaticSwitching || starts > 0 || !activeStreams.isEmpty || !agentModelOwners.isEmpty || exclusiveOwner != nil
     }
     public func chatCapStatus() async -> ChatCapStatus { held == nil ? capState.withLock { $0.status } : .unknown }
     public func loadedModelID() async -> String? { held == nil ? await underlying.loadedModelID() : nil }
     public func loadedContextTokens() async -> Int? { held == nil ? await underlying.loadedContextTokens() : nil }
     public func contextLengthChoice() async -> ContextLengthChoice { await underlying.contextLengthChoice() }
     public func setContextLengthChoice(_ choice: ContextLengthChoice) async { await underlying.setContextLengthChoice(choice) }
+    public func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool {
+        guard held == nil else { return false }
+        return await underlying.chatPromptStartsInsideThinking(system: system, history: history, options: options)
+    }
     public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
         guard held == nil else { return nil }
         return await underlying.loadedExecutionProfile(system: system, history: history, options: options)
@@ -138,7 +145,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     public func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
         let clampedMs = max(0, Int(timeoutSeconds * 1000))
         let deadline = ContinuousClock.now + .milliseconds(clampedMs)
-        while held != nil || automaticSwitching || starts > 0 || !activeStreams.isEmpty || exclusiveOwner != nil {
+        while held != nil || automaticSwitching || starts > 0 || !activeStreams.isEmpty || !agentModelOwners.isEmpty || exclusiveOwner != nil {
             try Task.checkCancellation()
             if ContinuousClock.now >= deadline {
                 throw SpecialistCoordinationError.busy
@@ -148,6 +155,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         try Task.checkCancellation()
         let ownerID = UUID()
         exclusiveOwner = ownerID
+        exclusiveOwnerState.withLock { $0 = ownerID }
         let cleanup = SpecialistInferenceLease { await self.releaseExclusive(ownerID) }
         return ExclusiveInferenceLease(
             loadedModelID: { [self] in await self.exclusiveLoadedModelID(owner: ownerID) },
@@ -158,11 +166,28 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
                 try await self.exclusiveGenerateChat(owner: ownerID, system: system, history: history, options: options)
             },
             chatCapStatus: { [self] in await self.exclusiveChatCapStatus(owner: ownerID) },
-            requestCancel: { [self] in self.requestCancel() },
-            release: { try? await cleanup.resume() }
+            requestCancel: { [self] in
+                let stillOwner = self.exclusiveOwnerState.withLock { $0 == ownerID }
+                if stillOwner {
+                    self.requestCancel()
+                }
+            },
+            release: { try? await cleanup.resume() },
+            load: { [self] model, fileURL in
+                try await self.exclusiveLoad(owner: ownerID, model: model, at: fileURL)
+            },
+            setContextLengthChoice: { [self] choice in
+                await self.exclusiveSetContextLengthChoice(owner: ownerID, choice: choice)
+            },
+            chatPromptStartsInsideThinking: { [self] system, history, options in
+                await self.exclusiveChatPromptStartsInsideThinking(owner: ownerID, system: system, history: history, options: options)
+            }
         )
     }
     private func releaseExclusive(_ id: UUID) {
+        exclusiveOwnerState.withLock {
+            if $0 == id { $0 = nil }
+        }
         if exclusiveOwner == id { exclusiveOwner = nil }
     }
     private func exclusiveLoadedModelID(owner: UUID) async -> String? {
@@ -172,6 +197,39 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     private func exclusiveLoadedExecutionProfile(owner: UUID, system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
         guard exclusiveOwner == owner, held == nil else { return nil }
         return await underlying.loadedExecutionProfile(system: system, history: history, options: options)
+    }
+    private func exclusiveSetContextLengthChoice(owner: UUID, choice: ContextLengthChoice) async {
+        guard exclusiveOwner == owner, held == nil else { return }
+        await underlying.setContextLengthChoice(choice)
+    }
+    private func exclusiveChatPromptStartsInsideThinking(owner: UUID, system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool {
+        guard exclusiveOwner == owner, held == nil else { return false }
+        return await underlying.chatPromptStartsInsideThinking(system: system, history: history, options: options)
+    }
+    private func exclusiveLoad(owner: UUID, model: ModelEntry, at fileURL: URL) async throws {
+        guard exclusiveOwner == owner, held == nil, !automaticSwitching else {
+            throw SpecialistCoordinationError.busy
+        }
+        invalidateCapStatus()
+        starts += 1; defer { end() }
+        let previous = selected
+        do {
+            try await underlying.load(model: model, at: fileURL)
+            selected = (model, fileURL)
+        } catch {
+            if await underlying.loadedModelID() == nil, let previous, previous.model.id != model.id {
+                do {
+                    try await ModelArtifactSet.inBackground {
+                        try InferencePerformanceIdentity.verifyInstalled(previous.model, firstFile: previous.file)
+                    }
+                    try await underlying.load(model: previous.model, at: previous.file)
+                    selected = previous
+                } catch {
+                    await underlying.unload(); selected = nil
+                }
+            }
+            throw error
+        }
     }
     private func exclusiveChatCapStatus(owner: UUID) async -> ChatCapStatus {
         guard exclusiveOwner == owner, held == nil else { return .unknown }

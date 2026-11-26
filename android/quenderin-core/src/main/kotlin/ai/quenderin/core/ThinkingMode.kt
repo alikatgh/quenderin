@@ -37,6 +37,27 @@ enum class ThinkingMode(val rawValue: String) {
          */
         fun shouldCloseThinkBlock(mode: ThinkingMode, template: String): Boolean =
             !mode.allowsThinking && supports(template)
+
+        /**
+         * Returns true when a rendered chat prompt ends with an unclosed `<think>` tag (ignoring
+         * trailing ASCII whitespace), meaning the model's generated stream begins already inside
+         * a thinking block and will emit only the closing `</think>`.
+         * Twin of Swift `ThinkingMode.promptEndsInsideThinking(_:)`.
+         */
+        fun promptEndsInsideThinking(prompt: String): Boolean {
+            var end = prompt.length
+            while (end > 0) {
+                val ch = prompt[end - 1]
+                if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+                    end--
+                } else {
+                    break
+                }
+            }
+            val openTag = "<think>"
+            return end >= openTag.length &&
+                prompt.regionMatches(end - openTag.length, openTag, 0, openTag.length)
+        }
     }
 }
 
@@ -169,6 +190,14 @@ class ThinkingSplitter(startsInsideThinking: Boolean = false) {
     companion object {
         private const val OPEN_TAG = "<think>"
         private const val CLOSE_TAG = "</think>"
+
+        /**
+         * Initializes a splitter from the rendered prompt sent to the model: an unclosed trailing
+         * `<think>` starts inside the thinking state so pre-opened templates never leak reasoning
+         * into the visible answer. Twin of Swift `ThinkingSplitter(renderedPrompt:)`.
+         */
+        fun forRenderedPrompt(prompt: String): ThinkingSplitter =
+            ThinkingSplitter(startsInsideThinking = ThinkingMode.promptEndsInsideThinking(prompt))
 
         private fun isAsciiWhitespace(ch: Char): Boolean =
             ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'

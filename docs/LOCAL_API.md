@@ -121,7 +121,11 @@ const client = new OpenAI({
   apiKey: "quenderin", // or the API key you set in Settings
 });
 
+const models = await client.models.list();
+const model = models.data[0].id;
+
 const reply = await client.chat.completions.create({
+  model,
   messages: [{ role: "user", content: "Summarize HTTP 415 in one line." }],
 });
 console.log(reply.choices[0].message.content);
@@ -129,7 +133,9 @@ console.log(reply.choices[0].message.content);
 
 ## Structured JSON output (`response_format`)
 
-Quenderin enforces JSON output at the llama.cpp GBNF grammar level:
+Quenderin enforces JSON output at the llama.cpp GBNF grammar level for standard GGUF models.
+Models that do not support grammar-constrained decoding (**Beam**, **Jais**, and **Muse**) reject
+`response_format` JSON/schema requests with `400` (`unsupported_response_format`):
 
 ### Any valid JSON object (`json_object`)
 
@@ -192,18 +198,20 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **One request at a time:** The API shares the app's exclusive on-device engine lease
   with the Quenderin Chat window. If another chat turn or API call is in flight, a new
   request waits up to 30 seconds and then returns `503` (`server_busy`).
-- **Disconnect cancels generation:** Closing the client socket mid-stream cancels
-  on-device generation immediately.
+- **Disconnect cancels generation:** Closing the client socket during either streaming or
+  buffered (non-streaming) generation cancels on-device generation immediately. Keep the
+  socket open until the response completes.
 - **Clamped sampling parameters:** `max_tokens` / `max_completion_tokens` defaults to
   `512` (clamped `1`–`4096`), `temperature` is clamped `0`–`2`, `top_p` is clamped
   `0`–`1`. `stop` accepts a string or an array of strings.
-- **No tools yet:** Requests containing `tools` or `tool_choice` are rejected with `400`
-  (`tools are not supported yet`) rather than silently ignored.
+- **No tools yet:** Requests containing `tools` or `tool_choice` (including explicit `null`)
+  are rejected with `400` (`tools are not supported yet`) rather than silently ignored.
 - **No images yet:** Content arrays with `{"type": "text", "text": "..."}` parts are
   supported; image parts are rejected with `400` (`images are not supported by this
   endpoint yet`).
-- **No automatic downloads:** Passing an uninstalled `model` returns `404`
-  (`model_not_found`). If no model is installed at all, requests return `503`.
+- **Installed, hash-verified models only (no automatic downloads):** Passing an uninstalled
+  or integrity-failed `model` returns `404` (`model_not_found`) without deleting files or
+  starting a download. If no model is installed at all, requests return `503`.
 - **No chunked request bodies:** Send a standard `Content-Length` header (max headers
   `16 KiB`, max body `4 MiB`).
 - **Privacy:** Prompts and replies are never logged. Only an in-memory count of requests

@@ -31,7 +31,7 @@ import { ExecFileRunner } from './services/capability/platformAutomation.js';
 import { platformCapabilities } from './services/capability/platformCapabilities.js';
 import { registerImageCommands } from './commands/images.js';
 import { registerVoiceCommands } from './commands/voice.js';
-import { planRun } from './commands/run.js';
+import { isModelInstalled, planRun } from './commands/run.js';
 
 const program = new Command();
 
@@ -114,7 +114,11 @@ const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
 function installedModelIds(): Set<string> {
-  return new Set(MODEL_CATALOG.filter(m => fs.existsSync(path.join(MODELS_DIR, m.filename))).map(m => m.id));
+  return new Set(
+    MODEL_CATALOG
+      .filter(m => isModelInstalled(m, filename => fs.existsSync(path.join(MODELS_DIR, filename))))
+      .map(m => m.id),
+  );
 }
 
 function printModelTable(activeId?: string): void {

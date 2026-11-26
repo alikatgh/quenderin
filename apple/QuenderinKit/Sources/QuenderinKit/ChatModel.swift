@@ -298,7 +298,13 @@ public final class ChatModel: ObservableObject {
             guard !message.documents.isEmpty else { return message }
             return ChatMessage(id: message.id, role: message.role, text: message.engineText)
         }
-        let preparation = ChatPreparationContext(history: pendingHistory, options: options) { self.conversationRevision == turnRevision && !self.stopRequested }
+        let preparedOptions = Self.resolveGenerationOptions(
+            base: options,
+            model: selectedModel,
+            thinkingMode: thinkingMode,
+            replyAsJSON: replyAsJSON
+        )
+        let preparation = ChatPreparationContext(history: pendingHistory, options: preparedOptions) { self.conversationRevision == turnRevision && !self.stopRequested }
         var automaticSelected = false
         do {
             try admitTurn?()
@@ -321,21 +327,12 @@ public final class ChatModel: ObservableObject {
             return
         }
         let tier = ChatTier.of(model: selectedModel)
-        var resolvedOptions = options ?? tier.chatOptions
-        if let thinkingMode {
-            resolvedOptions.thinkingMode = thinkingMode
-        }
-        if replyAsJSON, resolvedOptions.gbnfGrammar == nil {
-            let grammarSupported = selectedModel.map {
-                !ModelRuntimeSupport.isBeam($0) && !ModelRuntimeSupport.isJais($0) && !ModelRuntimeSupport.isMuse($0)
-            } ?? true
-            if grammarSupported {
-                resolvedOptions.gbnfGrammar = JSONOutputGrammar.anyJSONObject
-            }
-        }
-        if resolvedOptions.gbnfGrammar != nil {
-            resolvedOptions.thinkingMode = .off
-        }
+        var resolvedOptions = Self.resolveGenerationOptions(
+            base: options,
+            model: selectedModel,
+            thinkingMode: thinkingMode,
+            replyAsJSON: replyAsJSON
+        )
         resolvedOptions.collectPerformance = true
         let systemPrompt = NamedGuidance.append(
             tier.systemPrompt,
@@ -386,7 +383,7 @@ public final class ChatModel: ObservableObject {
         var hitDegeneration = false
         var heldByShape = false
         let activeThinkingMode = resolvedOptions.thinkingMode
-        var splitter: ThinkingSplitter? = activeThinkingMode.allowsThinking ? ThinkingSplitter() : nil
+        var splitter: ThinkingSplitter? = nil
         var thinkingBuffer = ""
         func flushSplitterTail() {
             guard !heldByShape, var activeSplitter = splitter else { return }
@@ -408,6 +405,23 @@ public final class ChatModel: ObservableObject {
             }
         }
         do {
+            if activeThinkingMode.allowsThinking {
+                let startsInsideThinking = await engine.chatPromptStartsInsideThinking(
+                    system: systemPrompt,
+                    history: windowed,
+                    options: resolvedOptions
+                )
+                guard inFlightAssistantID == assistantID else { return }
+                if stopRequested {
+                    inFlightAssistantID = nil
+                    return
+                }
+                if Task.isCancelled {
+                    discardCancelledAssistant()
+                    return
+                }
+                splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
+            }
             let stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
             for try await token in stream {
                 // Dropping the iterator on break terminates the stream (the engine's
@@ -417,10 +431,12 @@ public final class ChatModel: ObservableObject {
                 // repetition penalty, stop paying for tokens — the collapse below cleans up.
                 tokenCount += 1
                 if tokenCount == 1 { generationPhase = .writing }
-                let degenSample = assistant.text.isEmpty ? thinkingBuffer : assistant.text
-                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(degenSample) {
-                    hitDegeneration = true
-                    break
+                if tokenCount % 32 == 0 {
+                    let degenSample = assistant.text.isEmpty ? thinkingBuffer : assistant.text
+                    if DegenerationGuard.looksDegenerate(degenSample) {
+                        hitDegeneration = true
+                        break
+                    }
                 }
                 if var activeSplitter = splitter {
                     let delta = activeSplitter.feed(token)
@@ -521,6 +537,31 @@ public final class ChatModel: ObservableObject {
             }
             inFlightAssistantID = nil   // normal settle: this turn is a finished answer
         }
+    }
+
+    private static func resolveGenerationOptions(
+        base: GenerationOptions?,
+        model: ModelEntry?,
+        thinkingMode: ThinkingMode?,
+        replyAsJSON: Bool
+    ) -> GenerationOptions {
+        let tier = ChatTier.of(model: model)
+        var resolved = base ?? tier.chatOptions
+        if let thinkingMode {
+            resolved.thinkingMode = thinkingMode
+        }
+        if replyAsJSON, resolved.gbnfGrammar == nil {
+            let grammarSupported = model.map {
+                !ModelRuntimeSupport.isBeam($0) && !ModelRuntimeSupport.isJais($0) && !ModelRuntimeSupport.isMuse($0)
+            } ?? true
+            if grammarSupported {
+                resolved.gbnfGrammar = JSONOutputGrammar.anyJSONObject
+            }
+        }
+        if resolved.gbnfGrammar != nil {
+            resolved.thinkingMode = .off
+        }
+        return resolved
     }
 
     func invalidatePendingPreparation() { conversationRevision &+= 1 }

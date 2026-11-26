@@ -601,21 +601,18 @@ public enum LocalAPICodec {
         guard !data.isEmpty else {
             return .failure(.badRequest("Request body must be a JSON object."))
         }
-        let decodedRoot: WireJSONValue
-        do {
-            decodedRoot = try JSONDecoder().decode(WireJSONValue.self, from: data)
-        } catch {
+        guard let decodedRoot = StrictWireJSONParser.parse(data) else {
             return .failure(.badRequest("Malformed JSON in request body."))
         }
         guard case .object(let root) = decodedRoot else {
             return .failure(.badRequest("Request body must be a JSON object."))
         }
 
-        // Reject tools / tool_choice explicitly (never silently ignore).
-        if let toolsVal = root["tools"], !toolsVal.isNull {
+        // Reject tools / tool_choice whenever present (including explicit JSON null; never silently ignore).
+        if root.hasExactKey("tools") {
             return .failure(.badRequest("tools are not supported yet", code: "unsupported_parameter"))
         }
-        if let toolChoiceVal = root["tool_choice"], !toolChoiceVal.isNull {
+        if root.hasExactKey("tool_choice") {
             return .failure(.badRequest("tools are not supported yet", code: "unsupported_parameter"))
         }
 
@@ -625,7 +622,7 @@ public enum LocalAPICodec {
             allowed.insert(active)
         }
         let resolvedModel: String
-        if let rawModel = root["model"], !rawModel.isNull {
+        if let rawModel = root.exactValue(forKey: "model"), !rawModel.isNull {
             guard case .string(let modelName) = rawModel, !modelName.isEmpty else {
                 return .failure(.badRequest("'model' must be a non-empty string."))
             }
@@ -642,7 +639,7 @@ public enum LocalAPICodec {
         }
 
         // Parse messages.
-        guard case .array(let rawMessages) = root["messages"], !rawMessages.isEmpty else {
+        guard case .array(let rawMessages) = root.exactValue(forKey: "messages"), !rawMessages.isEmpty else {
             return .failure(.badRequest("'messages' must be a non-empty array."))
         }
         var messages: [LocalAPIMessage] = []
@@ -651,11 +648,11 @@ public enum LocalAPICodec {
             guard case .object(let obj) = item else {
                 return .failure(.badRequest("Each item in 'messages' must be an object."))
             }
-            guard case .string(let roleStr) = obj["role"],
+            guard case .string(let roleStr) = obj.exactValue(forKey: "role"),
                   let role = LocalAPIMessage.Role(rawValue: roleStr) else {
                 return .failure(.badRequest("Message 'role' must be one of: system, user, assistant."))
             }
-            guard let rawContent = obj["content"], !rawContent.isNull else {
+            guard let rawContent = obj.exactValue(forKey: "content"), !rawContent.isNull else {
                 return .failure(.badRequest("Message 'content' is required."))
             }
             let contentText: String
@@ -666,7 +663,7 @@ public enum LocalAPICodec {
                 var textPieces: [String] = []
                 for partVal in parts {
                     guard case .object(let part) = partVal,
-                          case .string(let partType) = part["type"] else {
+                          case .string(let partType) = part.exactValue(forKey: "type") else {
                         return .failure(.badRequest("Each content part must be an object with a string 'type'."))
                     }
                     if partType == "image_url" || partType == "image" || partType == "input_image" {
@@ -675,7 +672,7 @@ public enum LocalAPICodec {
                     guard partType == "text" else {
                         return .failure(.badRequest("Unsupported content part type '\(partType)'. Only 'text' is supported."))
                     }
-                    guard case .string(let text) = part["text"] else {
+                    guard case .string(let text) = part.exactValue(forKey: "text") else {
                         return .failure(.badRequest("Content part with type 'text' must include a string 'text' field."))
                     }
                     textPieces.append(text)
@@ -689,7 +686,7 @@ public enum LocalAPICodec {
 
         // stream
         let stream: Bool
-        if let rawStream = root["stream"], !rawStream.isNull {
+        if let rawStream = root.exactValue(forKey: "stream"), !rawStream.isNull {
             guard case .bool(let b) = rawStream else {
                 return .failure(.badRequest("'stream' must be a boolean."))
             }
@@ -700,7 +697,7 @@ public enum LocalAPICodec {
 
         // think (Quenderin/Ollama extension)
         let think: Bool
-        if let rawThink = root["think"], !rawThink.isNull {
+        if let rawThink = root.exactValue(forKey: "think"), !rawThink.isNull {
             guard case .bool(let b) = rawThink else {
                 return .failure(.badRequest("'think' must be a boolean."))
             }
@@ -711,12 +708,12 @@ public enum LocalAPICodec {
 
         // max_completion_tokens / max_tokens (clamp 1...4096, default 512)
         let maxTokens: Int
-        if let rawMaxComp = root["max_completion_tokens"], !rawMaxComp.isNull {
+        if let rawMaxComp = root.exactValue(forKey: "max_completion_tokens"), !rawMaxComp.isNull {
             guard case .int(let n) = rawMaxComp else {
                 return .failure(.badRequest("'max_completion_tokens' must be an integer."))
             }
             maxTokens = min(max(n, 1), LocalAPIChatRequest.maxAllowedTokens)
-        } else if let rawMax = root["max_tokens"], !rawMax.isNull {
+        } else if let rawMax = root.exactValue(forKey: "max_tokens"), !rawMax.isNull {
             guard case .int(let n) = rawMax else {
                 return .failure(.badRequest("'max_tokens' must be an integer."))
             }
@@ -727,7 +724,7 @@ public enum LocalAPICodec {
 
         // temperature (clamp 0...2)
         let temperature: Double
-        if let rawTemp = root["temperature"], !rawTemp.isNull {
+        if let rawTemp = root.exactValue(forKey: "temperature"), !rawTemp.isNull {
             guard let d = rawTemp.asDouble, d.isFinite else {
                 return .failure(.badRequest("'temperature' must be a number."))
             }
@@ -738,7 +735,7 @@ public enum LocalAPICodec {
 
         // top_p (clamp 0...1)
         let topP: Double
-        if let rawTopP = root["top_p"], !rawTopP.isNull {
+        if let rawTopP = root.exactValue(forKey: "top_p"), !rawTopP.isNull {
             guard let d = rawTopP.asDouble, d.isFinite else {
                 return .failure(.badRequest("'top_p' must be a number."))
             }
@@ -749,7 +746,7 @@ public enum LocalAPICodec {
 
         // stop (string or array of strings)
         var stop: [String] = []
-        if let rawStop = root["stop"], !rawStop.isNull {
+        if let rawStop = root.exactValue(forKey: "stop"), !rawStop.isNull {
             switch rawStop {
             case .string(let s):
                 if !s.isEmpty { stop = [s] }
@@ -767,9 +764,9 @@ public enum LocalAPICodec {
 
         // response_format
         let responseFormat: LocalAPIResponseFormat
-        if let rawRF = root["response_format"], !rawRF.isNull {
+        if let rawRF = root.exactValue(forKey: "response_format"), !rawRF.isNull {
             guard case .object(let rfObj) = rawRF,
-                  case .string(let rfType) = rfObj["type"] else {
+                  case .string(let rfType) = rfObj.exactValue(forKey: "type") else {
                 return .failure(.badRequest("'response_format' must be an object with a string 'type'."))
             }
             switch rfType {
@@ -778,11 +775,11 @@ public enum LocalAPICodec {
             case "json_object":
                 responseFormat = .jsonObject
             case "json_schema":
-                guard case .object(let jsObj) = rfObj["json_schema"],
-                      let schemaVal = jsObj["schema"], !schemaVal.isNull else {
+                guard case .object(let jsObj) = rfObj.exactValue(forKey: "json_schema"),
+                      let schemaVal = jsObj.exactValue(forKey: "schema"), !schemaVal.isNull else {
                     return .failure(.badRequest("'response_format.json_schema.schema' is required for type 'json_schema'."))
                 }
-                switch JSONOutputGrammar.grammar(forSchema: schemaVal.toFoundationAny()) {
+                switch JSONOutputGrammar.grammar(forSchema: schemaVal.toOrderedFoundationAny()) {
                 case .success(let grammar):
                     responseFormat = .jsonSchema(grammar: grammar, fellBackToGeneric: false)
                 case .failure:
@@ -905,10 +902,30 @@ public enum LocalAPICodec {
         return (try? JSONSerialization.data(withJSONObject: dict, options: options)) ?? Data("{}".utf8)
     }
 
-    /// Strict, platform-independent JSON value decoded through `JSONDecoder` so `Bool` and
-    /// numbers (`0`/`1`) never conflate across Darwin `NSNumber` and Linux Foundation.
-    private enum WireJSONValue: Decodable {
-        case object([String: WireJSONValue])
+    /// Strict, platform-independent JSON value that preserves object key order and distinguishes
+    /// keys by exact UTF-8 bytes (never collapsing canonically equivalent Unicode spellings like
+    /// `"\u{00e9}"` and `"e\u{0301}"` in a Swift `[String: ...]` dictionary) while keeping `Bool`
+    /// distinct from numeric `0`/`1` across Darwin and Linux.
+    private struct WireJSONObject {
+        let entries: [(key: String, utf8Key: [UInt8], value: WireJSONValue)]
+
+        func hasExactKey(_ key: String) -> Bool {
+            let target = Array(key.utf8)
+            return entries.contains { $0.utf8Key == target }
+        }
+
+        func exactValue(forKey key: String) -> WireJSONValue? {
+            let target = Array(key.utf8)
+            var found: WireJSONValue? = nil
+            for entry in entries where entry.utf8Key == target {
+                found = entry.value
+            }
+            return found
+        }
+    }
+
+    private enum WireJSONValue {
+        case object(WireJSONObject)
         case array([WireJSONValue])
         case string(String)
         case int(Int)
@@ -929,33 +946,17 @@ public enum LocalAPICodec {
             }
         }
 
-        init(from decoder: Decoder) throws {
-            let container = try decoder.singleValueContainer()
-            if container.decodeNil() {
-                self = .null
-            } else if let b = try? container.decode(Bool.self) {
-                self = .bool(b)
-            } else if let i = try? container.decode(Int.self) {
-                self = .int(i)
-            } else if let d = try? container.decode(Double.self) {
-                self = .double(d)
-            } else if let s = try? container.decode(String.self) {
-                self = .string(s)
-            } else if let arr = try? container.decode([WireJSONValue].self) {
-                self = .array(arr)
-            } else if let obj = try? container.decode([String: WireJSONValue].self) {
-                self = .object(obj)
-            } else {
-                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported JSON value")
-            }
-        }
-
-        func toFoundationAny() -> Any {
+        /// Converts into Foundation values using `JSONOutputGrammar.OrderedObject` for every JSON
+        /// object so `JSONOutputGrammar.grammar(forSchema:)` never collapses canonically equivalent
+        /// Unicode property names and preserves exact declared key order.
+        func toOrderedFoundationAny() -> Any {
             switch self {
-            case .object(let dict):
-                return dict.mapValues { $0.toFoundationAny() }
+            case .object(let obj):
+                return JSONOutputGrammar.OrderedObject(
+                    obj.entries.map { ($0.key, $0.value.toOrderedFoundationAny()) }
+                )
             case .array(let arr):
-                return arr.map { $0.toFoundationAny() }
+                return arr.map { $0.toOrderedFoundationAny() }
             case .string(let s):
                 return s
             case .int(let i):
@@ -967,6 +968,225 @@ public enum LocalAPICodec {
             case .null:
                 return NSNull()
             }
+        }
+    }
+
+    /// Minimal RFC-8259 recursive-descent JSON parser preserving exact UTF-8 keys and order.
+    private struct StrictWireJSONParser {
+        private let bytes: [UInt8]
+        private var pos: Int = 0
+        private static let maxDepth = 128
+
+        static func parse(_ data: Data) -> WireJSONValue? {
+            var parser = StrictWireJSONParser(bytes: Array(data))
+            return parser.parseDocument()
+        }
+
+        private mutating func parseDocument() -> WireJSONValue? {
+            skipWS()
+            guard let val = parseValue(depth: 0) else { return nil }
+            skipWS()
+            guard pos == bytes.count else { return nil }
+            return val
+        }
+
+        private mutating func skipWS() {
+            while pos < bytes.count {
+                let b = bytes[pos]
+                if b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D {
+                    pos += 1
+                } else {
+                    break
+                }
+            }
+        }
+
+        private mutating func parseValue(depth: Int) -> WireJSONValue? {
+            guard depth <= Self.maxDepth, pos < bytes.count else { return nil }
+            switch bytes[pos] {
+            case 0x7B: return parseObject(depth: depth + 1)
+            case 0x5B: return parseArray(depth: depth + 1)
+            case 0x22:
+                guard let s = parseString() else { return nil }
+                return .string(s)
+            case 0x74: return parseLiteral("true") ? .bool(true) : nil
+            case 0x66: return parseLiteral("false") ? .bool(false) : nil
+            case 0x6E: return parseLiteral("null") ? .null : nil
+            case 0x2D, 0x30...0x39: return parseNumber()
+            default: return nil
+            }
+        }
+
+        private mutating func parseObject(depth: Int) -> WireJSONValue? {
+            pos += 1 // '{'
+            skipWS()
+            var entries: [(key: String, utf8Key: [UInt8], value: WireJSONValue)] = []
+            if pos < bytes.count && bytes[pos] == 0x7D {
+                pos += 1
+                return .object(WireJSONObject(entries: entries))
+            }
+            while true {
+                guard pos < bytes.count && bytes[pos] == 0x22,
+                      let key = parseString() else { return nil }
+                skipWS()
+                guard pos < bytes.count && bytes[pos] == 0x3A else { return nil }
+                pos += 1
+                skipWS()
+                guard let val = parseValue(depth: depth) else { return nil }
+                let utf8Key = Array(key.utf8)
+                if let existingIdx = entries.firstIndex(where: { $0.utf8Key == utf8Key }) {
+                    entries[existingIdx] = (key, utf8Key, val)
+                } else {
+                    entries.append((key, utf8Key, val))
+                }
+                skipWS()
+                guard pos < bytes.count else { return nil }
+                if bytes[pos] == 0x7D {
+                    pos += 1
+                    return .object(WireJSONObject(entries: entries))
+                }
+                guard bytes[pos] == 0x2C else { return nil }
+                pos += 1
+                skipWS()
+            }
+        }
+
+        private mutating func parseArray(depth: Int) -> WireJSONValue? {
+            pos += 1 // '['
+            skipWS()
+            var items: [WireJSONValue] = []
+            if pos < bytes.count && bytes[pos] == 0x5D {
+                pos += 1
+                return .array(items)
+            }
+            while true {
+                guard let val = parseValue(depth: depth) else { return nil }
+                items.append(val)
+                skipWS()
+                guard pos < bytes.count else { return nil }
+                if bytes[pos] == 0x5D {
+                    pos += 1
+                    return .array(items)
+                }
+                guard bytes[pos] == 0x2C else { return nil }
+                pos += 1
+                skipWS()
+            }
+        }
+
+        private mutating func parseString() -> String? {
+            guard pos < bytes.count && bytes[pos] == 0x22 else { return nil }
+            pos += 1
+            var out: [UInt8] = []
+            while pos < bytes.count {
+                let b = bytes[pos]
+                if b == 0x22 {
+                    pos += 1
+                    return String(bytes: out, encoding: .utf8)
+                }
+                if b < 0x20 { return nil }
+                if b == 0x5C {
+                    pos += 1
+                    guard pos < bytes.count else { return nil }
+                    let esc = bytes[pos]
+                    pos += 1
+                    switch esc {
+                    case 0x22: out.append(0x22)
+                    case 0x5C: out.append(0x5C)
+                    case 0x2F: out.append(0x2F)
+                    case 0x62: out.append(0x08)
+                    case 0x66: out.append(0x0C)
+                    case 0x6E: out.append(0x0A)
+                    case 0x72: out.append(0x0D)
+                    case 0x74: out.append(0x09)
+                    case 0x75:
+                        guard let u1 = parseHex4() else { return nil }
+                        let scalarValue: UInt32
+                        if (0xD800...0xDBFF).contains(u1) {
+                            guard pos + 1 < bytes.count,
+                                  bytes[pos] == 0x5C,
+                                  bytes[pos + 1] == 0x75 else { return nil }
+                            pos += 2
+                            guard let u2 = parseHex4(), (0xDC00...0xDFFF).contains(u2) else { return nil }
+                            scalarValue = 0x10000 + ((u1 - 0xD800) << 10) + (u2 - 0xDC00)
+                        } else if (0xDC00...0xDFFF).contains(u1) {
+                            return nil
+                        } else {
+                            scalarValue = u1
+                        }
+                        guard let scalar = UnicodeScalar(scalarValue) else { return nil }
+                        out.append(contentsOf: String(scalar).utf8)
+                    default:
+                        return nil
+                    }
+                } else {
+                    out.append(b)
+                    pos += 1
+                }
+            }
+            return nil
+        }
+
+        private mutating func parseHex4() -> UInt32? {
+            guard pos + 4 <= bytes.count else { return nil }
+            var val: UInt32 = 0
+            for _ in 0..<4 {
+                let b = bytes[pos]
+                pos += 1
+                let digit: UInt32
+                switch b {
+                case 0x30...0x39: digit = UInt32(b - 0x30)
+                case 0x41...0x46: digit = UInt32(b - 0x41 + 10)
+                case 0x61...0x66: digit = UInt32(b - 0x61 + 10)
+                default: return nil
+                }
+                val = (val << 4) | digit
+            }
+            return val
+        }
+
+        private mutating func parseLiteral(_ literal: String) -> Bool {
+            let expected = Array(literal.utf8)
+            guard pos + expected.count <= bytes.count else { return false }
+            for i in 0..<expected.count {
+                if bytes[pos + i] != expected[i] { return false }
+            }
+            pos += expected.count
+            return true
+        }
+
+        private mutating func parseNumber() -> WireJSONValue? {
+            let start = pos
+            var isFloat = false
+            if pos < bytes.count && bytes[pos] == 0x2D { pos += 1 }
+            guard pos < bytes.count else { return nil }
+            if bytes[pos] == 0x30 {
+                pos += 1
+            } else if (0x31...0x39).contains(bytes[pos]) {
+                pos += 1
+                while pos < bytes.count && (0x30...0x39).contains(bytes[pos]) { pos += 1 }
+            } else {
+                return nil
+            }
+            if pos < bytes.count && bytes[pos] == 0x2E {
+                isFloat = true
+                pos += 1
+                guard pos < bytes.count && (0x30...0x39).contains(bytes[pos]) else { return nil }
+                while pos < bytes.count && (0x30...0x39).contains(bytes[pos]) { pos += 1 }
+            }
+            if pos < bytes.count && (bytes[pos] == 0x65 || bytes[pos] == 0x45) {
+                isFloat = true
+                pos += 1
+                if pos < bytes.count && (bytes[pos] == 0x2B || bytes[pos] == 0x2D) { pos += 1 }
+                guard pos < bytes.count && (0x30...0x39).contains(bytes[pos]) else { return nil }
+                while pos < bytes.count && (0x30...0x39).contains(bytes[pos]) { pos += 1 }
+            }
+            guard let text = String(bytes: bytes[start..<pos], encoding: .utf8) else { return nil }
+            if !isFloat, let intVal = Int(text) {
+                return .int(intVal)
+            }
+            guard let dblVal = Double(text), dblVal.isFinite else { return nil }
+            return .double(dblVal)
         }
     }
 }

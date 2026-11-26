@@ -1,3 +1,29 @@
+export interface InstallableModel {
+  readonly filename: string;
+  readonly artifacts?: readonly { readonly filename: string }[];
+}
+
+/**
+ * Returns every filename that must exist on disk for `entry` to count as installed.
+ * Multipart models (e.g. Beam, Muse) require every pinned shard, not just the first file.
+ */
+export function requiredModelFilenames(entry: InstallableModel): readonly string[] {
+  if (entry.artifacts && entry.artifacts.length > 0) {
+    return entry.artifacts.map(part => part.filename);
+  }
+  return [entry.filename];
+}
+
+/**
+ * Returns true only when every required artifact file for `entry` is present on disk.
+ */
+export function isModelInstalled(
+  entry: InstallableModel,
+  fileExists: (filename: string) => boolean,
+): boolean {
+  return requiredModelFilenames(entry).every(filename => fileExists(filename));
+}
+
 export interface PlanRunInput {
   id: string;
   promptArgs: readonly string[];

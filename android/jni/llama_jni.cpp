@@ -397,10 +397,15 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
             std::string t(tmpl);
             if (disableThinking &&
                 (t.find("enable_thinking") != std::string::npos || t.find("<think>") != std::string::npos)) {
-                size_t lastOpen = result.rfind("<think>");
-                size_t lastClose = result.rfind("</think>");
-                bool openUnclosed = lastOpen != std::string::npos &&
-                                    (lastClose == std::string::npos || lastClose < lastOpen);
+                size_t end = result.size();
+                while (end > 0 && (result[end - 1] == ' ' || result[end - 1] == '\t' ||
+                                   result[end - 1] == '\n' || result[end - 1] == '\r')) {
+                    --end;
+                }
+                const char* openTag = "<think>";
+                constexpr size_t openTagLen = 7;
+                bool openUnclosed = end >= openTagLen &&
+                                    result.compare(end - openTagLen, openTagLen, openTag) == 0;
                 result += openUnclosed ? "\n</think>\n\n" : "<think>\n\n</think>\n\n";
             }
             templated = true;
@@ -879,6 +884,22 @@ JNIEXPORT jint JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoadedKVCache(JNIEnv*, jobject, jlong handle) {
     LlamaHandle* h = as_handle(handle);
     return h ? h->kvCacheNativeId : 0;
+}
+
+// Render the model's formatted chat prompt (read-only) so ChatModel can detect a pre-opened
+// trailing `<think>` before streaming begins.
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeBuildChatPrompt(JNIEnv* env, jobject, jlong handle,
+                                                         jstring payload, jboolean disable_thinking) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h || !h->model) return make_jstring(env, "");
+    const char* p = quenderin::jni::get_chars(env, payload);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");
+    std::string source(p);
+    quenderin::jni::release_chars(p);
+    bool templated = false;
+    const auto prompt = buildChatPrompt(h->model, source, templated, disable_thinking == JNI_TRUE);
+    return make_jstring(env, prompt);
 }
 
 // Read-only query under the Kotlin coordinator's idle lease. Never changes/rebuilds the KV.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planRun } from '../src/commands/run.js';
+import { isModelInstalled, planRun, requiredModelFilenames } from '../src/commands/run.js';
 
 describe('planRun', () => {
   it('returns an error matching download/chat style for an unknown model id', () => {
@@ -162,5 +162,60 @@ describe('planRun', () => {
       next: 'print',
       prompt: 'summarize this',
     });
+  });
+});
+
+describe('isModelInstalled (single-file and multipart shard completeness)', () => {
+  it('checks the single filename for non-multipart models', () => {
+    const model = { filename: 'qwen3-4b.Q4_K_M.gguf' };
+    expect(requiredModelFilenames(model)).toEqual(['qwen3-4b.Q4_K_M.gguf']);
+    expect(isModelInstalled(model, f => f === 'qwen3-4b.Q4_K_M.gguf')).toBe(true);
+    expect(isModelInstalled(model, () => false)).toBe(false);
+  });
+
+  it('requires every shard of a multipart model before skipping download in planRun', () => {
+    const multipart = {
+      filename: 'Beam-1.0-00001-of-00004.gguf',
+      artifacts: [
+        { filename: 'Beam-1.0-00001-of-00004.gguf' },
+        { filename: 'Beam-1.0-00002-of-00004.gguf' },
+        { filename: 'Beam-1.0-00003-of-00004.gguf' },
+        { filename: 'Beam-1.0-00004-of-00004.gguf' },
+      ],
+    };
+    expect(requiredModelFilenames(multipart)).toHaveLength(4);
+
+    // Only shard 1 present, shard 2 missing -> NOT installed -> run must download.
+    const partialOnDisk = new Set([
+      'Beam-1.0-00001-of-00004.gguf',
+      'Beam-1.0-00003-of-00004.gguf',
+      'Beam-1.0-00004-of-00004.gguf',
+    ]);
+    expect(isModelInstalled(multipart, f => partialOnDisk.has(f))).toBe(false);
+    expect(planRun({
+      id: 'beam-1.0-501b-a23b-ud-iq2-xxs',
+      promptArgs: ['hi'],
+      stdinIsTTY: true,
+      installed: isModelInstalled(multipart, f => partialOnDisk.has(f)),
+      known: true,
+      allowDownload: true,
+    })).toEqual({ kind: 'download-then', next: 'print', prompt: 'hi' });
+
+    // All 4 shards present -> installed -> run skips download.
+    const completeOnDisk = new Set([
+      'Beam-1.0-00001-of-00004.gguf',
+      'Beam-1.0-00002-of-00004.gguf',
+      'Beam-1.0-00003-of-00004.gguf',
+      'Beam-1.0-00004-of-00004.gguf',
+    ]);
+    expect(isModelInstalled(multipart, f => completeOnDisk.has(f))).toBe(true);
+    expect(planRun({
+      id: 'beam-1.0-501b-a23b-ud-iq2-xxs',
+      promptArgs: ['hi'],
+      stdinIsTTY: true,
+      installed: isModelInstalled(multipart, f => completeOnDisk.has(f)),
+      known: true,
+      allowDownload: true,
+    })).toEqual({ kind: 'print', prompt: 'hi' });
   });
 });

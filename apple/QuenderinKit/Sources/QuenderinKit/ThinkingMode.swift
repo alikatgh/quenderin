@@ -35,6 +35,31 @@ public enum ThinkingMode: String, Sendable, Equatable, Codable, CaseIterable {
     public static func shouldCloseThinkBlock(mode: ThinkingMode, template: String) -> Bool {
         !mode.allowsThinking && supports(template: template)
     }
+
+    /// Returns true when a rendered chat prompt ends with an unclosed `<think>` tag (ignoring
+    /// trailing ASCII whitespace), meaning the model's generated stream begins already inside
+    /// a thinking block and will emit only the closing `</think>`.
+    /// Operates on raw UTF-8 bytes so combining marks never coalesce with tag characters.
+    /// Twin of Android `ThinkingMode.promptEndsInsideThinking`.
+    public static func promptEndsInsideThinking(_ prompt: String) -> Bool {
+        let bytes = Array(prompt.utf8)
+        var end = bytes.count
+        while end > 0 {
+            let b = bytes[end - 1]
+            if b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D {
+                end -= 1
+            } else {
+                break
+            }
+        }
+        let openTag: [UInt8] = Array("<think>".utf8)
+        guard end >= openTag.count else { return false }
+        let start = end - openTag.count
+        for i in 0..<openTag.count {
+            if bytes[start + i] != openTag[i] { return false }
+        }
+        return true
+    }
 }
 
 /// Streaming splitter that separates `<think>…</think>` reasoning from the visible answer across
@@ -63,6 +88,13 @@ public struct ThinkingSplitter: Sendable, Equatable {
 
     public init(startsInsideThinking: Bool = false) {
         self.state = startsInsideThinking ? .thinking : .awaitingInitialOpen
+    }
+
+    /// Initializes the splitter from the rendered prompt sent to the model: an unclosed trailing
+    /// `<think>` starts inside the thinking state so pre-opened templates never leak reasoning
+    /// into the visible answer.
+    public init(renderedPrompt: String) {
+        self.init(startsInsideThinking: ThinkingMode.promptEndsInsideThinking(renderedPrompt))
     }
 
     /// True while the splitter is currently inside a `<think>…</think>` block.
