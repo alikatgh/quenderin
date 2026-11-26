@@ -154,7 +154,15 @@ public actor LlamaEngine: InferenceEngine {
     public func contextLengthChoice() async -> ContextLengthChoice { preferredContextLength }
 
     public func setContextLengthChoice(_ choice: ContextLengthChoice) async {
+        guard preferredContextLength != choice else { return }
         preferredContextLength = choice
+        // Unloaded cached execution profiles reflect the previous context-length choice;
+        // drop them while retaining the currently loaded model's live receipt.
+        if let loaded {
+            effectiveProfiles.removeAll { $0.modelID != loaded }
+        } else {
+            effectiveProfiles.removeAll()
+        }
     }
 
     public func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool {
@@ -162,10 +170,10 @@ public actor LlamaEngine: InferenceEngine {
         let effectiveThinking: ThinkingMode = options.gbnfGrammar != nil ? .off : options.thinkingMode
         guard effectiveThinking.allowsThinking else { return false }
         #if canImport(llama)
-        guard let prompt = buildChatPrompt(system: system, history: history, thinkingMode: effectiveThinking) else {
+        guard let parts = buildChatPromptParts(system: system, history: history, thinkingMode: effectiveThinking) else {
             return false
         }
-        return ThinkingMode.promptEndsInsideThinking(prompt)
+        return ThinkingMode.promptEndsInsideThinking(parts.prompt, withoutAssistantPrefix: parts.withoutAssistant)
         #else
         return false
         #endif
@@ -244,7 +252,8 @@ public actor LlamaEngine: InferenceEngine {
             loadedPerformance = (entry, artifact, Self.ms(ContinuousClock.now - loadStarted), loadedEnvironmentID)
             effectiveProfiles.removeAll { $0.modelID == entry.id }
             effectiveProfiles.append(.init(modelID: entry.id, artifactSHA256: artifact, runtimeID: InferencePerformanceRuntime.id,
-                backendID: InferencePerformanceIdentity.backendID, environmentID: loadedEnvironmentID, contextTokens: loadedNCtx ?? 0))
+                backendID: InferencePerformanceIdentity.backendID, environmentID: loadedEnvironmentID, contextTokens: loadedNCtx ?? 0,
+                contextLengthChoice: ctxChoice))
             if effectiveProfiles.count > 64 { effectiveProfiles.removeFirst(effectiveProfiles.count - 64) }
         }
         loadedMuse = ModelRuntimeSupport.isMuse(entry)
@@ -413,6 +422,10 @@ public actor LlamaEngine: InferenceEngine {
     /// think block is closed right after the assistant turn so replies are direct — Android parity
     /// (default thinking OFF). Reads the model pointer under `nativeLock`.
     nonisolated private func buildChatPrompt(system: String, history: [ChatMessage], thinkingMode: ThinkingMode = .off) -> String? {
+        buildChatPromptParts(system: system, history: history, thinkingMode: thinkingMode)?.prompt
+    }
+
+    nonisolated private func buildChatPromptParts(system: String, history: [ChatMessage], thinkingMode: ThinkingMode = .off) -> (prompt: String, withoutAssistant: String)? {
         nativeLock.lock()
         defer { nativeLock.unlock() }
         guard let model, let tmplC = llama_model_chat_template(model, nil) else { return nil }
@@ -433,29 +446,35 @@ public actor LlamaEngine: InferenceEngine {
         }
         guard !msgs.isEmpty else { return nil }
 
-        var capacity = msgs.reduce(512) { $0 + (($1.content.map { strlen($0) }) ?? 0) + 64 } * 2
-        var buf = [CChar](repeating: 0, count: capacity)
-        var n = msgs.withUnsafeBufferPointer { ptr in
-            llama_chat_apply_template(tmplC, ptr.baseAddress, msgs.count, true, &buf, Int32(capacity))
-        }
-        if n > Int32(capacity) {   // buffer too small — grow once and retry (mirrors the JNI)
-            capacity = Int(n)
-            buf = [CChar](repeating: 0, count: capacity)
-            n = msgs.withUnsafeBufferPointer { ptr in
-                llama_chat_apply_template(tmplC, ptr.baseAddress, msgs.count, true, &buf, Int32(capacity))
+        func applyTemplate(addAssistant: Bool) -> String? {
+            var capacity = msgs.reduce(512) { $0 + (($1.content.map { strlen($0) }) ?? 0) + 64 } * 2
+            var buf = [CChar](repeating: 0, count: capacity)
+            var n = msgs.withUnsafeBufferPointer { ptr in
+                llama_chat_apply_template(tmplC, ptr.baseAddress, msgs.count, addAssistant, &buf, Int32(capacity))
             }
+            if n > Int32(capacity) {   // buffer too small — grow once and retry (mirrors the JNI)
+                capacity = Int(n)
+                buf = [CChar](repeating: 0, count: capacity)
+                n = msgs.withUnsafeBufferPointer { ptr in
+                    llama_chat_apply_template(tmplC, ptr.baseAddress, msgs.count, addAssistant, &buf, Int32(capacity))
+                }
+            }
+            guard n > 0 else { return nil }
+            return String(decoding: buf.prefix(Int(n)).map { UInt8(bitPattern: $0) }, as: UTF8.self)
         }
-        guard n > 0 else { return nil }
-        var result = String(decoding: buf.prefix(Int(n)).map { UInt8(bitPattern: $0) }, as: UTF8.self)
+
+        let withoutAssistant = applyTemplate(addAssistant: false) ?? ""
+        guard var result = applyTemplate(addAssistant: true) else { return nil }
 
         // No-think: close an empty <think> block after the assistant turn (Qwen3's
-        // enable_thinking=false behaviour); normalize whether the template already opened one.
-        // Only when thinkingMode disallows thinking (.off) and the template supports it.
+        // enable_thinking=false behaviour); normalize whether the template already opened one
+        // (including non-empty pre-opened assistant prefixes) while ignoring literal tags in
+        // earlier user messages.
         if ThinkingMode.shouldCloseThinkBlock(mode: thinkingMode, template: tmpl) {
-            let openUnclosed = ThinkingMode.promptEndsInsideThinking(result)
+            let openUnclosed = ThinkingMode.promptEndsInsideThinking(result, withoutAssistantPrefix: withoutAssistant)
             result += openUnclosed ? "\n</think>\n\n" : "<think>\n\n</think>\n\n"
         }
-        return result
+        return (result, withoutAssistant)
     }
 
     /// The native load, under `nativeLock` (synchronous → manual lock is allowed here, unlike the
@@ -738,15 +757,20 @@ public actor LlamaEngine: InferenceEngine {
         // The repetition penalty is what keeps Q2-class small models from looping the same
         // paragraph verbatim (docs/BUG_JOURNAL.md 2026-07-03). Kotlin twin: jni sampler chain.
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params())
+        defer { llama_sampler_free(sampler) }
         // GBNF-constrained decoding (opt-in): masks every token that can't continue the grammar,
-        // so e.g. an agent decision CANNOT be prose. FIRST in the chain — top-p/temperature then
-        // renormalize over the legal set only (top-p before grammar could keep only illegal
-        // tokens). A grammar string that fails to parse returns NULL — skip it and decode
-        // unconstrained (mirrors the desktop's null-grammar fallback) rather than crash.
-        if let gbnf = options.gbnfGrammar, let v = vocab {
-            if let grammarSampler = llama_sampler_init_grammar(v, gbnf, "root") {
-                llama_sampler_chain_add(sampler, grammarSampler)
+        // so e.g. an agent decision or structured JSON response CANNOT violate the grammar.
+        // FIRST in the chain — top-p/temperature then renormalize over the legal set only.
+        // If native grammar initialization returns NULL, fail the request explicitly instead of
+        // silently continuing unconstrained and violating the requested output format.
+        if let gbnf = options.gbnfGrammar {
+            guard !gbnf.isEmpty, let v = vocab, let grammarSampler = llama_sampler_init_grammar(v, gbnf, "root") else {
+                continuation.finish(throwing: InferenceError.generationFailed(
+                    reason: "Grammar-constrained decoding could not be initialized for the requested grammar."
+                ))
+                return
             }
+            llama_sampler_chain_add(sampler, grammarSampler)
         }
         #if QUENDERIN_LLAMA_PENALTIES_VOCAB
         llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
@@ -764,7 +788,6 @@ public actor LlamaEngine: InferenceEngine {
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(Float(options.topP), 1))
         llama_sampler_chain_add(sampler, llama_sampler_init_temp(Float(options.temperature)))
         llama_sampler_chain_add(sampler, llama_sampler_init_dist(UInt32(truncatingIfNeeded: LLAMA_DEFAULT_SEED)))
-        defer { llama_sampler_free(sampler) }
 
         // 3) Decode prompt, then sample one token at a time.
         //

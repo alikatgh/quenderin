@@ -38,25 +38,94 @@ enum class ThinkingMode(val rawValue: String) {
         fun shouldCloseThinkBlock(mode: ThinkingMode, template: String): Boolean =
             !mode.allowsThinking && supports(template)
 
+        private const val OPEN_TAG = "<think>"
+        private const val CLOSE_TAG = "</think>"
+        private val TURN_BOUNDARY_MARKERS = arrayOf(
+            "<|im_start|>assistant",
+            "<|im_end|>",
+            "<|start_header_id|>assistant<|end_header_id|>",
+            "<|eot_id|>",
+            "<start_of_turn>model",
+            "<start_of_turn>assistant",
+            "<end_of_turn>",
+            "<｜Assistant｜>",
+            "<|Assistant|>",
+            "<|assistant|>",
+            "<|end|>",
+            "[/INST]",
+            "</s>",
+            "\nAssistant:",
+            "\nassistant:",
+            "\rAssistant:",
+            "\rassistant:",
+        )
+        private val LEADING_ASSISTANT_MARKERS = arrayOf(
+            "Assistant:",
+            "assistant:",
+        )
+
         /**
-         * Returns true when a rendered chat prompt ends with an unclosed `<think>` tag (ignoring
-         * trailing ASCII whitespace), meaning the model's generated stream begins already inside
-         * a thinking block and will emit only the closing `</think>`.
+         * Returns true when [text] contains a `<think>` tag not closed by a later `</think>`.
+         * Twin of Swift `ThinkingMode.hasUnclosedThinkTag(in:)`.
+         */
+        fun hasUnclosedThinkTag(text: String): Boolean {
+            val lastOpen = text.lastIndexOf(OPEN_TAG)
+            if (lastOpen < 0) return false
+            val lastClose = text.lastIndexOf(CLOSE_TAG)
+            return lastClose < lastOpen
+        }
+
+        /**
+         * Returns true when the current assistant generation prefix of [prompt] leaves an unclosed
+         * `<think>` block — including prefixes with text after `<think>` (e.g. `<think>\nReasoning: `)
+         * — while ignoring literal `<think>` tags inside earlier user/system messages.
+         * When [withoutAssistantPrefix] (the template rendered with `add_ass = false`) is a prefix
+         * of [prompt], only the exact assistant-prefix suffix is inspected.
+         * Twin of Swift `ThinkingMode.promptEndsInsideThinking(_:withoutAssistantPrefix:)`.
+         */
+        fun promptEndsInsideThinking(prompt: String, withoutAssistantPrefix: String): Boolean {
+            if (withoutAssistantPrefix.isNotEmpty() && prompt.startsWith(withoutAssistantPrefix)) {
+                return hasUnclosedThinkTag(prompt.substring(withoutAssistantPrefix.length))
+            }
+            return promptEndsInsideThinking(prompt)
+        }
+
+        /**
+         * Returns true when a rendered chat prompt's current assistant prefix leaves an unclosed
+         * `<think>` block (even if non-empty text such as `Reasoning: ` follows `<think>`), while
+         * ignoring literal `<think>` tags in earlier user messages.
          * Twin of Swift `ThinkingMode.promptEndsInsideThinking(_:)`.
          */
         fun promptEndsInsideThinking(prompt: String): Boolean {
-            var end = prompt.length
-            while (end > 0) {
-                val ch = prompt[end - 1]
+            if (prompt.isEmpty()) return false
+            var boundaryEnd = -1
+            for (marker in TURN_BOUNDARY_MARKERS) {
+                val idx = prompt.lastIndexOf(marker)
+                if (idx >= 0) {
+                    val end = idx + marker.length
+                    if (end > boundaryEnd) boundaryEnd = end
+                }
+            }
+            for (leading in LEADING_ASSISTANT_MARKERS) {
+                if (prompt.startsWith(leading) && leading.length > boundaryEnd) {
+                    boundaryEnd = leading.length
+                }
+            }
+            if (boundaryEnd >= 0) {
+                return hasUnclosedThinkTag(prompt.substring(boundaryEnd))
+            }
+
+            var start = 0
+            while (start < prompt.length) {
+                val ch = prompt[start]
                 if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
-                    end--
+                    start++
                 } else {
                     break
                 }
             }
-            val openTag = "<think>"
-            return end >= openTag.length &&
-                prompt.regionMatches(end - openTag.length, openTag, 0, openTag.length)
+            val trimmed = prompt.substring(start)
+            return trimmed.startsWith(OPEN_TAG) && hasUnclosedThinkTag(trimmed)
         }
     }
 }

@@ -300,6 +300,7 @@ public final class OnboardingModel: ObservableObject {
         }
         isInstalling = true
         defer { isInstalling = false }
+        let previousPhase = phase
 
         // The model we fall back to if this one fails to load — `nil` on first-run onboarding.
         let previousID = await engine.loadedModelID()
@@ -424,17 +425,46 @@ public final class OnboardingModel: ObservableObject {
 
         }
 
+        // Reserve exclusive ownership BEFORE changing loading state or issuing cancellation so an
+        // in-flight Local API turn is never cancelled and onboarding never enters `.failed` if
+        // the engine is busy.
+        let switchLease: ExclusiveInferenceLease
+        do {
+            switchLease = try await engine.acquireManualModelSwitchLease(timeoutSeconds: 30)
+        } catch {
+            if case .ready = previousPhase {
+                phase = previousPhase
+            } else if error is CancellationError || Task.isCancelled {
+                await returnToChoice(afterCancelling: model)
+            } else {
+                phase = .failed(Self.describe(error))
+            }
+            return
+        }
+        var switchLeaseReleased = false
+        let releaseSwitchLease: () async -> Void = {
+            guard !switchLeaseReleased else { return }
+            switchLeaseReleased = true
+            await switchLease.release()
+        }
+        defer {
+            if !switchLeaseReleased {
+                switchLeaseReleased = true
+                Task { await switchLease.release() }
+            }
+        }
+
+        let currentLoadedID = await switchLease.loadedModelID() ?? previousID
         phase = .loading(model)
-        // Interrupt any in-flight generation BEFORE load frees the context — a running decode
-        // otherwise keeps the GPU busy right as we switch models (Android does this; Q-223).
-        // load() itself also cancels, but requesting it here ends generation sooner and keeps
-        // the switch snappy, consistent with the Stop-cancel fix (Q-005/Q-217).
-        engine.requestCancel()
+        // Interrupt any in-flight ordinary chat generation BEFORE load frees the context — a
+        // running decode otherwise keeps the GPU busy right as we switch models (Android does
+        // this; Q-223). Because we hold `switchLease`, this never cancels an API turn.
+        switchLease.requestCancel()
         #if canImport(SwiftUI)
-        await engine.setContextLengthChoice(AppSettings.shared.contextLength)
+        await switchLease.setContextLengthChoice(AppSettings.shared.contextLength)
         #endif
         do {
-            try await engine.load(model: model, at: destination)
+            try await switchLease.load(model: model, at: destination)
             phase = .ready(model)
             rememberActiveModelID(model.id)   // next cold launch restores this model directly
         } catch {
@@ -443,15 +473,20 @@ public final class OnboardingModel: ObservableObject {
             // previous entry from the sideloaded registry too, mirroring the boot fast-path — else a
             // failed switch AWAY from a searched (hf:) model can't restore it (its id isn't in the
             // compiled catalog) and H1 silently drops to a .failed screen with the engine unloaded.
-            if let previousID, previousID != model.id,
-               let previous = ModelCatalog.entry(id: previousID) ?? SideloadedModels.shared.entry(id: previousID),
-               await restore(previous) {
-                phase = .ready(previous)
-                rememberActiveModelID(previous.id)
+            if let restoreID = currentLoadedID, restoreID != model.id,
+               let previous = ModelCatalog.entry(id: restoreID) ?? SideloadedModels.shared.entry(id: restoreID) {
+                let alreadyRestored = await switchLease.loadedModelID() == previous.id
+                if alreadyRestored || await restore(previous, via: switchLease) {
+                    phase = .ready(previous)
+                    rememberActiveModelID(previous.id)
+                } else {
+                    phase = .failed(Self.describe(error))
+                }
             } else {
                 phase = .failed(Self.describe(error))
             }
         }
+        await releaseSwitchLease()
     }
 
     /// Metadata-only discovery. Cached speeds are not ranked until exact bytes have a verification receipt.
@@ -499,7 +534,7 @@ public final class OnboardingModel: ObservableObject {
     }
 
     /// History restoration never downloads, even when the remembered model file is missing.
-    public func restoreConversationModel(_ id: String, history: [ChatMessage], options: GenerationOptions? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) async throws -> ModelEntry {
+    public func restoreConversationModel(_ id: String, history: [ChatMessage], options: GenerationOptions? = nil, resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) async throws -> ModelEntry {
         try requireReadyForChat()
         guard let model = automaticCatalog.first(where: { $0.id == id }) ?? ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
               Self.resolveModelFile(model: model, primary: modelsDir) != nil else {
@@ -510,7 +545,8 @@ public final class OnboardingModel: ObservableObject {
         guard isCurrent() else { throw CancellationError() }
         if loaded == id { return model }
         let target = ChatTier.of(model: model)
-        let request = (system: target.systemPrompt, history: history, options: options ?? target.chatOptions)
+        let resolvedOptions = resolveOptionsForModel?(model) ?? options ?? target.chatOptions
+        let request = (system: target.systemPrompt, history: history, options: resolvedOptions)
         guard try await activateInstalledForAutomatic(model, request: request, isCurrent: isCurrent) else { throw SpecialistCoordinationError.busy }
         return model
     }
@@ -610,15 +646,26 @@ public final class OnboardingModel: ObservableObject {
     }
 
     /// Best-effort reload of a previously-working model after a failed switch (its file is still on
-    /// disk). Returns true on success.
-    private func restore(_ model: ModelEntry) async -> Bool {
+    /// disk). Returns true on success. Runs inside the active manual-switch lease when supplied.
+    private func restore(_ model: ModelEntry, via lease: ExclusiveInferenceLease? = nil) async -> Bool {
         guard let destination = Self.resolveModelFile(model: model, primary: modelsDir) else {
             return false
         }
         #if canImport(SwiftUI)
-        await engine.setContextLengthChoice(AppSettings.shared.contextLength)
+        if let lease {
+            await lease.setContextLengthChoice(AppSettings.shared.contextLength)
+        } else {
+            await engine.setContextLengthChoice(AppSettings.shared.contextLength)
+        }
         #endif
-        do { try await engine.load(model: model, at: destination); return true }
+        do {
+            if let lease {
+                try await lease.load(model: model, at: destination)
+            } else {
+                try await engine.load(model: model, at: destination)
+            }
+            return true
+        }
         catch { return false }
     }
 

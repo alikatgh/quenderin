@@ -36,29 +36,143 @@ public enum ThinkingMode: String, Sendable, Equatable, Codable, CaseIterable {
         !mode.allowsThinking && supports(template: template)
     }
 
-    /// Returns true when a rendered chat prompt ends with an unclosed `<think>` tag (ignoring
-    /// trailing ASCII whitespace), meaning the model's generated stream begins already inside
-    /// a thinking block and will emit only the closing `</think>`.
+    private static let openTagBytes: [UInt8] = Array("<think>".utf8)
+    private static let closeTagBytes: [UInt8] = Array("</think>".utf8)
+    private static let turnBoundaryMarkers: [[UInt8]] = [
+        Array("<|im_start|>assistant".utf8),
+        Array("<|im_end|>".utf8),
+        Array("<|start_header_id|>assistant<|end_header_id|>".utf8),
+        Array("<|eot_id|>".utf8),
+        Array("<start_of_turn>model".utf8),
+        Array("<start_of_turn>assistant".utf8),
+        Array("<end_of_turn>".utf8),
+        Array("<｜Assistant｜>".utf8),
+        Array("<|Assistant|>".utf8),
+        Array("<|assistant|>".utf8),
+        Array("<|end|>".utf8),
+        Array("[/INST]".utf8),
+        Array("</s>".utf8),
+        Array("\nAssistant:".utf8),
+        Array("\nassistant:".utf8),
+        Array("\rAssistant:".utf8),
+        Array("\rassistant:".utf8),
+    ]
+    private static let leadingAssistantMarkers: [[UInt8]] = [
+        Array("Assistant:".utf8),
+        Array("assistant:".utf8),
+    ]
+
+    /// Returns true when `text` contains a `<think>` tag that is not closed by a later `</think>`.
+    /// Operates on raw UTF-8 bytes so combining marks never coalesce with tag characters.
+    /// Twin of Android `ThinkingMode.hasUnclosedThinkTag`.
+    public static func hasUnclosedThinkTag(in text: String) -> Bool {
+        hasUnclosedThinkTag(in: Array(text.utf8)[...])
+    }
+
+    /// Returns true when the current assistant generation prefix of `prompt` leaves an unclosed
+    /// `<think>` block — including prefixes with text after `<think>` (e.g. `<think>\nReasoning: `)
+    /// — while ignoring literal `<think>` tags inside earlier user/system messages.
+    /// When `withoutAssistantPrefix` (the template rendered with `add_ass = false`) is a bytewise
+    /// prefix of `prompt`, only the exact assistant-prefix suffix is inspected.
+    /// Twin of Android `ThinkingMode.promptEndsInsideThinking`.
+    public static func promptEndsInsideThinking(_ prompt: String, withoutAssistantPrefix: String) -> Bool {
+        let pBytes = Array(prompt.utf8)
+        let bBytes = Array(withoutAssistantPrefix.utf8)
+        if !bBytes.isEmpty && pBytes.count >= bBytes.count && bytesStartWith(pBytes[...], prefix: bBytes) {
+            return hasUnclosedThinkTag(in: pBytes[bBytes.count...])
+        }
+        return promptEndsInsideThinking(prompt)
+    }
+
+    /// Returns true when a rendered chat prompt's current assistant prefix leaves an unclosed
+    /// `<think>` block (even if non-empty text such as `Reasoning: ` follows `<think>`), while
+    /// ignoring literal `<think>` tags in earlier user messages.
     /// Operates on raw UTF-8 bytes so combining marks never coalesce with tag characters.
     /// Twin of Android `ThinkingMode.promptEndsInsideThinking`.
     public static func promptEndsInsideThinking(_ prompt: String) -> Bool {
         let bytes = Array(prompt.utf8)
-        var end = bytes.count
-        while end > 0 {
-            let b = bytes[end - 1]
+        guard !bytes.isEmpty else { return false }
+
+        var boundaryEnd: Int? = nil
+        for marker in turnBoundaryMarkers {
+            if let idx = lastIndexOf(marker, in: bytes) {
+                let end = idx + marker.count
+                if boundaryEnd == nil || end > boundaryEnd! {
+                    boundaryEnd = end
+                }
+            }
+        }
+        for leading in leadingAssistantMarkers {
+            if bytesStartWith(bytes[...], prefix: leading) {
+                if boundaryEnd == nil || leading.count > boundaryEnd! {
+                    boundaryEnd = leading.count
+                }
+            }
+        }
+
+        if let boundaryEnd {
+            return hasUnclosedThinkTag(in: bytes[boundaryEnd...])
+        }
+
+        // Standalone prefix with no turn marker: treat as pre-opened only if it starts with
+        // optional ASCII whitespace followed by `<think>` and leaves `<think>` unclosed.
+        var start = 0
+        while start < bytes.count {
+            let b = bytes[start]
             if b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D {
-                end -= 1
+                start += 1
             } else {
                 break
             }
         }
-        let openTag: [UInt8] = Array("<think>".utf8)
-        guard end >= openTag.count else { return false }
-        let start = end - openTag.count
-        for i in 0..<openTag.count {
-            if bytes[start + i] != openTag[i] { return false }
+        let trimmed = bytes[start...]
+        guard bytesStartWith(trimmed, prefix: openTagBytes) else { return false }
+        return hasUnclosedThinkTag(in: trimmed)
+    }
+
+    private static func hasUnclosedThinkTag(in slice: ArraySlice<UInt8>) -> Bool {
+        guard let lastOpen = lastIndexOf(openTagBytes, in: slice) else { return false }
+        guard let lastClose = lastIndexOf(closeTagBytes, in: slice) else { return true }
+        return lastClose < lastOpen
+    }
+
+    private static func bytesStartWith(_ haystack: ArraySlice<UInt8>, prefix: [UInt8]) -> Bool {
+        guard haystack.count >= prefix.count else { return false }
+        var hi = haystack.startIndex
+        for pi in 0..<prefix.count {
+            if haystack[hi] != prefix[pi] { return false }
+            hi += 1
         }
         return true
+    }
+
+    private static func lastIndexOf(_ needle: [UInt8], in haystack: [UInt8]) -> Int? {
+        lastIndexOf(needle, in: haystack[...])
+    }
+
+    private static func lastIndexOf(_ needle: [UInt8], in haystack: ArraySlice<UInt8>) -> Int? {
+        let n = needle.count
+        guard n > 0, haystack.count >= n else { return nil }
+        let start = haystack.startIndex
+        let lastStart = haystack.endIndex - n
+        var i = lastStart
+        while i >= start {
+            if haystack[i] == needle[0] {
+                var matched = true
+                var j = 1
+                while j < n {
+                    if haystack[i + j] != needle[j] {
+                        matched = false
+                        break
+                    }
+                    j += 1
+                }
+                if matched { return i }
+            }
+            if i == start { break }
+            i -= 1
+        }
+        return nil
     }
 }
 

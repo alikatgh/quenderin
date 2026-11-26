@@ -263,8 +263,10 @@ class LlamaEngine(
                         .append('\u001F').append(clean(m.text)).append('\u001E')
                 }
             }
-            val rendered = runCatching { nativeBuildChatPrompt(handle, payload, false) }.getOrNull() ?: return false
-            ThinkingMode.promptEndsInsideThinking(rendered)
+            runCatching { nativeChatPromptStartsInsideThinking(handle, payload) }.getOrElse {
+                val rendered = runCatching { nativeBuildChatPrompt(handle, payload, false) }.getOrNull() ?: return false
+                ThinkingMode.promptEndsInsideThinking(rendered)
+            }
         }
 
     /**
@@ -577,6 +579,7 @@ class LlamaEngine(
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeCompleteChatMeasured(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink, performance: PerformanceSink): String
     private external fun nativeBuildChatPrompt(handle: Long, payload: String, disableThinking: Boolean): String
+    private external fun nativeChatPromptStartsInsideThinking(handle: Long, payload: String): Boolean
     private external fun nativeLoadedKVCache(handle: Long): Int
     private external fun nativeChatExecutionProfile(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean): LongArray
     private external fun nativeLastHitTokenCap(handle: Long): Boolean

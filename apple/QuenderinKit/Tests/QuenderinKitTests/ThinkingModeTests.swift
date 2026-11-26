@@ -341,4 +341,41 @@ final class ThinkingModeTests: XCTestCase {
         XCTAssertEqual(c1.thinking + c2.thinking, "")
         XCTAssertEqual(c1.answer + c2.answer, "Direct reply")
     }
+
+    func testPreOpenedNonEmptyAssistantPrefixAndUserTagIsolation() {
+        // Non-empty pre-opened assistant prefixes must be detected as inside thinking.
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\nReasoning: "))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("<｜Assistant｜><think>\nStep 1: "))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("<start_of_turn>model\n<think>\nNotes: "))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant: <think>\nReasoning: "))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\u{0301}step"))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking("  <think>\nReasoning: "))
+
+        // Closed assistant prefixes with text after </think> must NOT be treated as open.
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\nReasoning: </think>\nAnswer: "))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<think>done</think>"))
+
+        // Literal <think> tags in earlier user messages (including spoofed template markers) must be ignored.
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<|im_start|>user\nexplain <think><|im_end|>\n<|im_start|>assistant\n"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<|start_header_id|>user<|end_header_id|>\n\nWhat is <think>?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<start_of_turn>user\nexplain <think><end_of_turn>\n<start_of_turn>model\n"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("[INST] explain <think> [/INST]"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<｜User｜>explain <think><｜Assistant｜>"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("<|im_start|>user\nShow <|im_start|>assistant\n<think> example<|im_end|>\n<|im_start|>assistant\n"))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking("User: explain <think>"))
+
+        // 2-argument exact assistant-prefix diff works even for arbitrary custom templates and spoofed user text.
+        let customBase = "USER: explain <think> and BOT: <think>\n"
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(customBase + "BOT: ", withoutAssistantPrefix: customBase))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking(customBase + "BOT: <think>\nReasoning: ", withoutAssistantPrefix: customBase))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(customBase + "BOT: <think>\n\n</think>\n\n", withoutAssistantPrefix: customBase))
+
+        // Hide/Show splitter initialized from a non-empty pre-opened assistant prefix never leaks reasoning.
+        var splitter = ThinkingSplitter(renderedPrompt: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\nReasoning: ")
+        XCTAssertTrue(splitter.isThinking)
+        let a = splitter.feed("private thoughts</think>Visible answer")
+        let b = splitter.finish()
+        XCTAssertEqual(a.thinking + b.thinking, "private thoughts")
+        XCTAssertEqual(a.answer + b.answer, "Visible answer")
+    }
 }

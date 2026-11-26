@@ -99,9 +99,24 @@ public final class ChatComposerState: ObservableObject {
 public struct ChatPreparationContext: Sendable {
     public let history: [ChatMessage]
     public let options: GenerationOptions?
+    public let resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)?
     public let isCurrent: @MainActor @Sendable () -> Bool
-    public init(history: [ChatMessage] = [], options: GenerationOptions? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) {
-        self.history = history; self.options = options; self.isCurrent = isCurrent
+    public init(
+        history: [ChatMessage] = [],
+        options: GenerationOptions? = nil,
+        resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) {
+        self.history = history
+        self.options = options
+        self.resolveOptionsForModel = resolveOptionsForModel
+        self.isCurrent = isCurrent
+    }
+
+    /// Resolves effective generation options (thinking mode, JSON grammar, tier budget) for `model`,
+    /// guaranteeing preparation evaluates the same configuration that generation will execute.
+    public func options(for model: ModelEntry?) -> GenerationOptions? {
+        resolveOptionsForModel?(model) ?? options
     }
 }
 
@@ -298,13 +313,20 @@ public final class ChatModel: ObservableObject {
             guard !message.documents.isEmpty else { return message }
             return ChatMessage(id: message.id, role: message.role, text: message.engineText)
         }
-        let preparedOptions = Self.resolveGenerationOptions(
-            base: options,
-            model: selectedModel,
-            thinkingMode: thinkingMode,
-            replyAsJSON: replyAsJSON
-        )
-        let preparation = ChatPreparationContext(history: pendingHistory, options: preparedOptions) { self.conversationRevision == turnRevision && !self.stopRequested }
+        let resolveForModel: @Sendable (ModelEntry?) -> GenerationOptions = { candidate in
+            Self.resolveGenerationOptions(
+                base: options,
+                model: candidate,
+                thinkingMode: thinkingMode,
+                replyAsJSON: replyAsJSON
+            )
+        }
+        let preparedOptions = resolveForModel(selectedModel)
+        let preparation = ChatPreparationContext(
+            history: pendingHistory,
+            options: preparedOptions,
+            resolveOptionsForModel: resolveForModel
+        ) { self.conversationRevision == turnRevision && !self.stopRequested }
         var automaticSelected = false
         do {
             try admitTurn?()
@@ -327,12 +349,7 @@ public final class ChatModel: ObservableObject {
             return
         }
         let tier = ChatTier.of(model: selectedModel)
-        var resolvedOptions = Self.resolveGenerationOptions(
-            base: options,
-            model: selectedModel,
-            thinkingMode: thinkingMode,
-            replyAsJSON: replyAsJSON
-        )
+        var resolvedOptions = resolveForModel(selectedModel)
         resolvedOptions.collectPerformance = true
         let systemPrompt = NamedGuidance.append(
             tier.systemPrompt,

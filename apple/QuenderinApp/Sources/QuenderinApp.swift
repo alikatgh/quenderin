@@ -135,12 +135,12 @@ struct QuenderinApp: App {
         // most recent conversation on launch, and persists each turn to Application Support.
         let chat = ChatModel(engine: engine, admitTurn: { try onboardingModel.requireReadyForChat() }, prepareFirstTurn: { prompt, current, preparation in
             guard AutomaticModelPreferences.shared.enabled else { return (current, nil) }
-            let selected = try await automatic.prepare(prompt: prompt, current: current, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
+            let selected = try await automatic.prepare(prompt: prompt, current: current, history: preparation.history, options: preparation.options, resolveOptionsForModel: preparation.resolveOptionsForModel, isCurrent: preparation.isCurrent)
             return (selected, automatic.status)
         })
         let conversationCoordinator = ConversationCoordinator(chat: chat, persistence: FileConversationPersistence(),
             restoreSelectedModel: { id, preparation in
-                try await onboardingModel.restoreConversationModel(id, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
+                try await onboardingModel.restoreConversationModel(id, history: preparation.history, options: preparation.options, resolveOptionsForModel: preparation.resolveOptionsForModel, isCurrent: preparation.isCurrent)
             })
         _conversations = StateObject(wrappedValue: conversationCoordinator)
         onboardingModel.onManualSelectionCommitted = { model in conversationCoordinator.chooseModelManually(model.id) }

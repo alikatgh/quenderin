@@ -135,7 +135,9 @@ console.log(reply.choices[0].message.content);
 
 Quenderin enforces JSON output at the llama.cpp GBNF grammar level for standard GGUF models.
 Models that do not support grammar-constrained decoding (**Beam**, **Jais**, and **Muse**) reject
-`response_format` JSON/schema requests with `400` (`unsupported_response_format`):
+`response_format` JSON/schema requests with `400` (`unsupported_response_format`). If native
+grammar-sampler initialization fails for any model, the request also fails with `400`
+(`unsupported_response_format`) rather than continuing unconstrained:
 
 ### Any valid JSON object (`json_object`)
 
@@ -198,9 +200,11 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **One request at a time:** The API shares the app's exclusive on-device engine lease
   with the Quenderin Chat window. If another chat turn or API call is in flight, a new
   request waits up to 30 seconds and then returns `503` (`server_busy`).
-- **Disconnect cancels generation:** Closing the client socket during either streaming or
-  buffered (non-streaming) generation cancels on-device generation immediately. Keep the
-  socket open until the response completes.
+- **Disconnect cancels generation:** For streaming (`"stream": true`) requests, client
+  disconnects, resets, write timeouts, or closed sockets cancel on-device generation promptly
+  while valid TCP write-half-closed clients (`shutdown(SHUT_WR)`) still receive their full
+  reply. For buffered (`"stream": false`) requests, transport aborts/resets cancel generation
+  immediately while preserving valid half-closed clients waiting to read the response.
 - **Clamped sampling parameters:** `max_tokens` / `max_completion_tokens` defaults to
   `512` (clamped `1`–`4096`), `temperature` is clamped `0`–`2`, `top_p` is clamped
   `0`–`1`. `stop` accepts a string or an array of strings.
@@ -209,9 +213,14 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **No images yet:** Content arrays with `{"type": "text", "text": "..."}` parts are
   supported; image parts are rejected with `400` (`images are not supported by this
   endpoint yet`).
-- **Installed, hash-verified models only (no automatic downloads):** Passing an uninstalled
-  or integrity-failed `model` returns `404` (`model_not_found`) without deleting files or
-  starting a download. If no model is installed at all, requests return `503`.
+- **Installed models only (no automatic downloads or deletions):** The API only uses models
+  already loaded in Quenderin or already installed on disk. When switching to another installed
+  model, Quenderin verifies its SHA-256 digest whenever one is pinned (catalog/manifest models
+  and sideloaded models with a known digest) and always checks the GGUF header; community
+  models without a pinned digest are checked by GGUF header only, and a model already loaded in
+  the engine is reused directly. Passing an uninstalled or integrity-failed `model` returns
+  `404` (`model_not_found`) without deleting files or starting a download. If no model is
+  installed at all, requests return `503`.
 - **No chunked request bodies:** Send a standard `Content-Length` header (max headers
   `16 KiB`, max body `4 MiB`).
 - **Privacy:** Prompts and replies are never logged. Only an in-memory count of requests

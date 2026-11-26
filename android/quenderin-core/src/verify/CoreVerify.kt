@@ -3104,6 +3104,31 @@ fun main() {
             !ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant:\n") &&
             !ThinkingMode.promptEndsInsideThinking("")
     })
+    check("ThinkingMode.promptEndsInsideThinking handles non-empty pre-opened assistant prefixes and ignores earlier user tags", run {
+        val customBase = "USER: explain <think> and BOT: <think>\n"
+        val nonEmptyOpened = ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\nReasoning: ") &&
+            ThinkingMode.promptEndsInsideThinking("<｜Assistant｜><think>\nStep 1: ") &&
+            ThinkingMode.promptEndsInsideThinking("<start_of_turn>model\n<think>\nNotes: ") &&
+            ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant: <think>\nReasoning: ") &&
+            ThinkingMode.promptEndsInsideThinking("  <think>\nReasoning: ")
+        val closedOrUserOnly = !ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\nReasoning: </think>\nAnswer: ") &&
+            !ThinkingMode.promptEndsInsideThinking("<|im_start|>user\nexplain <think><|im_end|>\n<|im_start|>assistant\n") &&
+            !ThinkingMode.promptEndsInsideThinking("<|start_header_id|>user<|end_header_id|>\n\nWhat is <think>?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n") &&
+            !ThinkingMode.promptEndsInsideThinking("<start_of_turn>user\nexplain <think><end_of_turn>\n<start_of_turn>model\n") &&
+            !ThinkingMode.promptEndsInsideThinking("[INST] explain <think> [/INST]") &&
+            !ThinkingMode.promptEndsInsideThinking("<｜User｜>explain <think><｜Assistant｜>") &&
+            !ThinkingMode.promptEndsInsideThinking("<|im_start|>user\nShow <|im_start|>assistant\n<think> example<|im_end|>\n<|im_start|>assistant\n") &&
+            !ThinkingMode.promptEndsInsideThinking("User: explain <think>")
+        val twoArgExact = !ThinkingMode.promptEndsInsideThinking(customBase + "BOT: ", withoutAssistantPrefix = customBase) &&
+            ThinkingMode.promptEndsInsideThinking(customBase + "BOT: <think>\nReasoning: ", withoutAssistantPrefix = customBase) &&
+            !ThinkingMode.promptEndsInsideThinking(customBase + "BOT: <think>\n\n</think>\n\n", withoutAssistantPrefix = customBase)
+        val splitter = ThinkingSplitter.forRenderedPrompt("<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\nReasoning: ")
+        val d1 = splitter.feed("private thoughts</think>Visible answer")
+        val d2 = splitter.finish()
+        nonEmptyOpened && closedOrUserOnly && twoArgExact &&
+            d1.thinking + d2.thinking == "private thoughts" &&
+            d1.answer + d2.answer == "Visible answer"
+    })
     check("ChatModel Hide/Show strips reasoning when template pre-opened <think> in prompt", run {
         class PreOpenedThinkingEngine(private val scripted: String) : InferenceEngine {
             override var loadedModelId: String? = "test-r1"

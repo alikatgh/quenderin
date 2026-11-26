@@ -545,4 +545,89 @@ final class LocalAPIProtocolTests: XCTestCase {
 
         XCTAssertEqual(String(data: LocalAPICodec.streamDoneFrame, encoding: .utf8), "data: [DONE]\n\n")
     }
+
+    func testWideJSONObjectParsesLinearlyAndPreservesUnicodeKeyIdentity() throws {
+        // 4,000 distinct keys in one object — O(N^2) scanning would stall; byte-keyed index stays fast
+        // while keeping canonically equivalent Unicode keys ("\u00e9" vs "e\u0301") distinct.
+        var parts: [String] = []
+        parts.reserveCapacity(4010)
+        parts.append("\"model\":\"qwen3-4b\"")
+        parts.append("\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]")
+        parts.append("\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"wide\",\"schema\":{\"type\":\"object\",\"properties\":{\"\\u00e9\":{\"type\":\"string\"},\"e\\u0301\":{\"type\":\"integer\"}},\"required\":[\"\\u00e9\",\"e\\u0301\"]}}}")
+        for i in 0..<4000 {
+            parts.append("\"k\(i)\":\(i)")
+        }
+        // Duplicate key overwrites previous value without error.
+        parts.append("\"temperature\":0.2")
+        parts.append("\"temperature\":0.9")
+        let json = "{" + parts.joined(separator: ",") + "}"
+
+        let start = Date()
+        let decoded = try LocalAPICodec.decodeChatRequest(
+            Data(json.utf8),
+            availableModelIDs: ["qwen3-4b"],
+            activeModelID: "qwen3-4b"
+        ).get()
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertLessThan(elapsed, 2.0, "Wide JSON object parsing should stay linear, not quadratic")
+        XCTAssertEqual(decoded.temperature, 0.9, accuracy: 0.0001)
+        guard case .jsonSchema(let gbnf, let fellBack) = decoded.responseFormat else {
+            return XCTFail("Expected jsonSchema response format")
+        }
+        XCTAssertFalse(fellBack)
+        let nfcBytes = Array("\u{00e9}".utf8)
+        let nfdBytes = Array("e\u{0301}".utf8)
+        let grammarBytes = Array(gbnf.utf8)
+        func containsBytes(_ needle: [UInt8], in haystack: [UInt8]) -> Bool {
+            guard !needle.isEmpty, haystack.count >= needle.count else { return false }
+            for i in 0...(haystack.count - needle.count) {
+                if Array(haystack[i..<(i + needle.count)]) == needle { return true }
+            }
+            return false
+        }
+        XCTAssertTrue(containsBytes(nfcBytes, in: grammarBytes))
+        XCTAssertTrue(containsBytes(nfdBytes, in: grammarBytes))
+    }
+
+    func testLocalSSEStreamBufferCoalescesAndFinishesWithoutBlockingProducer() async {
+        let buffer = LocalSSEStreamBuffer(maxBufferedBytes: 64 * 1024)
+        // Producer enqueues many pieces and finishes BEFORE the slow reader calls nextBatch().
+        for i in 0..<20 {
+            XCTAssertTrue(buffer.append(Data("chunk-\(i)\n".utf8)))
+        }
+        buffer.finish(finalData: Data("DONE\n".utf8))
+
+        let batch = await buffer.nextBatch()
+        XCTAssertFalse(batch.isAborted)
+        XCTAssertTrue(batch.isFinished)
+        let combined = String(data: batch.data, encoding: .utf8) ?? ""
+        XCTAssertTrue(combined.hasPrefix("chunk-0\n"))
+        XCTAssertTrue(combined.hasSuffix("chunk-19\nDONE\n"))
+
+        // Subsequent reads return empty finished batch.
+        let after = await buffer.nextBatch()
+        XCTAssertTrue(after.isFinished)
+        XCTAssertTrue(after.data.isEmpty)
+        XCTAssertFalse(buffer.append(Data("late".utf8)))
+    }
+
+    func testLocalSSEStreamBufferAbortAndByteCap() async {
+        let abortBuf = LocalSSEStreamBuffer(maxBufferedBytes: 4096)
+        let reader = Task { await abortBuf.nextBatch() }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        abortBuf.abort()
+        let aborted = await reader.value
+        XCTAssertTrue(aborted.isAborted)
+        XCTAssertTrue(aborted.isFinished)
+        XCTAssertTrue(abortBuf.isAborted)
+        XCTAssertFalse(abortBuf.append(Data("after-abort".utf8)))
+
+        let cappedBuf = LocalSSEStreamBuffer(maxBufferedBytes: 1024)
+        XCTAssertTrue(cappedBuf.append(Data(repeating: 0x41, count: 600)))
+        XCTAssertFalse(cappedBuf.append(Data(repeating: 0x42, count: 600)))
+        XCTAssertTrue(cappedBuf.isAborted)
+        let overflowBatch = await cappedBuf.nextBatch()
+        XCTAssertTrue(overflowBatch.isAborted)
+    }
 }

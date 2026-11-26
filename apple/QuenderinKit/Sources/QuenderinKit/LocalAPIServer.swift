@@ -299,9 +299,20 @@ public final class LocalAPIServer: ObservableObject {
         let models = await availableModels()
         let activeID = await currentActiveModelID()
         let availableIDs = models.map(\.id)
+        let bodyData = request.body
+
+        // Decode request JSON off the main actor so large payloads cannot block macOS UI interaction.
+        let decodeResult = await Task.detached(priority: .userInitiated) {
+            LocalAPICodec.decodeChatRequest(bodyData, availableModelIDs: availableIDs, activeModelID: activeID)
+        }.value
+
+        guard isListenerActive(generation: generation) && !connection.isDisconnected && !Task.isCancelled else {
+            connection.cancel()
+            return
+        }
 
         let chatReq: LocalAPIChatRequest
-        switch LocalAPICodec.decodeChatRequest(request.body, availableModelIDs: availableIDs, activeModelID: activeID) {
+        switch decodeResult {
         case .failure(let apiError):
             connection.sendAndClose(LocalHTTPResponse.error(apiError))
             return
@@ -330,7 +341,18 @@ public final class LocalAPIServer: ObservableObject {
             }
             return
         }
-        defer { Task { await requestGate.release() } }
+        var gateReleased = false
+        let releaseGate: () async -> Void = {
+            guard !gateReleased else { return }
+            gateReleased = true
+            await self.requestGate.release()
+        }
+        defer {
+            if !gateReleased {
+                gateReleased = true
+                Task { await self.requestGate.release() }
+            }
+        }
 
         guard isListenerActive(generation: generation) else {
             connection.cancel()
@@ -389,10 +411,11 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        // Ensure the requested model is already loaded, or load the already-installed, hash-verified
+        // Ensure the requested model is already loaded, or load an already-installed, integrity-checked
         // file exclusively inside this lease — never delete, never download, never cancel another owner.
         if let loadErr = await ensureModelLoadedInsideLease(modelID: chatReq.model, lease: lease) {
             await releaseLease()
+            await releaseGate()
             if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
                 connection.sendAndClose(LocalHTTPResponse.error(loadErr))
             }
@@ -402,12 +425,14 @@ public final class LocalAPIServer: ObservableObject {
         if connection.isDisconnected || Task.isCancelled || !isListenerActive(generation: generation) {
             lease.requestCancel()
             await releaseLease()
+            await releaseGate()
             return
         }
 
         // Verify the engine actually has the requested model loaded before generating.
         guard let verifiedModelID = await lease.loadedModelID(), verifiedModelID == chatReq.model else {
             await releaseLease()
+            await releaseGate()
             if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
                 connection.sendAndClose(LocalHTTPResponse.error(
                     .serviceUnavailable("Model '\(chatReq.model)' is not loaded in Quenderin.")
@@ -441,33 +466,40 @@ public final class LocalAPIServer: ObservableObject {
             stream = try await lease.generateChat(system: systemPrompt, history: history, options: options)
         } catch InferenceError.modelNotLoaded {
             await releaseLease()
+            await releaseGate()
             connection.sendAndClose(LocalHTTPResponse.error(.serviceUnavailable("No model is loaded in Quenderin.")))
             return
         } catch InferenceError.cancelled {
             await releaseLease()
+            await releaseGate()
             return
         } catch InferenceError.generationFailed(let reason) where options.gbnfGrammar != nil && reason.lowercased().contains("grammar") {
             await releaseLease()
+            await releaseGate()
             connection.sendAndClose(LocalHTTPResponse.error(.badRequest(reason, code: "unsupported_response_format")))
             return
         } catch {
             await releaseLease()
+            await releaseGate()
             connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
             return
         }
 
         let completionID = LocalAPICodec.makeCompletionID()
         let created = Int(Date().timeIntervalSince1970)
+        let hasGrammar = options.gbnfGrammar != nil
 
         if chatReq.stream {
             await streamResponse(
                 stream: stream,
                 lease: lease,
                 releaseLease: releaseLease,
+                releaseGate: releaseGate,
                 connection: connection,
                 id: completionID,
                 created: created,
                 model: verifiedModelID,
+                hasGrammar: hasGrammar,
                 splitThinking: splitThinking,
                 includeReasoning: includeReasoning,
                 startsInsideThinking: startsInsideThinking
@@ -477,88 +509,123 @@ public final class LocalAPIServer: ObservableObject {
                 stream: stream,
                 lease: lease,
                 releaseLease: releaseLease,
+                releaseGate: releaseGate,
                 connection: connection,
                 id: completionID,
                 created: created,
                 model: verifiedModelID,
+                hasGrammar: hasGrammar,
                 splitThinking: splitThinking,
                 includeReasoning: includeReasoning,
                 startsInsideThinking: startsInsideThinking
             )
         }
         await releaseLease()
+        await releaseGate()
     }
 
     private func streamResponse(
         stream: AsyncThrowingStream<String, Error>,
         lease: ExclusiveInferenceLease,
         releaseLease: () async -> Void,
+        releaseGate: () async -> Void,
         connection: LocalAPIConnection,
         id: String,
         created: Int,
         model: String,
+        hasGrammar: Bool,
         splitThinking: Bool,
         includeReasoning: Bool,
         startsInsideThinking: Bool
     ) async {
-        guard await connection.send(LocalHTTPResponse.sseHeaders()) else {
-            lease.requestCancel()
-            await releaseLease()
-            return
-        }
-        let roleChunk = LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant")
-        guard await connection.send(roleChunk) else {
-            lease.requestCancel()
-            await releaseLease()
-            return
+        // Decouple native generation from per-piece socket writes using a coalescing buffer:
+        // 1) Pre-first-token failures (e.g. native grammar-sampler initialization failure) still
+        //    produce an honest HTTP 4xx/5xx JSON error instead of an already-committed HTTP 200 SSE.
+        // 2) The exclusive inference lease and request gate are released the instant native
+        //    generation completes, never held while draining buffered SSE frames to a slow reader.
+        let sseBuffer = LocalSSEStreamBuffer()
+        var writerTask: Task<Void, Never>?
+        var headersStarted = false
+
+        func startWriterIfNeeded() {
+            guard !headersStarted else { return }
+            headersStarted = true
+            connection.markStreamingResponse()
+            var intro = LocalHTTPResponse.sseHeaders()
+            intro.append(LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant"))
+            sseBuffer.append(intro)
+            writerTask = Task { [connection, sseBuffer] in
+                while true {
+                    let batch = await sseBuffer.nextBatch()
+                    if batch.isAborted || connection.isDisconnected {
+                        connection.cancel()
+                        return
+                    }
+                    if batch.isFinished {
+                        if !batch.data.isEmpty {
+                            connection.sendAndClose(batch.data)
+                        } else {
+                            connection.cancel()
+                        }
+                        return
+                    }
+                    if !batch.data.isEmpty {
+                        let ok = await connection.send(batch.data)
+                        if !ok {
+                            sseBuffer.abort()
+                            connection.cancel()
+                            return
+                        }
+                    }
+                }
+            }
         }
 
         var splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
         do {
             for try await piece in stream {
-                if Task.isCancelled || connection.isDisconnected {
+                if Task.isCancelled || connection.isDisconnected || sseBuffer.isAborted {
                     lease.requestCancel()
                     await releaseLease()
+                    await releaseGate()
+                    sseBuffer.abort()
+                    writerTask?.cancel()
                     return
                 }
+                startWriterIfNeeded()
+                var frameData = Data()
                 if splitThinking {
                     let delta = splitter.feed(piece)
                     if includeReasoning && !delta.thinking.isEmpty {
-                        let chunk = LocalAPICodec.encodeStreamChunk(
+                        frameData.append(LocalAPICodec.encodeStreamChunk(
                             id: id, created: created, model: model, reasoningContent: delta.thinking
-                        )
-                        guard await connection.send(chunk) else {
-                            lease.requestCancel()
-                            await releaseLease()
-                            return
-                        }
+                        ))
                     }
                     if !delta.answer.isEmpty {
-                        let chunk = LocalAPICodec.encodeStreamChunk(
+                        frameData.append(LocalAPICodec.encodeStreamChunk(
                             id: id, created: created, model: model, content: delta.answer
-                        )
-                        guard await connection.send(chunk) else {
-                            lease.requestCancel()
-                            await releaseLease()
-                            return
-                        }
+                        ))
                     }
                 } else if !piece.isEmpty {
-                    let chunk = LocalAPICodec.encodeStreamChunk(
+                    frameData.append(LocalAPICodec.encodeStreamChunk(
                         id: id, created: created, model: model, content: piece
-                    )
-                    guard await connection.send(chunk) else {
-                        lease.requestCancel()
-                        await releaseLease()
-                        return
-                    }
+                    ))
+                }
+                if !frameData.isEmpty && !sseBuffer.append(frameData) {
+                    lease.requestCancel()
+                    await releaseLease()
+                    await releaseGate()
+                    writerTask?.cancel()
+                    connection.cancel()
+                    return
                 }
             }
 
             let cap = await lease.chatCapStatus()
-            // Release the exclusive engine lease promptly once generation finishes so flushing
-            // final socket bytes cannot starve in-app chat.
+            // Release the exclusive engine lease and API gate immediately now that native
+            // generation has finished; slow socket draining below can never starve in-app chat.
             await releaseLease()
+            await releaseGate()
 
             var tailData = Data()
             if splitThinking {
@@ -581,11 +648,45 @@ public final class LocalAPIServer: ObservableObject {
             ))
             tailData.append(LocalAPICodec.streamDoneFrame)
             requestsServed += 1
-            connection.sendAndClose(tailData)
+
+            if headersStarted {
+                sseBuffer.finish(finalData: tailData)
+                await writerTask?.value
+            } else {
+                var full = LocalHTTPResponse.sseHeaders()
+                full.append(LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant"))
+                full.append(tailData)
+                connection.sendAndClose(full)
+            }
+        } catch InferenceError.cancelled {
+            lease.requestCancel()
+            await releaseLease()
+            await releaseGate()
+            sseBuffer.abort()
+            writerTask?.cancel()
+            connection.cancel()
+        } catch InferenceError.generationFailed(let reason) where hasGrammar && reason.lowercased().contains("grammar") {
+            lease.requestCancel()
+            await releaseLease()
+            await releaseGate()
+            sseBuffer.abort()
+            writerTask?.cancel()
+            if !headersStarted && !connection.isDisconnected {
+                connection.sendAndClose(LocalHTTPResponse.error(.badRequest(reason, code: "unsupported_response_format")))
+            } else {
+                connection.cancel()
+            }
         } catch {
             lease.requestCancel()
             await releaseLease()
-            connection.cancel()
+            await releaseGate()
+            sseBuffer.abort()
+            writerTask?.cancel()
+            if !headersStarted && !connection.isDisconnected {
+                connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
+            } else {
+                connection.cancel()
+            }
         }
     }
 
@@ -593,10 +694,12 @@ public final class LocalAPIServer: ObservableObject {
         stream: AsyncThrowingStream<String, Error>,
         lease: ExclusiveInferenceLease,
         releaseLease: () async -> Void,
+        releaseGate: () async -> Void,
         connection: LocalAPIConnection,
         id: String,
         created: Int,
         model: String,
+        hasGrammar: Bool,
         splitThinking: Bool,
         includeReasoning: Bool,
         startsInsideThinking: Bool
@@ -609,6 +712,7 @@ public final class LocalAPIServer: ObservableObject {
                 if Task.isCancelled || connection.isDisconnected {
                     lease.requestCancel()
                     await releaseLease()
+                    await releaseGate()
                     return
                 }
                 if splitThinking {
@@ -627,11 +731,13 @@ public final class LocalAPIServer: ObservableObject {
             if Task.isCancelled || connection.isDisconnected {
                 lease.requestCancel()
                 await releaseLease()
+                await releaseGate()
                 return
             }
             let cap = await lease.chatCapStatus()
-            // Release the exclusive engine lease before flushing the buffered HTTP response.
+            // Release the exclusive engine lease and API gate before flushing the HTTP response.
             await releaseLease()
+            await releaseGate()
 
             let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
             let body = LocalAPICodec.encodeChatCompletion(
@@ -649,9 +755,22 @@ public final class LocalAPIServer: ObservableObject {
         } catch is CancellationError {
             lease.requestCancel()
             await releaseLease()
+            await releaseGate()
+        } catch InferenceError.cancelled {
+            lease.requestCancel()
+            await releaseLease()
+            await releaseGate()
+        } catch InferenceError.generationFailed(let reason) where hasGrammar && reason.lowercased().contains("grammar") {
+            lease.requestCancel()
+            await releaseLease()
+            await releaseGate()
+            if !connection.isDisconnected {
+                connection.sendAndClose(LocalHTTPResponse.error(.badRequest(reason, code: "unsupported_response_format")))
+            }
         } catch {
             lease.requestCancel()
             await releaseLease()
+            await releaseGate()
             if !connection.isDisconnected {
                 connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
             }
@@ -722,7 +841,7 @@ public final class LocalAPIServer: ObservableObject {
         return entry
     }
 
-    /// Loads an already-installed, hash-verified model exclusively inside `lease`.
+    /// Loads an already-installed, integrity-checked model exclusively inside `lease`.
     /// Never calls `onboarding.install`, never deletes a corrupt file, never starts a download,
     /// and never calls `requestCancel()` outside the exclusive lease.
     private func ensureModelLoadedInsideLease(
@@ -742,7 +861,8 @@ public final class LocalAPIServer: ObservableObject {
             )
         }
 
-        // Hash-verify the installed file(s) before touching the currently loaded model.
+        // Verify the installed file(s) before touching the currently loaded model
+        // (SHA-256 digest when pinned, GGUF header otherwise).
         // Failures return 404 without deleting files or triggering downloads.
         do {
             try await ModelArtifactSet.inBackground {
@@ -810,6 +930,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
     private let lock = NSLock()
     private var buffer = Data()
     private var parsedRequest = false
+    private var streamingResponse = false
     private var sendingFinal = false
     private var finished = false
     private var disconnected = false
@@ -844,6 +965,12 @@ private final class LocalAPIConnection: @unchecked Sendable {
         if alreadyDisconnected {
             task.cancel()
         }
+    }
+
+    func markStreamingResponse() {
+        lock.lock()
+        streamingResponse = true
+        lock.unlock()
     }
 
     func setCancelInferenceHook(_ hook: (@Sendable () -> Void)?) {
@@ -899,9 +1026,11 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 self.cancelReadTimeout(markParsed: true)
                 self.buffer.removeAll(keepingCapacity: false)
                 self.onRequest?(request)
-                // Keep a pending receive open so an orderly peer close (EOF) cancels generation
-                // immediately, even during buffered non-streaming responses.
-                self.monitorPeerDisconnect()
+                // If the peer has not already half-closed its write side (`shutdown(SHUT_WR)`),
+                // keep a pending receive open so transport errors/resets cancel generation promptly.
+                if !isComplete {
+                    self.monitorPeerDisconnect()
+                }
             case .error(let parseErr):
                 self.cancelReadTimeout(markParsed: true)
                 self.sendAndClose(LocalHTTPResponse.error(.fromParseError(parseErr)))
@@ -933,16 +1062,24 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 return
             }
             if isComplete {
+                // TCP FIN (`isComplete == true`, `error == nil`) can be a valid write-half close
+                // (`shutdown(SHUT_WR)`) from a client that is still reading the reply. Never cancel
+                // a valid half-closed request on read EOF alone; stop re-arming `receive` and, when
+                // streaming SSE with no write in flight, send a harmless SSE comment probe so a
+                // fully closed peer elicits TCP RST immediately while a half-closed reader ignores it.
                 self.lock.lock()
-                let flushingFinal = self.sendingFinal
+                let shouldProbeSSE = self.streamingResponse && !self.sendingFinal && !self.disconnected && self.pendingWrite == nil
                 self.lock.unlock()
-                if !flushingFinal {
-                    self.markDisconnected()
-                    self.connection.cancel()
+                if shouldProbeSSE {
+                    self.connection.send(content: Data(":\n\n".utf8), completion: .contentProcessed { @Sendable [weak self] probeError in
+                        if probeError != nil {
+                            self?.markDisconnected()
+                        }
+                    })
                 }
                 return
             }
-            // Discard any pipelined trailing bytes (one request per connection) and keep watching for EOF.
+            // Discard any pipelined trailing bytes (one request per connection) and keep watching.
             self.monitorPeerDisconnect()
         }
     }

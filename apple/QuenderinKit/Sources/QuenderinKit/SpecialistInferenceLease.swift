@@ -80,8 +80,21 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
     }
     public func knownExecutionProfiles() async -> [InferenceExecutionProfile] { await underlying.knownExecutionProfiles() }
     public nonisolated func requestCancel() {
-        invalidateCapStatus()
-        underlying.requestCancel()
+        exclusiveOwnerState.withLock { owner in
+            guard owner == nil else { return }
+            self.invalidateCapStatus()
+            self.underlying.requestCancel()
+        }
+    }
+    /// Atomically checks exclusive lease ownership and issues cancellation under the same lock
+    /// that `releaseExclusive` acquires before releasing the lease, so a late disconnect callback
+    /// can never cancel a subsequent owner's generation.
+    private nonisolated func requestCancel(forExclusiveOwner ownerID: UUID) {
+        exclusiveOwnerState.withLock { owner in
+            guard owner == ownerID else { return }
+            self.invalidateCapStatus()
+            self.underlying.requestCancel()
+        }
     }
     private func begin() throws { guard held == nil, !automaticSwitching, exclusiveOwner == nil else { throw SpecialistCoordinationError.busy }; starts += 1 }
     private func end() {
@@ -157,7 +170,33 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         exclusiveOwner = ownerID
         exclusiveOwnerState.withLock { $0 = ownerID }
         let cleanup = SpecialistInferenceLease { await self.releaseExclusive(ownerID) }
-        return ExclusiveInferenceLease(
+        return makeExclusiveLease(ownerID: ownerID, cleanup: cleanup)
+    }
+    public func acquireManualModelSwitchLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
+        guard held == nil, !automaticSwitching else {
+            throw SpecialistCoordinationError.busy
+        }
+        let clampedMs = max(0, Int(timeoutSeconds * 1000))
+        let deadline = ContinuousClock.now + .milliseconds(clampedMs)
+        while exclusiveOwner != nil || starts > 0 {
+            try Task.checkCancellation()
+            if held != nil || automaticSwitching || ContinuousClock.now >= deadline {
+                throw SpecialistCoordinationError.busy
+            }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        try Task.checkCancellation()
+        guard held == nil, !automaticSwitching else {
+            throw SpecialistCoordinationError.busy
+        }
+        let ownerID = UUID()
+        exclusiveOwner = ownerID
+        exclusiveOwnerState.withLock { $0 = ownerID }
+        let cleanup = SpecialistInferenceLease { await self.releaseExclusive(ownerID) }
+        return makeExclusiveLease(ownerID: ownerID, cleanup: cleanup)
+    }
+    private func makeExclusiveLease(ownerID: UUID, cleanup: SpecialistInferenceLease) -> ExclusiveInferenceLease {
+        ExclusiveInferenceLease(
             loadedModelID: { [self] in await self.exclusiveLoadedModelID(owner: ownerID) },
             loadedExecutionProfile: { [self] system, history, options in
                 await self.exclusiveLoadedExecutionProfile(owner: ownerID, system: system, history: history, options: options)
@@ -167,10 +206,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
             },
             chatCapStatus: { [self] in await self.exclusiveChatCapStatus(owner: ownerID) },
             requestCancel: { [self] in
-                let stillOwner = self.exclusiveOwnerState.withLock { $0 == ownerID }
-                if stillOwner {
-                    self.requestCancel()
-                }
+                self.requestCancel(forExclusiveOwner: ownerID)
             },
             release: { try? await cleanup.resume() },
             load: { [self] model, fileURL in

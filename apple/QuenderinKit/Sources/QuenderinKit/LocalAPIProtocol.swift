@@ -906,21 +906,19 @@ public enum LocalAPICodec {
     /// keys by exact UTF-8 bytes (never collapsing canonically equivalent Unicode spellings like
     /// `"\u{00e9}"` and `"e\u{0301}"` in a Swift `[String: ...]` dictionary) while keeping `Bool`
     /// distinct from numeric `0`/`1` across Darwin and Linux.
+    /// Maintains a `[UInt8]: Int` byte-keyed index alongside ordered entries so wide JSON objects
+    /// parse and look up keys in O(1) amortized time instead of quadratic scans.
     private struct WireJSONObject {
         let entries: [(key: String, utf8Key: [UInt8], value: WireJSONValue)]
+        let indexByUTF8Key: [[UInt8]: Int]
 
         func hasExactKey(_ key: String) -> Bool {
-            let target = Array(key.utf8)
-            return entries.contains { $0.utf8Key == target }
+            indexByUTF8Key[Array(key.utf8)] != nil
         }
 
         func exactValue(forKey key: String) -> WireJSONValue? {
-            let target = Array(key.utf8)
-            var found: WireJSONValue? = nil
-            for entry in entries where entry.utf8Key == target {
-                found = entry.value
-            }
-            return found
+            guard let idx = indexByUTF8Key[Array(key.utf8)] else { return nil }
+            return entries[idx].value
         }
     }
 
@@ -1021,9 +1019,10 @@ public enum LocalAPICodec {
             pos += 1 // '{'
             skipWS()
             var entries: [(key: String, utf8Key: [UInt8], value: WireJSONValue)] = []
+            var indexByUTF8Key: [[UInt8]: Int] = [:]
             if pos < bytes.count && bytes[pos] == 0x7D {
                 pos += 1
-                return .object(WireJSONObject(entries: entries))
+                return .object(WireJSONObject(entries: entries, indexByUTF8Key: indexByUTF8Key))
             }
             while true {
                 guard pos < bytes.count && bytes[pos] == 0x22,
@@ -1034,16 +1033,17 @@ public enum LocalAPICodec {
                 skipWS()
                 guard let val = parseValue(depth: depth) else { return nil }
                 let utf8Key = Array(key.utf8)
-                if let existingIdx = entries.firstIndex(where: { $0.utf8Key == utf8Key }) {
+                if let existingIdx = indexByUTF8Key[utf8Key] {
                     entries[existingIdx] = (key, utf8Key, val)
                 } else {
+                    indexByUTF8Key[utf8Key] = entries.count
                     entries.append((key, utf8Key, val))
                 }
                 skipWS()
                 guard pos < bytes.count else { return nil }
                 if bytes[pos] == 0x7D {
                     pos += 1
-                    return .object(WireJSONObject(entries: entries))
+                    return .object(WireJSONObject(entries: entries, indexByUTF8Key: indexByUTF8Key))
                 }
                 guard bytes[pos] == 0x2C else { return nil }
                 pos += 1
@@ -1240,5 +1240,143 @@ public enum LocalHTTPResponse {
             + "X-Accel-Buffering: no\r\n"
             + "\r\n"
         return Data(header.utf8)
+    }
+}
+
+/// Coalescing byte queue that decouples native token generation from socket SSE writes so a slow
+/// reader never retains the exclusive inference lease after native generation completes.
+/// Pure Foundation + deterministic -> unit-testable on Linux.
+public final class LocalSSEStreamBuffer: @unchecked Sendable {
+    public struct Batch: Sendable, Equatable {
+        public let data: Data
+        public let isFinished: Bool
+        public let isAborted: Bool
+
+        public init(data: Data, isFinished: Bool, isAborted: Bool) {
+            self.data = data
+            self.isFinished = isFinished
+            self.isAborted = isAborted
+        }
+    }
+
+    private let lock = NSLock()
+    private let maxBufferedBytes: Int
+    private var pending = Data()
+    private var finished = false
+    private var aborted = false
+    private var waiter: CheckedContinuation<Batch, Never>?
+
+    public init(maxBufferedBytes: Int = 8 * 1024 * 1024) {
+        self.maxBufferedBytes = max(1024, maxBufferedBytes)
+    }
+
+    public var isAborted: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return aborted
+    }
+
+    /// Enqueues encoded SSE bytes without blocking on socket I/O. Returns `false` if already
+    /// aborted, already finished, or if `maxBufferedBytes` would be exceeded.
+    @discardableResult
+    public func append(_ data: Data) -> Bool {
+        guard !data.isEmpty else { return !isAborted }
+        var resumeWaiter: CheckedContinuation<Batch, Never>?
+        var batchToResume: Batch?
+        lock.lock()
+        if aborted || finished {
+            lock.unlock()
+            return false
+        }
+        if pending.count + data.count > maxBufferedBytes {
+            aborted = true
+            pending.removeAll(keepingCapacity: false)
+            resumeWaiter = waiter
+            waiter = nil
+            batchToResume = Batch(data: Data(), isFinished: true, isAborted: true)
+            lock.unlock()
+            resumeWaiter?.resume(returning: batchToResume!)
+            return false
+        }
+        pending.append(data)
+        if let w = waiter {
+            waiter = nil
+            let out = pending
+            pending = Data()
+            resumeWaiter = w
+            batchToResume = Batch(data: out, isFinished: false, isAborted: false)
+        }
+        lock.unlock()
+        if let w = resumeWaiter, let batch = batchToResume {
+            w.resume(returning: batch)
+        }
+        return true
+    }
+
+    /// Appends terminal SSE bytes and signals that native generation has completed.
+    public func finish(finalData: Data = Data()) {
+        var resumeWaiter: CheckedContinuation<Batch, Never>?
+        var batchToResume: Batch?
+        lock.lock()
+        if !aborted && !finished {
+            if !finalData.isEmpty {
+                pending.append(finalData)
+            }
+            finished = true
+            if let w = waiter {
+                waiter = nil
+                let out = pending
+                pending = Data()
+                resumeWaiter = w
+                batchToResume = Batch(data: out, isFinished: true, isAborted: false)
+            }
+        }
+        lock.unlock()
+        if let w = resumeWaiter, let batch = batchToResume {
+            w.resume(returning: batch)
+        }
+    }
+
+    /// Aborts pending delivery (e.g. client disconnect or write timeout) and wakes any waiting reader.
+    public func abort() {
+        var resumeWaiter: CheckedContinuation<Batch, Never>?
+        lock.lock()
+        aborted = true
+        pending.removeAll(keepingCapacity: false)
+        resumeWaiter = waiter
+        waiter = nil
+        lock.unlock()
+        resumeWaiter?.resume(returning: Batch(data: Data(), isFinished: true, isAborted: true))
+    }
+
+    /// Awaits the next coalesced batch of bytes for the socket writer.
+    public func nextBatch() async -> Batch {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                lock.lock()
+                if aborted {
+                    lock.unlock()
+                    continuation.resume(returning: Batch(data: Data(), isFinished: true, isAborted: true))
+                    return
+                }
+                if !pending.isEmpty {
+                    let out = pending
+                    pending = Data()
+                    let done = finished
+                    lock.unlock()
+                    continuation.resume(returning: Batch(data: out, isFinished: done, isAborted: false))
+                    return
+                }
+                if finished {
+                    lock.unlock()
+                    continuation.resume(returning: Batch(data: Data(), isFinished: true, isAborted: false))
+                    return
+                }
+                waiter = continuation
+                lock.unlock()
+            }
+        } onCancel: {
+            self.abort()
+        }
     }
 }

@@ -59,6 +59,7 @@ public final class AutomaticModelSelection {
         self.contextLengthChoice = contextLengthChoice
     }
     public func prepare(prompt: String, current: ModelEntry?, history: [ChatMessage]? = nil, options: GenerationOptions? = nil,
+                        resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
                         isCurrent: @escaping @MainActor @Sendable () -> Bool = { true }) async throws -> ModelEntry? {
         guard preferences.enabled else { return current }
         let revision = preferences.revision
@@ -66,7 +67,8 @@ public final class AutomaticModelSelection {
         failures = failures.filter { now - $0.value < 600_000 }
         let records = await store.samples(nowMs: now)
         let tier = ChatTier.of(model: current)
-        let request = (system: tier.systemPrompt, history: history ?? [ChatMessage(role: .user, text: prompt)], options: options ?? tier.chatOptions)
+        let currentOptions = resolveOptionsForModel?(current) ?? options ?? tier.chatOptions
+        let request = (system: tier.systemPrompt, history: history ?? [ChatMessage(role: .user, text: prompt)], options: currentOptions)
         let userContextChoice: ContextLengthChoice
         if let contextLengthChoice {
             userContextChoice = contextLengthChoice()
@@ -98,14 +100,29 @@ public final class AutomaticModelSelection {
         let plans: [Plan] = installed.compactMap { model in
             guard failures[model.id] == nil, let artifact = InferencePerformanceIdentity.artifact(model) else { return nil }
             let isLoaded = currentLoaded && model.id == current?.id
-            let receipt = (isLoaded ? actual : nil) ?? known.last {
-                $0.modelID == model.id && $0.artifactSHA256 == artifact && $0.runtimeID == InferencePerformanceRuntime.id
-                    && $0.backendID == InferencePerformanceIdentity.backendID
-            }
-            // A fresh process can reconstruct only the two load plans the current engine supports.
-            // Historical numbers are usable solely after an exact artifact/runtime/backend/device
-            // configuration identity match; no arbitrary historical environment is trusted.
+            // A fresh process can reconstruct only the load plans the current engine supports under
+            // `userContextChoice`. An unloaded candidate's cached execution profile is usable only
+            // when it matches the active `userContextChoice` (or an exact supported configuration),
+            // never overriding a newly selected context choice with a stale receipt.
             let supported = Self.supportedConfigurations(model: model, budget: budget, contextLengthChoice: userContextChoice)
+            let receipt: InferenceExecutionProfile?
+            if isLoaded {
+                receipt = actual
+            } else {
+                receipt = known.last { profile in
+                    guard profile.modelID == model.id
+                            && profile.artifactSHA256 == artifact
+                            && profile.runtimeID == InferencePerformanceRuntime.id
+                            && profile.backendID == InferencePerformanceIdentity.backendID else {
+                        return false
+                    }
+                    if let cachedChoice = profile.contextLengthChoice {
+                        return cachedChoice == userContextChoice
+                    }
+                    return userContextChoice == .auto
+                        || supported.contains { $0.context == profile.contextTokens && $0.environment == profile.environmentID }
+                }
+            }
             let historical = supported.first { config in records.contains {
                 $0.modelID == model.id && $0.artifactSHA256 == artifact && $0.runtimeID == InferencePerformanceRuntime.id
                     && $0.backendID == InferencePerformanceIdentity.backendID && $0.environmentID == config.environment
@@ -118,9 +135,11 @@ public final class AutomaticModelSelection {
         // Determine the preferred family only after resource, runtime, context and quality gates.
         // A larger but ineligible coder must not exclude a viable current general text model.
         let resourceEligible = plans.filter { plan in
-            runtimeAvailable(plan.model) && ModelRuntimeSupport.supports(plan.model)
+            let candidateMaxTokens = (resolveOptionsForModel?(plan.model) ?? options ?? ChatTier.of(model: plan.model).chatOptions).maxTokens
+            let candidateRequiredContext = promptTokens + candidateMaxTokens
+            return runtimeAvailable(plan.model) && ModelRuntimeSupport.supports(plan.model)
                 && (plan.isLoaded || MemoryFitness.check(model: plan.model, totalGB: budget, freeGB: replacementFreeGB).canLoad)
-                && requiredContext <= plan.config.context && available.freeDiskBytes >= 67_108_864
+                && candidateRequiredContext <= plan.config.context && available.freeDiskBytes >= 67_108_864
                 && ChatTier.of(model: plan.model) == requiredTier && !ModelRuntimeSupport.isMuse(plan.model)
         }
         let preferred = ModelRouter.preferredFamilies(for: task).first { prefix in resourceEligible.contains { $0.model.id.hasPrefix(prefix) } }
@@ -171,7 +190,7 @@ public final class AutomaticModelSelection {
         guard decision.modelID != current?.id else { return current }
         do {
             let targetTier = ChatTier.of(model: selected)
-            var targetOptions = options ?? targetTier.chatOptions
+            var targetOptions = resolveOptionsForModel?(selected) ?? options ?? targetTier.chatOptions
             if ModelRuntimeSupport.isBeam(selected) || ModelRuntimeSupport.isJais(selected) || ModelRuntimeSupport.isMuse(selected) {
                 targetOptions.gbnfGrammar = nil
             }

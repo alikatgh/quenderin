@@ -64,15 +64,19 @@ public struct InferenceExecutionProfile: Sendable, Equatable {
     public let contextTokens: Int
     public let cacheMode: String
     public let promptTokens: Int?
+    public let contextLengthChoice: ContextLengthChoice?
     public init(modelID: String, artifactSHA256: String, runtimeID: String, backendID: String,
-                environmentID: String, contextTokens: Int, cacheMode: String = "cold", promptTokens: Int? = nil) {
+                environmentID: String, contextTokens: Int, cacheMode: String = "cold", promptTokens: Int? = nil,
+                contextLengthChoice: ContextLengthChoice? = nil) {
         self.modelID = modelID; self.artifactSHA256 = artifactSHA256; self.runtimeID = runtimeID
         self.backendID = backendID; self.environmentID = environmentID; self.contextTokens = contextTokens
         self.cacheMode = cacheMode; self.promptTokens = promptTokens
+        self.contextLengthChoice = contextLengthChoice
     }
     func nextRequest(cacheMode: String, promptTokens: Int?) -> InferenceExecutionProfile {
         .init(modelID: modelID, artifactSHA256: artifactSHA256, runtimeID: runtimeID, backendID: backendID,
-            environmentID: environmentID, contextTokens: contextTokens, cacheMode: cacheMode, promptTokens: promptTokens)
+            environmentID: environmentID, contextTokens: contextTokens, cacheMode: cacheMode, promptTokens: promptTokens,
+            contextLengthChoice: contextLengthChoice)
     }
 }
 
@@ -160,6 +164,11 @@ public protocol InferenceEngine: Sendable {
     /// Acquires exclusive inference ownership (waiting up to `timeoutSeconds` if busy).
     /// Used by the macOS opt-in local API so chat and API requests never run the model concurrently.
     func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease
+
+    /// Reserves exclusive ownership for a manual in-app model switch before cancelling ordinary
+    /// chat or changing loading state. Waits up to `timeoutSeconds` if an active exclusive API
+    /// turn currently owns the engine without cancelling that API turn.
+    func acquireManualModelSwitchLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease
 }
 
 /// Exclusive inference access granted by `InferenceEngine.acquireExclusiveInferenceLease(timeoutSeconds:)`.
@@ -224,7 +233,10 @@ public extension InferenceEngine {
     func hasActiveInference() async -> Bool { false }
     func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool { false }
     func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
-        ExclusiveInferenceLease(
+        let cancelGate = NSLock()
+        final class LeaseState: @unchecked Sendable { var active = true }
+        let state = LeaseState()
+        return ExclusiveInferenceLease(
             loadedModelID: { await self.loadedModelID() },
             loadedExecutionProfile: { system, history, options in
                 await self.loadedExecutionProfile(system: system, history: history, options: options)
@@ -233,8 +245,17 @@ public extension InferenceEngine {
                 try await self.generateChat(system: system, history: history, options: options)
             },
             chatCapStatus: { await self.chatCapStatus() },
-            requestCancel: { self.requestCancel() },
-            release: {},
+            requestCancel: {
+                cancelGate.lock()
+                defer { cancelGate.unlock() }
+                guard state.active else { return }
+                self.requestCancel()
+            },
+            release: {
+                cancelGate.lock()
+                state.active = false
+                cancelGate.unlock()
+            },
             load: { model, url in
                 try await self.load(model: model, at: url)
             },
@@ -245,6 +266,9 @@ public extension InferenceEngine {
                 await self.chatPromptStartsInsideThinking(system: system, history: history, options: options)
             }
         )
+    }
+    func acquireManualModelSwitchLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
+        try await acquireExclusiveInferenceLease(timeoutSeconds: timeoutSeconds)
     }
 }
 
