@@ -177,11 +177,17 @@ def build_desktop(work: Path) -> dict:
     else:
         fetch(source)
     build = work / "build"
+    platform_flags = []
+    if target.startswith("win-"):
+        platform_flags.append("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
+    elif target.startswith("mac-"):
+        arch = "x86_64" if target.endswith("x64") else "arm64"
+        platform_flags.extend(["-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3", f"-DCMAKE_OSX_ARCHITECTURES={arch}"])
     subprocess.run([
         "cmake", "-S", str(ROOT / "native/speech"), "-B", str(build),
         f"-DTRANSCRIBE_SOURCE={source}", "-DCMAKE_BUILD_TYPE=Release",
         "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_BUILD_RPATH_USE_ORIGIN=ON",
-        "-DGGML_NATIVE=OFF", "-DGGML_OPENMP=OFF",
+        "-DGGML_NATIVE=OFF", "-DGGML_OPENMP=OFF", "-DGGML_BACKEND_DL=OFF", *platform_flags,
     ], check=True)
     subprocess.run([
         "cmake", "--build", str(build), "--config", "Release",

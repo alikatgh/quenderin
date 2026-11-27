@@ -90,18 +90,18 @@ export function Model({ catalog, downloads, settings, onAction, onUse, onSkip, o
         {[...models.picks, ...(extra ? [{ row: extra, role: null }] : [])].map(({ row, role }) => {
           const checked = row.model.id === id;
           return (
-            <label key={row.model.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 sm:px-4 ${checked ? "border-qteal-600 bg-qteal-50 dark:bg-qteal-900/25" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}>
+            <label key={row.model.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 sm:px-4 ${checked ? "border-qteal-600 bg-qteal-50 dark:bg-qteal-600/40" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}>
               <input type="radio" name={group} checked={checked} onChange={() => select(row.model.id)} className="mt-1 accent-qteal-600" />
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2 text-sm font-semibold">
                   {role && <Tag>{ROLE_KEYS[role]}</Tag>}
-                  {row.model.name}
+                  <bdi>{row.model.name}</bdi>
                 </span>
                 {checked && <span className="mt-1 block text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{row.model.description}</span>}
                 {row.engine.compatibility !== "supported" && <span className="mt-1 block text-xs text-amber-800 dark:text-amber-300">Needs newer speech engine</span>}
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1 text-xs tabular-nums">
-                {sizeOf(row.model)}
+                <bdi>{sizeOf(row.model)}</bdi>
                 <span className="flex items-center gap-2">
                   <GradeChip {...row.englishGrade} dense />
                   <SpeedBars level={row.speedLevel} />

@@ -10,6 +10,8 @@ import { nativeWorkloads, type NativeWorkloadLease } from './nativeWorkloads.js'
 export const SPEECH_SAMPLE_RATE_HZ = 16000;
 export const SPEECH_MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 export const SPEECH_TRANSCRIPTION_TIMEOUT_MS = 5 * 60 * 1000;
+export const SPEECH_CAPTURE_TEMP_PREFIX = 'quenderin-speech-capture-';
+export const SPEECH_CAPTURE_FILENAME = 'capture.wav';
 const STDOUT_LIMIT = 256 * 1024;
 const STDERR_LIMIT = 64 * 1024;
 
@@ -941,8 +943,8 @@ export class HexSpeechAdapter {
             if (Buffer.isBuffer(request.wav)) {
                 validateWavBuffer(request.wav);
                 // The CLI takes a file path. Keep captured audio private and delete it on every exit.
-                temporaryDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'quenderin-speech-'));
-                wavPath = await fs.promises.realpath(temporaryDirectory).then(directory => path.join(directory, 'capture.wav'));
+                temporaryDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), SPEECH_CAPTURE_TEMP_PREFIX));
+                wavPath = await fs.promises.realpath(temporaryDirectory).then(directory => path.join(directory, SPEECH_CAPTURE_FILENAME));
                 await fs.promises.writeFile(wavPath, request.wav, { mode: 0o600, flag: 'wx', signal: request.signal });
             } else {
                 wavPath = await this.readVerifiedWavPath(request.wav);

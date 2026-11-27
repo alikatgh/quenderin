@@ -226,6 +226,8 @@ export function SettingsArea({ voice, focusVoice, onBack, currentSettings, onSav
                 <div className="flex items-center justify-between mb-10">
                     <div className="flex items-center gap-4">
                         <button
+                            type="button"
+                            aria-label="Back to chat"
                             onClick={onBack}
                             className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/40"
                         >

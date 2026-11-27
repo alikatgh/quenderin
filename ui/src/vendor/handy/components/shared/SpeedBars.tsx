@@ -16,7 +16,7 @@ export const SpeedBars: React.FC<SpeedBarsProps> = ({
   level,
   className = "",
 }) => (
-  <span role="img" aria-label={`Speed ${level} of 4`} className={`inline-flex items-end gap-[2px] h-[14px] ${className}`}>
+  <span dir="ltr" role="img" aria-label={`Speed ${level} of 4`} className={`inline-flex items-end gap-[2px] h-[14px] ${className}`}>
     {HEIGHTS.map((height, i) => (
       <i
         key={i}

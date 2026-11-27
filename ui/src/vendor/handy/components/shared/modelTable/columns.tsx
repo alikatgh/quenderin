@@ -9,7 +9,7 @@ import { SpeedBars } from "../SpeedBars.js";
 import { gradeBand } from "./rubric.js";
 import type { TableModel } from "./context.js";
 
-const columnClass = "px-2 py-2 text-center whitespace-nowrap";
+const columnClass = "px-1.5 py-2 sm:px-2 text-center whitespace-nowrap";
 export const Codes = () => <>
   <th scope="col" className={columnClass} title="English accuracy">EN</th>
   <th scope="col" className={columnClass}>SPEED</th>
@@ -26,6 +26,6 @@ export const Values = ({ grading, entry }: { grading: Grading; entry: TableModel
     <td className={columnClass} title={wait == null ? "Unmeasured" : `${wait.toFixed(2)} s after a 30-second dictation`}>
       <SpeedBars level={grading.speed(entry.id)} />
     </td>
-    <td className={`${columnClass} text-xs tabular-nums`}>{formatModelSize(entry.size)}</td>
+    <td className={`${columnClass} text-xs tabular-nums`}><bdi>{formatModelSize(entry.size)}</bdi></td>
   </>;
 };
