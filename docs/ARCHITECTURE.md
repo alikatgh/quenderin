@@ -10,7 +10,7 @@ this codebase exists to make that practical, reliable, and usable.
 
 | | **Desktop** (this repo's `src/` + `ui/`) | **Mobile** (`apple/`) |
 |---|---|---|
-| Status | Shipping prototype | In active development |
+| Status | Shipping prototype | Shipping on the App Store: iPhone 0.6.3 and Mac 0.6.1 (checked 27 November 2026); Android in Play closed test (0.2.0) |
 | Stack | Electron + TypeScript + React/Vite | Native Swift (iOS), Kotlin (Android) |
 | Engine | `node-llama-cpp` (Node binding to llama.cpp) | `LlamaEngine` (Swift → llama.cpp C API) |
 | Role | Proves the concept; the testbed | The real destination — AI in your pocket |
