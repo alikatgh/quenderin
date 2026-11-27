@@ -4,6 +4,8 @@
  * Prevents garbled output when model emits template markers.
  */
 
+const XML_TOOL_CALL_PATTERN = /<tool_call>[\s\S]*?<\/tool_call>\s*/g;
+
 const CONTROL_TOKEN_PATTERNS: RegExp[] = [
     // ChatML markers
     /<\|im_start\|>\s*(?:system|assistant|user|tool)?\s*\n?/gi,
@@ -15,7 +17,7 @@ const CONTROL_TOKEN_PATTERNS: RegExp[] = [
     // Legacy EOS
     /<\/s>/gi,
     // Tool call XML blocks (strip entire block)
-    /<tool_call>[\s\S]*?<\/tool_call>\s*/g,
+    XML_TOOL_CALL_PATTERN,
     // Stray BOS
     /<s>/gi,
     // Header tokens from Llama 3+
@@ -34,9 +36,10 @@ export function stripControlTokens(content: string): string {
     return stripControlTokensWithOptions(content, { trim: true });
 }
 
-export function stripControlTokensWithOptions(content: string, options: { trim?: boolean } = {}): string {
+export function stripControlTokensWithOptions(content: string, options: { trim?: boolean; preserveToolMarkup?: boolean } = {}): string {
     const sanitized = CONTROL_TOKEN_PATTERNS.reduce(
-        (result, pattern) => result.replace(pattern, ''),
+        (result, pattern) => options.preserveToolMarkup && pattern === XML_TOOL_CALL_PATTERN
+            ? result : result.replace(pattern, ''),
         content
     );
 

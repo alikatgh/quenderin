@@ -1821,7 +1821,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 budgets: { thoughtTokens: jais ? 256 : opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
-                    const clean = stripControlTokensWithOptions(toolFilter ? toolFilter.feed(chunk) : chunk, { trim: false });
+                    const clean = stripControlTokensWithOptions(toolFilter ? toolFilter.feed(chunk) : chunk, {
+                        trim: false, preserveToolMarkup: plainChat,
+                    });
                     if (!clean) return;
 
                     if (firstTokenTime === null) firstTokenTime = performance.now();
@@ -1865,7 +1867,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
 
             if (toolFilter && onToken) {
-                const tail = stripControlTokensWithOptions(toolFilter.flush(), { trim: false });
+                const tail = stripControlTokensWithOptions(toolFilter.flush(), { trim: false, preserveToolMarkup: true });
                 if (tail) {
                     if (firstTokenTime === null) firstTokenTime = performance.now();
                     tokenCount++;
@@ -1885,7 +1887,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             const plainResponse = plainChat
                 ? (() => { const filter = new ToolCallStreamFilter(); return filter.feed(response) + filter.flush(); })()
                 : response;
-            let finalResponse = stripControlTokens(plainResponse);
+            let finalResponse = stripControlTokensWithOptions(plainResponse, { preserveToolMarkup: plainChat });
 
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {
                 const calls = parseToolCalls(finalResponse);
@@ -1923,7 +1925,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
             // Hit the round cap (or a non-empty parse) with tool markup still present → strip it so the
             // user never sees raw tool-call JSON as the answer.
-            if (hasToolCalls(finalResponse)) finalResponse = stripToolCalls(finalResponse);
+            if (!plainChat && hasToolCalls(finalResponse)) finalResponse = stripToolCalls(finalResponse);
 
             // Without a streaming callback nothing incremented tokenCount, so meta reported
             // "0 tokens @ 0 tok/s" for a real answer (the CLI's non-streamed path, the smoke

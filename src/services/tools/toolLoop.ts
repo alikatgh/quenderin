@@ -48,36 +48,51 @@ export function stripToolCalls(text: string): string {
         .trim();
 }
 
-/** Suppress XML tool calls before streaming plain chat, including split or unfinished tags. */
+/** Suppress complete XML calls while preserving literal tags and unfinished examples. */
 export class ToolCallStreamFilter {
     private pending = '';
-    private insideCall = false;
 
     feed(chunk: string): string {
         this.pending += chunk;
         let visible = '';
+        const open = '<tool_call>';
+        const name = '<name>';
+        const close = '</tool_call>';
         while (this.pending) {
-            const marker = this.insideCall ? '</tool_call>' : '<tool_call>';
-            const index = this.pending.search(this.insideCall ? /<\/tool_call>/i : /<tool_call>/i);
-            if (index >= 0) {
-                if (!this.insideCall) visible += this.pending.slice(0, index);
-                this.pending = this.pending.slice(index + marker.length);
-                this.insideCall = !this.insideCall;
-                continue;
+            const start = this.pending.search(/<tool_call>/i);
+            if (start < 0) {
+                let held = Math.min(open.length - 1, this.pending.length);
+                while (held > 0 && !open.startsWith(this.pending.slice(-held).toLowerCase())) held--;
+                const end = this.pending.length - held;
+                visible += this.pending.slice(0, end);
+                this.pending = this.pending.slice(end);
+                break;
             }
 
-            let held = Math.min(marker.length - 1, this.pending.length);
-            while (held > 0 && !marker.startsWith(this.pending.slice(-held).toLowerCase())) held--;
-            const end = this.pending.length - held;
-            if (!this.insideCall) visible += this.pending.slice(0, end);
-            this.pending = this.pending.slice(end);
-            break;
+            visible += this.pending.slice(0, start);
+            this.pending = this.pending.slice(start);
+            const body = this.pending.slice(open.length);
+            const next = body.trimStart().slice(0, name.length).toLowerCase();
+            if (next !== name) {
+                if (name.startsWith(next)) break;
+            } else {
+                const closeIndex = body.search(/<\/tool_call>/i);
+                if (closeIndex < 0) break;
+                const end = open.length + closeIndex + close.length;
+                const candidate = this.pending.slice(0, end);
+                if (/^<tool_call>\s*<name>[^<>]*<\/name>\s*<args>[\s\S]*?<\/args>\s*<\/tool_call>$/i.test(candidate)) {
+                    this.pending = this.pending.slice(end);
+                    continue;
+                }
+            }
+            visible += this.pending.slice(0, open.length);
+            this.pending = body;
         }
         return visible;
     }
 
     flush(): string {
-        const tail = this.insideCall ? '' : this.pending;
+        const tail = this.pending;
         this.pending = '';
         return tail;
     }
