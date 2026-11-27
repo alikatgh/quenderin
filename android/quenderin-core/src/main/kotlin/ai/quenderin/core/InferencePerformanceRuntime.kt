@@ -3,5 +3,5 @@
 package ai.quenderin.core
 
 object InferencePerformanceRuntime {
-    const val ID = "7e4a0c486e89c308eac41cad7f0cc99fc78134b870f42e113de83fa4e59a83bb"
+    const val ID = "2548d38e732fe866c230cce3ba55aa27908f2c9d76449835564ce03ed6c0343b"
 }
