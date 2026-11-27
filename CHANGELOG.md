@@ -66,13 +66,13 @@ for platform coverage and host fixture results.
 ### Changed
 
 - On a fresh install, the app explains the next step when a model is unavailable.
-  See the [iPhone version history](https://apps.apple.com/gm/app/quenderin-offline-ai-chat/id6789854363).
+  See the [iPhone version history](https://apps.apple.com/app/id6789854363?platform=iphone).
 
 ## Apple 0.6.1 — iPhone and Mac App Store (2026-11-09)
 
 Released at `2026-11-09T22:18:47Z` on iPhone and `2026-11-09T23:16:40Z`
-on Mac. See the [iPhone version history](https://apps.apple.com/gm/app/quenderin-offline-ai-chat/id6789854363)
-and the [Mac version history](https://apps.apple.com/om/app/quenderin-offline-ai-chat/id6789854363?platform=mac).
+on Mac. See the [iPhone version history](https://apps.apple.com/app/id6789854363?platform=iphone)
+and the [Mac version history](https://apps.apple.com/app/id6789854363?platform=mac).
 
 ### Added
 
