@@ -105,6 +105,7 @@ files:
   - node_modules/**/*
   - public/**/*
   - package.json
+  - THIRD_PARTY_NOTICES.md
   # Runtime data next to dist/ inside the asar (sampling-profiles, model catalog, safety list).
   # samplingProfiles.ts resolves ../../../shared from dist/src/services — without this glob the
   # packaged local-inference path falls back to EMBEDDED recipes (or used to hard-throw).

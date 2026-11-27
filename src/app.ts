@@ -239,7 +239,12 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     });
 
 
-    if (speech) app.use('/api/speech', createSpeechRouter(speech));
+    if (speech) {
+        app.get('/api/speech/credits', (_req, res) => {
+            res.type('text/plain').sendFile(path.join(publicPath, '..', 'THIRD_PARTY_NOTICES.md'));
+        });
+        app.use('/api/speech', createSpeechRouter(speech));
+    }
 
     if (llmService) {
         let modelChoiceRevision = 0;

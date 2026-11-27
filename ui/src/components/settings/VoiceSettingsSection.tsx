@@ -51,7 +51,7 @@ export function VoiceSettingsSection({ speech }: { speech: SpeechSetup }) {
             <details className="text-xs text-zinc-600 dark:text-zinc-400">
                 <summary className="cursor-pointer">Voice credits and licenses</summary>
                 <p className="mt-1">Handy and @handy-computer/models are MIT-licensed. Copyright (c) 2025 CJ Pais.</p>
-                <a className="mt-1 inline-block underline" href="/third-party-notices.txt">Read the third-party notices</a>
+                <a className="mt-1 inline-block underline" href="/api/speech/credits" download="Quenderin-third-party-notices.txt">Read the third-party notices</a>
             </details>
         </section>
     );

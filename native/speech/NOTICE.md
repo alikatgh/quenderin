@@ -22,20 +22,21 @@ projects:
    - License: MIT License
    - Copyright (c) 2025 CJ Pais
    - Reused components:
-     - Curated ASR catalog snapshot (`src-tauri/src/catalog/catalog.json`): model ids, descriptions, repositories, pinned revisions, default-quant files, exact sizes, SHA-256 hashes, per-model licenses, `minEngine` facts
+     - Desktop onboarding model picker and table, plus the four-bar speed presentation
+     - Resumable HTTP downloader from `src-tauri/src/managers/model/download.rs` and audio downmix from `src-tauri/src/audio_toolkit/audio/decode.rs`
      - Accuracy grade bands (`GRADE_CEILINGS` A:5 B:10 C:20 D:30) and speed meter (`SPEED_CUTOFFS` [2, 3.5, 7.5, 20]; four-bar display)
-     - Onboarding model-picker interaction model and download-state vocabulary (only the interaction design is adapted; the implementation is Quenderin's)
 
 4. **@handy-computer/models** (`https://github.com/handy-computer/models`, v0.2.3)
    - License: MIT License (as declared in the package manifest)
    - Reused components:
-     - Catalog copy used to cross-check the Handy snapshot
-     - Recommendation method and benchmark fields (`results`, `methodology`, `benchmarks`) that drive the Recommended / More accurate picks and the EN grade / SPEED columns
+     - Pinned catalog, default-quant artifacts and model licenses
+     - English recommendations, accuracy grades and benchmark wait times
 
    The model weights themselves are not redistributed by Quenderin. Each catalog entry
    carries its own license (for example, Parakeet Unified English 0.6B is `cc-by-4.0`);
    the picker shows that license per model, and downloads go directly to the pinned
-   Hugging Face revision recorded in `shared/handy-speech-catalog.json`.
+   Hugging Face revision recorded in the pinned package. The desktop app displays the notices under
+   Settings → Voice → Voice credits and licenses.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
