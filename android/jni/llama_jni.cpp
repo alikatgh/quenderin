@@ -229,7 +229,8 @@ jstring make_jstring(JNIEnv* env, const std::string& s) { return quenderin::jni:
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
                      JNIEnv* env, jobject sink, jobject thiz, bool& failed,
                      llama_sampler* override_sampler = nullptr,
-                     quenderin::GenerationPerformance* performance = nullptr) {
+                     quenderin::GenerationPerformance* performance = nullptr,
+                     bool requires_full_prompt = false) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
     h->hitTokenCap = false;
 
@@ -306,7 +307,8 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     llama_sampler* active_sampler = override_sampler ? override_sampler : h->sampler;
     bool hitCap = false;
     std::string result = quenderin::generateWithKVReuse(h->ctx, vocab, active_sampler, newTokens, max_tokens,
-                                                         h->cached, emit, cancelled, &failed, thermalPoll, &hitCap, performance);
+                                                         h->cached, emit, cancelled, &failed, thermalPoll, &hitCap, performance,
+                                                         requires_full_prompt);
     h->hitTokenCap = hitCap;
     LOGI("generate: done failed=%d hitCap=%d out_bytes=%zu", (int) failed, (int) hitCap, result.size());
     return result;
@@ -820,13 +822,9 @@ static llama_sampler* makeGrammarSampler(LlamaHandle* h, const char* grammar, fl
     return sampler;
 }
 
-// Raw grammar-constrained completion for agent decisions.
-JNIEXPORT jstring JNICALL
-Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobject thiz,
-                                                             jlong handle, jstring prompt, jint max_tokens,
-                                                             jstring grammar, jfloat top_p, jint top_k,
-                                                             jfloat temperature, jfloat repeat_penalty,
-                                                             jint repeat_last_n) {
+static jstring completeWithGrammar(JNIEnv* env, jobject thiz, jlong handle, jstring prompt, jint max_tokens,
+                                   jstring grammar, jfloat top_p, jint top_k, jfloat temperature,
+                                   jfloat repeat_penalty, jint repeat_last_n, bool requires_full_prompt) {
     LlamaHandle* h = as_handle(handle);
     if (!h) { LOGE("nativeCompleteWithGrammar: null handle (no model loaded)"); return make_jstring(env, ""); }
     if (h->beam || h->specialist) return throw_generation_failed(env, "Beam requires structured text chat; raw/grammar requests are unavailable.");
@@ -843,12 +841,32 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobjec
     }
 
     bool failed = false;
-    std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed, smpl);
+    std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed, smpl, nullptr, requires_full_prompt);
     llama_sampler_free(smpl);                          // per-call: freed here, never touches h->sampler
     quenderin::jni::release_chars(p);
     if (env->ExceptionCheck()) return nullptr;
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
+}
+
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobject thiz,
+                                                             jlong handle, jstring prompt, jint max_tokens,
+                                                             jstring grammar, jfloat top_p, jint top_k,
+                                                             jfloat temperature, jfloat repeat_penalty,
+                                                             jint repeat_last_n) {
+    return completeWithGrammar(env, thiz, handle, prompt, max_tokens, grammar, top_p, top_k,
+                               temperature, repeat_penalty, repeat_last_n, false);
+}
+
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithFullPromptGrammar(JNIEnv* env, jobject thiz,
+                                                                       jlong handle, jstring prompt, jint max_tokens,
+                                                                       jstring grammar, jfloat top_p, jint top_k,
+                                                                       jfloat temperature, jfloat repeat_penalty,
+                                                                       jint repeat_last_n) {
+    return completeWithGrammar(env, thiz, handle, prompt, max_tokens, grammar, top_p, top_k,
+                               temperature, repeat_penalty, repeat_last_n, true);
 }
 
 JNIEXPORT jstring JNICALL

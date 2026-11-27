@@ -11,6 +11,15 @@ final class ContextWindowTests: XCTestCase {
         XCTAssertEqual(LlamaEngine.promptTokenLimit(contextTokens: 2048, maxTokens: 4096), 1536)
     }
 
+    func testFullPromptDecodeRejectsMiddleTruncation() throws {
+        let tokens = (0..<193).map(Int32.init)
+        let limit = LlamaEngine.promptTokenLimit(contextTokens: 256, maxTokens: 8)
+        let fitting = Array(tokens.prefix(limit))
+        XCTAssertEqual(try LlamaEngine.promptTokens(fitting, limit: limit, requiresFullPrompt: true), fitting)
+        XCTAssertThrowsError(try LlamaEngine.promptTokens(tokens, limit: limit, requiresFullPrompt: true))
+        XCTAssertEqual(try LlamaEngine.promptTokens(tokens, limit: limit, requiresFullPrompt: false).count, limit)
+    }
+
     func testScalesContextWithDeviceRAM() {
         XCTAssertEqual(ContextWindow.recommend(totalRAMGB: 2), 1024)   // 2–3 GB phones
         XCTAssertEqual(ContextWindow.recommend(totalRAMGB: 3.9), 1024)

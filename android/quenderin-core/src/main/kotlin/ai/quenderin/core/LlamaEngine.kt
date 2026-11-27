@@ -371,13 +371,26 @@ class LlamaEngine(
     override fun completeWithGrammar(
         prompt: String, grammar: String, maxTokens: Int,
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+    ): String = grammarCompletion(prompt, grammar, maxTokens, topP, topK, temperature, repeatPenalty, repeatLastN)
+
+    override fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String =
+        grammarCompletion(prompt, grammar, maxTokens, 0.8f, 20, 0.7f, 1.1f, 256, requiresFullPrompt = true)
+
+    private fun grammarCompletion(
+        prompt: String, grammar: String, maxTokens: Int,
+        topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+        requiresFullPrompt: Boolean = false,
     ): String = synchronized(lock) {
         capRun++
         lastCapStatus = ChatCapStatus.UNKNOWN
         ensureReady()
         check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
-        nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+        if (requiresFullPrompt) {
+            nativeCompleteWithFullPromptGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+        } else {
+            nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+        }
     }
 
     /** The deliberation reasoning decode — unconstrained (the load-time sampler), hard-capped so the
@@ -560,6 +573,7 @@ class LlamaEngine(
     private external fun nativeCompleteHyMemoryStreaming(handle: Long, prompt: String, sink: TokenSink): String
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
+    private external fun nativeCompleteWithFullPromptGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeCompleteChatWithGrammar(handle: Long, payload: String, maxTokens: Int, grammar: String, topP: Float, temperature: Float, sink: TokenSink): String

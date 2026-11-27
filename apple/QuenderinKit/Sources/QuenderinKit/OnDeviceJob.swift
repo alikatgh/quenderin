@@ -255,11 +255,12 @@ public enum CheckerRun {
                 try await engine.load(model: target.model, at: target.url)
                 loadedTarget = true
             }
-            let options = GenerationOptions(maxTokens: 8, gbnfGrammar: CheckerPrompt.grammar)
+            var options = GenerationOptions(maxTokens: 8, gbnfGrammar: CheckerPrompt.grammar)
+            options.requiresFullPrompt = true
             let raw = try await engine.complete(prompt: CheckerPrompt.of(text), options: options)
             verdict = CheckerPrompt.verdict(raw)
         } catch {
-            verdict = loadedTarget ? "failed" : "load-failed"
+            verdict = switched && !loadedTarget ? "load-failed" : "failed"
         }
         if switched, let previous, await engine.loadedModelID() != previous.model.id {
             try? await engine.load(model: previous.model, at: previous.url)
@@ -413,7 +414,7 @@ public enum OutputCheck {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return (reply, nil) }
         let answer = await RoleSeat.shared.checkerAnswerLive(content)
         let verdict = checked(reply, answer: answer)
-        return (verdict, !verdict.held && (answer == nil || answer == "yes") ? thinking : nil)
+        return (verdict, answer == "yes" ? thinking : nil)
     }
 
     static func storedThinking(_ thinking: String?, for text: String) -> String? {

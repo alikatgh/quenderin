@@ -17,9 +17,9 @@ class ConversationStore {
             val base = "${m.role.name}\t${escape(m.text)}"
             val withDocs = if (m.documents.isEmpty()) base
             else base + m.documents.joinToString("") { "\t${escape(it.name)}\t${escape(it.text)}" }
-            val thinking = OutputCheck.storedThinking(m.thinking, m.text)
+            val thinking = if (m.thinkingReviewed) OutputCheck.storedThinking(m.thinking, m.text) else null
             if (thinking.isNullOrEmpty()) withDocs
-            else "$withDocs\t$THINKING_SENTINEL\t${escape(thinking)}"
+            else "$withDocs\t$THINKING_SENTINEL\t${escape(thinking)}\t$REVIEWED_THINKING_MARKER"
         }
 
     /** Decode a transcript; blank input is an empty conversation, not an error. */
@@ -34,20 +34,25 @@ class ConversationStore {
             // row — keep the message, drop the incomplete doc (same spirit as the ledger's torn tail).
             val docs = mutableListOf<AttachedDocument>()
             var thinking: String? = null
+            // A trailing unpaired field is ignored by older readers. Require it before
+            // restoring reasoning because older rows carry no full-review evidence.
+            val reviewed = fields.size % 2 == 1 && fields.last() == REVIEWED_THINKING_MARKER
             fields.drop(2).chunked(2).filter { it.size == 2 }.forEach { pair ->
                 if (pair[0] == THINKING_SENTINEL) {
-                    thinking = unescape(pair[1]).ifEmpty { null }
+                    if (reviewed) thinking = unescape(pair[1]).ifEmpty { null }
                 } else {
                     docs += AttachedDocument(unescape(pair[0]), unescape(pair[1]))
                 }
             }
             val answer = unescape(fields[1])
-            ChatMessage(role, answer, docs, thinking = OutputCheck.storedThinking(thinking, answer))
+            val checkedThinking = OutputCheck.storedThinking(thinking, answer)
+            ChatMessage(role, answer, docs, thinking = checkedThinking, thinkingReviewed = checkedThinking != null)
         }
     }
 
     private companion object {
         const val THINKING_SENTINEL = "\u0000thinking"
+        const val REVIEWED_THINKING_MARKER = "\u0000thinking-reviewed"
     }
 
     private fun escape(s: String): String =

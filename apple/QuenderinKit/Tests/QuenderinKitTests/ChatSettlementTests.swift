@@ -72,16 +72,29 @@ final class ChatSettlementTests: XCTestCase {
         XCTAssertNil(chat.messages.last?.thinking)
     }
 
-    func testCheckedThinkingRemainsAvailableAndLegacyWithheldThinkingIsDropped() async throws {
+    func testOnlyFullyReviewedThinkingIsShownAndRestored() async throws {
+        defer { RoleSeat.shared.reset() }
+        RoleSeat.shared.reset()
+        let unchecked = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await unchecked.send("hello", thinkingMode: .show)
+        XCTAssertEqual(unchecked.messages.last?.text, "answer")
+        XCTAssertNil(unchecked.messages.last?.thinking)
+
+        RoleSeat.shared.setChecker(modelID: "fixture") { _, content in
+            XCTAssertEqual(content, "answer\n\nsome reasoning")
+            return "yes"
+        }
         let chat = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
         await chat.send("hello", thinkingMode: .show)
         let store = ConversationStore()
         XCTAssertEqual(try store.decode(store.encode(chat.completedMessages())).last?.thinking, "some reasoning")
 
-        let legacy = Data("""
-            [{"role":"assistant","text":"\(OutputCheck.checkerHeld)","thinking":"old reasoning"}]
-            """.utf8)
-        XCTAssertNil(try store.decode(legacy).last?.thinking)
+        for text in ["ordinary answer", OutputCheck.checkerHeld] {
+            let legacy = Data(#"[{"role":"assistant","text":"\#(text)","thinking":"old reasoning"}]"#.utf8)
+            let restored = try store.decode(legacy).last
+            XCTAssertEqual(restored?.text, text)
+            XCTAssertNil(restored?.thinking)
+        }
     }
 
     func testDegenerationDropsTheCrossingTokenAndSuppressesContinue() async {

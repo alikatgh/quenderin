@@ -24,6 +24,8 @@ public struct GenerationOptions: Sendable, Equatable {
     /// parse becomes unsampleable, the decoder-level fix for "the small model emitted prose
     /// instead of the JSON contract". Engines without grammar support ignore the field.
     public var gbnfGrammar: String?
+    /// Review prompts must reach the checker in full or fail before decoding.
+    var requiresFullPrompt = false
     /// Controls `<think>…</think>` handling for chat templates that support thinking.
     /// Default `.off` preserves direct replies; agent/grammar/specialist paths always use `.off`.
     public var thinkingMode: ThinkingMode

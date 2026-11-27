@@ -88,11 +88,16 @@ int main() {
 
     def test_other_completion_wrappers_guard_callback_exceptions_before_result_conversion(self):
         functions = {name: source_wrapper(name) for name in (
-            'nativeComplete', 'nativeCompleteStreaming', 'nativeCompleteWithGrammar',
+            'nativeComplete', 'nativeCompleteStreaming',
         )}
         for name in ('nativeCompleteChatStreaming', 'nativeCompleteChatWithGrammar'):
             self.assertIn('completeChatStreaming(env,', source_wrapper(name))
         functions['completeChatStreaming'] = source_chat_helper()
+        for name, require_full_prompt in [('nativeCompleteWithGrammar', 'false'), ('nativeCompleteWithFullPromptGrammar', 'true')]:
+            wrapper = source_wrapper(name)
+            self.assertIn('return completeWithGrammar(env,', wrapper)
+            self.assertIn(f'repeat_last_n, {require_full_prompt});', wrapper)
+        functions['completeWithGrammar'] = source_function('static jstring completeWithGrammar')
         for name, body in functions.items():
             with self.subTest(name=name):
                 tail = body[body.index('std::string out = generate('):]

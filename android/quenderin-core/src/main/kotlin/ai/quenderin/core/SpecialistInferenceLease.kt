@@ -142,6 +142,10 @@ class CoordinatedInferenceEngine(private val underlying: InferenceEngine) : Infe
             invalidateCapStatus()
             underlying.completeWithGrammar(prompt, grammar, maxTokens, topP, topK, temperature, repeatPenalty, repeatLastN)
         }
+    override fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String = ordinary {
+        invalidateCapStatus()
+        underlying.completeWithFullPromptGrammar(prompt, grammar, maxTokens)
+    }
     override fun chatCapStatus(): ChatCapStatus = state.withLock {
         if (held) ChatCapStatus.UNKNOWN else lastCapStatus
     }

@@ -118,13 +118,60 @@ class ChatSettlementTest {
         }
     }
 
-    @Test fun checkedThinkingRemainsAvailableAndLegacyWithheldThinkingIsDropped() {
+    @Test fun onlyFullyReviewedThinkingIsShownAndRestored() {
         val output = "<think>some reasoning</think>answer"
         val chat = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW))
-        chat.send("hello")
-        val store = ConversationStore()
-        assertEquals("some reasoning", store.decode(store.encode(chat.completedMessages())).last().thinking)
-        assertNull(store.decode("ASSISTANT\t${OutputCheck.CHECKER_HELD}\t\u0000thinking\told reasoning").last().thinking)
+        RoleSeat.reset()
+        assertEquals("answer", chat.send("hello"))
+        assertNull(chat.messages.last().thinking)
+
+        RoleSeat.selectChecker("fixture")
+        var reviewedContent: String? = null
+        RoleSeat.ask = { _, content ->
+            reviewedContent = content
+            "yes"
+        }
+        try {
+            chat.send("again")
+            assertEquals("answer\n\nsome reasoning", reviewedContent)
+            val store = ConversationStore()
+            assertEquals("some reasoning", store.decode(store.encode(chat.completedMessages())).last().thinking)
+            for (text in listOf("ordinary answer", OutputCheck.CHECKER_HELD)) {
+                val restored = store.decode("ASSISTANT\t$text\t\u0000thinking\told reasoning").last()
+                assertEquals(text, restored.text)
+                assertNull(restored.thinking)
+            }
+        } finally {
+            RoleSeat.reset()
+        }
+    }
+
+    @Test fun checkerThatCannotFitTheFullPromptNeverReleasesThinking() {
+        val model = ModelCatalog.smallest
+        val thinking = "word ".repeat(80)
+        var checkerPrompt: String? = null
+        val engine = object : InferenceEngine {
+            override val loadedModelId = model.id
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String) = "yes"
+            override fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String {
+                checkerPrompt = prompt
+                throw IllegalStateException("The full prompt exceeds the available context.")
+            }
+        }
+        RoleSeat.selectChecker(model.id)
+        RoleSeat.ask = { id, text ->
+            CheckerRun.ask(id, text, CoordinatedInferenceEngine(engine)) { CheckerFile(model, "/models/check.gguf") }
+        }
+        try {
+            val (verdict, released) = OutputCheck.finishChatReply("answer", thinking)
+            assertEquals(CheckerPrompt.of("answer\n\n$thinking"), checkerPrompt)
+            assertEquals(OutputCheck.CHECKER_FAILED, verdict.text)
+            assertNull(released)
+        } finally {
+            RoleSeat.reset()
+        }
     }
 
     @Test fun whitespaceEmissionWinsOverEngineReturn() {

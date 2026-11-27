@@ -34,6 +34,7 @@ data class ChatMessage(
     /** Optional reasoning chain extracted from `<think>…</think>` when Thinking is set to [ThinkingMode.SHOW].
      *  Null for user messages, OFF, HIDE, and older saved transcripts. Twin of Swift `ChatMessage.thinking`. */
     val thinking: String? = null,
+    internal val thinkingReviewed: Boolean = false,
 ) {
     /** The text the ENGINE sees: labeled documents first, then the typed message. Composed into
      *  every windowed history pass so follow-ups keep the document in context. Twin of iOS. */
@@ -477,7 +478,8 @@ class ChatModel(
                     lastHitTokenCap = capStatus == ChatCapStatus.HIT && !hitDegeneration && !stopped && !checked.held
                     val assistant = _messages.getOrNull(placeholderIndex)
                     if (assistant != null && (assistant.text != text || assistant.thinking != checkedThinking)) {
-                        _messages[placeholderIndex] = assistant.copy(text = text, thinking = checkedThinking)
+                        _messages[placeholderIndex] = assistant.copy(text = text, thinking = checkedThinking,
+                            thinkingReviewed = checkedThinking != null)
                         transcriptRevision++
                         snapshot = _messages.toList()
                     }

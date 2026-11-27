@@ -3075,7 +3075,9 @@ fun main() {
         }
         val showEngine = ThinkingTestEngine("<think>step 1</think>Final answer").apply { setThinkingMode(ThinkingMode.SHOW) }
         val showChat = ChatModel(showEngine)
-        showChat.send("hi")
+        RoleSeat.selectChecker("fixture")
+        RoleSeat.ask = { _, _ -> "yes" }
+        try { showChat.send("hi") } finally { RoleSeat.reset() }
         val showMsg = showChat.messages.last()
 
         val hideEngine = ThinkingTestEngine("<think>secret</think>Clean answer").apply { setThinkingMode(ThinkingMode.HIDE) }
@@ -3172,7 +3174,9 @@ fun main() {
         val showEngine = PreOpenedThinkingEngine("step A then step B</think>42")
             .apply { setThinkingMode(ThinkingMode.SHOW) }
         val showChat = ChatModel(showEngine)
-        showChat.send("solve")
+        RoleSeat.selectChecker("fixture")
+        RoleSeat.ask = { _, _ -> "yes" }
+        try { showChat.send("solve") } finally { RoleSeat.reset() }
         val showMsg = showChat.messages.last()
 
         val splitterFromPrompt = ThinkingSplitter.forRenderedPrompt("<|im_start|>assistant\n<think>\n")
@@ -3189,7 +3193,7 @@ fun main() {
         val legacy = store.decode("USER\thi\nASSISTANT\thello")
         val msgs = listOf(
             ChatMessage(Role.USER, "2+2?"),
-            ChatMessage(Role.ASSISTANT, "4", thinking = "two plus two"),
+            ChatMessage(Role.ASSISTANT, "4", thinking = "two plus two", thinkingReviewed = true),
         )
         val encoded = store.encode(msgs)
         val decoded = store.decode(encoded)

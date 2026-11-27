@@ -47,6 +47,23 @@ int main() {
         }
     }
     {
+        llama_context ctx;
+        ctx.n_ctx = 256;
+        llama_sampler sampler;
+        std::vector<llama_token> cached{7};
+        bool failed = false;
+        auto output = quenderin::generateWithKVReuse(&ctx, &vocab, &sampler, std::vector<llama_token>(193, 7), 8,
+            cached, [](const std::string&) { return true; }, [] { return false; }, &failed,
+            [] { return 0; }, nullptr, nullptr, true);
+        assert(failed && output.empty() && ctx.decode_calls == 0 && sampler.sampled == 0);
+        assert(cached == std::vector<llama_token>{7});
+        sampler.goal = 2;
+        output = quenderin::generateWithKVReuse(&ctx, &vocab, &sampler, std::vector<llama_token>(192, 7), 8,
+            cached, [](const std::string&) { return true; }, [] { return false; }, &failed,
+            [] { return 0; }, nullptr, nullptr, true);
+        assert(!failed && !output.empty() && cached.size() == 194);
+    }
+    {
         llama_context ctx; llama_sampler sampler; std::vector<llama_token> cached;
         quenderin::GenerationPerformance report; bool failed = true, cap = true; int pieces = 0;
         auto output = quenderin::generateWithKVReuse(&ctx, &vocab, &sampler, std::vector<llama_token>(128, 7), 64,

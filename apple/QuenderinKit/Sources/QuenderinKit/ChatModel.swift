@@ -26,6 +26,7 @@ public struct ChatMessage: Sendable, Identifiable, Equatable {
     /// Optional reasoning chain extracted from `<think>…</think>` when Thinking is set to `.show`.
     /// Nil for user messages, `.off`, `.hide`, and older saved transcripts.
     public var thinking: String?
+    var thinkingReviewed = false
 
     public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = [], thinking: String? = nil) {
         self.id = id
@@ -464,6 +465,7 @@ public final class ChatModel: ObservableObject {
             guard inFlightAssistantID == assistantID else { return true }
             assistant.text = checked.verdict.text
             assistant.thinking = checked.thinking
+            assistant.thinkingReviewed = checked.thinking != nil
             return checked.verdict.held
         }
         // Pace transcript writes to display frames (~30 Hz): every write is a full list diff plus a

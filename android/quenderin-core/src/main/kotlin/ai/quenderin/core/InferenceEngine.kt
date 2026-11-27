@@ -93,6 +93,10 @@ interface InferenceEngine {
         repeatPenalty: Float = 1.1f, repeatLastN: Int = 256,
     ): String = complete(prompt)
 
+    /** A checker decode must reject a prompt it cannot prefill in full. */
+    fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String =
+        throw UnsupportedOperationException("Full-prompt grammar decoding is unavailable.")
+
     /**
      * A short, UNCONSTRAINED reasoning decode — the "think, then decide" pass (twin of the iOS
      * deliberation decode). No grammar (the model must be free to reason), hard-capped so the reasoning

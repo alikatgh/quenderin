@@ -73,6 +73,15 @@ public actor LlamaEngine: InferenceEngine {
         return contextTokens - reserve
     }
 
+    static func promptTokens(_ tokens: [Int32], limit: Int, requiresFullPrompt: Bool) throws -> [Int32] {
+        guard tokens.count > limit else { return tokens }
+        if requiresFullPrompt {
+            throw InferenceError.generationFailed(reason: "The full prompt exceeds the available context.")
+        }
+        let head = limit / 2
+        return Array(tokens.prefix(head)) + Array(tokens.suffix(limit - head))
+    }
+
 
     /// Perf line per generation (prefill / decode / worst inter-token gap) — docs/INFERENCE_SLO.md.
     /// Read it with `log stream --predicate 'subsystem == "org.quenderin" && category == "inference"'`.
@@ -792,11 +801,11 @@ public actor LlamaEngine: InferenceEngine {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "Beam conversation exceeds the available context; start a shorter chat."))
             return
         }
-        if rawTokens.count > promptLimit {
-            let head = promptLimit / 2
-            newTokens = Array(rawTokens.prefix(head)) + Array(rawTokens.suffix(promptLimit - head))
-        } else {
-            newTokens = rawTokens
+        do {
+            newTokens = try Self.promptTokens(rawTokens, limit: promptLimit, requiresFullPrompt: options.requiresFullPrompt)
+        } catch {
+            continuation.finish(throwing: error)
+            return
         }
 
         // 2) Sampler chain from the request options (penalties → top-p → temperature → dist).

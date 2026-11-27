@@ -240,13 +240,18 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
                                 bool* failed = nullptr,
                                 ThermalPoll thermalPoll = []() -> int { return 0; },
                                 bool* hitTokenCap = nullptr,
-                                GenerationPerformance* performance = nullptr) {
+                                GenerationPerformance* performance = nullptr,
+                                bool requiresFullPrompt = false) {
     std::string out;
     if (performance) *performance = GenerationPerformance{};
     if (failed) *failed = false;
     if (hitTokenCap) *hitTokenCap = false;
     if (rawTokens.empty()) return out;
     // Clamp BEFORE planning reuse so the mirror always describes what the KV actually holds.
+    if (requiresFullPrompt && rawTokens.size() > (size_t)promptTokenLimit((int)llama_n_ctx(ctx), maxTokens)) {
+        if (failed) *failed = true;
+        return out;
+    }
     const std::vector<llama_token> newTokens = clampToContext(rawTokens, ctx, maxTokens);
 
     const bool promptClamped = newTokens.size() != rawTokens.size();

@@ -113,8 +113,7 @@ object CheckerPrompt {
         Reply with yes if it may be shown.
         Reply with no if it should be held.
         Text:
-        $text
-    """.trimIndent()
+    """.trimIndent() + "\n" + text
 
     fun verdict(raw: String): String {
         val word = raw.trim().lowercase().takeWhile { it.isLetter() }
@@ -163,9 +162,9 @@ object CheckerRun {
                 engine.load(target.model, target.path)
                 loadedTarget = true
             }
-            CheckerPrompt.verdict(engine.completeWithGrammar(CheckerPrompt.of(text), CheckerPrompt.GRAMMAR, maxTokens = 8))
+            CheckerPrompt.verdict(engine.completeWithFullPromptGrammar(CheckerPrompt.of(text), CheckerPrompt.GRAMMAR, maxTokens = 8))
         } catch (_: Throwable) {
-            if (loadedTarget) "failed" else "load-failed"
+            if (switched && !loadedTarget) "load-failed" else "failed"
         } finally {
             if (switched && previous != null && engine.loadedModelId != previous.model.id) {
                 try { engine.load(previous.model, previous.path) } catch (_: Throwable) {}
@@ -287,7 +286,7 @@ object OutputCheck {
         if (content.isBlank()) return reply to null
         val answer = RoleSeat.checkerAnswer(content)
         val verdict = checked(reply, answer)
-        return verdict to thinking.takeIf { !verdict.held && (answer == null || answer == "yes") }
+        return verdict to thinking.takeIf { answer == "yes" }
     }
 
     internal fun storedThinking(thinking: String?, text: String): String? {
@@ -1189,10 +1188,7 @@ private class RecordingCheckerEngine(var reply: String) : InferenceEngine {
         loadedModelId = null
     }
     override fun complete(prompt: String) = reply
-    override fun completeWithGrammar(
-        prompt: String, grammar: String, maxTokens: Int,
-        topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
-    ): String {
+    override fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String {
         lastPrompt = prompt
         events += "grammar"
         if (fail) throw IllegalStateException("checker stopped")
