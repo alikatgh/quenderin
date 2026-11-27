@@ -353,7 +353,11 @@ export function formatDictationTranscript(text: string, options: DictationFormat
 }
 
 export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleCount: number; durationMs: number } {
-    if (buffer.length < 44 || buffer.length > SPEECH_MAX_AUDIO_BYTES) {
+    if (typeof buffer === 'string' || Array.isArray(buffer) || !Buffer.isBuffer(buffer)) {
+        throw new Error('Audio must be a RIFF WAVE buffer.');
+    }
+    const totalBytes = buffer.byteLength;
+    if (totalBytes < 44 || totalBytes > SPEECH_MAX_AUDIO_BYTES) {
         throw new Error('WAV audio size must be between 44 bytes and 64 MiB.');
     }
     if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
@@ -367,11 +371,11 @@ export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleC
     let blockAlign = 0;
     let byteRate = 0;
     let offset = 12;
-    while (offset + 8 <= buffer.length) {
+    while (offset + 8 <= totalBytes) {
         const chunkId = buffer.toString('ascii', offset, offset + 4);
         const chunkSize = buffer.readUInt32LE(offset + 4);
         const payload = offset + 8;
-        if (payload + chunkSize > buffer.length) {
+        if (payload + chunkSize > totalBytes) {
             throw new Error('Truncated WAV chunk.');
         }
         if (chunkId === 'fmt ' && chunkSize >= 16) {

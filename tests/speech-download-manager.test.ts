@@ -3,9 +3,20 @@
 // Cases adapted from Handy src-tauri/src/managers/model/download/tests.rs
 // at 05efc5fc180197dc0fa9d568dd9812904b723b8b. See THIRD_PARTY_NOTICES.md.
 import { catalog, modelFile } from '@handy-computer/models';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installedModelPath, modelDownloadUrl } from '../src/services/speech/catalog.js';
-import { SpeechDownloadManager, type SpeechDownloadFetch, type SpeechDownloadManagerOptions } from '../src/services/speech/downloadManager.js';
+import {
+    assertAllowedSpeechArtifactUrl,
+    createSpeechArtifactFetch,
+    speechDownloadFs,
+    SpeechDownloadManager,
+    type RawSpeechFetch,
+    type SpeechDownloadFetch,
+    type SpeechDownloadManagerOptions,
+} from '../src/services/speech/downloadManager.js';
 import type { SpeechDownloadSnapshot } from '../src/services/speech/types.js';
 import { fixtureBytes, fixtureModel, httpFixture, speechFsFixture } from './helpers/speechFixtures.js';
 
@@ -243,5 +254,182 @@ describe('resumable Handy downloads', () => {
         expect((await manager.remove(model.id)).phase).toBe('idle');
         expect(files.has(final)).toBe(false);
         expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('keeps a corrupted destination file intact on read-only verifyInstalled and replaces it on start', async () => {
+        const { manager, fetch, put, files } = setup();
+        put(final, Buffer.from('corrupt-bytes'));
+        const checked = await manager.verifyInstalled(model.id);
+        expect(checked.phase).toBe('idle');
+        expect(files.has(final)).toBe(true);
+
+        fetch.mockResolvedValue(httpFixture(200, fixtureBytes));
+        await manager.start(model.id);
+        await completes(manager, 'installed');
+        expect(files.get(final)?.bytes).toEqual(fixtureBytes);
+    });
+
+    it('fails closed if the promoted destination file identity does not match the verified partial', async () => {
+        const { manager, fetch, fs, files, put } = setup();
+        fetch.mockResolvedValue(httpFixture(200, fixtureBytes));
+        vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+            files.delete(from);
+            // Simulate an out-of-band file with a different inode appearing at destination.
+            put(to, fixtureBytes);
+        });
+        await manager.start(model.id);
+        expect((await completes(manager, 'error')).error?.kind).toBe('checksum-mismatch');
+    });
+
+    it('prevents two managers sharing a directory from corrupting or removing the same partial', async () => {
+        const sharedDir = await mkdtemp(path.join(os.tmpdir(), 'quenderin-speech-lock-'));
+        let releaseStream!: () => void;
+        const gate = new Promise<void>(resolve => { releaseStream = resolve; });
+        const fetchA = vi.fn<SpeechDownloadFetch>().mockResolvedValue({
+            ...httpFixture(200, null),
+            body: (async function* () {
+                yield fixtureBytes.subarray(0, 5);
+                await gate;
+                yield fixtureBytes.subarray(5);
+            })(),
+        });
+        const fetchB = vi.fn<SpeechDownloadFetch>().mockResolvedValue(httpFixture(200, fixtureBytes));
+        const managerA = new SpeechDownloadManager({
+            catalog: { ...catalog, curatedModels: [model] },
+            modelsDir: sharedDir, pinnedEngineVersion: '0.4.1', fetchImpl: fetchA, fs: speechDownloadFs,
+            sleep: async () => {},
+        });
+        const managerB = new SpeechDownloadManager({
+            catalog: { ...catalog, curatedModels: [model] },
+            modelsDir: sharedDir, pinnedEngineVersion: '0.4.1', fetchImpl: fetchB, fs: speechDownloadFs,
+            sleep: async () => {},
+        });
+        managers.push(managerA, managerB);
+        try {
+            const destPath = installedModelPath(sharedDir, model);
+            const partPath = destPath + '.part';
+            await managerA.start(model.id);
+            await vi.waitFor(async () => {
+                expect(await readFile(partPath)).toEqual(fixtureBytes.subarray(0, 5));
+            });
+
+            // A second manager cannot cancel, remove, or start writing the locked artifact.
+            await expect(managerB.cancel(model.id)).rejects.toMatchObject({ code: 'download-busy', status: 409 });
+            await expect(managerB.remove(model.id)).rejects.toMatchObject({ code: 'download-busy', status: 409 });
+            await managerB.start(model.id);
+            await vi.waitFor(() => expect(managerB.snapshot(model.id)?.phase).toBe('error'));
+            expect(fetchB).not.toHaveBeenCalled();
+            expect(await readFile(partPath)).toEqual(fixtureBytes.subarray(0, 5));
+
+            // Manager A finishes cleanly and releases the lock.
+            releaseStream();
+            await completes(managerA, 'installed');
+            expect(await readFile(destPath)).toEqual(fixtureBytes);
+
+            // After lock release, Manager B sees the verified installation and can remove it.
+            expect((await managerB.verifyInstalled(model.id)).phase).toBe('installed');
+            expect((await managerB.remove(model.id)).phase).toBe('idle');
+        } finally {
+            releaseStream();
+            await managerA.shutdown();
+            await managerB.shutdown();
+            await rm(sharedDir, { recursive: true, force: true });
+        }
+    });
+
+    it('reclaims a stale lock file left behind by a dead process', async () => {
+        const sharedDir = await mkdtemp(path.join(os.tmpdir(), 'quenderin-speech-stale-lock-'));
+        const lockFile = installedModelPath(sharedDir, model) + '.lock';
+        await writeFile(lockFile, JSON.stringify({ pid: 999_999_999, token: 'dead', createdAt: 0 }), { mode: 0o600 });
+        const fetch = vi.fn<SpeechDownloadFetch>().mockResolvedValue(httpFixture(200, fixtureBytes));
+        const manager = new SpeechDownloadManager({
+            catalog: { ...catalog, curatedModels: [model] },
+            modelsDir: sharedDir, pinnedEngineVersion: '0.4.1', fetchImpl: fetch, fs: speechDownloadFs,
+            sleep: async () => {},
+        });
+        managers.push(manager);
+        try {
+            await manager.start(model.id);
+            await completes(manager, 'installed');
+            expect(await readFile(installedModelPath(sharedDir, model))).toEqual(fixtureBytes);
+        } finally {
+            await manager.shutdown();
+            await rm(sharedDir, { recursive: true, force: true });
+        }
+    });
+});
+
+describe('speech artifact transport redirect policy', () => {
+    function redirectResponse(status: number, location?: string): Response {
+        const headers = new Headers();
+        if (location !== undefined) headers.set('location', location);
+        return new Response('redirecting', { status, headers });
+    }
+
+    it('follows bounded HTTPS redirects across allowed Hugging Face artifact hosts', async () => {
+        const calls: { url: string; init?: RequestInit }[] = [];
+        const rawFetch: RawSpeechFetch = async (url, init) => {
+            calls.push({ url, init });
+            if (calls.length === 1) return redirectResponse(302, '/rel/redirect.gguf');
+            if (calls.length === 2) return redirectResponse(307, 'https://cas-bridge.xethub.hf.co/blobs/abc');
+            if (calls.length === 3) return redirectResponse(302, 'https://cdn-lfs-us-1.hf.co/repos/final.gguf');
+            return new Response(fixtureBytes, { status: 206, headers: { 'content-range': 'bytes 0-28/29' } });
+        };
+        const transport = createSpeechArtifactFetch(rawFetch);
+        const reply = await transport(modelDownloadUrl(model), {
+            headers: { Range: 'bytes=0-', 'Accept-Encoding': 'identity', Authorization: 'Bearer should-not-forward' },
+        });
+        expect(reply.status).toBe(206);
+        expect(calls.map(c => c.url)).toEqual([
+            modelDownloadUrl(model),
+            'https://huggingface.co/rel/redirect.gguf',
+            'https://cas-bridge.xethub.hf.co/blobs/abc',
+            'https://cdn-lfs-us-1.hf.co/repos/final.gguf',
+        ]);
+        for (const call of calls) {
+            expect(call.init?.redirect).toBe('manual');
+            expect(call.init?.credentials).toBe('omit');
+            expect(call.init?.headers).toEqual({ Range: 'bytes=0-', 'Accept-Encoding': 'identity' });
+        }
+        await reply.discard?.();
+    });
+
+    it.each([
+        ['HTTP downgrade', 'http://huggingface.co/model.gguf'],
+        ['external host', 'https://evil.example/model.gguf'],
+        ['lookalike host', 'https://huggingface.co.evil.example/model.gguf'],
+        ['loopback IP', 'https://127.0.0.1/model.gguf'],
+        ['non-standard port', 'https://huggingface.co:8443/model.gguf'],
+        ['embedded credentials', 'https://user:pass@huggingface.co/model.gguf'],
+    ])('blocks %s redirects before contacting the destination', async (_label, target) => {
+        const rawFetch = vi.fn<RawSpeechFetch>().mockResolvedValueOnce(redirectResponse(302, target));
+        const transport = createSpeechArtifactFetch(rawFetch);
+        await expect(transport(modelDownloadUrl(model), {})).rejects.toMatchObject({
+            code: 'network', retryable: false,
+        });
+        expect(rawFetch).toHaveBeenCalledTimes(1);
+        expect(() => assertAllowedSpeechArtifactUrl(target)).toThrow();
+    });
+
+    it('rejects missing Location headers and redirect loops without retrying', async () => {
+        const missingLoc = vi.fn<RawSpeechFetch>().mockResolvedValue(redirectResponse(302));
+        await expect(createSpeechArtifactFetch(missingLoc)(modelDownloadUrl(model), {})).rejects.toMatchObject({
+            code: 'network', retryable: false,
+        });
+
+        const loopFetch = vi.fn<RawSpeechFetch>().mockImplementation(async () =>
+            redirectResponse(302, 'https://huggingface.co/loop'));
+        const disk = speechFsFixture();
+        const manager = new SpeechDownloadManager({
+            catalog: { ...catalog, curatedModels: [model] },
+            modelsDir: '/fixture/speech', pinnedEngineVersion: '0.4.1',
+            fetchImpl: createSpeechArtifactFetch(loopFetch), fs: disk.fs,
+            sleep: async () => {}, retry: { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 5 },
+        });
+        await manager.start(model.id);
+        await vi.waitFor(() => expect(manager.snapshot(model.id)?.phase).toBe('error'));
+        // 1 initial request + 5 allowed hops = 6 calls total, zero retry attempts.
+        expect(loopFetch).toHaveBeenCalledTimes(6);
+        await manager.shutdown();
     });
 });

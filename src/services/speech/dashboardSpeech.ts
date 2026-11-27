@@ -4,10 +4,23 @@ import path from 'node:path';
 import type { SpeechRouteDependencies } from '../../routes/speech.js';
 import { HexSpeechAdapter, type SpeechModelManifest } from '../hexSpeechAdapter.js';
 import { findCatalogModel, loadHandySpeechCatalog } from './catalog.js';
-import { fetchSpeechArtifact, speechDownloadFs, SpeechDownloadManager } from './downloadManager.js';
+import {
+    fetchSpeechArtifact, speechDownloadFs, SpeechDownloadManager,
+    type SpeechDownloadFetch, type SpeechDownloadFileSystem,
+} from './downloadManager.js';
 import { SpeechSettingsStore } from './speechSettings.js';
 import { transcribeSpeech } from './transcribe.js';
-import type { HandySpeechModel } from './types.js';
+import type { HandySpeechCatalog, HandySpeechModel } from './types.js';
+
+export interface CreateDashboardSpeechOptions {
+    readonly catalog?: HandySpeechCatalog;
+    readonly modelsDir?: string;
+    readonly settingsFilePath?: string;
+    readonly bundledRuntimePath?: string;
+    readonly fetchImpl?: SpeechDownloadFetch;
+    readonly fs?: SpeechDownloadFileSystem;
+    readonly uploadTimeoutMs?: number;
+}
 
 function speechManifest(model: HandySpeechModel): SpeechModelManifest {
     const file = modelFile(model);
@@ -22,21 +35,27 @@ function speechManifest(model: HandySpeechModel): SpeechModelManifest {
     };
 }
 
-export function createDashboardSpeech(): SpeechRouteDependencies {
-    const catalog = loadHandySpeechCatalog();
+export function createDashboardSpeech(options: CreateDashboardSpeechOptions = {}): SpeechRouteDependencies {
+    const catalog = loadHandySpeechCatalog(options.catalog);
     const reference = new HexSpeechAdapter();
     const { engineVersion: pinnedEngineVersion, bounds: { maxAudioBytes } } = reference.runtimeLock;
     const adapter = new HexSpeechAdapter({
         runtimeLock: reference.runtimeLock,
         catalog: { ...reference.catalog, models: catalog.curatedModels.map(speechManifest) },
+        bundledRuntimePath: options.bundledRuntimePath,
     });
-    const modelsDir = path.join(os.homedir(), '.quenderin', 'models', 'speech');
-    const settings = new SpeechSettingsStore({ knownModel: id => !!findCatalogModel(catalog, id) });
+    const modelsDir = options.modelsDir ?? path.join(os.homedir(), '.quenderin', 'models', 'speech');
+    const settings = new SpeechSettingsStore({
+        filePath: options.settingsFilePath,
+        knownModel: id => !!findCatalogModel(catalog, id),
+    });
     const downloads = new SpeechDownloadManager({
-        catalog, modelsDir, pinnedEngineVersion, fetchImpl: fetchSpeechArtifact, fs: speechDownloadFs,
+        catalog, modelsDir, pinnedEngineVersion,
+        fetchImpl: options.fetchImpl ?? fetchSpeechArtifact,
+        fs: options.fs ?? speechDownloadFs,
     });
     return {
-        catalog, pinnedEngineVersion, maxAudioBytes, downloads, settings,
+        catalog, pinnedEngineVersion, maxAudioBytes, uploadTimeoutMs: options.uploadTimeoutMs, downloads, settings,
         transcribe: (request, signal) => transcribeSpeech({
             catalog, pinnedEngineVersion, modelsDir, adapter, maxAudioBytes, signal,
         }, request),

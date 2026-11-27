@@ -159,4 +159,110 @@ describe('POST /api/models/download runtime compatibility', () => {
         });
         expect(downloadModel).not.toHaveBeenCalled();
     });
+
+    it('rejects array parameter tampering for modelId on download and switch', async () => {
+        const downloadModel = vi.fn();
+        const switchModel = vi.fn();
+        await withApp(fakeLlm({ downloadModel, switchModel }), async base => {
+            const dl = await localRequest(`${base}/api/models/download`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Auth-Token': 'secret-token' },
+                body: JSON.stringify({ modelId: ['llama32-1b', 'qwen3-4b'] }),
+            });
+            expect(dl.status).toBe(400);
+            const sw = await post(base, { modelId: ['llama32-1b'] }, 'secret-token');
+            expect(sw.status).toBe(400);
+        });
+        expect(downloadModel).not.toHaveBeenCalled();
+        expect(switchModel).not.toHaveBeenCalled();
+    });
+});
+
+describe('POST /api/models/download job coordination and activation', () => {
+    const startDownload = (base: string, body: Record<string, unknown>) =>
+        localRequest(`${base}/api/models/download`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Auth-Token': 'secret-token' },
+            body: JSON.stringify(body),
+        });
+
+    it('returns 409 busy for a different model while a download slot is occupied', async () => {
+        let finishDownload!: () => void;
+        const downloadModel = vi.fn(() => new Promise<void>(resolve => { finishDownload = resolve; }));
+        const switchModel = vi.fn(async () => {});
+        await withApp(fakeLlm({ downloadModel, switchModel }), async base => {
+            const first = await startDownload(base, { modelId: 'llama32-1b', activate: true });
+            expect(first.status).toBe(200);
+            expect(first.json()).toMatchObject({ modelId: 'llama32-1b', status: 'downloading', joined: false });
+
+            const second = await startDownload(base, { modelId: 'qwen3-4b', activate: true });
+            expect(second.status).toBe(409);
+            expect(second.json()).toMatchObject({ code: 'MODEL_DOWNLOAD_BUSY', activeDownloadModelId: 'llama32-1b' });
+            expect(downloadModel).toHaveBeenCalledTimes(1);
+
+            finishDownload();
+            await vi.waitFor(() => expect(switchModel).toHaveBeenCalledExactlyOnceWith('llama32-1b'));
+        });
+    });
+
+    it('joins duplicate requests for the same in-flight model without losing activation', async () => {
+        let finishDownload!: () => void;
+        const downloadModel = vi.fn(() => new Promise<void>(resolve => { finishDownload = resolve; }));
+        const switchModel = vi.fn(async () => {});
+        await withApp(fakeLlm({ downloadModel, switchModel }), async base => {
+            const first = await startDownload(base, { modelId: 'llama32-1b', activate: true });
+            expect(first.status).toBe(200);
+            const duplicate = await startDownload(base, { modelId: 'llama32-1b', activate: true });
+            expect(duplicate.status).toBe(200);
+            expect(duplicate.json()).toMatchObject({ modelId: 'llama32-1b', joined: true, activate: true });
+            expect(downloadModel).toHaveBeenCalledTimes(1);
+
+            finishDownload();
+            await vi.waitFor(() => expect(switchModel).toHaveBeenCalledExactlyOnceWith('llama32-1b'));
+        });
+    });
+
+    it('retains pending activation and retries when completion races with busy local work, or reports permanent failure', async () => {
+        const previousRetry = process.env.QUENDERIN_MODEL_ACTIVATION_RETRY_MS;
+        process.env.QUENDERIN_MODEL_ACTIVATION_RETRY_MS = '10';
+        try {
+            let attempts = 0;
+            const switchModel = vi.fn(async () => {
+                attempts++;
+                if (attempts < 3) {
+                    const err = new Error('INFERENCE_BUSY') as NodeJS.ErrnoException;
+                    err.code = 'INFERENCE_BUSY';
+                    throw err;
+                }
+            });
+            const downloadModel = vi.fn(async () => {});
+            await withApp(fakeLlm({ downloadModel, switchModel }), async base => {
+                const res = await startDownload(base, { modelId: 'llama32-1b', activate: true });
+                expect(res.status).toBe(200);
+                await vi.waitFor(() => expect(switchModel).toHaveBeenCalledTimes(3));
+                await vi.waitFor(async () => {
+                    const catalogRes = await localRequest(`${base}/api/models/catalog`);
+                    expect(catalogRes.json()).toMatchObject({ pendingActivation: null });
+                });
+            });
+
+            const failingSwitch = vi.fn(async () => { throw new Error('Corrupted GGUF header'); });
+            await withApp(fakeLlm({ downloadModel, switchModel: failingSwitch }), async base => {
+                expect((await startDownload(base, { modelId: 'llama32-1b', activate: true })).status).toBe(200);
+                await vi.waitFor(async () => {
+                    const catalogRes = await localRequest(`${base}/api/models/catalog`);
+                    expect(catalogRes.json()).toMatchObject({
+                        pendingActivation: {
+                            modelId: 'llama32-1b',
+                            status: 'failed',
+                            error: 'Corrupted GGUF header',
+                        },
+                    });
+                });
+            });
+        } finally {
+            if (previousRetry === undefined) delete process.env.QUENDERIN_MODEL_ACTIVATION_RETRY_MS;
+            else process.env.QUENDERIN_MODEL_ACTIVATION_RETRY_MS = previousRetry;
+        }
+    });
 });

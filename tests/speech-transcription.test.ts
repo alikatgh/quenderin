@@ -1,6 +1,6 @@
 import { catalog } from '@handy-computer/models';
 import { describe, expect, it, vi } from 'vitest';
-import { SPEECH_MAX_AUDIO_BYTES, type HexSpeechAdapter } from '../src/services/hexSpeechAdapter.js';
+import { SPEECH_MAX_AUDIO_BYTES, validateWavBuffer, type HexSpeechAdapter } from '../src/services/hexSpeechAdapter.js';
 import { transcribeSpeech, validateTranscriptionAudio } from '../src/services/speech/transcribe.js';
 import { fixtureModel, wavFixture } from './helpers/speechFixtures.js';
 
@@ -55,6 +55,14 @@ describe('local transcription', () => {
     it('enforces the request size bound without allocating a 64 MiB fixture', () => {
         const wav = wavFixture();
         expect(() => validateTranscriptionAudio(wav, wav.length - 1)).toThrow(expect.objectContaining({ status: 413 }));
+    });
+
+    it('rejects string and array parameter-tampering payloads before reading buffer bytes', () => {
+        for (const tampered of ['RIFFfake', ['RIFF', 'WAVE'], { length: 100 }]) {
+            expect(() => validateWavBuffer(tampered as unknown as Buffer)).toThrow(/RIFF WAVE buffer/);
+            expect(() => validateTranscriptionAudio(tampered as unknown as Buffer, 1024))
+                .toThrow(expect.objectContaining({ status: 415, code: 'invalid-audio' }));
+        }
     });
 
     it('rejects unsupported engines before invoking the adapter', async () => {

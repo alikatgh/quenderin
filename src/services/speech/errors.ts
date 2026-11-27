@@ -4,6 +4,7 @@ export class SpeechError extends Error {
         readonly status: number,
         message: string,
         readonly httpStatus: number | null = null,
+        readonly retryable: boolean = true,
     ) {
         super(message);
         this.name = 'SpeechError';

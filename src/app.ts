@@ -136,7 +136,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // data, so its GET requires the token like the other read-protected prefixes.
     // /api/tasks returns the governed agent's per-task action history (goals + what was done) —
     // user data, token-gated like the device agent's ledger.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/speech/settings', '/api/speech/downloads'];
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/speech/models', '/api/speech/settings', '/api/speech/downloads'];
     const requiresAuth = (req: express.Request): boolean => {
         const pathname = req.path.toLowerCase();
         if (pathname.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
@@ -247,7 +247,79 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     }
 
     if (llmService) {
+        interface ActiveChatDownload {
+            modelId: string;
+            activate: boolean;
+            revision: number;
+            promise: Promise<void>;
+        }
+        interface PendingChatActivation {
+            modelId: string;
+            revision: number;
+            status: 'pending' | 'activating' | 'failed';
+            error: string | null;
+            attempts: number;
+            timer?: ReturnType<typeof setTimeout>;
+        }
+        const MAX_ACTIVATION_RETRIES = 12;
+        const rawRetryMs = Number(process.env.QUENDERIN_MODEL_ACTIVATION_RETRY_MS);
+        const activationRetryMs = Number.isFinite(rawRetryMs) && rawRetryMs >= 5 ? rawRetryMs : 1500;
         let modelChoiceRevision = 0;
+        let activeDownload: ActiveChatDownload | null = null;
+        let pendingActivation: PendingChatActivation | null = null;
+
+        const clearPendingActivation = () => {
+            if (pendingActivation?.timer) clearTimeout(pendingActivation.timer);
+            pendingActivation = null;
+        };
+
+        const isTransientBusyError = (error: unknown): boolean => {
+            const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+            const message = error instanceof Error ? error.message : String(error ?? '');
+            return code === 'INFERENCE_BUSY'
+                || /already running|current .* operation|using the local engine|busy/i.test(message);
+        };
+
+        const attemptActivation = async (modelId: string, revision: number, attempt = 0): Promise<void> => {
+            if (revision !== modelChoiceRevision) return;
+            clearPendingActivation();
+            pendingActivation = { modelId, revision, status: 'activating', error: null, attempts: attempt };
+            try {
+                await llmService.switchModel(modelId);
+                if (pendingActivation?.revision === revision) clearPendingActivation();
+            } catch (error) {
+                logger.error('Background model activation failed:', error);
+                if (revision !== modelChoiceRevision) return;
+                const busy = isTransientBusyError(error);
+                if (busy && attempt < MAX_ACTIVATION_RETRIES) {
+                    const nextAttempt = attempt + 1;
+                    const timer = setTimeout(() => {
+                        void attemptActivation(modelId, revision, nextAttempt);
+                    }, activationRetryMs);
+                    timer.unref?.();
+                    pendingActivation = {
+                        modelId,
+                        revision,
+                        status: 'pending',
+                        error: 'Waiting for the current local AI or speech operation to finish before activating this model.',
+                        attempts: nextAttempt,
+                        timer,
+                    };
+                    return;
+                }
+                const message = busy
+                    ? 'Could not activate the downloaded chat model while another local operation was running. Select it in Settings to activate.'
+                    : (error instanceof Error && error.message ? error.message : 'Failed to activate the downloaded chat model.');
+                pendingActivation = {
+                    modelId,
+                    revision,
+                    status: 'failed',
+                    error: message,
+                    attempts: attempt + 1,
+                };
+            }
+        };
+
         const checkRuntime = (entry: RuntimeModelDescriptor) =>
             llmService.checkModelRuntime?.(entry) ?? Promise.resolve(getModelRuntimeCompatibility(entry));
         app.get('/api/models/catalog', async (_req, res) => {
@@ -267,11 +339,23 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 };
             }));
             // activeModelId lets the Model Manager render the Active badge + Use buttons (r9 H1).
-            res.json({ catalog, activeModelId: llmService.getActiveModelId() });
+            res.json({
+                catalog,
+                activeModelId: llmService.getActiveModelId(),
+                downloadingModelId: activeDownload?.modelId ?? llmService.getActiveDownloadModelId?.() ?? null,
+                pendingActivation: pendingActivation
+                    ? { modelId: pendingActivation.modelId, status: pendingActivation.status, error: pendingActivation.error }
+                    : null,
+            });
         });
 
         app.post('/api/models/download', async (req, res) => {
-            const modelId = req.body?.modelId as string | undefined;
+            const rawModelId: unknown = req.body?.modelId;
+            if (rawModelId !== undefined && (Array.isArray(rawModelId) || typeof rawModelId !== 'string')) {
+                res.status(400).json({ error: 'Invalid modelId' });
+                return;
+            }
+            const modelId = rawModelId;
             // Reject an unknown id instead of silently downloading the fallback model (L5; mirrors DELETE).
             if (modelId !== undefined && !MODEL_CATALOG.some(m => m.id === modelId)) {
                 res.status(400).json({ error: `Unknown modelId: ${modelId}` });
@@ -294,21 +378,83 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 }
             }
             const activate = req.body?.activate === true;
-            const revision = activate ? ++modelChoiceRevision : modelChoiceRevision;
-            llmService.downloadModel(requestedModelId).then(async () => {
-                if (activate && revision === modelChoiceRevision && fsSync.existsSync(getModelPath(requestedModelId))) {
-                    await llmService.switchModel(requestedModelId);
+            const inFlightModelId = activeDownload?.modelId ?? llmService.getActiveDownloadModelId?.() ?? null;
+            if (inFlightModelId && inFlightModelId !== requestedModelId) {
+                const inFlightLabel = MODEL_CATALOG.find(m => m.id === inFlightModelId)?.label ?? inFlightModelId;
+                res.status(409).json({
+                    error: `Another chat model download (${inFlightLabel}) is already in progress. Wait for it to finish before starting a different model.`,
+                    code: 'MODEL_DOWNLOAD_BUSY',
+                    activeDownloadModelId: inFlightModelId,
+                });
+                return;
+            }
+            if (activeDownload && activeDownload.modelId === requestedModelId) {
+                if (activate) {
+                    activeDownload.activate = true;
+                    if (pendingActivation && pendingActivation.modelId !== requestedModelId) {
+                        clearPendingActivation();
+                    }
                 }
-            }).catch(e => logger.error("Background model download or activation failed:", e));
-            res.json({ message: "Model download initiated.", modelId: requestedModelId });
+                res.json({
+                    message: 'Model download already in progress.',
+                    modelId: requestedModelId,
+                    status: 'downloading',
+                    joined: true,
+                    activate: activeDownload.activate,
+                });
+                return;
+            }
+            if (activate) {
+                clearPendingActivation();
+                ++modelChoiceRevision;
+            }
+            const revision = modelChoiceRevision;
+            const job: ActiveChatDownload = {
+                modelId: requestedModelId,
+                activate,
+                revision,
+                promise: Promise.resolve(),
+            };
+            activeDownload = job;
+            job.promise = Promise.resolve()
+                .then(() => llmService.downloadModel(requestedModelId))
+                .then(async () => {
+                    if (activeDownload === job) activeDownload = null;
+                    if (job.activate && job.revision === modelChoiceRevision) {
+                        await attemptActivation(requestedModelId, job.revision);
+                    }
+                })
+                .catch(error => {
+                    if (activeDownload === job) activeDownload = null;
+                    logger.error('Background model download or activation failed:', error);
+                    if (job.activate && job.revision === modelChoiceRevision) {
+                        pendingActivation = {
+                            modelId: requestedModelId,
+                            revision: job.revision,
+                            status: 'failed',
+                            error: error instanceof Error && error.message
+                                ? error.message
+                                : 'Model download failed before activation.',
+                            attempts: 0,
+                        };
+                    }
+                });
+            res.json({
+                message: 'Model download initiated.',
+                modelId: requestedModelId,
+                status: 'downloading',
+                joined: false,
+                activate: job.activate,
+            });
         });
 
         /** Switch active model (pins selection until changed again) */
         app.post('/api/models/switch', async (req, res) => {
-            const modelId = req.body?.modelId as string | undefined;
-            if (!modelId || !MODEL_CATALOG.some(m => m.id === modelId)) {
+            const rawModelId: unknown = req.body?.modelId;
+            if (Array.isArray(rawModelId) || typeof rawModelId !== 'string' || !rawModelId || !MODEL_CATALOG.some(m => m.id === rawModelId)) {
                 return res.status(400).json({ error: 'Unknown or missing modelId' });
             }
+            const modelId = rawModelId;
             const entry = MODEL_CATALOG.find(m => m.id === modelId)!;
             const runtime = await checkRuntime(entry);
             if (!runtime.canLoad) {
@@ -325,6 +471,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 return res.status(404).json({ error: 'Model file not found on disk. Download it first.' });
             }
             try {
+                clearPendingActivation();
                 ++modelChoiceRevision;
                 await llmService.switchModel(modelId);
                 res.json({ message: 'Model switched.', modelId, activeModel: llmService.getActiveModelLabel() });

@@ -40,6 +40,7 @@ export function httpFixture(status: number, bytes: Uint8Array | null, headers: R
 
 export function speechFsFixture() {
     const files = new Map<string, { bytes: Buffer; identity: string }>();
+    const locks = new Set<string>();
     let generation = 0;
     const put = (file: string, bytes: Uint8Array) => files.set(file, { bytes: Buffer.from(bytes), identity: `0:${++generation}:0:0` });
     const fs: SpeechDownloadFileSystem = {
@@ -61,6 +62,11 @@ export function speechFsFixture() {
             signal?.throwIfAborted();
             yield files.get(file)!.bytes;
         },
+        async acquireLock(lockPath) {
+            if (locks.has(lockPath)) return null;
+            locks.add(lockPath);
+            return { release: async () => { locks.delete(lockPath); } };
+        },
     };
-    return { fs, files, put };
+    return { fs, files, locks, put };
 }

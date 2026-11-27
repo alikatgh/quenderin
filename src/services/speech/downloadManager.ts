@@ -3,9 +3,10 @@
 // Port of Handy src-tauri/src/managers/model/download.rs at 05efc5fc180197dc0fa9d568dd9812904b723b8b.
 // See native/speech/NOTICE.md.
 import { modelFile } from '@handy-computer/models';
-import { createHash } from 'node:crypto';
-import { constants, createReadStream } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { constants, createReadStream, type BigIntStats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { findCatalogModel, installedModelPath, modelDownloadUrl } from './catalog.js';
 import { SpeechError } from './errors.js';
@@ -52,7 +53,11 @@ export interface SpeechDownloadFileHandle {
     close(): Promise<void>;
 }
 
-/** Injectable filesystem: enough for Range resume, atomic rename and hashing. */
+export interface SpeechDownloadLockHandle {
+    release(): Promise<void>;
+}
+
+/** Injectable filesystem: enough for Range resume, atomic rename, locking and hashing. */
 export interface SpeechDownloadFileSystem {
     stat(filePath: string): Promise<SpeechDownloadStat | null>;
     mkdir(directory: string, options: { readonly recursive: true }): Promise<void>;
@@ -60,6 +65,7 @@ export interface SpeechDownloadFileSystem {
     rename(from: string, to: string): Promise<void>;
     unlink(filePath: string): Promise<void>;
     createReadStream(filePath: string, signal?: AbortSignal): AsyncIterable<Uint8Array>;
+    acquireLock?(lockPath: string): Promise<SpeechDownloadLockHandle | null>;
 }
 
 export interface SpeechDownloadRetryPolicy {
@@ -89,6 +95,46 @@ export interface SpeechDownloadManagerOptions {
 }
 
 export type SpeechDownloadListener = (snapshot: SpeechDownloadSnapshot) => void;
+
+const LOCK_STALE_MS = 30_000;
+const LOCK_HEARTBEAT_MS = 5_000;
+
+function isProcessAlive(pid: number): boolean {
+    if (!Number.isInteger(pid) || pid <= 0) return false;
+    try {
+        process.kill(pid, 0);
+        return true;
+    } catch (error) {
+        return (error as NodeJS.ErrnoException).code === 'EPERM';
+    }
+}
+
+async function isStaleArtifactLock(lockPath: string, staleMs: number): Promise<boolean> {
+    let before: BigIntStats;
+    try {
+        before = await fs.lstat(lockPath, { bigint: true });
+    } catch {
+        return false;
+    }
+    if (!before.isFile() || before.isSymbolicLink()) return false;
+    const ageMs = Date.now() - Number(before.mtimeNs / 1_000_000n);
+    try {
+        const raw = await fs.readFile(lockPath, 'utf8');
+        const parsed = JSON.parse(raw) as { pid?: unknown };
+        if (typeof parsed.pid === 'number' && Number.isInteger(parsed.pid) && parsed.pid > 0 && parsed.pid !== process.pid) {
+            if (!isProcessAlive(parsed.pid)) {
+                const after = await fs.lstat(lockPath, { bigint: true }).catch(() => null);
+                return !!after && after.dev === before.dev && after.ino === before.ino && after.mtimeNs === before.mtimeNs;
+            }
+            return false;
+        }
+    } catch {
+        // Fall through to age-based staleness check for truncated/corrupt lock files.
+    }
+    if (ageMs <= staleMs) return false;
+    const after = await fs.lstat(lockPath, { bigint: true }).catch(() => null);
+    return !!after && after.dev === before.dev && after.ino === before.ino && after.mtimeNs === before.mtimeNs;
+}
 
 export const speechDownloadFs: SpeechDownloadFileSystem = {
     async stat(filePath) {
@@ -125,30 +171,166 @@ export const speechDownloadFs: SpeechDownloadFileSystem = {
         flags: (constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)) as unknown as string,
         highWaterMark: 1024 * 1024, signal,
     }),
+    async acquireLock(lockPath) {
+        const payload = JSON.stringify({ pid: process.pid, token: randomUUID(), createdAt: Date.now() }) + '\n';
+        await fs.mkdir(path.dirname(lockPath), { recursive: true, mode: 0o700 });
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const handle = await fs.open(
+                    lockPath,
+                    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0),
+                    0o600,
+                );
+                try {
+                    await handle.writeFile(payload, 'utf8');
+                } finally {
+                    await handle.close();
+                }
+                const stat = await fs.lstat(lockPath, { bigint: true });
+                const lockId = `${stat.dev}:${stat.ino}`;
+                const heartbeat = setInterval(() => {
+                    const now = new Date();
+                    void fs.utimes(lockPath, now, now).catch(() => {});
+                }, LOCK_HEARTBEAT_MS);
+                heartbeat.unref?.();
+                let released = false;
+                return {
+                    async release() {
+                        if (released) return;
+                        released = true;
+                        clearInterval(heartbeat);
+                        try {
+                            const current = await fs.lstat(lockPath, { bigint: true });
+                            if (`${current.dev}:${current.ino}` === lockId) {
+                                await fs.rm(lockPath, { force: true });
+                            }
+                        } catch { /* lock already removed */ }
+                    },
+                };
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+                if (attempt > 0 || !await isStaleArtifactLock(lockPath, LOCK_STALE_MS)) return null;
+                await fs.rm(lockPath, { force: true }).catch(() => {});
+            }
+        }
+        return null;
+    },
 };
 
-export const fetchSpeechArtifact: SpeechDownloadFetch = async (url, init) => {
-    // Reconstruct the request for each attempt; fetch only follows HTTP(S) redirects.
-    const response = await fetch(url, init);
-    const source = response.body;
-    return {
-        ok: response.ok, status: response.status, headers: response.headers,
-        body: source && (async function* () {
-            const reader = source.getReader();
-            try {
-                for (;;) {
-                    const next = await reader.read();
-                    if (next.done) return;
-                    yield next.value;
-                }
-            } finally {
-                await reader.cancel().catch(() => {});
-                reader.releaseLock();
+export const MAX_SPEECH_REDIRECT_HOPS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const ALLOWED_HF_CDN_HOST = /^cdn-lfs(?:-[a-z0-9-]+)?\.(?:huggingface\.co|hf\.co)$/;
+const ALLOWED_HF_XETHUB_HOST = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.xethub\.hf\.co$/;
+
+export function isAllowedSpeechArtifactHost(hostname: string): boolean {
+    const host = hostname.toLowerCase();
+    return host === 'huggingface.co'
+        || host === 'hf.co'
+        || ALLOWED_HF_CDN_HOST.test(host)
+        || ALLOWED_HF_XETHUB_HOST.test(host);
+}
+
+export function assertAllowedSpeechArtifactUrl(rawUrl: string): URL {
+    let parsed: URL;
+    try {
+        parsed = new URL(rawUrl);
+    } catch {
+        throw new SpeechError('network', 502, 'Invalid speech artifact download URL.', null, false);
+    }
+    if (parsed.protocol !== 'https:'
+        || parsed.username
+        || parsed.password
+        || (parsed.port !== '' && parsed.port !== '443')
+        || !isAllowedSpeechArtifactHost(parsed.hostname)) {
+        throw new SpeechError(
+            'network',
+            502,
+            'Blocked speech artifact download outside the allowed Hugging Face hosts.',
+            null,
+            false,
+        );
+    }
+    return parsed;
+}
+
+export type RawSpeechFetch = (input: string, init?: RequestInit) => Promise<Response>;
+
+export function createSpeechArtifactFetch(rawFetch: RawSpeechFetch = fetch): SpeechDownloadFetch {
+    return async (url, init) => {
+        let current = assertAllowedSpeechArtifactUrl(url);
+        const safeHeaders: Record<string, string> = {};
+        if (init.headers) {
+            for (const [key, value] of Object.entries(init.headers)) {
+                const lower = key.toLowerCase();
+                if (lower === 'range' || lower === 'accept-encoding') safeHeaders[key] = value;
             }
-        })(),
-        discard: async () => { if (source) await source.cancel().catch(() => {}); },
+        }
+        for (let hop = 0; ; hop++) {
+            const response = await rawFetch(current.href, {
+                headers: safeHeaders,
+                signal: init.signal,
+                redirect: 'manual',
+                credentials: 'omit',
+            });
+            if (REDIRECT_STATUSES.has(response.status)) {
+                await response.body?.cancel().catch(() => {});
+                if (hop >= MAX_SPEECH_REDIRECT_HOPS) {
+                    throw new SpeechError(
+                        'network',
+                        502,
+                        'Too many redirects while downloading the speech model.',
+                        response.status,
+                        false,
+                    );
+                }
+                const location = response.headers.get('location');
+                if (!location || location.length > 8192) {
+                    throw new SpeechError(
+                        'network',
+                        502,
+                        'The server returned an invalid redirect while downloading the speech model.',
+                        response.status,
+                        false,
+                    );
+                }
+                let nextUrl: URL;
+                try {
+                    nextUrl = new URL(location, current);
+                } catch {
+                    throw new SpeechError(
+                        'network',
+                        502,
+                        'The server returned an invalid redirect URL.',
+                        response.status,
+                        false,
+                    );
+                }
+                current = assertAllowedSpeechArtifactUrl(nextUrl.href);
+                continue;
+            }
+            const source = response.body;
+            return {
+                ok: response.ok, status: response.status, headers: response.headers,
+                body: source && (async function* () {
+                    const reader = source.getReader();
+                    try {
+                        for (;;) {
+                            const next = await reader.read();
+                            if (next.done) return;
+                            yield next.value;
+                        }
+                    } finally {
+                        await reader.cancel().catch(() => {});
+                        reader.releaseLock();
+                    }
+                })(),
+                discard: async () => { if (source) await source.cancel().catch(() => {}); },
+            };
+        }
     };
-};
+}
+
+export const fetchSpeechArtifact: SpeechDownloadFetch = createSpeechArtifactFetch();
 
 const DOWNLOAD_STALL_TIMEOUT_MS = 60_000;
 const PROGRESS_THROTTLE_MS = 100;
@@ -285,25 +467,31 @@ export class SpeechDownloadManager {
     cancel(modelId: string): Promise<SpeechDownloadSnapshot> {
         return this.command(modelId, async model => {
             await this.interrupt(model);
-            await this.options.fs.unlink(this.part(model));
-            const current = this.snapshot(modelId);
-            return current?.phase === 'installed' ? current : this.publish(model, 'idle', 0);
+            return this.withArtifactLock(model, async () => {
+                await this.options.fs.unlink(this.part(model));
+                const current = this.snapshot(modelId);
+                return current?.phase === 'installed' ? current : this.publish(model, 'idle', 0);
+            });
         });
     }
 
     remove(modelId: string): Promise<SpeechDownloadSnapshot> {
         return this.command(modelId, async model => {
             await this.interrupt(model);
-            await this.options.fs.unlink(this.part(model));
-            await this.options.fs.unlink(this.destination(model));
-            this.verified.delete(model.id);
-            return this.publish(model, 'idle', 0);
+            return this.withArtifactLock(model, async () => {
+                await this.options.fs.unlink(this.part(model));
+                await this.options.fs.unlink(this.destination(model));
+                this.verified.delete(model.id);
+                return this.publish(model, 'idle', 0);
+            });
         });
     }
 
     verifyInstalled(modelId: string): Promise<SpeechDownloadSnapshot> {
         return this.command(modelId, async model => {
-            if (!this.jobs.get(modelId)?.work && !this.queue.has(modelId)) await this.checkInstalled(model);
+            if (!this.jobs.get(modelId)?.work && !this.queue.has(modelId)) {
+                await this.checkInstalled(model, { allowUnlink: false });
+            }
             return this.snapshot(modelId) ?? this.idle(model);
         });
     }
@@ -321,9 +509,12 @@ export class SpeechDownloadManager {
     }
 
     classifyError(error: unknown, status?: number): SpeechDownloadError {
-        if (error instanceof SpeechError && Object.hasOwn(errorMessages, error.code)) {
+        if (error instanceof SpeechError) {
+            const kind: SpeechDownloadErrorKind = Object.hasOwn(errorMessages, error.code)
+                ? error.code as SpeechDownloadErrorKind
+                : 'unknown';
             return {
-                kind: error.code as SpeechDownloadErrorKind,
+                kind,
                 message: error.message,
                 status: status ?? error.httpStatus ?? null,
             };
@@ -391,6 +582,31 @@ export class SpeechDownloadManager {
         return installedModelPath(this.options.modelsDir, model);
     }
     private part(model: HandySpeechModel): string { return this.destination(model) + '.part'; }
+    private lockPath(model: HandySpeechModel): string { return this.destination(model) + '.lock'; }
+
+    private async acquireArtifactLock(model: HandySpeechModel): Promise<SpeechDownloadLockHandle> {
+        if (!this.options.fs.acquireLock) return { release: async () => {} };
+        const lock = await this.options.fs.acquireLock(this.lockPath(model));
+        if (!lock) {
+            throw new SpeechError(
+                'download-busy',
+                409,
+                'Another Quenderin instance is already updating this speech model.',
+                null,
+                false,
+            );
+        }
+        return lock;
+    }
+
+    private async withArtifactLock<T>(model: HandySpeechModel, operation: () => Promise<T>): Promise<T> {
+        const lock = await this.acquireArtifactLock(model);
+        try {
+            return await operation();
+        } finally {
+            await lock.release();
+        }
+    }
 
     private async interrupt(model: HandySpeechModel): Promise<void> {
         this.queue.delete(model.id);
@@ -426,7 +642,10 @@ export class SpeechDownloadManager {
         this.drain();
     }
 
-    private async checkInstalled(model: HandySpeechModel): Promise<boolean> {
+    private async checkInstalled(
+        model: HandySpeechModel,
+        options: { readonly allowUnlink?: boolean } = {},
+    ): Promise<boolean> {
         const file = this.destination(model);
         const info = await this.options.fs.stat(file);
         if (!info) {
@@ -439,8 +658,12 @@ export class SpeechDownloadManager {
         }
         if (!await this.matchesHash(file, model, info)) {
             this.verified.delete(model.id);
-            await this.options.fs.unlink(file);
-            this.publish(model, 'error', 0, this.classifyError(failure('checksum-mismatch')));
+            if (options.allowUnlink) {
+                await this.options.fs.unlink(file);
+                this.publish(model, 'error', 0, this.classifyError(failure('checksum-mismatch')));
+            } else if (this.snapshot(model.id)?.phase === 'installed') {
+                this.publish(model, 'idle', 0);
+            }
             return false;
         }
         if (info.identity) this.verified.set(model.id, info.identity);
@@ -464,47 +687,79 @@ export class SpeechDownloadManager {
             && hash.digest('hex') === modelFile(model).sha256;
     }
 
+    private samePromotedFile(verifiedPart: SpeechDownloadStat, promoted: SpeechDownloadStat | null): boolean {
+        if (!promoted || promoted.size !== verifiedPart.size) return false;
+        if (!verifiedPart.identity) return true;
+        if (!promoted.identity) return false;
+        // Rename can update ctime on POSIX while preserving dev:ino:mtimeNs.
+        return promoted.identity.split(':', 3).join(':') === verifiedPart.identity.split(':', 3).join(':');
+    }
+
     private async download(model: HandySpeechModel, signal: AbortSignal): Promise<void> {
-        for (let attempt = 1; attempt <= this.policy.maxAttempts; attempt++) {
-            try {
-                signal.throwIfAborted();
-                await this.options.fs.mkdir(this.options.modelsDir, { recursive: true });
-                await this.transfer(model, signal);
-                signal.throwIfAborted();
-                this.publish(model, 'verifying', modelFile(model).size);
-                const part = this.part(model);
-                const info = await this.options.fs.stat(part);
-                if (!info || !await this.matchesHash(part, model, info, signal)) {
+        let lock: SpeechDownloadLockHandle | null = null;
+        try {
+            signal.throwIfAborted();
+            await this.options.fs.mkdir(this.options.modelsDir, { recursive: true });
+            lock = await this.acquireArtifactLock(model);
+        } catch (error) {
+            if (signal.aborted) return;
+            const classified = this.classifyError(error);
+            this.publish(model, 'error', this.job(model).snapshot.downloadedBytes, classified);
+            return;
+        }
+        try {
+            if (await this.checkInstalled(model, { allowUnlink: true })) return;
+            for (let attempt = 1; attempt <= this.policy.maxAttempts; attempt++) {
+                try {
                     signal.throwIfAborted();
-                    await this.options.fs.unlink(part);
-                    throw failure('checksum-mismatch');
-                }
-                signal.throwIfAborted();
-                await this.options.fs.rename(part, this.destination(model));
-                // Rename can change ctime. Cache the identity only if the hashed inode remains in place.
-                const installed = await this.options.fs.stat(this.destination(model));
-                if (info.identity && installed?.identity
-                    && installed.identity.split(':', 3).join(':') === info.identity.split(':', 3).join(':')
-                    && installed.size === info.size) this.verified.set(model.id, installed.identity);
-                this.publish(model, 'installed', modelFile(model).size);
-                return;
-            } catch (error) {
-                if (signal.aborted) return;
-                const classified = this.classifyError(error);
-                if (classified.kind === 'network' && attempt < this.policy.maxAttempts) {
-                    const jitter = 0.75 + (this.options.random ?? Math.random)() * 0.5;
-                    const ms = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (attempt - 1) * jitter);
-                    this.publish(model, 'queued', this.job(model).snapshot.downloadedBytes);
-                    try {
-                        await (this.options.sleep ?? ((ms, signal) => delay(ms, undefined, { signal })))(ms, signal);
-                        continue;
-                    } catch {
-                        if (signal.aborted) return;
+                    await this.transfer(model, signal);
+                    signal.throwIfAborted();
+                    this.publish(model, 'verifying', modelFile(model).size);
+                    const part = this.part(model);
+                    const info = await this.options.fs.stat(part);
+                    if (!info || !await this.matchesHash(part, model, info, signal)) {
+                        signal.throwIfAborted();
+                        await this.options.fs.unlink(part);
+                        throw failure('checksum-mismatch');
                     }
+                    const preRename = await this.options.fs.stat(part);
+                    if (!preRename || preRename.size !== info.size
+                        || (info.identity && preRename.identity !== info.identity)) {
+                        signal.throwIfAborted();
+                        await this.options.fs.unlink(part);
+                        throw failure('checksum-mismatch');
+                    }
+                    signal.throwIfAborted();
+                    await this.options.fs.rename(part, this.destination(model));
+                    const installed = await this.options.fs.stat(this.destination(model));
+                    if (!this.samePromotedFile(info, installed)) {
+                        this.verified.delete(model.id);
+                        throw failure('checksum-mismatch');
+                    }
+                    if (installed?.identity) this.verified.set(model.id, installed.identity);
+                    this.publish(model, 'installed', modelFile(model).size);
+                    return;
+                } catch (error) {
+                    if (signal.aborted) return;
+                    const classified = this.classifyError(error);
+                    const retryable = !(error instanceof SpeechError) || error.retryable;
+                    if (classified.kind === 'network' && retryable && attempt < this.policy.maxAttempts) {
+                        const jitter = 0.75 + (this.options.random ?? Math.random)() * 0.5;
+                        const ms = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (attempt - 1) * jitter);
+                        this.publish(model, 'queued', this.job(model).snapshot.downloadedBytes);
+                        try {
+                            await (this.options.sleep ?? ((ms, signal) => delay(ms, undefined, { signal })))(ms, signal);
+                            continue;
+                        } catch {
+                            if (signal.aborted) return;
+                        }
+                    }
+                    this.publish(model, 'error', classified.kind === 'checksum-mismatch' ? 0 : this.job(model).snapshot.downloadedBytes, classified);
+                    return;
                 }
-                this.publish(model, 'error', classified.kind === 'checksum-mismatch' ? 0 : this.job(model).snapshot.downloadedBytes, classified);
-                return;
             }
+        } finally {
+            await lock.release();
         }
     }
 
@@ -546,6 +801,7 @@ export class SpeechDownloadManager {
                     return await raceAbort(pending, controller.signal);
                 } catch (err) {
                     if (signal.aborted) throw err;
+                    if (err instanceof SpeechError) throw err;
                     throw failure('network');
                 }
             };

@@ -1,11 +1,13 @@
 import { getEventListeners, EventEmitter, once } from 'node:events';
 import * as fs from 'node:fs/promises';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { catalog } from '@handy-computer/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 import { createApp } from '../src/app.js';
+import { MAX_SEND_BUFFER_BYTES } from '../src/constants.js';
 import { WebSocketManager } from '../src/websocket/index.js';
 import { installedModelPath } from '../src/services/speech/catalog.js';
 import { SpeechDownloadManager, type SpeechDownloadFetch } from '../src/services/speech/downloadManager.js';
@@ -47,7 +49,7 @@ describe('dashboard speech routes', () => {
             backend: 'transcribe.cpp', durationMs: 1, truncated: false, autoSend: !!request.autoSend, segments: [],
         }));
         const app = createApp(undefined, undefined, undefined, undefined, undefined, TOKEN, {
-            catalog: fixtureCatalog, pinnedEngineVersion: '0.4.1', maxAudioBytes: 128, downloads, settings, transcribe,
+            catalog: fixtureCatalog, pinnedEngineVersion: '0.4.1', maxAudioBytes: 128, uploadTimeoutMs: 80, downloads, settings, transcribe,
         });
         server = app.listen(0, '127.0.0.1');
         await once(server, 'listening');
@@ -79,13 +81,17 @@ describe('dashboard speech routes', () => {
         });
     }
 
-    it('lists all curated rows, measured picks and the unsupported-engine state', async () => {
-        const reply = await request('/models', 'GET', undefined, false);
+    it('lists all curated rows, measured picks and the unsupported-engine state for authenticated callers without deleting corrupt files', async () => {
+        disk.put(installedModelPath(dir, model), Buffer.from('corrupt-local-artifact'));
+        const reply = await request('/models', 'GET', undefined, true);
         expect(reply.status).toBe(200);
         const result = reply.json();
         expect(result).toMatchObject({ runtimeEngineVersion: '0.4.1', recommendedModelId: model.id, accurateModelId: 'Qwen3-ASR-1.7B' });
         expect(result.models).toHaveLength(30);
+        expect(result.models.find((row: { model: { id: string } }) => row.model.id === model.id)).toMatchObject({ installed: false });
         expect(result.models.at(-1)).toMatchObject({ model: { id: future.id }, engine: { compatibility: 'needs-newer-engine' } });
+        // Read-only inventory route must never unlink local files on disk.
+        expect(disk.files.has(installedModelPath(dir, model))).toBe(true);
     });
 
     it('serves the shipped Handy notices as text', async () => {
@@ -96,7 +102,13 @@ describe('dashboard speech routes', () => {
         expect(credits.body).toContain('@handy-computer/models');
     });
 
-    it('requires authorization for settings, progress and mutations regardless of URL case', async () => {
+    it('requires authorization for inventory, settings, progress and mutations regardless of URL case or HEAD', async () => {
+        disk.put(installedModelPath(dir, model), Buffer.from('corrupt-local-artifact'));
+        expect((await request('/models', 'GET', undefined, false)).status).toBe(401);
+        expect((await request('/models', 'HEAD', undefined, false)).status).toBe(401);
+        expect((await localRequest(base + '/API/SPEECH/MODELS')).status).toBe(401);
+        expect((await localRequest(base + '/API/SPEECH/MODELS', { method: 'HEAD' })).status).toBe(401);
+        expect(disk.files.has(installedModelPath(dir, model))).toBe(true);
         expect((await request('/settings', 'GET', undefined, false)).status).toBe(401);
         expect((await request('/SETTINGS', 'HEAD', undefined, false)).status).toBe(401);
         expect((await request('/downloads', 'GET', undefined, false)).status).toBe(401);
@@ -152,14 +164,82 @@ describe('dashboard speech routes', () => {
         expect(fetch).not.toHaveBeenCalled();
     });
 
-    it('validates WAV MIME, bytes and declared size at the HTTP boundary', async () => {
+    it('validates WAV MIME, bytes, parameter types and declared size at the HTTP boundary', async () => {
         expect((await request('/transcribe', 'POST', {})).status).toBe(415);
         expect((await wav(Buffer.from('invalid'))).status).toBe(415);
         const oversized = await wav(wavFixture(), '', 129);
         expect(oversized.status).toBe(413);
         expect(oversized.json()).toMatchObject({ code: 'audio-too-large' });
         expect((await wav(wavFixture(), '?modelId=' + future.id)).json()).toMatchObject({ code: 'unsupported-engine' });
+        // Array query parameter tampering must be rejected cleanly with 400.
+        const tamperedModel = await wav(wavFixture(), `?modelId=${model.id}&modelId=other`);
+        expect(tamperedModel.status).toBe(400);
+        expect(tamperedModel.json()).toMatchObject({ code: 'invalid-model' });
+        const tamperedLang = await wav(wavFixture(), '?language=en&language=fr');
+        expect(tamperedLang.status).toBe(400);
+        expect(tamperedLang.json()).toMatchObject({ code: 'invalid-language' });
         expect(transcribe).not.toHaveBeenCalled();
+    });
+
+    it('rejects chunked bodies crossing the byte cap and releases admission after timeout or disconnect', async () => {
+        await settings.update({ modelId: model.id, voiceEnabled: true, autoSend: false });
+        disk.put(installedModelPath(dir, model), fixtureBytes);
+
+        // 1. Chunked upload (no Content-Length) exceeding maxAudioBytes (128).
+        const chunkedOversized = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+            const req = http.request(base + prefix + '/transcribe?modelId=' + model.id, {
+                method: 'POST',
+                headers: { 'Content-Type': 'audio/wav', 'Transfer-Encoding': 'chunked', 'X-Auth-Token': TOKEN },
+                agent: false,
+            }, res => {
+                let text = '';
+                res.setEncoding('utf8');
+                res.on('data', chunk => { text += chunk; });
+                res.on('end', () => resolve({ status: res.statusCode ?? 0, body: text }));
+            });
+            req.on('error', reject);
+            req.write(Buffer.alloc(80, 1));
+            req.write(Buffer.alloc(80, 2));
+            req.end();
+        });
+        expect(chunkedOversized.status).toBe(413);
+        expect(JSON.parse(chunkedOversized.body)).toMatchObject({ code: 'audio-too-large' });
+
+        // 2. Stalled upload hits absolute upload deadline and releases admission.
+        const timedOut = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+            const req = http.request(base + prefix + '/transcribe?modelId=' + model.id, {
+                method: 'POST',
+                headers: { 'Content-Type': 'audio/wav', 'Transfer-Encoding': 'chunked', 'X-Auth-Token': TOKEN },
+                agent: false,
+            }, res => {
+                let text = '';
+                res.setEncoding('utf8');
+                res.on('data', chunk => { text += chunk; });
+                res.on('end', () => resolve({ status: res.statusCode ?? 0, body: text }));
+            });
+            req.on('error', () => { /* expected when server destroys stalled read after 408 */ });
+            req.write(Buffer.from('RIFF'));
+            setTimeout(() => reject(new Error('Upload timeout did not fire')), 2000).unref();
+        });
+        expect(timedOut.status).toBe(408);
+        expect(JSON.parse(timedOut.body)).toMatchObject({ code: 'upload-timeout' });
+
+        // 3. Aborted mid-upload socket releases admission for the next request.
+        await new Promise<void>(resolve => {
+            const req = http.request(base + prefix + '/transcribe?modelId=' + model.id, {
+                method: 'POST',
+                headers: { 'Content-Type': 'audio/wav', 'Transfer-Encoding': 'chunked', 'X-Auth-Token': TOKEN },
+                agent: false,
+            });
+            req.on('error', () => resolve());
+            req.write(Buffer.from('RIFF'));
+            setTimeout(() => req.destroy(), 15);
+        });
+        await vi.waitFor(async () => {
+            const ok = await wav(wavFixture(), '?modelId=' + model.id);
+            expect(ok.status).toBe(200);
+            expect(ok.json()).toMatchObject({ text: 'Local transcript' });
+        });
     });
 
     it('requires the saved model to be enabled and verified before using local speech', async () => {
@@ -175,9 +255,9 @@ describe('dashboard speech routes', () => {
         expect(transcribe).toHaveBeenCalledExactlyOnceWith({ wav: audio, modelId: model.id, language: 'en', autoSend: true }, expect.any(AbortSignal));
     });
 
-    it('streams real progress frames to authenticated dashboard WebSockets', async () => {
+    it('streams real progress frames and delivers terminal installed transitions even under WS backpressure', async () => {
         const llm = Object.assign(new EventEmitter(), { isCurrentlyGenerating: () => ({ isGenerating: false }) });
-        new WebSocketManager(server, {} as never, new EventEmitter() as never, llm as never, new EventEmitter() as never,
+        const wsManager = new WebSocketManager(server, {} as never, new EventEmitter() as never, llm as never, new EventEmitter() as never,
             undefined, TOKEN, undefined, downloads);
         const ws = new WebSocket(base.replace('http:', 'ws:') + '/ws?token=' + TOKEN, { origin: base });
         clients.push(ws);
@@ -186,6 +266,9 @@ describe('dashboard speech routes', () => {
         await once(ws, 'open');
         const listeners = getEventListeners(llm, 'model_download_progress');
         expect(listeners).toHaveLength(1);
+        // Simulate server-side send-buffer backpressure on the active socket.
+        const serverSocket = (wsManager as unknown as { activeWs: WebSocket }).activeWs;
+        Object.defineProperty(serverSocket, 'bufferedAmount', { value: MAX_SEND_BUFFER_BYTES + 1024, configurable: true });
         await request('/downloads', 'POST', { modelId: model.id });
         await vi.waitFor(() => expect(frames.map(f => JSON.parse(f))).toContainEqual(expect.objectContaining({
             type: 'speech_download_progress', snapshot: expect.objectContaining({ phase: 'installed', modelId: model.id }),

@@ -218,7 +218,14 @@ export class WebSocketManager {
             this.llmService.on('action_required', pushActionRequired);
             this.llmService.on('model_download_progress', pushModelDownloadProgress);
             const unsubscribeSpeech = this.speechDownloads?.subscribe(snapshot => {
-                this.safeSend(ws, JSON.stringify({ type: 'speech_download_progress', snapshot }));
+                const payload = JSON.stringify({ type: 'speech_download_progress', snapshot });
+                if (snapshot.phase === 'downloading') {
+                    this.safeSend(ws, payload);
+                } else if (ws.readyState === WebSocket.OPEN) {
+                    // Never drop terminal or phase-transition frames (installed/error/paused/idle/verifying/queued)
+                    // under backpressure so the renderer reliably learns when dictation becomes ready.
+                    ws.send(payload);
+                }
             });
 
             // The governed task channel: steps stream live; an approval question renders the

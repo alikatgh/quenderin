@@ -53,10 +53,14 @@ export function assertModelTranscribable(catalog: HandySpeechCatalog, modelId: s
 }
 
 export function validateTranscriptionAudio(wav: Buffer, maxBytes: number): void {
-    if (wav.length > maxBytes) throw new SpeechError('audio-too-large', 413, 'The recording is too large.');
+    if (typeof wav === 'string' || Array.isArray(wav) || !Buffer.isBuffer(wav)) {
+        throw new SpeechError('invalid-audio', 415, 'Audio must be non-empty 16 kHz mono 16-bit PCM WAV.');
+    }
+    const byteLength = wav.byteLength;
+    if (byteLength > maxBytes) throw new SpeechError('audio-too-large', 413, 'The recording is too large.');
     try {
         validateWavBuffer(wav);
-        if (wav.readUInt32LE(4) !== wav.length - 8) throw new Error('RIFF size mismatch.');
+        if (wav.readUInt32LE(4) !== byteLength - 8) throw new Error('RIFF size mismatch.');
     } catch {
         throw new SpeechError('invalid-audio', 415, 'Audio must be non-empty 16 kHz mono 16-bit PCM WAV.');
     }
