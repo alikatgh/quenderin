@@ -1259,9 +1259,12 @@ public final class LocalSSEStreamBuffer: @unchecked Sendable {
         }
     }
 
+    private static let sseProbeBytes = Data(":\n\n".utf8)
+
     private let lock = NSLock()
     private let maxBufferedBytes: Int
     private var pending = Data()
+    private var hasEnqueuedData = false
     private var finished = false
     private var aborted = false
     private var waiter: CheckedContinuation<Batch, Never>?
@@ -1299,12 +1302,49 @@ public final class LocalSSEStreamBuffer: @unchecked Sendable {
             return false
         }
         pending.append(data)
+        hasEnqueuedData = true
         if let w = waiter {
             waiter = nil
             let out = pending
             pending = Data()
             resumeWaiter = w
             batchToResume = Batch(data: out, isFinished: false, isAborted: false)
+        }
+        lock.unlock()
+        if let w = resumeWaiter, let batch = batchToResume {
+            w.resume(returning: batch)
+        }
+        return true
+    }
+
+    /// Enqueues a harmless SSE comment probe (`:\n\n`) through the same ordered stream buffer as
+    /// HTTP headers and SSE frames so a peer FIN can never write bytes ahead of the HTTP status
+    /// line or race with an in-flight chunk write.
+    ///
+    /// Returns `true` when a probe frame was enqueued or delivered to an idle waiting writer.
+    /// Returns `false` if headers/initial data have not been enqueued yet, if non-empty bytes are
+    /// already queued for immediate delivery, if the stream is finished/aborted, or if the buffer
+    /// cap would be exceeded.
+    @discardableResult
+    public func enqueueProbe() -> Bool {
+        var resumeWaiter: CheckedContinuation<Batch, Never>?
+        var batchToResume: Batch?
+        lock.lock()
+        guard !aborted, !finished, hasEnqueuedData, pending.isEmpty else {
+            lock.unlock()
+            return false
+        }
+        let probe = Self.sseProbeBytes
+        guard pending.count + probe.count <= maxBufferedBytes else {
+            lock.unlock()
+            return false
+        }
+        if let w = waiter {
+            waiter = nil
+            resumeWaiter = w
+            batchToResume = Batch(data: probe, isFinished: false, isAborted: false)
+        } else {
+            pending.append(probe)
         }
         lock.unlock()
         if let w = resumeWaiter, let batch = batchToResume {

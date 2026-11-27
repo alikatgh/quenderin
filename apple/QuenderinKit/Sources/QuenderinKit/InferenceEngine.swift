@@ -167,8 +167,29 @@ public protocol InferenceEngine: Sendable {
 
     /// Reserves exclusive ownership for a manual in-app model switch before cancelling ordinary
     /// chat or changing loading state. Waits up to `timeoutSeconds` if an active exclusive API
-    /// turn currently owns the engine without cancelling that API turn.
+    /// turn or a running agent reservation currently owns the engine without cancelling it.
     func acquireManualModelSwitchLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease
+}
+
+/// File-scoped synchronous lock holder for the default `InferenceEngine` exclusive lease so
+/// `acquireExclusiveInferenceLease` never nests a type inside a generic protocol-extension method
+/// and never invokes `NSLock.lock()`/`unlock()` directly from an `async` context under Swift 6.
+private final class DefaultExclusiveLeaseGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var active = true
+
+    func cancelIfActive(_ action: () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard active else { return }
+        action()
+    }
+
+    func release() {
+        lock.lock()
+        active = false
+        lock.unlock()
+    }
 }
 
 /// Exclusive inference access granted by `InferenceEngine.acquireExclusiveInferenceLease(timeoutSeconds:)`.
@@ -233,9 +254,7 @@ public extension InferenceEngine {
     func hasActiveInference() async -> Bool { false }
     func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool { false }
     func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
-        let cancelGate = NSLock()
-        final class LeaseState: @unchecked Sendable { var active = true }
-        let state = LeaseState()
+        let gate = DefaultExclusiveLeaseGate()
         return ExclusiveInferenceLease(
             loadedModelID: { await self.loadedModelID() },
             loadedExecutionProfile: { system, history, options in
@@ -246,15 +265,10 @@ public extension InferenceEngine {
             },
             chatCapStatus: { await self.chatCapStatus() },
             requestCancel: {
-                cancelGate.lock()
-                defer { cancelGate.unlock() }
-                guard state.active else { return }
-                self.requestCancel()
+                gate.cancelIfActive { self.requestCancel() }
             },
             release: {
-                cancelGate.lock()
-                state.active = false
-                cancelGate.unlock()
+                gate.release()
             },
             load: { model, url in
                 try await self.load(model: model, at: url)

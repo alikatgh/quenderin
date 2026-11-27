@@ -178,7 +178,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         }
         let clampedMs = max(0, Int(timeoutSeconds * 1000))
         let deadline = ContinuousClock.now + .milliseconds(clampedMs)
-        while exclusiveOwner != nil || starts > 0 {
+        while exclusiveOwner != nil || starts > 0 || !agentModelOwners.isEmpty {
             try Task.checkCancellation()
             if held != nil || automaticSwitching || ContinuousClock.now >= deadline {
                 throw SpecialistCoordinationError.busy
@@ -186,7 +186,7 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
             try await Task.sleep(nanoseconds: 50_000_000)
         }
         try Task.checkCancellation()
-        guard held == nil, !automaticSwitching else {
+        guard held == nil, !automaticSwitching, exclusiveOwner == nil, starts == 0, agentModelOwners.isEmpty else {
             throw SpecialistCoordinationError.busy
         }
         let ownerID = UUID()

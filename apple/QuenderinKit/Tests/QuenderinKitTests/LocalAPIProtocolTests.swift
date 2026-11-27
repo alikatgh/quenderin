@@ -630,4 +630,52 @@ final class LocalAPIProtocolTests: XCTestCase {
         let overflowBatch = await cappedBuf.nextBatch()
         XCTAssertTrue(overflowBatch.isAborted)
     }
+
+    func testLocalSSEStreamBufferOrderedProbeNeverPrecedesHeaders() async {
+        let buf = LocalSSEStreamBuffer(maxBufferedBytes: 4096)
+
+        // 1) A probe before HTTP headers are enqueued is rejected so `:\n\n` can never lead the wire.
+        XCTAssertFalse(buf.enqueueProbe())
+
+        // 2) Enqueue HTTP headers + initial SSE chunk; a probe while headers are still queued in
+        //    `pending` is a no-op because the queued headers themselves are already due to write.
+        let headers = LocalHTTPResponse.sseHeaders()
+        XCTAssertTrue(buf.append(headers))
+        XCTAssertFalse(buf.enqueueProbe())
+
+        // First dequeued batch MUST begin with HTTP/1.1 headers, never with `:\n\n`.
+        let firstBatch = await buf.nextBatch()
+        XCTAssertFalse(firstBatch.isAborted)
+        XCTAssertFalse(firstBatch.isFinished)
+        let firstText = String(data: firstBatch.data, encoding: .utf8) ?? ""
+        XCTAssertTrue(firstText.hasPrefix("HTTP/1.1 200 OK\r\n"))
+        XCTAssertFalse(firstText.contains(":\n\n"))
+
+        // 3) While the writer is busy sending the first batch (no waiter yet, `pending` empty),
+        //    a peer-FIN probe queues `:\n\n` strictly AFTER headers.
+        XCTAssertTrue(buf.enqueueProbe())
+        // A second redundant probe while `:\n\n` is already pending does not pile up.
+        XCTAssertFalse(buf.enqueueProbe())
+        let queuedProbeBatch = await buf.nextBatch()
+        XCTAssertEqual(String(data: queuedProbeBatch.data, encoding: .utf8), ":\n\n")
+        XCTAssertFalse(queuedProbeBatch.isFinished)
+        XCTAssertFalse(queuedProbeBatch.isAborted)
+
+        // 4) When the writer is parked idle awaiting the next token, `enqueueProbe()` wakes it
+        //    immediately with `:\n\n`, and subsequent frames + finish still deliver in order.
+        let waitingReader = Task { await buf.nextBatch() }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        XCTAssertTrue(buf.enqueueProbe())
+        let wokenProbe = await waitingReader.value
+        XCTAssertEqual(String(data: wokenProbe.data, encoding: .utf8), ":\n\n")
+        XCTAssertFalse(wokenProbe.isFinished)
+        XCTAssertFalse(wokenProbe.isAborted)
+
+        buf.finish(finalData: LocalAPICodec.streamDoneFrame)
+        XCTAssertFalse(buf.enqueueProbe())
+        let finalBatch = await buf.nextBatch()
+        XCTAssertTrue(finalBatch.isFinished)
+        XCTAssertFalse(finalBatch.isAborted)
+        XCTAssertEqual(finalBatch.data, LocalAPICodec.streamDoneFrame)
+    }
 }

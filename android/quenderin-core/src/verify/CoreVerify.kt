@@ -3129,6 +3129,22 @@ fun main() {
             d1.thinking + d2.thinking == "private thoughts" &&
             d1.answer + d2.answer == "Visible answer"
     })
+    check("ThinkingMode.promptEndsInsideThinking falls back on equal template renders (unconditional prefill)", run {
+        val equalChatML = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>"
+        val equalChatMLText = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\nReasoning: "
+        val equalDeepSeek = "<｜User｜>hi<｜Assistant｜><think>"
+        val closedOff = equalChatML + "\n</think>\n\n"
+        val equalClosed = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+        val equalUserOnly = "<|im_start|>user\nexplain <think><|im_end|>\n"
+        val equalFlatUser = "User: explain <think>"
+        ThinkingMode.promptEndsInsideThinking(equalChatML, withoutAssistantPrefix = equalChatML) &&
+            ThinkingMode.promptEndsInsideThinking(equalChatMLText, withoutAssistantPrefix = equalChatMLText) &&
+            ThinkingMode.promptEndsInsideThinking(equalDeepSeek, withoutAssistantPrefix = equalDeepSeek) &&
+            !ThinkingMode.promptEndsInsideThinking(closedOff, withoutAssistantPrefix = equalChatML) &&
+            !ThinkingMode.promptEndsInsideThinking(equalClosed, withoutAssistantPrefix = equalClosed) &&
+            !ThinkingMode.promptEndsInsideThinking(equalUserOnly, withoutAssistantPrefix = equalUserOnly) &&
+            !ThinkingMode.promptEndsInsideThinking(equalFlatUser, withoutAssistantPrefix = equalFlatUser)
+    })
     check("ChatModel Hide/Show strips reasoning when template pre-opened <think> in prompt", run {
         class PreOpenedThinkingEngine(private val scripted: String) : InferenceEngine {
             override var loadedModelId: String? = "test-r1"

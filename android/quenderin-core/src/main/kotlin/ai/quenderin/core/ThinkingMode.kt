@@ -79,12 +79,14 @@ enum class ThinkingMode(val rawValue: String) {
          * Returns true when the current assistant generation prefix of [prompt] leaves an unclosed
          * `<think>` block — including prefixes with text after `<think>` (e.g. `<think>\nReasoning: `)
          * — while ignoring literal `<think>` tags inside earlier user/system messages.
-         * When [withoutAssistantPrefix] (the template rendered with `add_ass = false`) is a prefix
-         * of [prompt], only the exact assistant-prefix suffix is inspected.
+         * When [withoutAssistantPrefix] (the template rendered with `add_ass = false`) is a strict
+         * prefix of [prompt], only the exact assistant-prefix suffix is inspected. If both renders
+         * are equal (e.g. an unconditional template that always includes the assistant prefill),
+         * falls back to `promptEndsInsideThinking(prompt)`.
          * Twin of Swift `ThinkingMode.promptEndsInsideThinking(_:withoutAssistantPrefix:)`.
          */
         fun promptEndsInsideThinking(prompt: String, withoutAssistantPrefix: String): Boolean {
-            if (withoutAssistantPrefix.isNotEmpty() && prompt.startsWith(withoutAssistantPrefix)) {
+            if (withoutAssistantPrefix.isNotEmpty() && prompt.length > withoutAssistantPrefix.length && prompt.startsWith(withoutAssistantPrefix)) {
                 return hasUnclosedThinkTag(prompt.substring(withoutAssistantPrefix.length))
             }
             return promptEndsInsideThinking(prompt)

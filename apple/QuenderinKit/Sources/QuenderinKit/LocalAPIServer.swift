@@ -13,7 +13,10 @@ import Network
 ///   when an API key is configured.
 /// - Serializes inference through the app's existing exclusive engine lease so Chat and the
 ///   Local API never run the model concurrently (waits up to 30 s, then returns 503 `server_busy`).
-/// - Cancels in-flight generation immediately if the client disconnects.
+/// - Cancels in-flight generation as soon as a transport error/reset, write timeout, or failed
+///   SSE write/probe observes client disconnect (preserving valid write-half-closed clients
+///   `shutdown(SHUT_WR)`; a clean FIN before the first streamed token cannot be distinguished
+///   from a valid half-close until a write or transport error occurs).
 /// - Never logs prompts, messages, replies, or API keys — keeps only a count of requests served.
 @MainActor
 public final class LocalAPIServer: ObservableObject {
@@ -550,10 +553,15 @@ public final class LocalAPIServer: ObservableObject {
         func startWriterIfNeeded() {
             guard !headersStarted else { return }
             headersStarted = true
-            connection.markStreamingResponse()
             var intro = LocalHTTPResponse.sseHeaders()
             intro.append(LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant"))
             sseBuffer.append(intro)
+            // Register the peer-FIN probe AFTER headers are queued in `sseBuffer` and route it
+            // through the same ordered buffer/writer so `:\n\n` can never precede `HTTP/1.1` or
+            // race with an in-flight chunk write.
+            connection.setStreamingProbeHook { [sseBuffer] in
+                sseBuffer.enqueueProbe()
+            }
             writerTask = Task { [connection, sseBuffer] in
                 while true {
                     let batch = await sseBuffer.nextBatch()
@@ -930,12 +938,12 @@ private final class LocalAPIConnection: @unchecked Sendable {
     private let lock = NSLock()
     private var buffer = Data()
     private var parsedRequest = false
-    private var streamingResponse = false
     private var sendingFinal = false
     private var finished = false
     private var disconnected = false
     private var workTask: Task<Void, Never>?
     private var cancelInferenceHook: (@Sendable () -> Void)?
+    private var streamingProbeHook: (@Sendable () -> Void)?
     private var readTimeoutItem: DispatchWorkItem?
     private var finalWriteTimeoutItem: DispatchWorkItem?
     private var pendingWrite: (continuation: CheckedContinuation<Bool, Never>, timeout: DispatchWorkItem)?
@@ -967,9 +975,9 @@ private final class LocalAPIConnection: @unchecked Sendable {
         }
     }
 
-    func markStreamingResponse() {
+    func setStreamingProbeHook(_ hook: (@Sendable () -> Void)?) {
         lock.lock()
-        streamingResponse = true
+        streamingProbeHook = (disconnected || sendingFinal) ? nil : hook
         lock.unlock()
     }
 
@@ -1064,19 +1072,14 @@ private final class LocalAPIConnection: @unchecked Sendable {
             if isComplete {
                 // TCP FIN (`isComplete == true`, `error == nil`) can be a valid write-half close
                 // (`shutdown(SHUT_WR)`) from a client that is still reading the reply. Never cancel
-                // a valid half-closed request on read EOF alone; stop re-arming `receive` and, when
-                // streaming SSE with no write in flight, send a harmless SSE comment probe so a
-                // fully closed peer elicits TCP RST immediately while a half-closed reader ignores it.
+                // a valid half-closed request on read EOF alone; stop re-arming `receive` and, once
+                // streaming headers have been queued, route a harmless SSE comment probe through
+                // the same ordered writer so a closed peer elicits TCP RST without ever preceding
+                // the HTTP status line.
                 self.lock.lock()
-                let shouldProbeSSE = self.streamingResponse && !self.sendingFinal && !self.disconnected && self.pendingWrite == nil
+                let probe = (!self.sendingFinal && !self.disconnected) ? self.streamingProbeHook : nil
                 self.lock.unlock()
-                if shouldProbeSSE {
-                    self.connection.send(content: Data(":\n\n".utf8), completion: .contentProcessed { @Sendable [weak self] probeError in
-                        if probeError != nil {
-                            self?.markDisconnected()
-                        }
-                    })
-                }
+                probe?()
                 return
             }
             // Discard any pipelined trailing bytes (one request per connection) and keep watching.
@@ -1156,6 +1159,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
             return
         }
         sendingFinal = true
+        streamingProbeHook = nil
         let timeoutItem = DispatchWorkItem { [weak self] in
             self?.cancel()
         }
@@ -1190,6 +1194,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
         workTask = nil
         let hook = cancelInferenceHook
         cancelInferenceHook = nil
+        streamingProbeHook = nil
         let pending = pendingWrite
         pendingWrite = nil
         let shouldNotifyFinished = !finished

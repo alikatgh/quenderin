@@ -355,7 +355,7 @@ bool hasUnclosedThinkTag(const std::string& text) {
 }
 
 bool promptEndsInsideThinking(const std::string& prompt, const std::string& withoutAssistant) {
-    if (!withoutAssistant.empty() && prompt.size() >= withoutAssistant.size() &&
+    if (!withoutAssistant.empty() && prompt.size() > withoutAssistant.size() &&
         prompt.compare(0, withoutAssistant.size(), withoutAssistant) == 0) {
         return hasUnclosedThinkTag(prompt.substr(withoutAssistant.size()));
     }
@@ -793,8 +793,9 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteHyMemoryStreaming(JNIEnv* env, 
 // GRAMMAR-CONSTRAINED completion (the agent decision decode): build a PER-CALL sampler whose first
 // stage is a GBNF grammar mask, so the decode CANNOT be prose — parity with the iOS LlamaEngine chain
 // (grammar → penalties → top_k → top_p → temp → dist; top_k/top_p run AFTER the grammar so they only
-// trim already-legal tokens). A grammar that fails to parse returns null → we skip it and decode with
-// the remaining (unconstrained) chain, mirroring iOS's null-grammar fallback rather than crashing.
+// trim already-legal tokens). A grammar that fails to parse fails closed: we free the sampler and
+// throw IllegalStateException rather than silently falling back to unconstrained decoding (parity
+// with iOS `LlamaEngine`).
 JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobject thiz,
                                                              jlong handle, jstring prompt, jint max_tokens,

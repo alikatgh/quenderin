@@ -60,15 +60,13 @@ public final class AutomaticModelSelection {
     }
     public func prepare(prompt: String, current: ModelEntry?, history: [ChatMessage]? = nil, options: GenerationOptions? = nil,
                         resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
+                        resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)? = nil,
                         isCurrent: @escaping @MainActor @Sendable () -> Bool = { true }) async throws -> ModelEntry? {
         guard preferences.enabled else { return current }
         let revision = preferences.revision
         let now = nowMs()
         failures = failures.filter { now - $0.value < 600_000 }
         let records = await store.samples(nowMs: now)
-        let tier = ChatTier.of(model: current)
-        let currentOptions = resolveOptionsForModel?(current) ?? options ?? tier.chatOptions
-        let request = (system: tier.systemPrompt, history: history ?? [ChatMessage(role: .user, text: prompt)], options: currentOptions)
         let userContextChoice: ContextLengthChoice
         if let contextLengthChoice {
             userContextChoice = contextLengthChoice()
@@ -80,8 +78,20 @@ public final class AutomaticModelSelection {
             #endif
         }
         let loadedID = await onboarding.loadedAutomaticModelID()
-        let actual = await onboarding.executionProfile(system: request.system, history: request.history, options: request.options)
         let actualCapacity = await onboarding.loadedAutomaticContextTokens()
+        let tier = ChatTier.of(model: current)
+        let request: ChatPreparedRequest
+        if let resolveRequestForModel {
+            request = resolveRequestForModel(current, actualCapacity)
+        } else {
+            let currentOptions = resolveOptionsForModel?(current) ?? options ?? tier.chatOptions
+            request = ChatPreparedRequest(
+                system: tier.systemPrompt,
+                history: history ?? [ChatMessage(role: .user, text: prompt)],
+                options: currentOptions
+            )
+        }
+        let actual = await onboarding.executionProfile(system: request.system, history: request.history, options: request.options)
         let known = await onboarding.knownExecutionProfiles()
         guard preferences.enabled, preferences.revision == revision, isCurrent(), !Task.isCancelled else { throw CancellationError() }
         let available = resourceBudget()
@@ -135,7 +145,10 @@ public final class AutomaticModelSelection {
         // Determine the preferred family only after resource, runtime, context and quality gates.
         // A larger but ineligible coder must not exclude a viable current general text model.
         let resourceEligible = plans.filter { plan in
-            let candidateMaxTokens = (resolveOptionsForModel?(plan.model) ?? options ?? ChatTier.of(model: plan.model).chatOptions).maxTokens
+            let candidateMaxTokens = (resolveRequestForModel?(plan.model, plan.config.context).options
+                ?? resolveOptionsForModel?(plan.model)
+                ?? options
+                ?? ChatTier.of(model: plan.model).chatOptions).maxTokens
             let candidateRequiredContext = promptTokens + candidateMaxTokens
             return runtimeAvailable(plan.model) && ModelRuntimeSupport.supports(plan.model)
                 && (plan.isLoaded || MemoryFitness.check(model: plan.model, totalGB: budget, freeGB: replacementFreeGB).canLoad)
@@ -198,8 +211,26 @@ public final class AutomaticModelSelection {
                 targetOptions.thinkingMode = .off
             }
             let targetRequest = (system: targetTier.systemPrompt, history: request.history, options: targetOptions)
+            let resolveTargetRequest: (@MainActor @Sendable (Int?) -> ChatPreparedRequest)?
+            if let resolver = resolveRequestForModel {
+                resolveTargetRequest = { @MainActor @Sendable capacity in
+                    let resolved = resolver(selected, capacity)
+                    var effectiveOptions = resolved.options
+                    if ModelRuntimeSupport.isBeam(selected) || ModelRuntimeSupport.isJais(selected) || ModelRuntimeSupport.isMuse(selected) {
+                        effectiveOptions.gbnfGrammar = nil
+                    }
+                    if effectiveOptions.gbnfGrammar != nil {
+                        effectiveOptions.thinkingMode = .off
+                    }
+                    return ChatPreparedRequest(system: resolved.system, history: resolved.history, options: effectiveOptions)
+                }
+            } else {
+                resolveTargetRequest = nil
+            }
+            let targetMaxTokens = resolveRequestForModel?(selected, nil).options.maxTokens ?? targetRequest.options.maxTokens
             let activated = try await onboarding.activateInstalledForAutomatic(selected, request: targetRequest,
-                requiredContextTokens: promptTokens + targetRequest.options.maxTokens, expectedConfiguration: decision.observed ? admitted.first(where: { $0.modelID == selected.id }) : nil) {
+                resolveRequest: resolveTargetRequest,
+                requiredContextTokens: promptTokens + targetMaxTokens, expectedConfiguration: decision.observed ? admitted.first(where: { $0.modelID == selected.id }) : nil) {
                 self.preferences.enabled && self.preferences.revision == revision && isCurrent()
             }
             guard activated else { throw CancellationError() }

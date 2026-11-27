@@ -200,11 +200,15 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **One request at a time:** The API shares the app's exclusive on-device engine lease
   with the Quenderin Chat window. If another chat turn or API call is in flight, a new
   request waits up to 30 seconds and then returns `503` (`server_busy`).
-- **Disconnect cancels generation:** For streaming (`"stream": true`) requests, client
-  disconnects, resets, write timeouts, or closed sockets cancel on-device generation promptly
-  while valid TCP write-half-closed clients (`shutdown(SHUT_WR)`) still receive their full
-  reply. For buffered (`"stream": false`) requests, transport aborts/resets cancel generation
-  immediately while preserving valid half-closed clients waiting to read the response.
+- **Disconnect cancels generation:** Transport aborts/resets and socket errors cancel
+  in-flight generation immediately, while valid TCP write-half-closed clients
+  (`shutdown(SHUT_WR)`) still receive their full reply. For streaming (`"stream": true`)
+  requests, once HTTP headers and the initial SSE frame are queued (at the first token), a
+  peer FIN triggers an ordered SSE comment probe (`:\n\n`) and stalled writes time out so a
+  closed peer cancels generation promptly. Because TCP cannot distinguish a clean peer FIN
+  from a valid write-half-close before writing, a clean FIN that arrives before the first
+  token (during prefill) or on a buffered (`"stream": false`) request becomes observable—and
+  cancels or releases the turn—on a transport error/reset or the first response write.
 - **Clamped sampling parameters:** `max_tokens` / `max_completion_tokens` defaults to
   `512` (clamped `1`–`4096`), `temperature` is clamped `0`–`2`, `top_p` is clamped
   `0`–`1`. `stop` accepts a string or an array of strings.

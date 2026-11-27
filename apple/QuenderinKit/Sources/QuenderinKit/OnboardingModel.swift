@@ -32,6 +32,7 @@ public final class OnboardingModel: ObservableObject {
     private var automaticActivating = false
     private var pendingManualModel: (model: ModelEntry, requestID: UUID)?
     private var pendingManualRequestID: UUID?
+    private var pendingExternallyLoadedModel: ModelEntry?
     private var automaticAcceptanceError: Error?
     private(set) var lastAutomaticExecutionProfile: InferenceExecutionProfile?
 
@@ -299,7 +300,11 @@ public final class OnboardingModel: ObservableObject {
             guard fitness.canLoad else { phase = .failed(fitness.message); return }
         }
         isInstalling = true
-        defer { isInstalling = false }
+        pendingExternallyLoadedModel = nil
+        defer {
+            isInstalling = false
+            pendingExternallyLoadedModel = nil
+        }
         let previousPhase = phase
 
         // The model we fall back to if this one fails to load — `nil` on first-run onboarding.
@@ -426,17 +431,43 @@ public final class OnboardingModel: ObservableObject {
         }
 
         // Reserve exclusive ownership BEFORE changing loading state or issuing cancellation so an
-        // in-flight Local API turn is never cancelled and onboarding never enters `.failed` if
-        // the engine is busy.
+        // in-flight Local API turn or running agent reservation is never cancelled or replaced,
+        // and onboarding reconciles the engine's actual loaded model if the lease wait fails.
         let switchLease: ExclusiveInferenceLease
         do {
             switchLease = try await engine.acquireManualModelSwitchLease(timeoutSeconds: 30)
         } catch {
-            if case .ready = previousPhase {
-                phase = previousPhase
-            } else if error is CancellationError || Task.isCancelled {
-                await returnToChoice(afterCancelling: model)
+            let previousReadyModel: ModelEntry?
+            if case .ready(let entry) = previousPhase {
+                previousReadyModel = entry
             } else {
+                previousReadyModel = nil
+            }
+            let actualLoadedID = await engine.loadedModelID()
+            let externalModel = pendingExternallyLoadedModel
+            func resolveLoadedEntry(id: String) -> ModelEntry? {
+                if let externalModel, externalModel.id == id { return externalModel }
+                if let previousReadyModel, previousReadyModel.id == id { return previousReadyModel }
+                return ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id)
+            }
+            switch LoadedModelReconciliation.decideOnLeaseFailure(
+                actualLoadedID: actualLoadedID,
+                previousReadyModelID: previousReadyModel?.id,
+                wasCancelled: error is CancellationError || Task.isCancelled,
+                canResolve: { resolveLoadedEntry(id: $0) != nil }
+            ) {
+            case .publishReady(let modelID, let rememberActiveID):
+                if let entry = resolveLoadedEntry(id: modelID) {
+                    phase = .ready(entry)
+                    if rememberActiveID {
+                        rememberActiveModelID(entry.id)
+                    }
+                } else {
+                    phase = .failed(Self.describe(error))
+                }
+            case .returnToChoice:
+                await returnToChoice(afterCancelling: model)
+            case .fail:
                 phase = .failed(Self.describe(error))
             }
             return
@@ -458,7 +489,7 @@ public final class OnboardingModel: ObservableObject {
         phase = .loading(model)
         // Interrupt any in-flight ordinary chat generation BEFORE load frees the context — a
         // running decode otherwise keeps the GPU busy right as we switch models (Android does
-        // this; Q-223). Because we hold `switchLease`, this never cancels an API turn.
+        // this; Q-223). Because we hold `switchLease`, this never cancels an API turn or agent run.
         switchLease.requestCancel()
         #if canImport(SwiftUI)
         await switchLease.setContextLengthChoice(AppSettings.shared.contextLength)
@@ -475,8 +506,13 @@ public final class OnboardingModel: ObservableObject {
             // compiled catalog) and H1 silently drops to a .failed screen with the engine unloaded.
             if let restoreID = currentLoadedID, restoreID != model.id,
                let previous = ModelCatalog.entry(id: restoreID) ?? SideloadedModels.shared.entry(id: restoreID) {
-                let alreadyRestored = await switchLease.loadedModelID() == previous.id
-                if alreadyRestored || await restore(previous, via: switchLease) {
+                let restored: Bool
+                if await switchLease.loadedModelID() == previous.id {
+                    restored = true
+                } else {
+                    restored = await restore(previous, via: switchLease)
+                }
+                if restored {
                     phase = .ready(previous)
                     rememberActiveModelID(previous.id)
                 } else {
@@ -520,9 +556,15 @@ public final class OnboardingModel: ObservableObject {
     func engineContextLengthChoice() async -> ContextLengthChoice { await engine.contextLengthChoice() }
 
     /// Mirrors an already-loaded model switched inside an exclusive lease (e.g. Local API)
-    /// without touching files, downloading, or cancelling inference.
+    /// without touching files, downloading, or cancelling inference. When a manual install is in
+    /// progress, remembers the externally loaded entry so lease-timeout recovery reconciles to it.
     func syncExternallyLoadedModel(_ model: ModelEntry) {
-        guard !isInstalling, !isSpecialistActive else { return }
+        guard !isSpecialistActive else { return }
+        if isInstalling {
+            pendingExternallyLoadedModel = model
+            return
+        }
+        pendingExternallyLoadedModel = nil
         phase = .ready(model)
         rememberActiveModelID(model.id)
     }
@@ -534,7 +576,14 @@ public final class OnboardingModel: ObservableObject {
     }
 
     /// History restoration never downloads, even when the remembered model file is missing.
-    public func restoreConversationModel(_ id: String, history: [ChatMessage], options: GenerationOptions? = nil, resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) async throws -> ModelEntry {
+    public func restoreConversationModel(
+        _ id: String,
+        history: [ChatMessage],
+        options: GenerationOptions? = nil,
+        resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
+        resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)? = nil,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws -> ModelEntry {
         try requireReadyForChat()
         guard let model = automaticCatalog.first(where: { $0.id == id }) ?? ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
               Self.resolveModelFile(model: model, primary: modelsDir) != nil else {
@@ -547,7 +596,13 @@ public final class OnboardingModel: ObservableObject {
         let target = ChatTier.of(model: model)
         let resolvedOptions = resolveOptionsForModel?(model) ?? options ?? target.chatOptions
         let request = (system: target.systemPrompt, history: history, options: resolvedOptions)
-        guard try await activateInstalledForAutomatic(model, request: request, isCurrent: isCurrent) else { throw SpecialistCoordinationError.busy }
+        let resolveRequest: (@MainActor @Sendable (Int?) -> ChatPreparedRequest)?
+        if let resolver = resolveRequestForModel {
+            resolveRequest = { @MainActor @Sendable capacity in resolver(model, capacity) }
+        } else {
+            resolveRequest = nil
+        }
+        guard try await activateInstalledForAutomatic(model, request: request, resolveRequest: resolveRequest, isCurrent: isCurrent) else { throw SpecialistCoordinationError.busy }
         return model
     }
 
@@ -555,6 +610,7 @@ public final class OnboardingModel: ObservableObject {
     /// Keep .ready visible while preparing so a first-turn draft does not lose its SwiftUI owner.
     @discardableResult
     func activateInstalledForAutomatic(_ model: ModelEntry, request: (system: String, history: [ChatMessage], options: GenerationOptions)? = nil,
+                                      resolveRequest: (@MainActor @Sendable (Int?) -> ChatPreparedRequest)? = nil,
                                       requiredContextTokens: Int? = nil,
                                       expectedConfiguration: AutomaticModelCandidate? = nil,
                                       isCurrent: @escaping @MainActor @Sendable () -> Bool) async throws -> Bool {
@@ -587,20 +643,26 @@ public final class OnboardingModel: ObservableObject {
                 stillCurrent: { await isCurrent() }, accept: {
                     // Query after the actual load, including any q8→f16 context shrink, while the
                     // engine transaction is still exclusive. Validation+publication below cannot yield.
+                    let loadedCapacity = await self.engine.loadedContextTokens()
+                    let effectiveRequest: (system: String, history: [ChatMessage], options: GenerationOptions)?
+                    if let resolveRequest {
+                        let resolved = await MainActor.run { resolveRequest(loadedCapacity) }
+                        effectiveRequest = (system: resolved.system, history: resolved.history, options: resolved.options)
+                    } else {
+                        effectiveRequest = request
+                    }
                     let profile: InferenceExecutionProfile?
-                    if let request {
-                        profile = await self.engine.loadedExecutionProfile(system: request.system, history: request.history, options: request.options)
+                    if let effectiveRequest {
+                        profile = await self.engine.loadedExecutionProfile(system: effectiveRequest.system, history: effectiveRequest.history, options: effectiveRequest.options)
                     } else { profile = nil }
-                    let capacity: Int?
-                    if let profile { capacity = profile.contextTokens }
-                    else { capacity = await self.engine.loadedContextTokens() }
+                    let capacity = profile?.contextTokens ?? loadedCapacity
                     return await MainActor.run {
                         guard isCurrent(), self.automaticPreferences.revision == manualRevision, !Task.isCancelled else { return false }
-                        if request != nil, profile?.promptTokens == nil || (profile?.promptTokens ?? 0) <= 0 {
+                        if effectiveRequest != nil, profile?.promptTokens == nil || (profile?.promptTokens ?? 0) <= 0 {
                             self.automaticAcceptanceError = InferenceError.loadFailed(reason: "The target's actual prompt tokens could not be verified. Your draft is kept.")
                             return false
                         }
-                        let needed = profile?.promptTokens.map { $0 + (request?.options.maxTokens ?? 0) } ?? requiredContextTokens
+                        let needed = profile?.promptTokens.map { $0 + (effectiveRequest?.options.maxTokens ?? 0) } ?? requiredContextTokens
                         if let needed, capacity == nil || needed > (capacity ?? 0) {
                             self.automaticAcceptanceError = InferenceError.loadFailed(reason: "The selected model's actual context is too small for this request. Your draft is kept.")
                             return false

@@ -95,21 +95,39 @@ public final class ChatComposerState: ObservableObject {
     }
 }
 
+/// Resolved chat request (system prompt with active named guidance, budget-windowed history, and
+/// effective generation options) shared between preparation and generation so both evaluate the
+/// exact same request for any candidate model and context window.
+public struct ChatPreparedRequest: Sendable, Equatable {
+    public let system: String
+    public let history: [ChatMessage]
+    public let options: GenerationOptions
+
+    public init(system: String, history: [ChatMessage], options: GenerationOptions) {
+        self.system = system
+        self.history = history
+        self.options = options
+    }
+}
+
 /// A generation-independent guard and ephemeral pending history. No content enters performance storage.
 public struct ChatPreparationContext: Sendable {
     public let history: [ChatMessage]
     public let options: GenerationOptions?
     public let resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)?
+    public let resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)?
     public let isCurrent: @MainActor @Sendable () -> Bool
     public init(
         history: [ChatMessage] = [],
         options: GenerationOptions? = nil,
         resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
+        resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)? = nil,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) {
         self.history = history
         self.options = options
         self.resolveOptionsForModel = resolveOptionsForModel
+        self.resolveRequestForModel = resolveRequestForModel
         self.isCurrent = isCurrent
     }
 
@@ -321,11 +339,27 @@ public final class ChatModel: ObservableObject {
                 replyAsJSON: replyAsJSON
             )
         }
+        let resolveRequestForModel: @MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest = { [guidance, context] candidate, contextTokensOverride in
+            let tier = ChatTier.of(model: candidate)
+            let resolvedOptions = resolveForModel(candidate)
+            let systemPrompt = NamedGuidance.append(
+                tier.systemPrompt,
+                rendered: guidance.render(modelLabel: candidate?.label ?? "")
+            )
+            let budgetContext = ConversationContext(
+                systemPrompt: systemPrompt,
+                contextTokens: context.contextTokens,
+                reservedForResponse: context.reservedForResponse
+            )
+            let windowed = budgetContext.windowedHistory(pendingHistory, contextTokensOverride: contextTokensOverride)
+            return ChatPreparedRequest(system: systemPrompt, history: windowed, options: resolvedOptions)
+        }
         let preparedOptions = resolveForModel(selectedModel)
         let preparation = ChatPreparationContext(
             history: pendingHistory,
             options: preparedOptions,
-            resolveOptionsForModel: resolveForModel
+            resolveOptionsForModel: resolveForModel,
+            resolveRequestForModel: resolveRequestForModel
         ) { self.conversationRevision == turnRevision && !self.stopRequested }
         var automaticSelected = false
         do {
@@ -348,13 +382,6 @@ public final class ChatModel: ObservableObject {
                 : "The selected model is unavailable. Your message and attachments are kept. " + OnboardingModel.describe(error)
             return
         }
-        let tier = ChatTier.of(model: selectedModel)
-        var resolvedOptions = resolveForModel(selectedModel)
-        resolvedOptions.collectPerformance = true
-        let systemPrompt = NamedGuidance.append(
-            tier.systemPrompt,
-            rendered: guidance.render(modelLabel: selectedModel?.label ?? "")
-        )
 
         // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
         // matches the actual native window instead of the configured 4096 (Q-167 — Android had this,
@@ -369,28 +396,16 @@ public final class ChatModel: ObservableObject {
             preparationError = "The local model is still being prepared. Your message and attachments are kept. " + OnboardingModel.describe(error)
             return
         }
+        let finalRequest = resolveRequestForModel(selectedModel, realContextTokens)
+        var resolvedOptions = finalRequest.options
+        resolvedOptions.collectPerformance = true
+        let systemPrompt = finalRequest.system
+        let windowed = finalRequest.history
         lastHitTokenCap = false
         hasOrdinaryInference = true
         didAcceptModel?(selectedModel, automaticSelected)
         onAccepted?()
         messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
-        // Chat-structured generation: pass the budget-windowed history so the engine formats it
-        // with the model's OWN chat template (answers as an assistant, stops at end-of-turn).
-        // Template-less engines fall back to the flat transcript; the assistant remembers prior
-        // turns either way. Attached documents are composed in (engineText) BEFORE windowing so
-        // the token budget counts them.
-        let budgetContext = ConversationContext(
-            systemPrompt: systemPrompt,
-            contextTokens: context.contextTokens,
-            reservedForResponse: context.reservedForResponse
-        )
-        let windowed = budgetContext.windowedHistory(messages.map { message in
-            guard !message.documents.isEmpty else { return message }
-            var composed = message
-            composed.text = message.engineText
-            composed.documents = []
-            return composed
-        }, contextTokensOverride: realContextTokens)
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
@@ -556,7 +571,7 @@ public final class ChatModel: ObservableObject {
         }
     }
 
-    private static func resolveGenerationOptions(
+    private nonisolated static func resolveGenerationOptions(
         base: GenerationOptions?,
         model: ModelEntry?,
         thinkingMode: ThinkingMode?,
@@ -567,13 +582,13 @@ public final class ChatModel: ObservableObject {
         if let thinkingMode {
             resolved.thinkingMode = thinkingMode
         }
-        if replyAsJSON, resolved.gbnfGrammar == nil {
-            let grammarSupported = model.map {
-                !ModelRuntimeSupport.isBeam($0) && !ModelRuntimeSupport.isJais($0) && !ModelRuntimeSupport.isMuse($0)
-            } ?? true
-            if grammarSupported {
-                resolved.gbnfGrammar = JSONOutputGrammar.anyJSONObject
-            }
+        let grammarSupported = model.map {
+            !ModelRuntimeSupport.isBeam($0) && !ModelRuntimeSupport.isJais($0) && !ModelRuntimeSupport.isMuse($0)
+        } ?? true
+        if !grammarSupported {
+            resolved.gbnfGrammar = nil
+        } else if replyAsJSON, resolved.gbnfGrammar == nil {
+            resolved.gbnfGrammar = JSONOutputGrammar.anyJSONObject
         }
         if resolved.gbnfGrammar != nil {
             resolved.thinkingMode = .off

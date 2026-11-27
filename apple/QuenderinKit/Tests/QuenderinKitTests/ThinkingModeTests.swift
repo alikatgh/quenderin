@@ -378,4 +378,29 @@ final class ThinkingModeTests: XCTestCase {
         XCTAssertEqual(a.thinking + b.thinking, "private thoughts")
         XCTAssertEqual(a.answer + b.answer, "Visible answer")
     }
+
+    func testPromptEndsInsideThinkingEqualTemplateRenders() {
+        // When `add_ass = false` and `add_ass = true` render the exact same prompt (unconditional
+        // assistant prefill), 2-argument detection must fall back to turn-boundary inspection
+        // rather than subtracting an empty suffix and returning false.
+        let equalChatML = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>"
+        let equalChatMLText = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\nReasoning: "
+        let equalDeepSeek = "<｜User｜>hi<｜Assistant｜><think>"
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking(equalChatML, withoutAssistantPrefix: equalChatML))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking(equalChatMLText, withoutAssistantPrefix: equalChatMLText))
+        XCTAssertTrue(ThinkingMode.promptEndsInsideThinking(equalDeepSeek, withoutAssistantPrefix: equalDeepSeek))
+
+        // Off-mode close appends only the close tag (not a duplicate <think>), after which the
+        // prompt is no longer inside thinking.
+        let closedOff = equalChatML + "\n</think>\n\n"
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(closedOff, withoutAssistantPrefix: equalChatML))
+
+        // Equal renders that already closed </think> or contain <think> only in user text remain false.
+        let equalClosed = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+        let equalUserOnly = "<|im_start|>user\nexplain <think><|im_end|>\n"
+        let equalFlatUser = "User: explain <think>"
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(equalClosed, withoutAssistantPrefix: equalClosed))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(equalUserOnly, withoutAssistantPrefix: equalUserOnly))
+        XCTAssertFalse(ThinkingMode.promptEndsInsideThinking(equalFlatUser, withoutAssistantPrefix: equalFlatUser))
+    }
 }

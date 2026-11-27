@@ -72,13 +72,15 @@ public enum ThinkingMode: String, Sendable, Equatable, Codable, CaseIterable {
     /// Returns true when the current assistant generation prefix of `prompt` leaves an unclosed
     /// `<think>` block — including prefixes with text after `<think>` (e.g. `<think>\nReasoning: `)
     /// — while ignoring literal `<think>` tags inside earlier user/system messages.
-    /// When `withoutAssistantPrefix` (the template rendered with `add_ass = false`) is a bytewise
-    /// prefix of `prompt`, only the exact assistant-prefix suffix is inspected.
+    /// When `withoutAssistantPrefix` (the template rendered with `add_ass = false`) is a strict
+    /// bytewise prefix of `prompt`, only the exact assistant-prefix suffix is inspected. If both
+    /// renders are equal (e.g. an unconditional template that always includes the assistant prefill),
+    /// falls back to `promptEndsInsideThinking(_:)`.
     /// Twin of Android `ThinkingMode.promptEndsInsideThinking`.
     public static func promptEndsInsideThinking(_ prompt: String, withoutAssistantPrefix: String) -> Bool {
         let pBytes = Array(prompt.utf8)
         let bBytes = Array(withoutAssistantPrefix.utf8)
-        if !bBytes.isEmpty && pBytes.count >= bBytes.count && bytesStartWith(pBytes[...], prefix: bBytes) {
+        if !bBytes.isEmpty && pBytes.count > bBytes.count && bytesStartWith(pBytes[...], prefix: bBytes) {
             return hasUnclosedThinkTag(in: pBytes[bBytes.count...])
         }
         return promptEndsInsideThinking(prompt)
