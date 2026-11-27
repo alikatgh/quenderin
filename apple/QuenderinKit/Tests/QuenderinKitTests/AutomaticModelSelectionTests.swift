@@ -162,6 +162,34 @@ final class AutomaticModelSelectionTests: XCTestCase {
         guard case .ready(let ready) = onboarding.phase else { return XCTFail("must retain usable chat") }
         XCTAssertEqual(ready.id, previous.id)
     }
+
+    func testCancelledExclusiveRequestLoadRestoresPreviousBeforeReleasingTheLease() async throws {
+        let dir = try directory(), previous = try model("previous", directory: dir), target = try model("target", directory: dir)
+        let raw = SelectionFixtureEngine(), engine = CoordinatedInferenceEngine(raw)
+        try await engine.load(model: previous, at: dir.appendingPathComponent(previous.filename))
+        await raw.configure(block: target.id)
+        let lease = try await engine.acquireExclusiveInferenceLease(timeoutSeconds: 0)
+        let load = Task {
+            try await lease.loadForRequest(model: target, at: dir.appendingPathComponent(target.filename)) {
+                XCTFail("A cancelled request must never publish its loaded model")
+                return true
+            }
+        }
+        await raw.waitForBlockedLoad()
+        load.cancel()
+        await raw.releaseLoad()
+        do {
+            try await load.value
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+            // The fixture completes the native load despite cancellation.
+        }
+        let loads = await raw.loads
+        let loaded = await lease.loadedModelID()
+        await lease.release()
+        XCTAssertEqual(loads, [previous.id, target.id, previous.id])
+        XCTAssertEqual(loaded, previous.id)
+    }
     func testManualChoiceInvalidatesInFlightAutomaticLoadAndWins() async throws {
         let dir = try directory(), previous = try model("previous", directory: dir), target = try model("target", directory: dir)
         let prefs = preferences(); prefs.enabled = true

@@ -109,6 +109,7 @@ public protocol InferenceEngine: Sendable {
     /// Load a model from a downloaded GGUF file. Throws if the file is missing
     /// or the runtime rejects it.
     func load(model: ModelEntry, at fileURL: URL) async throws
+    func loadCancellable(model: ModelEntry, at fileURL: URL) async throws
 
     /// Release the model and reclaim its memory.
     func unload() async
@@ -197,6 +198,7 @@ public struct ExclusiveInferenceLease: Sendable {
     private let _loadedModelID: @Sendable () async -> String?
     private let _loadedExecutionProfile: @Sendable (String, [ChatMessage], GenerationOptions) async -> InferenceExecutionProfile?
     private let _load: @Sendable (ModelEntry, URL) async throws -> Void
+    private let _loadForRequest: @Sendable (ModelEntry, URL, @Sendable () async -> Bool) async throws -> Void
     private let _setContextLengthChoice: @Sendable (ContextLengthChoice) async -> Void
     private let _chatPromptStartsInsideThinking: @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool
     private let _generateChat: @Sendable (String, [ChatMessage], GenerationOptions) async throws -> AsyncThrowingStream<String, Error>
@@ -213,11 +215,15 @@ public struct ExclusiveInferenceLease: Sendable {
         release: @escaping @Sendable () async -> Void,
         load: @escaping @Sendable (ModelEntry, URL) async throws -> Void = { _, _ in throw SpecialistCoordinationError.unavailable },
         setContextLengthChoice: @escaping @Sendable (ContextLengthChoice) async -> Void = { _ in },
-        chatPromptStartsInsideThinking: @escaping @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool = { _, _, _ in false }
+        chatPromptStartsInsideThinking: @escaping @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool = { _, _, _ in false },
+        loadForRequest: @escaping @Sendable (ModelEntry, URL, @Sendable () async -> Bool) async throws -> Void = {
+            _, _, _ in throw SpecialistCoordinationError.unavailable
+        }
     ) {
         self._loadedModelID = loadedModelID
         self._loadedExecutionProfile = loadedExecutionProfile
         self._load = load
+        self._loadForRequest = loadForRequest
         self._setContextLengthChoice = setContextLengthChoice
         self._chatPromptStartsInsideThinking = chatPromptStartsInsideThinking
         self._generateChat = generateChat
@@ -232,6 +238,9 @@ public struct ExclusiveInferenceLease: Sendable {
     }
     public func load(model: ModelEntry, at fileURL: URL) async throws {
         try await _load(model, fileURL)
+    }
+    func loadForRequest(model: ModelEntry, at fileURL: URL, accept: @escaping @Sendable () async -> Bool) async throws {
+        try await _loadForRequest(model, fileURL, accept)
     }
     public func setContextLengthChoice(_ choice: ContextLengthChoice) async {
         await _setContextLengthChoice(choice)
@@ -248,6 +257,11 @@ public struct ExclusiveInferenceLease: Sendable {
 }
 
 public extension InferenceEngine {
+    func loadCancellable(model: ModelEntry, at fileURL: URL) async throws {
+        try Task.checkCancellation()
+        try await load(model: model, at: fileURL)
+        try Task.checkCancellation()
+    }
     func chatCapStatus() async -> ChatCapStatus { .unknown }
     func contextLengthChoice() async -> ContextLengthChoice { .auto }
     func setContextLengthChoice(_ choice: ContextLengthChoice) async {}

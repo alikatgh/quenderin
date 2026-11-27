@@ -214,6 +214,20 @@ public actor LlamaEngine: InferenceEngine {
     #endif
 
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
+        try await load(model: entry, at: fileURL, cancellation: nil)
+    }
+
+    public func loadCancellable(model entry: ModelEntry, at fileURL: URL) async throws {
+        let cancelled = OSAllocatedUnfairLock(initialState: false)
+        try await withTaskCancellationHandler {
+            try await load(model: entry, at: fileURL, cancellation: { cancelled.withLock { $0 } })
+        } onCancel: {
+            cancelled.withLock { $0 = true }
+        }
+    }
+
+    private func load(model entry: ModelEntry, at fileURL: URL, cancellation: (@Sendable () -> Bool)?) async throws {
+        if cancellation?() == true { throw CancellationError() }
         resetCapStatus()
         // Before file IO, cancellation, or releasing the current working model.
         guard ModelRuntimeSupport.supports(entry) else {
@@ -234,6 +248,7 @@ public actor LlamaEngine: InferenceEngine {
         #endif
         // llama.cpp loads a split model through its first shard; verify every sibling first.
         try await ModelArtifactSet.inBackground { try InferencePerformanceIdentity.verifyInstalled(entry, firstFile: fileURL) }
+        if cancellation?() == true { throw CancellationError() }
         #if canImport(llama)
         cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
         loadedPerformance = nil
@@ -247,7 +262,7 @@ public actor LlamaEngine: InferenceEngine {
         }
         let loadStarted = ContinuousClock.now
         let ctxChoice = preferredContextLength
-        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path, contextLengthChoice: ctxChoice)
+        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path, contextLengthChoice: ctxChoice, cancellation: cancellation)
         loaded = entry.id
         if let artifact = InferencePerformanceIdentity.verifiedArtifact(entry, firstFile: fileURL) {
             loadedPerformance = (entry, artifact, Self.ms(ContinuousClock.now - loadStarted), loadedEnvironmentID)
@@ -574,11 +589,16 @@ public actor LlamaEngine: InferenceEngine {
         #endif
 
         guard let m = llama_model_load_from_file(path, modelParams) else {
+            if cancellation?() == true { throw CancellationError() }
             throw InferenceError.loadFailed(reason: "llama_model_load_from_file returned null for \(entry.filename)")
+        }
+        if cancellation?() == true {
+            llama_model_free(m)
+            throw CancellationError()
         }
 
         var ctxParams = llama_context_default_params()
-        if let box = loadCancellation {
+        if specialist, let box = loadCancellation {
             ctxParams.abort_callback = { data in
                 guard let data else { return true }
                 return Unmanaged<NativeLoadCancellation>.fromOpaque(data).takeUnretainedValue().cancelled()
@@ -618,7 +638,7 @@ public actor LlamaEngine: InferenceEngine {
         ctxParams.n_threads_batch = threads
 
         var ctxOrNil = llama_init_from_model(m, ctxParams)
-        if ctxOrNil == nil && kvCacheType == .q8_0 {
+        if ctxOrNil == nil && kvCacheType == .q8_0 && cancellation?() != true {
             // A quantized V-cache needs Flash Attention; on a model where AUTO resolved to
             // disabled, init fails. Retry with f16 KV (more memory, always valid) rather than
             // failing the whole load on exactly the memory-tight devices that picked q8_0.
@@ -640,19 +660,26 @@ public actor LlamaEngine: InferenceEngine {
         }
         guard let ctx = ctxOrNil else {
             llama_model_free(m)
+            if cancellation?() == true { throw CancellationError() }
             throw InferenceError.loadFailed(reason: "llama_init_from_model returned null")
         }
 
+        let newVocab = llama_model_get_vocab(m)
+        if !specialist && cancellation?() != true { warmUpLocked(context: ctx, vocab: newVocab) }
+        if cancellation?() == true {
+            llama_free(ctx)
+            llama_model_free(m)
+            throw CancellationError()
+        }
         loadedEnvironmentID = InferencePerformanceIdentity.environment(context: nctx,
             cacheType: ctxParams.type_k == GGML_TYPE_Q8_0 ? "q8_0" : "f16", threads: baseThreads,
             gpuLayers: modelParams.n_gpu_layers, cpuExperts: !specialist && isMoE && plan.experts == .cpu,
             batch: Int(ctxParams.n_batch))
         model = m
         context = ctx
-        if let box = loadCancellation { contextCancellation = box.retain() }
-        vocab = llama_model_get_vocab(m)
+        if specialist, let box = loadCancellation { contextCancellation = box.retain() }
+        vocab = newVocab
         cachedTokens = []   // fresh context ⇒ empty KV cache
-        if !specialist { warmUpLocked(context: ctx, vocab: llama_model_get_vocab(m)) }
         return nctx
     }
 

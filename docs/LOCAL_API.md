@@ -246,6 +246,9 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   the engine is reused directly. Passing an uninstalled or integrity-failed `model` returns
   `404` (`model_not_found`) without deleting files or starting a download. If no model is
   installed at all, requests return `503`.
+- **Model-switch cancellation:** If the request ends before its model switch commits, Quenderin
+  keeps the app's selection. While still holding the inference lease it restores the previous
+  loaded model if its installed files can still be verified and loaded.
 - **No chunked request bodies:** Send a standard `Content-Length` header (max headers
   `16 KiB`, max body `4 MiB`).
 - **Privacy:** Prompts and replies are never logged. Only an in-memory count of requests

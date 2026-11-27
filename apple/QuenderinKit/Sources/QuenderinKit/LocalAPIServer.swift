@@ -418,7 +418,8 @@ public final class LocalAPIServer: ObservableObject {
 
         // Ensure the requested model is already loaded, or load an already-installed, integrity-checked
         // file exclusively inside this lease — never delete, never download, never cancel another owner.
-        if let loadErr = await ensureModelLoadedInsideLease(modelID: chatReq.model, lease: lease) {
+        if let loadErr = await ensureModelLoadedInsideLease(modelID: chatReq.model, lease: lease,
+                                                            generation: generation, connection: connection) {
             await releaseLease()
             await releaseGate()
             if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
@@ -871,7 +872,9 @@ public final class LocalAPIServer: ObservableObject {
     /// and never calls `requestCancel()` outside the exclusive lease.
     private func ensureModelLoadedInsideLease(
         modelID: String,
-        lease: ExclusiveInferenceLease
+        lease: ExclusiveInferenceLease,
+        generation: UInt64,
+        connection: LocalAPIConnection
     ) async -> LocalAPIError? {
         if await lease.loadedModelID() == modelID {
             return nil
@@ -904,16 +907,18 @@ public final class LocalAPIServer: ObservableObject {
 
         await lease.setContextLengthChoice(AppSettings.shared.contextLength)
         do {
-            try await lease.load(model: entry, at: fileURL)
+            try await lease.loadForRequest(model: entry, at: fileURL) { @MainActor in
+                // Model selection commits on the main actor before this request releases its lease.
+                guard !Task.isCancelled, self.isListenerActive(generation: generation),
+                      !connection.isDisconnected else { return false }
+                self.onboarding?.syncExternallyLoadedModel(entry)
+                return true
+            }
+        } catch is CancellationError {
+            return nil
         } catch {
             return .serviceUnavailable("Could not load model '\(entry.id)': \(OnboardingModel.describe(error))")
         }
-
-        guard await lease.loadedModelID() == entry.id else {
-            return .serviceUnavailable("Could not load model '\(entry.id)'. Open Quenderin to check model status.")
-        }
-
-        onboarding?.syncExternallyLoadedModel(entry)
         return nil
     }
 
