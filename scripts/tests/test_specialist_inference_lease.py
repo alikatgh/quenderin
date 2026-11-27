@@ -27,7 +27,8 @@ class SpecialistLeaseTests(unittest.TestCase):
         scratch = self.scratch(); core = ROOT / 'apple/QuenderinKit/Sources/QuenderinKit'
         run(['swiftc', '-swift-version', '6', '-module-cache-path', scratch / 'module-cache',
              core / 'InferenceEngine.swift', core / 'SpecialistInferenceLease.swift', core / 'ModelIntegrity.swift',
-             core / 'ModelArtifactReceipts.swift', ROOT / 'scripts/tests/fixtures/specialist-lease/client.swift',
+             core / 'ModelArtifactReceipts.swift', core / 'ContextWindow.swift', core / 'KVCachePolicy.swift',
+             core / 'ThinkingMode.swift', ROOT / 'scripts/tests/fixtures/specialist-lease/client.swift',
              '-o', scratch / 'verify'])
         self.assertIn('PASS: actual Swift exclusive lease', run([scratch / 'verify', scratch], timeout=10))
 
