@@ -69,7 +69,7 @@ export function useMicrophone(): MicrophoneController {
             }
             return stream;
         } catch (cause) {
-            const name = cause instanceof Error ? cause.name : '';
+            const name = cause && typeof cause === 'object' && 'name' in cause ? cause.name : '';
             if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
                 setPermission('denied');
                 setError(deniedHint());

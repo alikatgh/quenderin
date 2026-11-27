@@ -1,22 +1,185 @@
-import { describe, it } from 'vitest';
+import { useState } from 'react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VoiceInputButton } from '../src/components/VoiceInputButton.js';
+import { ChatArea } from '../src/components/ChatArea.js';
+import { GeneralChatArea } from '../src/components/GeneralChatArea.js';
+import { blobBytes, setupMicrophone } from './microphoneFixture.js';
 
-/**
- * Stage 2 implements useMicrophone, usePushToTalk, the WAV encoder and
- * VoiceInputButton. All tests mock getUserMedia/MediaRecorder/audio decoding
- * and the transcribe API; no real microphone and no network.
- */
-describe('composer voice input', () => {
-    it.todo('requests permission on first mic press and shows prompt copy before that');
-    it.todo('states granted / denied / no-device / unsupported explicitly');
-    it.todo('denied state shows how-to-fix text for the current OS');
-    it.todo('Electron macOS exposes the systemPreferences media-access hint');
-    it.todo('hold-to-talk records only while pressed and stops on release');
-    it.todo('keyboard shortcut Ctrl/⌘+Shift+M starts and stops recording');
-    it.todo('Escape or blur cancels without calling transcribe');
-    it.todo('encodes the capture as 16 kHz mono 16-bit PCM WAV before upload');
-    it.todo('posts the WAV to the mocked /api/speech/transcribe and inserts the transcript');
-    it.todo('auto-send inserts and sends only when settings.autoSend is true');
-    it.todo('sets the aria-busy/disabled state while transcribing');
-    it.todo('shows a retryable inline error when transcription fails');
-    it.todo('releases the MediaStream tracks on unmount');
+let mic: ReturnType<typeof setupMicrophone>;
+beforeEach(() => {
+    mic = setupMicrophone();
+    if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = () => {};
+    if (!HTMLElement.prototype.scrollTo) HTMLElement.prototype.scrollTo = () => {};
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', { status: 200 })));
+});
+afterEach(() => { cleanup(); mic.restore(); vi.unstubAllGlobals(); });
+const button = () => screen.getByRole('button', { name: /Hold to talk/ });
+const pointerDown = () => fireEvent.pointerDown(button(), { button: 0, pointerId: 1 });
+const pointerUp = () => fireEvent.pointerUp(button(), { button: 0, pointerId: 1 });
+const record = async () => {
+    pointerDown();
+    await waitFor(() => expect(button().getAttribute('aria-pressed')).toBe('true'));
+    pointerUp();
+};
+
+describe('push-to-talk capture', () => {
+    it('requests permission on the first hold and uploads a 16 kHz mono PCM16 recording on release', async () => {
+        const transcribe = vi.fn(async () => ({ text: 'Hello locally', autoSend: false }));
+        const insert = vi.fn();
+        render(<VoiceInputButton transcribe={transcribe} onTranscript={insert} />);
+        expect(screen.getByText(/will ask for microphone access/)).toBeTruthy();
+        expect(mic.getUserMedia).not.toHaveBeenCalled();
+        pointerDown();
+        await waitFor(() => expect(button().getAttribute('aria-pressed')).toBe('true'));
+        expect(mic.getUserMedia).toHaveBeenCalledExactlyOnceWith({ audio: { channelCount: { ideal: 1 } }, video: false });
+        expect(transcribe).not.toHaveBeenCalled();
+        pointerUp();
+        await waitFor(() => expect(insert).toHaveBeenCalledWith({ text: 'Hello locally', autoSend: false }));
+        expect(mic.audioOptions).toHaveBeenCalledWith({ sampleRate: 16000 });
+        expect(mic.close).toHaveBeenCalledOnce();
+        expect(mic.records[0].stop).toHaveBeenCalledOnce();
+        expect(mic.stop).toHaveBeenCalled();
+        const wav = transcribe.mock.calls[0][0] as Blob;
+        expect(wav.type).toBe('audio/wav');
+        const bytes = new DataView(await blobBytes(wav));
+        expect(bytes.getUint32(0)).toBe(0x52494646);
+        expect(bytes.getUint16(20, true)).toBe(1);
+        expect(bytes.getUint16(22, true)).toBe(1);
+        expect(bytes.getUint32(24, true)).toBe(16000);
+        expect(bytes.getUint16(34, true)).toBe(16);
+        expect([44, 46, 48].map(i => bytes.getInt16(i, true))).toEqual([0, -32768, 16384]);
+    });
+
+    it.each([
+        ['NotAllowedError', /Allow microphone access in this page/],
+        ['NotFoundError', /No microphone found/],
+        ['NotReadableError', /Could not open the microphone/],
+    ])('explains %s and allows the next permission attempt', async (name, copy) => {
+        mic.getUserMedia.mockRejectedValueOnce(new DOMException('fixture', name));
+        const transcribe = vi.fn(async () => ({ text: 'Permission ready', autoSend: false }));
+        render(<VoiceInputButton transcribe={transcribe} onTranscript={vi.fn()} />);
+        pointerDown();
+        await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(copy));
+        pointerUp();
+        expect(transcribe).not.toHaveBeenCalled();
+        await record();
+        expect(mic.getUserMedia).toHaveBeenCalledTimes(2);
+        await waitFor(() => expect(transcribe).toHaveBeenCalledOnce());
+    });
+
+    it('shows unsupported browsers without requesting media', () => {
+        vi.stubGlobal('MediaRecorder', undefined);
+        render(<VoiceInputButton transcribe={vi.fn()} onTranscript={vi.fn()} />);
+        expect((button() as HTMLButtonElement).disabled).toBe(true);
+        expect(screen.getByText('Microphone recording is unavailable in this browser.')).toBeTruthy();
+        expect(mic.getUserMedia).not.toHaveBeenCalled();
+    });
+
+    it('checks the macOS desktop bridge and gives System Settings instructions', async () => {
+        const bridge = { status: vi.fn(async () => 'denied'), request: vi.fn(async () => false) };
+        vi.stubGlobal('quenderinMicrophone', bridge);
+        render(<VoiceInputButton transcribe={vi.fn()} onTranscript={vi.fn()} />);
+        expect((await screen.findByRole('alert')).textContent).toMatch(/System Settings.*Privacy & Security.*Microphone/);
+        pointerDown();
+        await waitFor(() => expect(bridge.request).toHaveBeenCalledOnce());
+        expect(bridge.status).toHaveBeenCalledOnce();
+        expect(mic.getUserMedia).not.toHaveBeenCalled();
+    });
+
+    it('releases a late permission grant without creating a recorder after the user lets go', async () => {
+        let grant: (stream: MediaStream) => void;
+        mic.getUserMedia.mockImplementationOnce(() => new Promise(resolve => { grant = resolve; }));
+        const transcribe = vi.fn();
+        render(<VoiceInputButton transcribe={transcribe} onTranscript={vi.fn()} />);
+        pointerDown();
+        pointerUp();
+        await act(async () => grant(mic.stream));
+        expect(mic.records).toHaveLength(0);
+        expect(mic.stop).toHaveBeenCalledOnce();
+        expect(transcribe).not.toHaveBeenCalled();
+    });
+
+    it('holds Ctrl+Shift+M and releases when a modifier key lifts', async () => {
+        const transcribe = vi.fn(async () => ({ text: 'Spoken shortcut', autoSend: true }));
+        const insert = vi.fn();
+        render(<VoiceInputButton transcribe={transcribe} onTranscript={insert} />);
+        expect(button().getAttribute('aria-keyshortcuts')).toBe('Control+Shift+M Meta+Shift+M');
+        fireEvent.keyDown(window, { code: 'KeyM', key: 'M', shiftKey: true, ctrlKey: true });
+        await waitFor(() => expect(button().getAttribute('aria-pressed')).toBe('true'));
+        fireEvent.keyDown(window, { code: 'KeyM', key: 'M', shiftKey: true, ctrlKey: true, repeat: true });
+        expect(mic.getUserMedia).toHaveBeenCalledOnce();
+        fireEvent.keyUp(window, { key: 'Control' });
+        await waitFor(() => expect(insert).toHaveBeenCalledWith({ text: 'Spoken shortcut', autoSend: true }));
+    });
+
+    it.each(['escape', 'blur', 'unmount'])('cancels recording and releases tracks on %s', async reason => {
+        const transcribe = vi.fn();
+        const { unmount } = render(<VoiceInputButton transcribe={transcribe} onTranscript={vi.fn()} />);
+        pointerDown();
+        await waitFor(() => expect(button().getAttribute('aria-pressed')).toBe('true'));
+        if (reason === 'escape') fireEvent.keyDown(window, { key: 'Escape' });
+        if (reason === 'blur') fireEvent.blur(window);
+        if (reason === 'unmount') unmount();
+        expect(mic.records[0].stop).toHaveBeenCalledOnce();
+        expect(mic.stop).toHaveBeenCalled();
+        expect(transcribe).not.toHaveBeenCalled();
+    });
+
+    it('indicates in-flight transcription and shows the local error on failure', async () => {
+        let reject: (error: Error) => void;
+        const transcribe = vi.fn(() => new Promise<never>((_resolve, fail) => { reject = fail; }));
+        render(<VoiceInputButton transcribe={transcribe} onTranscript={vi.fn()} />);
+        await record();
+        await waitFor(() => expect(transcribe).toHaveBeenCalledOnce());
+        expect(button().getAttribute('aria-busy')).toBe('true');
+        expect((button() as HTMLButtonElement).disabled).toBe(true);
+        await act(async () => reject(new Error('Pinned speech runtime is unavailable.')));
+        expect(screen.getByRole('alert').textContent).toMatch(/Pinned speech runtime/);
+        expect((button() as HTMLButtonElement).disabled).toBe(false);
+    });
+});
+
+describe('composer transcription', () => {
+    function mockSpeech(autoSend: boolean) {
+        const fetch = vi.fn(async (url: string) => new Response(JSON.stringify(url.startsWith('/api/speech/transcribe')
+            ? { text: 'local transcript', autoSend }
+            : { templates: [] }), { headers: { 'Content-Type': 'application/json' } }));
+        vi.stubGlobal('fetch', fetch);
+        return fetch;
+    }
+
+    it.each([
+        ['General Chat', false], ['General Chat', true], ['Agent Chat', false], ['Agent Chat', true],
+    ] as const)('%s appends speech and respects auto-send=%s', async (view, autoSend) => {
+        const fetch = mockSpeech(autoSend);
+        const send = vi.fn();
+        const voice = { modelId: 'local-fixture', onSettings: vi.fn() };
+        function Composer() {
+            const [draft, setDraft] = useState('Draft');
+            return view === 'General Chat'
+                ? <GeneralChatArea logs={[]} status="idle" requiredAction={null} onOpenSettings={vi.fn()} onOpenTroubleshooter={vi.fn()}
+                    chatInput={draft} setChatInput={setDraft} onSend={send} onStop={vi.fn()} voice={voice} activePresetId="general" onSwitchPreset={vi.fn()} />
+                : <ChatArea logs={[]} status="idle" goal={draft} setGoal={setDraft} onStart={send} setCurrentView={vi.fn()}
+                    voice={voice} agentPaused={false} onPause={vi.fn()} onResume={vi.fn()} />;
+        }
+        render(<Composer />);
+        await record();
+        await waitFor(() => expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('Draft local transcript'));
+        expect(fetch).toHaveBeenCalledWith('/api/speech/transcribe?modelId=local-fixture', expect.objectContaining({
+            body: expect.any(Blob), method: 'POST', headers: expect.any(Headers), signal: expect.any(AbortSignal),
+        }));
+        if (autoSend) expect(send.mock.calls[0][0]).toBe('Draft local transcript');
+        else expect(send).not.toHaveBeenCalled();
+    });
+
+    it('points to Voice settings before a model is installed', () => {
+        const open = vi.fn();
+        render(<ChatArea logs={[]} status="idle" goal="" setGoal={vi.fn()} onStart={vi.fn()} setCurrentView={vi.fn()}
+            voice={{ onSettings: open }} agentPaused={false} onPause={vi.fn()} onResume={vi.fn()} />);
+        expect(screen.queryByRole('button', { name: /Hold to talk/ })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'Set up voice dictation in Settings' }));
+        expect(open).toHaveBeenCalledOnce();
+        expect(mic.getUserMedia).not.toHaveBeenCalled();
+    });
 });
