@@ -64,7 +64,8 @@ export class SpeechSettingsStore {
             const { updatedAt, ...data } = JSON.parse(await this.fs.readFile(this.filePath));
             const settings = parseSpeechSettings(data);
             this.assertKnownModel(settings);
-            return { ...settings, updatedAt: typeof updatedAt === 'string' ? updatedAt : defaults().updatedAt };
+            const timestamp = typeof updatedAt === 'string' ? Date.parse(updatedAt) : NaN;
+            return { ...settings, updatedAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : defaults().updatedAt };
         } catch {
             return defaults();
         }
@@ -72,20 +73,32 @@ export class SpeechSettingsStore {
 
     update(patch: UpdateSpeechSettingsRequest): Promise<SpeechSettingsResponse> {
         return this.serialize(async () => {
-            const { updatedAt: _previous, ...current } = await this.get();
-            const settings = parseSpeechSettings({ ...current, ...parseSpeechSettingsPatch(patch) });
-            this.assertKnownModel(settings);
-            const next = { ...settings, updatedAt: new Date(this.options.now?.() ?? Date.now()).toISOString() };
-            const temporary = `${this.filePath}.${randomUUID()}.tmp`;
-            await this.fs.mkdir(path.dirname(this.filePath), { recursive: true, mode: 0o700 });
-            try {
-                await this.fs.writeFile(temporary, JSON.stringify(next) + '\n', { mode: 0o600, flag: 'wx' });
-                await this.fs.rename(temporary, this.filePath);
-            } finally {
-                await this.fs.unlink(temporary).catch(() => {});
-            }
-            return next;
+            const { updatedAt, ...current } = await this.get();
+            return this.persist(parseSpeechSettings({ ...current, ...parseSpeechSettingsPatch(patch) }), updatedAt);
         });
+    }
+
+    clearModel(modelId: string): Promise<SpeechSettingsResponse> {
+        return this.serialize(async () => {
+            const { updatedAt, ...current } = await this.get();
+            if (current.modelId !== modelId) return { ...current, updatedAt };
+            return this.persist({ ...current, modelId: null, voiceEnabled: false }, updatedAt);
+        });
+    }
+
+    private async persist(settings: SpeechSettings, previous: string): Promise<SpeechSettingsResponse> {
+        this.assertKnownModel(settings);
+        const timestamp = Math.max(this.options.now?.() ?? Date.now(), Date.parse(previous) + 1);
+        const next = { ...settings, updatedAt: new Date(timestamp).toISOString() };
+        const temporary = `${this.filePath}.${randomUUID()}.tmp`;
+        await this.fs.mkdir(path.dirname(this.filePath), { recursive: true, mode: 0o700 });
+        try {
+            await this.fs.writeFile(temporary, JSON.stringify(next) + '\n', { mode: 0o600, flag: 'wx' });
+            await this.fs.rename(temporary, this.filePath);
+        } finally {
+            await this.fs.unlink(temporary).catch(() => {});
+        }
+        return next;
     }
 
     reset(): Promise<SpeechSettingsResponse> {

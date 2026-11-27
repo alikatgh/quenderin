@@ -27,8 +27,8 @@ export function speechFixture(patch: Partial<SpeechSetup> = {}) {
     };
     return {
         catalog: catalogFixture, settings, loadError: null, load: vi.fn(async () => {}),
-        refreshDownload: vi.fn(), updateSettings: vi.fn(async () => {}),
-        downloads: { snapshots: {}, refresh: vi.fn(async () => {}), run: vi.fn(async () => {}) },
+        refreshDownload: vi.fn(), removeModel: vi.fn(async () => {}), updateSettings: vi.fn(async () => {}),
+        downloads: { snapshots: {}, refresh: vi.fn(async () => {}), run: vi.fn(async () => {}), remove: vi.fn(async () => settings) },
         ...patch,
     } satisfies SpeechSetup;
 }

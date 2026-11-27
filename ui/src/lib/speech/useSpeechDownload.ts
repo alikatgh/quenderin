@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { speechApi, SpeechApiError } from './api.js';
 import type { SpeechDownloadSnapshot } from './types.js';
 
@@ -42,11 +42,16 @@ export function useSpeechDownload(
         return () => { live = false; window.clearInterval(fallback); };
     }, [connected, api]);
 
-    const snapshots = Object.values(events).reduce(mergeSpeechSnapshot, restSnapshots);
-    const run = async (action: 'start' | 'pause' | 'resume' | 'cancel' | 'retry' | 'remove', modelId: string) => {
+    const snapshots = useMemo(() => Object.values(events).reduce(mergeSpeechSnapshot, restSnapshots), [events, restSnapshots]);
+    const remove = async (modelId: string) => {
+        const { snapshot, settings } = await api.removeModel(modelId);
+        accept(snapshot);
+        return settings;
+    };
+    const run = async (action: 'start' | 'pause' | 'resume' | 'cancel' | 'retry', modelId: string) => {
         const commands = {
             start: api.startDownload, pause: api.pauseDownload, resume: api.resumeDownload,
-            cancel: api.cancelDownload, retry: api.retryDownload, remove: api.removeModel,
+            cancel: api.cancelDownload, retry: api.retryDownload,
         };
         try {
             accept(await commands[action](modelId));
@@ -55,5 +60,5 @@ export function useSpeechDownload(
             await refresh(modelId);
         }
     };
-    return { snapshots, refresh, run };
+    return { snapshots, refresh, run, remove };
 }

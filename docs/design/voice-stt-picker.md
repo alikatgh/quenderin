@@ -34,7 +34,7 @@ notice under Settings → Voice → Voice credits and licenses.
 | `POST /api/speech/downloads` | Start a background download with `{ modelId }` |
 | `GET /api/speech/downloads` or `GET /api/speech/downloads/:modelId` | Restore snapshots after connecting or select a partial after restart |
 | `POST /api/speech/downloads/:modelId/{pause,resume,cancel,retry}` | Control a download |
-| `DELETE /api/speech/models/:modelId` | Remove a model and its partial |
+| `DELETE /api/speech/models/:modelId` | Remove a model and its partial and clear its saved selection |
 | `GET /api/speech/settings` or `PUT /api/speech/settings` | Read or update `voiceEnabled`, `modelId` and `autoSend` |
 | `POST /api/speech/transcribe` | Transcribe a raw `audio/wav` request with the selected installed model |
 

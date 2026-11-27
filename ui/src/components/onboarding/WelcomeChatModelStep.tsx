@@ -72,7 +72,7 @@ export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommend
     }
 
     function next() {
-        if (selected?.isDownloaded && activeId !== selected.id) void chooseModel(true);
+        if (selected && !downloading && (!selected.isDownloaded || activeId !== selected.id)) void chooseModel(true);
         else onContinue();
     }
 
@@ -110,6 +110,7 @@ export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommend
                 {downloading ? 'Continue while downloading' : 'Next: Voice'} <ArrowRight aria-hidden="true" className="size-4" />
             </button>
             <div className="flex flex-wrap justify-center gap-1">
+                {selected && !selected.isDownloaded && !downloading && <button type="button" onClick={onContinue} className={textButton}>Set up chat later</button>}
                 <button type="button" onClick={onImages} className={textButton}>Use images first</button>
                 <button type="button" onClick={onVision} className={textButton}>Ask about an image</button>
             </div>

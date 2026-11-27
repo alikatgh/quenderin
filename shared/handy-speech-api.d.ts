@@ -99,6 +99,11 @@ export interface SpeechSettingsResponse extends SpeechSettings {
     readonly updatedAt: string;
 }
 
+export interface RemoveSpeechModelResponse {
+    readonly snapshot: SpeechDownloadSnapshot;
+    readonly settings: SpeechSettingsResponse;
+}
+
 export interface StartSpeechDownloadRequest {
     readonly modelId: string;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { speechApi } from './api.js';
 import type {
     SpeechDownloadSnapshot, SpeechModelListResponse, SpeechSettingsResponse, UpdateSpeechSettingsRequest,
@@ -31,11 +31,16 @@ export function useSpeechSetup(connected: boolean, events: Readonly<Record<strin
         if (settings?.modelId) void refresh(settings.modelId).catch(() => {});
     }, [settings?.modelId, refresh, connected]);
 
-    async function updateSettings(patch: UpdateSpeechSettingsRequest) {
-        const next = await speechApi.updateSettings(patch);
+    function acceptSettings(next: SpeechSettingsResponse) {
         setSettings(current => !current || current.updatedAt <= next.updatedAt ? next : current);
     }
-    const rows = catalog && {
+    async function updateSettings(patch: UpdateSpeechSettingsRequest) {
+        acceptSettings(await speechApi.updateSettings(patch));
+    }
+    async function removeModel(modelId: string) {
+        acceptSettings(await downloads.remove(modelId));
+    }
+    const rows = useMemo(() => catalog && {
         ...catalog,
         models: catalog.models.map(row => {
             const snapshot = downloads.snapshots[row.model.id];
@@ -43,9 +48,9 @@ export function useSpeechSetup(connected: boolean, events: Readonly<Record<strin
                 ? { ...row, installed: snapshot.phase === 'installed', installedBytes: snapshot.phase === 'installed' ? snapshot.totalBytes : null }
                 : row;
         }),
-    };
+    }, [catalog, downloads.snapshots]);
     const refreshDownload = useCallback((id: string) => { void refresh(id).catch(() => {}); }, [refresh]);
-    return { downloads, catalog: rows, settings, updateSettings, loadError, load, refreshDownload };
+    return { downloads, catalog: rows, settings, updateSettings, removeModel, loadError, load, refreshDownload };
 }
 
 export type SpeechSetup = ReturnType<typeof useSpeechSetup>;

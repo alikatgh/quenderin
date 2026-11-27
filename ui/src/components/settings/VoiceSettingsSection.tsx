@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Mic } from 'lucide-react';
 import { Model } from '../../vendor/handy/components/onboarding/screens/Model.js';
 import type { SpeechSetup } from '../../lib/speech/useSpeechSetup.js';
 
-export function VoiceSettingsSection({ speech }: { speech: SpeechSetup }) {
+export function VoiceSettingsSection({ speech, focusVoice }: { speech: SpeechSetup; focusVoice?: boolean }) {
+    const heading = useRef<HTMLHeadingElement>(null);
+    useEffect(() => {
+        if (focusVoice) heading.current?.focus();
+    }, [focusVoice]);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const { catalog, downloads, settings } = speech;
@@ -19,7 +23,7 @@ export function VoiceSettingsSection({ speech }: { speech: SpeechSetup }) {
     return (
         <section aria-labelledby="voice-settings-heading" className="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
             <div>
-                <h2 id="voice-settings-heading" className="flex items-center gap-2 text-sm font-semibold">
+                <h2 id="voice-settings-heading" ref={heading} tabIndex={-1} className="flex items-center gap-2 text-sm font-semibold">
                     <Mic aria-hidden="true" className="size-4 text-qteal-600 dark:text-qteal-300" /> Voice
                 </h2>
                 <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">Use a local speech model to dictate into chat.</p>
@@ -37,12 +41,7 @@ export function VoiceSettingsSection({ speech }: { speech: SpeechSetup }) {
                 </div>
                 <Model catalog={catalog} settings={settings} downloads={downloads.snapshots} onSelect={speech.refreshDownload}
                     onUse={id => speech.updateSettings({ modelId: id, voiceEnabled: true })}
-                    onAction={async (action, id) => {
-                        await downloads.run(action, id);
-                        if (action === 'remove' && settings?.modelId === id) {
-                            await speech.updateSettings({ modelId: null, voiceEnabled: false });
-                        }
-                    }} />
+                    onAction={(action, id) => action === 'remove' ? speech.removeModel(id) : downloads.run(action, id)} />
             </> : speech.loadError ? <div>
                 <p role="alert" className="text-sm text-red-700 dark:text-red-300">{speech.loadError}</p>
                 <button type="button" className="mt-2 rounded border px-2 py-1 text-sm" onClick={() => void speech.load()}>Retry loading voice models</button>

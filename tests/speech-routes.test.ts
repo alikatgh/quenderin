@@ -88,6 +88,14 @@ describe('dashboard speech routes', () => {
         expect(result.models.at(-1)).toMatchObject({ model: { id: future.id }, engine: { compatibility: 'needs-newer-engine' } });
     });
 
+    it('serves the shipped Handy notices as text', async () => {
+        const credits = await request('/credits', 'GET', undefined, false);
+        expect(credits.status).toBe(200);
+        expect(credits.header('Content-Type')).toMatch(/^text\/plain/);
+        expect(credits.body).toContain('Copyright (c) 2025 CJ Pais');
+        expect(credits.body).toContain('@handy-computer/models');
+    });
+
     it('requires authorization for settings, progress and mutations regardless of URL case', async () => {
         expect((await request('/settings', 'GET', undefined, false)).status).toBe(401);
         expect((await request('/SETTINGS', 'HEAD', undefined, false)).status).toBe(401);
@@ -118,7 +126,10 @@ describe('dashboard speech routes', () => {
         await vi.waitFor(() => expect(downloads.snapshot(model.id)?.phase).toBe('installed'));
         expect((await request('/downloads/' + model.id)).json()).toMatchObject({ phase: 'installed', percent: 100 });
         expect((await request('/downloads', 'POST', { modelId: model.id })).json()).toMatchObject({ code: 'already-installed' });
-        expect((await request('/models/' + model.id, 'DELETE')).json()).toMatchObject({ phase: 'idle' });
+        await settings.update({ modelId: model.id, voiceEnabled: true });
+        expect((await request('/models/' + model.id, 'DELETE')).json()).toMatchObject({
+            snapshot: { phase: 'idle' }, settings: { modelId: null, voiceEnabled: false },
+        });
         expect(disk.files.size).toBe(0);
     });
 

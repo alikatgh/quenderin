@@ -179,8 +179,7 @@ describe('Quenderin voice setup bindings', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Remove model' }));
         expect(speech.downloads.run).not.toHaveBeenCalled();
         fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));
-        await waitFor(() => expect(speech.updateSettings).toHaveBeenCalledWith({ modelId: null, voiceEnabled: false }));
-        expect(speech.downloads.run).toHaveBeenCalledWith('remove', recommended);
+        await waitFor(() => expect(speech.removeModel).toHaveBeenCalledWith(recommended));
         expect(screen.getByText('Voice credits and licenses')).toBeTruthy();
     });
 });

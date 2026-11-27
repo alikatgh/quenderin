@@ -1,6 +1,6 @@
 import { apiFetch } from '../api.js';
 import type {
-    SpeechDownloadSnapshot, SpeechModelListResponse, SpeechSettingsResponse,
+    RemoveSpeechModelResponse, SpeechDownloadSnapshot, SpeechModelListResponse, SpeechSettingsResponse,
     SpeechTranscriptionResponse, UpdateSpeechSettingsRequest,
 } from './types.js';
 
@@ -19,7 +19,7 @@ export interface SpeechApi {
     resumeDownload(modelId: string): Promise<SpeechDownloadSnapshot>;
     cancelDownload(modelId: string): Promise<SpeechDownloadSnapshot>;
     retryDownload(modelId: string): Promise<SpeechDownloadSnapshot>;
-    removeModel(modelId: string): Promise<SpeechDownloadSnapshot>;
+    removeModel(modelId: string): Promise<RemoveSpeechModelResponse>;
     getSettings(): Promise<SpeechSettingsResponse>;
     updateSettings(patch: UpdateSpeechSettingsRequest): Promise<SpeechSettingsResponse>;
     transcribe(wav: Blob, options: TranscribeOptions): Promise<SpeechTranscriptionResponse>;

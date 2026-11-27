@@ -22,6 +22,7 @@ interface Settings {
 
 interface SettingsAreaProps {
     voice?: SpeechSetup;
+    focusVoice?: boolean;
     onBack: () => void;
     currentSettings: Settings;
     onSave: (newSettings: Settings) => void;
@@ -86,7 +87,7 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
     );
 }
 
-export function SettingsArea({ voice, onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
+export function SettingsArea({ voice, focusVoice, onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     // Q-530: the passphrase the user types lives ONLY in this in-memory draft — it is hashed on save and
     // never stored in `settings` (which is what gets persisted to localStorage). Empty draft on save =
@@ -503,7 +504,7 @@ export function SettingsArea({ voice, onBack, currentSettings, onSave, onReset, 
 
                     <ModelManagerSection />
 
-                    {voice && <VoiceSettingsSection speech={voice} />}
+                    {voice && <VoiceSettingsSection speech={voice} focusVoice={focusVoice} />}
 
                     {/* Hardware Info Section */}
                     {(hardwareTier || hardwareArch || hardwareCpuCores) && (

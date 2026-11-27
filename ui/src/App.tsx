@@ -184,10 +184,12 @@ function AppContent() {
   const voiceModelId = speech.settings?.voiceEnabled
     ? speech.catalog?.models.find(row => row.model.id === speech.settings?.modelId && row.installed && row.engine.compatibility === 'supported')?.model.id
     : undefined;
+  const [focusVoice, setFocusVoice] = useState(false);
   const openVoiceSettings = () => {
+    setFocusVoice(true);
     setCurrentView('settings');
-    requestAnimationFrame(() => document.getElementById('voice-settings-heading')?.scrollIntoView({ block: 'center' }));
   };
+  useEffect(() => { if (currentView !== 'settings') setFocusVoice(false); }, [currentView]);
 
 
   const { setDarkMode } = useTheme();
@@ -340,7 +342,7 @@ function AppContent() {
           <button onClick={() => setTokenBannerDismissed(true)} className="ml-1 rounded px-2 py-0.5 text-amber-950/70 hover:bg-amber-950/10 transition-colors" aria-label="Dismiss">✕</button>
         </div>
       )}
-      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} downloadModelId={downloadModelId} recommendedModelId={healthData?.recommendedModelId} speech={speech} />} 
+      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} downloadModelId={downloadModelId} recommendedModelId={healthData?.recommendedModelId} speech={speech} />}
       {!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
         <TroubleshooterGuide
           action={requiredAction}
@@ -520,6 +522,7 @@ function AppContent() {
             <Suspense fallback={<LazyFallback />}>
             <SettingsArea
               voice={speech}
+              focusVoice={focusVoice}
               currentSettings={settings}
               onBack={() => setCurrentView('general_chat')}
               onSave={updateSettings}

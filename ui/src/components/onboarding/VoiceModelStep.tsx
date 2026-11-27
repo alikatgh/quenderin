@@ -21,7 +21,7 @@ export function VoiceModelStep({ speech, onFinish }: { speech: SpeechSetup; onFi
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Choose a speech model. Quenderin transcribes your microphone audio on this computer.</p>
             </div>
             {speech.catalog ? <Model catalog={speech.catalog} downloads={speech.downloads.snapshots} settings={speech.settings}
-                onAction={speech.downloads.run} onUse={id => speech.updateSettings({ modelId: id, voiceEnabled: true })}
+                onAction={(action, id) => action === 'remove' ? speech.removeModel(id) : speech.downloads.run(action, id)} onUse={id => speech.updateSettings({ modelId: id, voiceEnabled: true })}
                 onSelect={speech.refreshDownload} onSkip={skip} onFinish={onFinish} /> : (
                 <div className="space-y-2">
                     {speech.loadError ? <p role="alert" className="text-sm">{speech.loadError}</p> : <p role="status" className="text-sm">Loading voice models…</p>}

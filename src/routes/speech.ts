@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
+import { SPEECH_TRANSCRIPTION_TIMEOUT_MS } from '../services/hexSpeechAdapter.js';
 import { findCatalogModel } from '../services/speech/catalog.js';
 import type { SpeechDownloadManager } from '../services/speech/downloadManager.js';
 import { SpeechError } from '../services/speech/errors.js';
@@ -59,7 +60,9 @@ export function createSpeechRouter(deps: SpeechRouteDependencies): express.Route
     }
 
     router.delete('/models/:modelId', async (req, res) => {
-        res.json(await downloads.remove(req.params.modelId));
+        const snapshot = await downloads.remove(req.params.modelId);
+        const currentSettings = await settings.clearModel(req.params.modelId);
+        res.json({ snapshot, settings: currentSettings });
     });
 
     router.get('/settings', async (_req, res) => { res.json(await settings.get()); });
@@ -125,6 +128,7 @@ export function createSpeechRouter(deps: SpeechRouteDependencies): express.Route
         if ((await downloads.status(modelId))?.phase !== 'installed') {
             throw new SpeechError('model-not-installed', 409, 'Download the selected voice model before dictating.');
         }
+        res.setTimeout(SPEECH_TRANSCRIPTION_TIMEOUT_MS + 30_000);
         const result = await deps.transcribe({ wav, modelId, language, autoSend: saved.autoSend }, signal);
         if (!signal.aborted) res.json(result);
     }
