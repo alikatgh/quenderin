@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react';
 import { Menu, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
 import { apiFetch, hasAuthToken } from './lib/api.js';
@@ -16,7 +16,9 @@ import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { hashPassphrase, isPassphraseHash } from './lib/passphrase.js';
 import { useFocusTrap } from './lib/useFocusTrap.js';
 import { WelcomeChatModelStep } from './components/onboarding/WelcomeChatModelStep.js';
+import { ChatModelActivationBanner } from './components/onboarding/ChatModelActivationBanner.js';
 import { VoiceModelStep } from './components/onboarding/VoiceModelStep.js';
+import { useChatModelSetup, type ChatModelSetup } from './lib/useChatModelSetup.js';
 import { useSpeechSetup, type SpeechSetup } from './lib/speech/useSpeechSetup.js';
 import { isSpeechDownloadActive } from './lib/speech/useSpeechDownload.js';
 import { DownloadStatus } from './vendor/handy/components/onboarding/DownloadStatus.js';
@@ -33,7 +35,7 @@ function LazyFallback() {
   return <div className="flex items-center justify-center h-full text-zinc-400 dark:text-zinc-500 text-sm">Loading...</div>;
 }
 
-export function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress, downloadModelId, recommendedModelId, speech }: {
+export function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress, downloadModelId, recommendedModelId, speech, chatSetup }: {
   onDismiss: () => void;
   onImages: () => void;
   onVision: () => void;
@@ -41,9 +43,12 @@ export function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress,
   downloadModelId: string | null;
   recommendedModelId?: string;
   speech: SpeechSetup;
+  chatSetup?: ChatModelSetup;
 }) {
   const [step, setStep] = useState(1);
   const panelRef = useFocusTrap<HTMLDivElement>();
+  const localChatSetup = useChatModelSetup(downloadModelId, downloadProgress, !chatSetup);
+  const chat = chatSetup ?? localChatSetup;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Welcome Setup Wizard">
@@ -53,9 +58,14 @@ export function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress,
         </div>
         <div className="p-4 sm:p-6">
           {step === 1
-            ? <WelcomeChatModelStep onContinue={() => setStep(2)} onImages={onImages} onVision={onVision}
+            ? <WelcomeChatModelStep chat={chat} onContinue={() => setStep(2)} onImages={onImages} onVision={onVision}
                 recommendedModelId={recommendedModelId} downloadingId={downloadModelId} progress={downloadProgress} />
-            : <VoiceModelStep speech={speech} onFinish={onDismiss} />}
+            : (
+              <div className="space-y-4">
+                <ChatModelActivationBanner chat={chat} compact />
+                <VoiceModelStep speech={speech} onFinish={onDismiss} />
+              </div>
+            )}
         </div>
       </div>
     </div>
@@ -180,7 +190,12 @@ function AppContent() {
   }, []);
 
   const { wsReady, speechDownloadEvents, downloadModelId, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask, missionApproval, answerMissionApproval } = useAgentSocket();
+  const chatSetup = useChatModelSetup(downloadModelId, downloadProgress);
   const speech = useSpeechSetup(wsReady, speechDownloadEvents);
+  useEffect(() => {
+    const activeEntry = chatSetup.models?.find(model => model.id === chatSetup.activeModelId && model.isDownloaded);
+    if (activeEntry) setActiveModel(activeEntry.label);
+  }, [chatSetup.activeModelId, chatSetup.models]);
   const voiceModelId = speech.settings?.voiceEnabled
     ? speech.catalog?.models.find(row => row.model.id === speech.settings?.modelId && row.installed && row.engine.compatibility === 'supported')?.model.id
     : undefined;
@@ -334,7 +349,7 @@ function AppContent() {
     || missionApproval
     || (settings.privacyLockEnabled && isLocked)
   );
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = dashboardRef.current;
     if (!node) return;
     if (hasBlockingModal) {
@@ -363,7 +378,7 @@ function AppContent() {
           <button onClick={() => setTokenBannerDismissed(true)} className="ml-1 rounded px-2 py-0.5 text-amber-950/70 hover:bg-amber-950/10 transition-colors" aria-label="Dismiss">✕</button>
         </div>
       )}
-      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} downloadModelId={downloadModelId} recommendedModelId={healthData?.recommendedModelId} speech={speech} />}
+      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} downloadModelId={downloadModelId} recommendedModelId={healthData?.recommendedModelId} speech={speech} chatSetup={chatSetup} />}
       {!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
         <TroubleshooterGuide
           action={requiredAction}
@@ -472,6 +487,9 @@ function AppContent() {
         />
 
         <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-background transition-colors">
+          {!showOnboarding && (
+            <ChatModelActivationBanner chat={chatSetup} onOpenSettings={() => setCurrentView('settings')} />
+          )}
           {!showOnboarding && currentView !== 'settings' && Object.values(speech.downloads.snapshots)
             .filter(snapshot => isSpeechDownloadActive(snapshot) || snapshot.phase === 'paused' || snapshot.phase === 'error')
             .map(snapshot => (

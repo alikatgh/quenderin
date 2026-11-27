@@ -8,12 +8,36 @@ import { useEffect, useRef } from 'react';
  * Attach the returned ref to the dialog panel (it gets `tabIndex={-1}` focus as the fallback
  * when the panel has no focusable children yet).
  */
-const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function isElementDisabled(el: HTMLElement): boolean {
+    if ('disabled' in el && Boolean((el as HTMLButtonElement | HTMLInputElement).disabled)) return true;
+    return Boolean(el.closest('fieldset[disabled]'));
+}
 
 function isFocusableVisible(el: HTMLElement): boolean {
+    if (el.tabIndex < 0) return false;
+    if (isElementDisabled(el)) return false;
     if (el.closest('[hidden], [inert]')) return false;
     const style = window.getComputedStyle(el);
     return style.display !== 'none' && style.visibility !== 'hidden';
+}
+
+function getTabbables(panel: HTMLElement): HTMLElement[] {
+    const candidates = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(isFocusableVisible);
+    const checkedRadiosByName = new Map<string, HTMLInputElement>();
+    for (const el of candidates) {
+        if (el instanceof HTMLInputElement && el.type === 'radio' && el.name && el.checked) {
+            checkedRadiosByName.set(el.name, el);
+        }
+    }
+    return candidates.filter(el => {
+        if (el instanceof HTMLInputElement && el.type === 'radio' && el.name) {
+            const checked = checkedRadiosByName.get(el.name);
+            return !checked || checked === el;
+        }
+        return true;
+    });
 }
 
 export function useFocusTrap<T extends HTMLElement>(active: boolean = true): React.RefObject<T> {
@@ -25,15 +49,15 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean = true): Rea
         if (!active) return;
         const panel = panelRef.current;
         if (!panel) return;
-        const opener = document.activeElement as HTMLElement | null;
+        const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-        // Initial focus: first focusable child, else the panel itself.
-        const first = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].find(isFocusableVisible);
+        // Initial focus: first sequential tab stop, else the panel itself.
+        const first = getTabbables(panel)[0];
         (first ?? panel).focus();
 
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key !== 'Tab') return;
-            const focusables = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(isFocusableVisible);
+            const focusables = getTabbables(panel);
             if (focusables.length === 0) { e.preventDefault(); panel.focus(); return; }
             const firstEl = focusables[0];
             const lastEl = focusables[focusables.length - 1];
@@ -65,8 +89,18 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean = true): Rea
         return () => {
             panel.removeEventListener('keydown', onKeyDown);
             // Restore focus to whatever opened the dialog — losing focus to <body> strands
-            // keyboard users at the top of the page.
-            opener?.focus?.();
+            // keyboard users at the top of the page. If an ancestor is still marked inert during
+            // cleanup, defer until after commit effects clear inert.
+            const restoreFocus = () => {
+                if (!opener || !opener.isConnected) return;
+                if (opener.closest('[inert], [hidden]')) return;
+                opener.focus();
+            };
+            if (opener?.isConnected && opener.closest('[inert]')) {
+                queueMicrotask(restoreFocus);
+            } else {
+                restoreFocus();
+            }
         };
     }, [active]);
 
