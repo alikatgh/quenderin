@@ -789,10 +789,23 @@ public enum LocalAPICodec {
                       let schemaVal = jsObj.exactValue(forKey: "schema"), !schemaVal.isNull else {
                     return .failure(.badRequest("'response_format.json_schema.schema' is required for type 'json_schema'."))
                 }
-                switch JSONOutputGrammar.grammar(forSchema: schemaVal.toOrderedFoundationAny()) {
+                let strict: Bool
+                if let value = jsObj.exactValue(forKey: "strict") {
+                    guard case .bool(let enabled) = value else {
+                        return .failure(.badRequest("'response_format.json_schema.strict' must be a boolean."))
+                    }
+                    strict = enabled
+                } else {
+                    strict = false
+                }
+                switch JSONOutputGrammar.grammar(forSchema: schemaVal.toOrderedFoundationAny(), strict: strict) {
                 case .success(let grammar):
                     responseFormat = .jsonSchema(grammar: grammar, fellBackToGeneric: false)
-                case .failure:
+                case .failure(.invalid(let reason)):
+                    return .failure(.badRequest(reason, code: "invalid_response_schema"))
+                case .failure(.unsupported(let reason)) where strict:
+                    return .failure(.badRequest(reason, code: "unsupported_response_format"))
+                case .failure(.unsupported):
                     responseFormat = .jsonSchema(grammar: JSONOutputGrammar.anyJSONObject, fellBackToGeneric: true)
                 }
             default:

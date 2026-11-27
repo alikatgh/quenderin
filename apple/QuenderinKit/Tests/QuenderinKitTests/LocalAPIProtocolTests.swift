@@ -510,6 +510,46 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(usage["total_tokens"] as? Int, 20)
     }
 
+    func testStrictJSONSchemaRejectsUnsupportedConstraintsAndInvalidSchemas() throws {
+        func decode(_ schema: String, strict: String) -> Result<LocalAPIChatRequest, LocalAPIError> {
+            let body = Data(#"""
+            {"messages":[{"role":"user","content":"hello"}],"response_format":{"type":"json_schema",
+            "json_schema":{"strict":\#(strict),"schema":\#(schema)}}}
+            """#.utf8)
+            return LocalAPICodec.decodeChatRequest(body, availableModelIDs: ["m1"], activeModelID: "m1")
+        }
+        for schema in [
+            #"{"type":"object","anyOf":[{"type":"object"}]}"#,
+            #"{"type":"array","items":{"type":"string","pattern":"^a"}}"#,
+            #"{"type":"object","additionalProperties":{"type":"integer"}}"#,
+        ] {
+            XCTAssertThrowsError(try decode(schema, strict: "true").get()) { error in
+                XCTAssertEqual((error as? LocalAPIError)?.code, "unsupported_response_format")
+            }
+        }
+        for schema in [
+            #"{"type":"object","required":"field"}"#,
+            #"{"type":"object","additionalProperties":0}"#,
+            #"{"type":"string","properties":[]}"#,
+            #"{"type":"object","properties":[],"anyOf":[{"type":"object"}]}"#,
+            #"{"type":false}"#,
+            #"{"type":"object","properties":{"name":{"type":"bogus"}}}"#,
+        ] {
+            for strict in ["true", "false"] {
+                XCTAssertThrowsError(try decode(schema, strict: strict).get()) { error in
+                    XCTAssertEqual((error as? LocalAPIError)?.code, "invalid_response_schema")
+                }
+            }
+        }
+        let closed = #"{"type":"object","additionalProperties":false}"#
+        XCTAssertThrowsError(try decode(closed, strict: "1").get())
+        let request = try decode(closed, strict: "true").get()
+        XCTAssertEqual(request.responseFormat, .jsonSchema(
+            grammar: try JSONOutputGrammar.grammar(forSchemaJSON: closed, strict: true).get(),
+            fellBackToGeneric: false
+        ))
+    }
+
     func testNativeTerminationMapsToLengthOrProtocolError() throws {
         XCTAssertEqual(try LocalAPIFinishReason.completion(for: .hit), .length)
         XCTAssertEqual(try LocalAPIFinishReason.completion(for: .contextExhausted), .length)

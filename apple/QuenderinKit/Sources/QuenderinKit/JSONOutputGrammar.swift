@@ -56,7 +56,7 @@ public enum JSONOutputGrammar {
     ///
     /// Supported subset:
     /// - `object` (`properties`, `required` emitted first in declared order, optional properties
-    ///   allowed after in declared order; `additionalProperties` ignored)
+    ///   allowed after in declared order; strict mode enforces a closed empty object too)
     /// - `string` (with optional `enum` of strings)
     /// - `number`, `integer`, `boolean`, `null`
     /// - `array` (with optional `items` schema object)
@@ -68,23 +68,23 @@ public enum JSONOutputGrammar {
     /// - Pass `"properties"` as `OrderedObject`, non-empty `[(String, Any)]`, or
     ///   `[(String, [String: Any])]`, OR use `grammar(forSchemaJSON:)`, to preserve exact declared
     ///   property order.
-    public static func grammar(forSchema schema: Any) -> Result<String, SchemaError> {
+    public static func grammar(forSchema schema: Any, strict: Bool = false) -> Result<String, SchemaError> {
         switch toNode(schema) {
         case .failure(let err):
             return .failure(err)
         case .success(let node):
-            return compileRoot(node)
+            return compileRoot(node, strict: strict)
         }
     }
 
     /// Parses a JSON Schema string preserving exact declared property order and compiles it to GBNF.
     /// Byte-identical to Kotlin `JSONOutputGrammar.grammarFromJson(json)`.
-    public static func grammar(forSchemaJSON json: String) -> Result<String, SchemaError> {
+    public static func grammar(forSchemaJSON json: String, strict: Bool = false) -> Result<String, SchemaError> {
         var parser = MiniJSONParser(json, allowLoneSurrogates: false)
         guard let value = parser.parseDocument(), case .object = value else {
             return .failure(.invalid("Schema JSON must be a valid JSON object"))
         }
-        return compileRoot(value)
+        return compileRoot(value, strict: strict)
     }
 
     /// Minimal RFC-8259 validator: returns `true` iff `json` parses cleanly as a top-level JSON object
@@ -202,6 +202,7 @@ public enum JSONOutputGrammar {
     ]
 
     private struct Compiler {
+        let strict: Bool
         var extraRules: [(name: String, body: String)] = []
         var nextNodeId: Int = 1
 
@@ -239,19 +240,53 @@ public enum JSONOutputGrammar {
             // Reject any unsupported schema keyword (anyOf, oneOf, $ref, pattern, minimum, …).
             var map: [String: JSONValue] = [:]
             for (k, v) in entries {
-                if !JSONOutputGrammar.allowedKeywords.contains(k) {
-                    return .failure(.unsupported("Unsupported JSON Schema keyword: \(k)"))
+                if map.updateValue(v, forKey: k) != nil {
+                    return .failure(.invalid("Duplicate schema keyword: \(k)"))
                 }
-                map[k] = v
+                // Keyword value shapes apply even if the instance type makes the constraint inert.
+                switch (k, v) {
+                case ("title", .string), ("description", .string), ("$schema", .string),
+                     ("properties", .object), ("required", .array), ("enum", .array),
+                     ("items", .object), ("items", .array), ("items", .bool),
+                     ("additionalProperties", .object), ("additionalProperties", .bool):
+                    break
+                case ("title", _), ("description", _), ("$schema", _), ("properties", _),
+                     ("required", _), ("enum", _), ("items", _), ("additionalProperties", _):
+                    return .failure(.invalid("Invalid value for JSON Schema keyword '\(k)'"))
+                default:
+                    break
+                }
             }
+            let unsupportedKeyword = entries.first { !JSONOutputGrammar.allowedKeywords.contains($0.0) }
 
             guard let typeVal = map["type"] else {
+                if let unsupportedKeyword { return .failure(.unsupported("Unsupported JSON Schema keyword: \(unsupportedKeyword.0)")) }
                 return .failure(.invalid("Missing required 'type' in schema"))
             }
             guard case .string(let typeName) = typeVal else {
-                return .failure(.unsupported("Unsupported 'type': expected a single type string"))
+                if case .array(let types) = typeVal, !types.isEmpty, types.allSatisfy({
+                    guard case .string(let name) = $0 else { return false }
+                    return JSONOutputGrammar.schemaTypes.contains(name)
+                }) {
+                    return .failure(.unsupported("Unsupported 'type': expected a single type string"))
+                }
+                return .failure(.invalid("'type' must be a valid JSON Schema type or a non-empty array of types"))
             }
+            guard JSONOutputGrammar.schemaTypes.contains(typeName) else {
+                return .failure(.invalid("Unknown JSON Schema type: \(typeName)"))
+            }
+            let compiled = compileTypedExpr(map: map, typeName: typeName, isRoot: isRoot)
+            if case .failure(.invalid) = compiled { return compiled }
+            if let unsupportedKeyword {
+                return .failure(.unsupported("Unsupported JSON Schema keyword: \(unsupportedKeyword.0)"))
+            }
+            if strict, map["$schema"] != nil {
+                return .failure(.unsupported("Declaring a schema dialect with '$schema' is unsupported in strict mode"))
+            }
+            return compiled
+        }
 
+        private mutating func compileTypedExpr(map: [String: JSONValue], typeName: String, isRoot: Bool) -> Result<String, SchemaError> {
             if map["enum"] != nil && typeName != "string" {
                 return .failure(.unsupported("Unsupported 'enum' on non-string type: \(typeName)"))
             }
@@ -317,8 +352,11 @@ public enum JSONOutputGrammar {
                 markValue()
                 return .success("array")
             }
-            guard case .object = itemsVal else {
+            if case .bool = itemsVal {
                 return .failure(.unsupported("Unsupported 'items' schema: expected object"))
+            }
+            if case .array = itemsVal {
+                return .failure(.unsupported("Unsupported tuple validation in 'items'"))
             }
             switch compileExpr(itemsVal, isRoot: false) {
             case .failure(let e):
@@ -330,14 +368,17 @@ public enum JSONOutputGrammar {
         }
 
         private mutating func compileObject(map: [String: JSONValue], isRoot: Bool) -> Result<String, SchemaError> {
-            guard let propsVal = map["properties"] else {
-                if let reqVal = map["required"], case .array(let reqArr) = reqVal, !reqArr.isEmpty {
-                    return .failure(.invalid("'required' specifies properties but 'properties' is missing"))
+            var closed = false
+            if let additional = map["additionalProperties"] {
+                switch additional {
+                case .bool(let allowed): closed = !allowed
+                case .object:
+                    return .failure(.unsupported("Schema-valued 'additionalProperties' is unsupported"))
+                default:
+                    return .failure(.invalid("'additionalProperties' must be a boolean or schema object"))
                 }
-                markValue()
-                return .success("object")
             }
-            guard case .object(let propEntries) = propsVal else {
+            guard case .object(let propEntries) = map["properties"] ?? .object([]) else {
                 return .failure(.invalid("'properties' must be an object"))
             }
 
@@ -359,16 +400,23 @@ public enum JSONOutputGrammar {
             }
 
             let declaredUTF8 = Set(propEntries.map { Array($0.0.utf8) })
+            guard declaredUTF8.count == propEntries.count else {
+                return .failure(.invalid("Duplicate property name in schema"))
+            }
             let sortedRequired = requiredEntries.sorted { $0.0.lexicographicallyPrecedes($1.0) }
             for (reqBytes, reqName) in sortedRequired where !declaredUTF8.contains(reqBytes) {
                 return .failure(.invalid("Required property '\(reqName)' not found in properties"))
+            }
+            if map["properties"] == nil && !(strict && closed) {
+                markValue()
+                return .success("object")
             }
 
             let optionalCount = propEntries.reduce(0) { count, entry in
                 count + (requiredByUTF8.contains(Array(entry.0.utf8)) ? 0 : 1)
             }
             if optionalCount > JSONOutputGrammar.maxOptionalProperties {
-                return .failure(.unsupported("too many optional properties; using generic JSON grammar"))
+                return .failure(.unsupported("too many optional properties"))
             }
 
             // Emit required props in declared order, then optional props in declared order.
@@ -463,8 +511,10 @@ public enum JSONOutputGrammar {
         }
     }
 
-    private static func compileRoot(_ node: JSONValue) -> Result<String, SchemaError> {
-        var compiler = Compiler()
+    private static let schemaTypes: Set<String> = ["object", "array", "string", "number", "integer", "boolean", "null"]
+
+    private static func compileRoot(_ node: JSONValue, strict: Bool) -> Result<String, SchemaError> {
+        var compiler = Compiler(strict: strict)
         switch compiler.compileExpr(node, isRoot: true) {
         case .failure(let err):
             return .failure(err)

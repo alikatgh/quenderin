@@ -161,13 +161,15 @@ curl http://127.0.0.1:11435/v1/chat/completions \
       "type": "json_schema",
       "json_schema": {
         "name": "sentiment",
+        "strict": true,
         "schema": {
           "type": "object",
           "properties": {
             "label": {"type": "string", "enum": ["positive", "neutral", "negative"]},
             "confidence": {"type": "number"}
           },
-          "required": ["label", "confidence"]
+          "required": ["label", "confidence"],
+          "additionalProperties": false
         }
       }
     }
@@ -176,8 +178,12 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 
 Supported JSON Schema keywords compile directly to a deterministic GBNF grammar
 (`object`, `properties`, `required`, `string`, string `enum`, `number`, `integer`,
-`boolean`, `null`, `array`, `items`). Schemas that use unsupported keywords (such as
-`anyOf` or `$ref`) automatically fall back to the generic JSON object grammar.
+`boolean`, `null`, `array`, `items`). Strict schemas support boolean
+`additionalProperties`, including a closed object with no declared properties.
+Invalid schemas return `400` (`invalid_response_schema`). Set `json_schema.strict`
+to `true` to receive `400` (`unsupported_response_format`) for unsupported constraints
+such as `anyOf`, `$ref`, or schema-valued `additionalProperties`. With `strict` omitted
+or set to `false`, unsupported schemas can fall back to the generic JSON object grammar.
 
 ## Reasoning (`think` extension)
 
