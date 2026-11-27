@@ -812,7 +812,7 @@ public enum LocalAPICodec {
                     return .failure(.badRequest("'response_format.json_schema.schema' is required for type 'json_schema'."))
                 }
                 let strict: Bool
-                if let value = jsObj.exactValue(forKey: "strict") {
+                if let value = jsObj.exactValue(forKey: "strict"), !value.isNull {
                     guard case .bool(let enabled) = value else {
                         return .failure(.badRequest("'response_format.json_schema.strict' must be a boolean."))
                     }

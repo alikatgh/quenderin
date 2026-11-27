@@ -590,7 +590,7 @@ final class LocalAPIProtocolTests: XCTestCase {
             #"{"type":false}"#,
             #"{"type":"object","properties":{"name":{"type":"bogus"}}}"#,
         ] {
-            for strict in ["true", "false"] {
+            for strict in ["true", "false", "null"] {
                 XCTAssertThrowsError(try decode(schema, strict: strict).get()) { error in
                     XCTAssertEqual((error as? LocalAPIError)?.code, "invalid_response_schema")
                 }
@@ -598,6 +598,8 @@ final class LocalAPIProtocolTests: XCTestCase {
         }
         let closed = #"{"type":"object","additionalProperties":false}"#
         XCTAssertThrowsError(try decode(closed, strict: "1").get())
+        let nullStrict = try decode(#"{"type":"object","anyOf":[{"type":"object"}]}"#, strict: "null").get()
+        XCTAssertEqual(nullStrict.responseFormat, .jsonSchema(grammar: JSONOutputGrammar.anyJSONObject, fellBackToGeneric: true))
         let request = try decode(closed, strict: "true").get()
         XCTAssertEqual(request.responseFormat, .jsonSchema(
             grammar: try JSONOutputGrammar.grammar(forSchemaJSON: closed, strict: true).get(),

@@ -632,6 +632,15 @@ public final class LocalAPIServer: ObservableObject {
                 }
             }
 
+            if Task.isCancelled || connection.isDisconnected || sseBuffer.isAborted {
+                lease.requestCancel()
+                await releaseLease()
+                await releaseGate()
+                sseBuffer.abort()
+                writerTask?.cancel()
+                return
+            }
+
             let finishReason = try LocalAPIFinishReason.completion(for: await lease.chatCapStatus())
             // Release the exclusive engine lease and API gate immediately now that native
             // generation has finished; slow socket draining below can never starve in-app chat.
