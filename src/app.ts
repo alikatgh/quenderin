@@ -236,6 +236,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     if (speech) app.use('/api/speech', createSpeechRouter(speech));
 
     if (llmService) {
+        let modelChoiceRevision = 0;
         const checkRuntime = (entry: RuntimeModelDescriptor) =>
             llmService.checkModelRuntime?.(entry) ?? Promise.resolve(getModelRuntimeCompatibility(entry));
         app.get('/api/models/catalog', async (_req, res) => {
@@ -281,7 +282,13 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                     return;
                 }
             }
-            llmService.downloadModel(requestedModelId).catch(e => logger.error("Background model download failed:", e));
+            const activate = req.body?.activate === true;
+            const revision = activate ? ++modelChoiceRevision : modelChoiceRevision;
+            llmService.downloadModel(requestedModelId).then(async () => {
+                if (activate && revision === modelChoiceRevision && fsSync.existsSync(getModelPath(requestedModelId))) {
+                    await llmService.switchModel(requestedModelId);
+                }
+            }).catch(e => logger.error("Background model download or activation failed:", e));
             res.json({ message: "Model download initiated.", modelId: requestedModelId });
         });
 
@@ -307,6 +314,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 return res.status(404).json({ error: 'Model file not found on disk. Download it first.' });
             }
             try {
+                ++modelChoiceRevision;
                 await llmService.switchModel(modelId);
                 res.json({ message: 'Model switched.', modelId, activeModel: llmService.getActiveModelLabel() });
             } catch (err) {

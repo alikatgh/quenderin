@@ -1,39 +1,38 @@
-import type {
-    SpeechDownloadSnapshot,
-    SpeechModelListResponse,
-    SpeechSettings,
-    UpdateSpeechSettingsRequest,
-} from '../../lib/speech/types.js';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Model } from '../../vendor/handy/components/onboarding/screens/Model.js';
+import type { SpeechSetup } from '../../lib/speech/useSpeechSetup.js';
 
-export interface VoiceModelStepProps {
-    /** GET /api/speech/models: recommended + accurate ids, all rows, methodology. */
-    readonly catalog: SpeechModelListResponse;
-    readonly settings: SpeechSettings | null;
-    readonly selectedModelId: string | null;
-    readonly download: SpeechDownloadSnapshot | null;
-    readonly onSelectModel: (modelId: string | null) => void;
-    readonly onStartDownload: (modelId: string) => void;
-    readonly onPauseDownload: () => void;
-    readonly onResumeDownload: () => void;
-    readonly onCancelDownload: () => void;
-    readonly onRetryDownload: () => void;
-    readonly onSkip: () => void;
-    readonly onSettingsChange?: (patch: UpdateSpeechSettingsRequest) => void;
-}
+export function VoiceModelStep({ speech, onFinish }: { speech: SpeechSetup; onFinish: () => void }) {
+    const title = useId();
+    const heading = useRef<HTMLHeadingElement>(null);
+    const [skipError, setSkipError] = useState<string | null>(null);
+    useEffect(() => { heading.current?.focus(); }, []);
 
-/**
- * Onboarding step 2 (optional): "Talk to your local model by voice".
- *
- * Layout, modelled on Handy's Model screen:
- *   - Recommended card: catalog.recommendedModelId (Parakeet Unified English 0.6B).
- *   - More accurate card: catalog.accurateModelId (Qwen3-ASR 1.7B).
- *   - "Show all ${catalog.models.length} models" expands SpeechModelTable.
- *   - Primary button: "Download {size}" + "Downloads while you finish setup".
- *   - Secondary: "Skip — I'll type" (voice off, step is skippable).
- *
- * Sizes are the Q8_0 byte counts formatted like Handy (MiB → "697 MB",
- * GiB → "2.0 GB"), never hard-coded strings.
- */
-export function VoiceModelStep(_props: VoiceModelStepProps): JSX.Element {
-    throw new Error('TODO(stage2): render recommended/accurate cards, full table, download controls and skip path.');
+    async function skip() {
+        await speech.updateSettings({ voiceEnabled: false });
+        onFinish();
+    }
+
+    return (
+        <section aria-labelledby={title} className="space-y-4">
+            <div>
+                <p className="text-xs font-medium text-qteal-700 dark:text-qteal-300">Optional</p>
+                <h2 id={title} ref={heading} tabIndex={-1} className="mt-1 text-lg font-semibold">Talk to your local model by voice</h2>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Choose a speech model. Quenderin transcribes your microphone audio on this computer.</p>
+            </div>
+            {speech.catalog ? <Model catalog={speech.catalog} downloads={speech.downloads.snapshots} settings={speech.settings}
+                onAction={speech.downloads.run} onUse={id => speech.updateSettings({ modelId: id, voiceEnabled: true })}
+                onSelect={speech.refreshDownload} onSkip={skip} onFinish={onFinish} /> : (
+                <div className="space-y-2">
+                    {speech.loadError ? <p role="alert" className="text-sm">{speech.loadError}</p> : <p role="status" className="text-sm">Loading voice models…</p>}
+                    {speech.loadError && <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => void speech.load()}>Retry</button>}
+                    <button type="button" className="rounded-lg px-3 py-2 text-sm" onClick={() => void skip().catch(() => {
+                        if (!speech.settings?.voiceEnabled) onFinish();
+                        else setSkipError('Could not turn off voice. Reconnect and try again.');
+                    })}>Skip — I’ll type</button>
+                    {skipError && <p role="alert">{skipError}</p>}
+                </div>
+            )}
+        </section>
+    );
 }

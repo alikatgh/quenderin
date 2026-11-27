@@ -44,7 +44,8 @@ export function useSpeechSetup(connected: boolean, events: Readonly<Record<strin
                 : row;
         }),
     };
-    return { downloads, catalog: rows, settings, updateSettings, loadError, load };
+    const refreshDownload = useCallback((id: string) => { void refresh(id).catch(() => {}); }, [refresh]);
+    return { downloads, catalog: rows, settings, updateSettings, loadError, load, refreshDownload };
 }
 
 export type SpeechSetup = ReturnType<typeof useSpeechSetup>;
