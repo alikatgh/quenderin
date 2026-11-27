@@ -10,7 +10,7 @@ import java.security.MessageDigest
 import groovy.json.JsonSlurper
 
 plugins {
-    id("com.android.application") version "8.10.1"
+    id("com.android.application") version "9.5.3"
     kotlin("android") version "2.4.21"
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.21"
 }
