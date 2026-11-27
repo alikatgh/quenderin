@@ -38,7 +38,9 @@ describe('Handy voice model step', () => {
         expect(screen.getByRole('columnheader', { name: 'EN' })).toBeTruthy();
         expect(screen.getByRole('columnheader', { name: 'SPEED' })).toBeTruthy();
         expect(screen.getByRole('columnheader', { name: 'SIZE' })).toBeTruthy();
-        expect(screen.getAllByText(/License /)).toHaveLength(29);
+        const modelRows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+        expect(modelRows).toHaveLength(29);
+        modelRows.forEach((row, index) => expect(row.textContent).toContain(`License ${catalogFixture.models[index].model.license}`));
         const search = screen.getByRole('searchbox', { name: 'Search models' });
         expect(document.activeElement).toBe(search);
         fireEvent.change(search, { target: { value: 'qwen 1.7b' } });
