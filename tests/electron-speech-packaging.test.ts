@@ -25,7 +25,7 @@ describe('macOS Electron audio entitlements and native speech build config', () 
         ]));
     });
 
-    it('inspects signed macOS app and helper entitlements and fails closed when audio-input is missing', () => {
+    it('inspects signed macOS app and helper entitlements, requires the Renderer helper, and fails closed on missing audio-input or signature errors', () => {
         const script = `
 import plistlib, tempfile
 from pathlib import Path
@@ -46,15 +46,21 @@ with tempfile.TemporaryDirectory() as tmp:
     missing_audio_xml = plistlib.dumps({k: True for k in v.REQUIRED_ENTITLEMENTS if 'audio-input' not in k})
 
     def good_runner(cmd, **kw):
+        if '--verify' in cmd:
+            return SimpleNamespace(returncode=0, stdout='', stderr='valid on disk')
         if '-dv' in cmd:
             return SimpleNamespace(returncode=0, stdout='', stderr='CodeDirectory v=20500 flags=0x10000(runtime)')
         return SimpleNamespace(returncode=0, stdout=good_xml, stderr=b'')
 
     res = v.verify_app(app, require_signed=True, runner=good_runner)
     assert len(res['bundles']) == 2
+    assert res['codeSignatureVerified'] is True
+    assert res['rendererHelperVerified'] is True
     assert all(b['entitlementsVerified'] for b in res['bundles'])
 
     def helper_missing_audio(cmd, **kw):
+        if '--verify' in cmd:
+            return SimpleNamespace(returncode=0, stdout='', stderr='valid on disk')
         if '-dv' in cmd:
             return SimpleNamespace(returncode=0, stdout='', stderr='CodeDirectory v=20500 flags=0x10000(runtime)')
         target = cmd[-1]
@@ -65,11 +71,51 @@ with tempfile.TemporaryDirectory() as tmp:
         raise AssertionError('Expected missing helper audio-input entitlement to fail')
     except ValueError as err:
         assert 'com.apple.security.device.audio-input' in str(err)
+
+    def bad_signature(cmd, **kw):
+        if '--verify' in cmd:
+            return SimpleNamespace(returncode=1, stdout='', stderr='code object is not signed at all')
+        return good_runner(cmd, **kw)
+
+    try:
+        v.verify_app(app, require_signed=True, runner=bad_signature)
+        raise AssertionError('Expected failing codesign --verify --deep --strict to fail')
+    except ValueError as err:
+        assert 'codesign --verify --deep --strict' in str(err)
+
+    # Zero helpers must fail closed.
+    empty_app = Path(tmp) / 'EmptyHelpers.app'
+    (empty_app / 'Contents').mkdir(parents=True)
+    (empty_app / 'Contents' / 'Info.plist').write_bytes(plistlib.dumps({
+        'NSMicrophoneUsageDescription': 'Local dictation',
+    }))
+    try:
+        v.verify_app(empty_app, require_signed=True, runner=good_runner)
+        raise AssertionError('Expected zero helper bundles to fail')
+    except ValueError as err:
+        assert 'missing Electron Helper bundles' in str(err)
+
+    # Non-Renderer helper alone must fail closed.
+    gpu_only = Path(tmp) / 'GpuOnly.app'
+    (gpu_only / 'Contents' / 'Frameworks' / 'Quenderin Helper (GPU).app').mkdir(parents=True)
+    (gpu_only / 'Contents' / 'Info.plist').write_bytes(plistlib.dumps({
+        'NSMicrophoneUsageDescription': 'Local dictation',
+    }))
+    try:
+        v.verify_app(gpu_only, require_signed=True, runner=good_runner)
+        raise AssertionError('Expected missing Renderer helper to fail')
+    except ValueError as err:
+        assert 'Renderer helper' in str(err)
 print('ok')
 `;
         const run = spawnSync('python3', ['-c', script], { cwd: ROOT, encoding: 'utf8' });
         expect(run.status, run.stderr).toBe(0);
         expect(run.stdout.trim()).toBe('ok');
+
+        const ciWorkflow = readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+        expect(ciWorkflow).toContain('-c.mac.identity=- -c.mac.timestamp=none');
+        expect(ciWorkflow).toContain('codesign --verify --deep --strict --verbose=2 "$app"');
+        expect(ciWorkflow).toContain('verify_mac_electron_entitlements.py --app "$app" --require-signed');
     });
 
     it('preserves main-window, main-frame, exact-origin, and audio-only guards on Electron media and IPC handlers', () => {

@@ -76,6 +76,18 @@ def inspect_codesign(target: Path, runner=subprocess.run) -> tuple[bool, dict | 
     return hardened, parse_plist_bytes(ent.stdout[xml_start:], str(target))
 
 
+def verify_codesign_strict(app_path: Path, runner=subprocess.run) -> None:
+    check = runner(
+        ["codesign", "--verify", "--deep", "--strict", "--verbose=2", str(app_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if check.returncode != 0:
+        detail = ((check.stderr or "") + "\n" + (check.stdout or "")).strip()
+        raise ValueError(f"codesign --verify --deep --strict failed for {app_path.name}: {detail or check.returncode}")
+
+
 def verify_app(app_path: Path, *, require_signed: bool = False, runner=subprocess.run) -> dict:
     app_path = app_path.resolve(strict=True)
     info_plist = app_path / "Contents" / "Info.plist"
@@ -86,11 +98,17 @@ def verify_app(app_path: Path, *, require_signed: bool = False, runner=subproces
     if not isinstance(usage, str) or not usage.strip():
         raise ValueError("Packaged Info.plist is missing NSMicrophoneUsageDescription")
 
-    targets = [app_path]
     frameworks_dir = app_path / "Contents" / "Frameworks"
-    if frameworks_dir.is_dir():
-        targets.extend(sorted(p for p in frameworks_dir.glob("*Helper*.app") if p.is_dir()))
+    helpers = sorted(p for p in frameworks_dir.glob("*Helper*.app") if p.is_dir()) if frameworks_dir.is_dir() else []
+    if not helpers:
+        raise ValueError(f"{app_path.name} is missing Electron Helper bundles in Contents/Frameworks")
+    if not any("Renderer" in helper.name for helper in helpers):
+        raise ValueError(f"{app_path.name} is missing the Electron Renderer helper bundle")
 
+    if require_signed:
+        verify_codesign_strict(app_path, runner=runner)
+
+    targets = [app_path, *helpers]
     checked = []
     for target in targets:
         hardened, entitlements = inspect_codesign(target, runner=runner)
@@ -101,7 +119,13 @@ def verify_app(app_path: Path, *, require_signed: bool = False, runner=subproces
                 raise ValueError(f"{target.name} is signed with Hardened Runtime but has no embedded entitlements")
             verify_entitlements_dict(entitlements, target.name)
         checked.append({"bundle": target.name, "hardenedRuntime": hardened, "entitlementsVerified": bool(hardened and entitlements)})
-    return {"app": app_path.name, "microphoneUsageDescription": True, "bundles": checked}
+    return {
+        "app": app_path.name,
+        "microphoneUsageDescription": True,
+        "rendererHelperVerified": True,
+        "codeSignatureVerified": bool(require_signed),
+        "bundles": checked,
+    }
 
 
 def main() -> None:
