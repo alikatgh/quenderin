@@ -38,12 +38,13 @@ public struct ConversationStore: Sendable {
             role = message.role.rawValue
             text = message.text
             documents = message.documents.isEmpty ? nil : message.documents
-            thinking = message.thinking?.isEmpty == false ? message.thinking : nil
+            thinking = OutputCheck.storedThinking(message.thinking, for: message.text)
         }
 
         var chatMessage: ChatMessage? {
             ChatMessage.Role(rawValue: role).map {
-                ChatMessage(role: $0, text: text, documents: documents ?? [], thinking: thinking)
+                ChatMessage(role: $0, text: text, documents: documents ?? [],
+                            thinking: OutputCheck.storedThinking(thinking, for: text))
             }
         }
     }

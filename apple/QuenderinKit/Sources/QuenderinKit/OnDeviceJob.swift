@@ -404,6 +404,28 @@ public enum OutputCheck {
         return checked(shaped, answer: await RoleSeat.shared.checkerAnswerLive(text))
     }
 
+    /// Check the answer and reasoning together, with one checker invocation.
+    static func finishChatReply(_ text: String, thinking: String?) async -> (verdict: OutputVerdict, thinking: String?) {
+        let content = thinking.map { text + "\n\n" + $0 } ?? text
+        let shaped = shape(content, kind: .reply)
+        if shaped.held { return (shaped, nil) }
+        let reply = OutputVerdict(text: text, held: false, askedChecker: false)
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return (reply, nil) }
+        let answer = await RoleSeat.shared.checkerAnswerLive(content)
+        let verdict = checked(reply, answer: answer)
+        return (verdict, !verdict.held && (answer == nil || answer == "yes") ? thinking : nil)
+    }
+
+    static func storedThinking(_ thinking: String?, for text: String) -> String? {
+        guard let thinking, !thinking.isEmpty else { return nil }
+        let withheld = [LocalPace.heldReply, hidden, tooLong, injection, checkerHeld, checkerFailed]
+        let unchecked = [OnDeviceCopy.checkerMissing, OnDeviceCopy.checkerUnreadable,
+                         OnDeviceCopy.checkerLoadFailed, OnDeviceCopy.checkerUnrestorable]
+        guard !withheld.contains(text), !unchecked.contains(where: { text.hasSuffix($0) }),
+              !shape(text + "\n\n" + thinking, kind: .reply).held else { return nil }
+        return thinking
+    }
+
     public static func gateToolLive(_ raw: String, expectsJSON: Bool) async -> OutputVerdict {
         if raw == LocalPace.held || raw.hasPrefix("No such tool") {
             return OutputVerdict(text: raw, held: false, askedChecker: false)

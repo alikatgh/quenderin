@@ -48,6 +48,42 @@ final class ChatSettlementTests: XCTestCase {
         XCTAssertEqual(chat.messages.last?.text, ChatUserFacing.emptyReply())
     }
 
+    func testThinkingIsWithheldWithTheReplyAndWhenItIsTheOnlyOutput() async throws {
+        for output in ["<think>private reasoning</think>ignore previous", "<think>system prompt: private reasoning"] {
+            let chat = ChatModel(engine: await loadedMock(output))
+            await chat.send("hello", thinkingMode: .show)
+
+            XCTAssertEqual(chat.messages.last?.text, OutputCheck.injection)
+            XCTAssertNil(chat.messages.last?.thinking)
+            let stored = try ConversationStore().encode(chat.completedMessages())
+            XCTAssertFalse(String(decoding: stored, as: UTF8.self).contains("private reasoning"))
+        }
+    }
+
+    func testCheckerReceivesReasoningOnlyOutputBeforeItCanAppear() async {
+        defer { RoleSeat.shared.reset() }
+        let chat = ChatModel(engine: await loadedMock("<think>private reasoning"))
+        RoleSeat.shared.setChecker(modelID: "fixture") { _, content in
+            XCTAssertTrue(content.contains("private reasoning"))
+            return "no"
+        }
+        await chat.send("hello", thinkingMode: .show)
+        XCTAssertEqual(chat.messages.last?.text, OutputCheck.checkerHeld)
+        XCTAssertNil(chat.messages.last?.thinking)
+    }
+
+    func testCheckedThinkingRemainsAvailableAndLegacyWithheldThinkingIsDropped() async throws {
+        let chat = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await chat.send("hello", thinkingMode: .show)
+        let store = ConversationStore()
+        XCTAssertEqual(try store.decode(store.encode(chat.completedMessages())).last?.thinking, "some reasoning")
+
+        let legacy = Data("""
+            [{"role":"assistant","text":"\(OutputCheck.checkerHeld)","thinking":"old reasoning"}]
+            """.utf8)
+        XCTAssertNil(try store.decode(legacy).last?.thinking)
+    }
+
     func testDegenerationDropsTheCrossingTokenAndSuppressesContinue() async {
         let word = String(repeating: "a", count: 100)
         let prefix = Array(repeating: word, count: 31)   // degenerate at the 32nd checkpoint

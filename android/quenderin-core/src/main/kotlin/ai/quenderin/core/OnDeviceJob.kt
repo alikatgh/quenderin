@@ -278,6 +278,28 @@ object OutputCheck {
         return checked(shaped, RoleSeat.checkerAnswer(text))
     }
 
+    /** Check the answer and reasoning together, with one checker invocation. */
+    internal fun finishChatReply(text: String, thinking: String?): Pair<OutputVerdict, String?> {
+        val content = if (thinking == null) text else "$text\n\n$thinking"
+        val shaped = shape(content, OutputKind.REPLY)
+        if (shaped.held) return shaped to null
+        val reply = OutputVerdict(text, held = false, askedChecker = false)
+        if (content.isBlank()) return reply to null
+        val answer = RoleSeat.checkerAnswer(content)
+        val verdict = checked(reply, answer)
+        return verdict to thinking.takeIf { !verdict.held && (answer == null || answer == "yes") }
+    }
+
+    internal fun storedThinking(thinking: String?, text: String): String? {
+        if (thinking.isNullOrEmpty()) return null
+        val withheld = setOf(LocalPace.HELD_REPLY, HIDDEN, TOO_LONG, INJECTION, CHECKER_HELD, CHECKER_FAILED)
+        val unchecked = listOf(OnDeviceCopy.CHECKER_MISSING, OnDeviceCopy.CHECKER_UNREADABLE,
+            OnDeviceCopy.CHECKER_LOAD_FAILED, OnDeviceCopy.CHECKER_UNRESTORABLE)
+        if (text in withheld || unchecked.any { text.endsWith(it) } ||
+            shape("$text\n\n$thinking", OutputKind.REPLY).held) return null
+        return thinking
+    }
+
     /** System lines the loop already decided, such as a tool that was switched off. */
     fun gateTool(raw: String, expectsJson: Boolean): OutputVerdict {
         if (raw == LocalPace.HELD || raw.startsWith("No such tool")) {

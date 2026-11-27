@@ -17,7 +17,7 @@ class ConversationStore {
             val base = "${m.role.name}\t${escape(m.text)}"
             val withDocs = if (m.documents.isEmpty()) base
             else base + m.documents.joinToString("") { "\t${escape(it.name)}\t${escape(it.text)}" }
-            val thinking = m.thinking
+            val thinking = OutputCheck.storedThinking(m.thinking, m.text)
             if (thinking.isNullOrEmpty()) withDocs
             else "$withDocs\t$THINKING_SENTINEL\t${escape(thinking)}"
         }
@@ -41,7 +41,8 @@ class ConversationStore {
                     docs += AttachedDocument(unescape(pair[0]), unescape(pair[1]))
                 }
             }
-            ChatMessage(role, unescape(fields[1]), docs, thinking = thinking)
+            val answer = unescape(fields[1])
+            ChatMessage(role, answer, docs, thinking = OutputCheck.storedThinking(thinking, answer))
         }
     }
 

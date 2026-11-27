@@ -380,17 +380,12 @@ class ChatModel(
                     } else {
                         sb.append(piece)
                     }
-                    if (flushGate.shouldFlush()) {
-                        val visibleThinking = if (activeThinkingMode == ThinkingMode.SHOW && thinkingSb.isNotEmpty()) {
-                            thinkingSb.toString()
-                        } else null
-                        sb.toString() to visibleThinking
-                    } else null
+                    if (flushGate.shouldFlush()) sb.toString() else null
                 }
                 if (beganWriting) publishPhase(myGen, GenerationPhase.WRITING)
                 if (cancelDegeneration || cancelExternal) engine.requestCancel()
-                if (RoleSeat.checkerModelId == null) toFlush?.let { (textVal, thinkVal) ->
-                    writeAssistant(myGen, placeholderIndex, textVal, thinkVal)
+                if (RoleSeat.checkerModelId == null) toFlush?.let { text ->
+                    writeAssistant(myGen, placeholderIndex, OutputCheck.shape(text, OutputKind.REPLY).text)
                 }
             }
             } catch (t: Exception) {
@@ -472,18 +467,17 @@ class ChatModel(
                 }
                 val acceptedText = if (stopped && !sawEmission) "" else settled
                 val acceptedThinking = if (stopped && !sawEmission) null else settledThinking
-                val checkedText = if (acceptedText.isBlank()) acceptedText
-                else OutputCheck.finish(acceptedText, OutputKind.REPLY).text
-                val text = if (checkedText.isBlank() && acceptedThinking == null && current && !stopped) {
+                val (checked, checkedThinking) = OutputCheck.finishChatReply(acceptedText, acceptedThinking)
+                val text = if (checked.text.isBlank() && checkedThinking == null && current && !stopped) {
                     // Locale-aware notice (ru/ko/ja/zh); default EN for tests / unknown locales.
                     ChatUserFacing.emptyReply(java.util.Locale.getDefault().language)
-                } else checkedText
+                } else checked.text
                 var snapshot: List<ChatMessage>? = null
                 if (current) {
-                    lastHitTokenCap = capStatus == ChatCapStatus.HIT && !hitDegeneration && !stopped
+                    lastHitTokenCap = capStatus == ChatCapStatus.HIT && !hitDegeneration && !stopped && !checked.held
                     val assistant = _messages.getOrNull(placeholderIndex)
-                    if (assistant != null && (assistant.text != text || assistant.thinking != acceptedThinking)) {
-                        _messages[placeholderIndex] = assistant.copy(text = text, thinking = acceptedThinking)
+                    if (assistant != null && (assistant.text != text || assistant.thinking != checkedThinking)) {
+                        _messages[placeholderIndex] = assistant.copy(text = text, thinking = checkedThinking)
                         transcriptRevision++
                         snapshot = _messages.toList()
                     }
@@ -522,14 +516,14 @@ class ChatModel(
     /** Write the assistant placeholder iff this generation is still the active one and the slot is still
      *  in range — under [lock] so a concurrent [reset]/[restore] can't shrink the list between the check
      *  and the write. A superseded generation (or a cleared slot) drops the write silently. */
-    private fun writeAssistant(gen: Long, index: Int, textValue: String, thinkingValue: String? = null) {
+    private fun writeAssistant(gen: Long, index: Int, textValue: String) {
         val snapshot = synchronized(lock) {
             if (gen != activeGeneration || index >= _messages.size) return@synchronized null
             // copy() (not a fresh ChatMessage) so the row keeps its stable [ChatMessage.id] across
             // every streamed token — the UI list key stays put instead of churning per token.
             val current = _messages[index]
-            if (current.text == textValue && current.thinking == thinkingValue) return@synchronized null   // no content change → no dirtying
-            _messages[index] = current.copy(text = textValue, thinking = thinkingValue)
+            if (current.text == textValue) return@synchronized null   // no content change → no dirtying
+            _messages[index] = current.copy(text = textValue)
             transcriptRevision++
             _messages.toList()
         }

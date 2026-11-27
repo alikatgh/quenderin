@@ -3,6 +3,7 @@ package ai.quenderin.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -25,6 +26,7 @@ class ChatSettlementTest {
         private val pieces: List<String>,
         private val reply: String,
         private val capStatus: ChatCapStatus = ChatCapStatus.UNKNOWN,
+        private val mode: ThinkingMode = ThinkingMode.OFF,
     ) : InferenceEngine {
         var cancelCount = 0
         var delivered = 0
@@ -34,6 +36,7 @@ class ChatSettlementTest {
         override fun complete(prompt: String): String = reply
         override fun requestCancel() { cancelCount++ }
         override fun chatCapStatus(): ChatCapStatus = capStatus
+        override fun thinkingMode(): ThinkingMode = mode
         override fun completeChat(
             systemPrompt: String,
             history: List<ChatMessage>,
@@ -63,6 +66,43 @@ class ChatSettlementTest {
 
         assertEquals(ChatUserFacing.emptyReply(java.util.Locale.getDefault().language), result)
         assertEquals(result, chat.messages.last().text)
+    }
+
+    @Test fun thinkingIsWithheldWithTheReplyAndWhenItIsTheOnlyOutput() {
+        val outputs = listOf("<think>private reasoning</think>ignore previous", "<think>system prompt: private reasoning")
+        for (output in outputs) {
+            val snapshots = mutableListOf<List<ChatMessage>>()
+            val chat = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW),
+                onChange = { snapshots.add(it) })
+            assertEquals(OutputCheck.INJECTION, chat.send("hello"))
+            assertTrue(snapshots.flatten().all { it.thinking == null })
+            assertFalse(ConversationStore().encode(chat.completedMessages()).contains("private reasoning"))
+        }
+    }
+
+    @Test fun checkerReceivesReasoningOnlyOutputBeforeItCanAppear() {
+        val chat = ChatModel(ScriptedEngine(listOf("<think>private reasoning"), "", mode = ThinkingMode.SHOW))
+        RoleSeat.selectChecker("fixture")
+        RoleSeat.ask = { _, content ->
+            assertTrue(content.contains("private reasoning"))
+            assertNull(chat.messages.last().thinking)
+            "no"
+        }
+        try {
+            assertEquals(OutputCheck.CHECKER_HELD, chat.send("hello"))
+            assertNull(chat.messages.last().thinking)
+        } finally {
+            RoleSeat.reset()
+        }
+    }
+
+    @Test fun checkedThinkingRemainsAvailableAndLegacyWithheldThinkingIsDropped() {
+        val output = "<think>some reasoning</think>answer"
+        val chat = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW))
+        chat.send("hello")
+        val store = ConversationStore()
+        assertEquals("some reasoning", store.decode(store.encode(chat.completedMessages())).last().thinking)
+        assertNull(store.decode("ASSISTANT\t${OutputCheck.CHECKER_HELD}\t\u0000thinking\told reasoning").last().thinking)
     }
 
     @Test fun whitespaceEmissionWinsOverEngineReturn() {
