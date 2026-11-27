@@ -233,7 +233,8 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   the stream without a finish reason or `[DONE]`.
 - **Context sizing:** If a manual context setting exceeds the model's estimated memory budget,
   Quenderin loads a smaller window that fits. A model switch returns `503` when no manual
-  window fits.
+  window fits. A 256-token context leaves up to 192 tokens for the rendered prompt and
+  reserves the remaining 64 for generation.
 - **No tools yet:** Requests containing `tools` or `tool_choice` (including explicit `null`)
   are rejected with `400` (`tools are not supported yet`) rather than silently ignored.
 - **No images yet:** Content arrays with `{"type": "text", "text": "..."}` parts are

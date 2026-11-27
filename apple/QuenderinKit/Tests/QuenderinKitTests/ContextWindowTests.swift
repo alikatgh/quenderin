@@ -2,6 +2,15 @@ import XCTest
 @testable import QuenderinKit
 
 final class ContextWindowTests: XCTestCase {
+    func testNativePromptLimitReservesSpaceWithoutConsumingSmallContexts() {
+        for cap in [8, 256, 4096] {
+            XCTAssertEqual(LlamaEngine.promptTokenLimit(contextTokens: 256, maxTokens: cap), 192)
+            XCTAssertEqual(LlamaEngine.promptTokenLimit(contextTokens: 512, maxTokens: cap), 384)
+        }
+        XCTAssertEqual(LlamaEngine.promptTokenLimit(contextTokens: 2048, maxTokens: 8), 1792)
+        XCTAssertEqual(LlamaEngine.promptTokenLimit(contextTokens: 2048, maxTokens: 4096), 1536)
+    }
+
     func testScalesContextWithDeviceRAM() {
         XCTAssertEqual(ContextWindow.recommend(totalRAMGB: 2), 1024)   // 2–3 GB phones
         XCTAssertEqual(ContextWindow.recommend(totalRAMGB: 3.9), 1024)

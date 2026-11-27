@@ -66,6 +66,13 @@ struct GenerationCancelLedger: Sendable, Equatable {
 /// > Important: targets the llama.cpp C API circa late-2024/2025. Pin a commit and adjust
 /// > signatures if the API has drifted.
 public actor LlamaEngine: InferenceEngine {
+    /// Keep at least three quarters of small contexts available for the prompt.
+    /// Mirrors the native Android prompt clamp.
+    static func promptTokenLimit(contextTokens: Int, maxTokens: Int) -> Int {
+        let reserve = min(contextTokens / 4, max(256, maxTokens))
+        return contextTokens - reserve
+    }
+
 
     /// Perf line per generation (prefill / decode / worst inter-token gap) — docs/INFERENCE_SLO.md.
     /// Read it with `log stream --predicate 'subsystem == "org.quenderin" && category == "inference"'`.
@@ -775,8 +782,7 @@ public actor LlamaEngine: InferenceEngine {
         // user's actual question (the prompt ends with it); the dropped middle is what a context
         // this size could never hold anyway. Reserve headroom so the reply has room to decode.
         let nCtx = Int(llama_n_ctx(context))
-        let reserve = max(256, min(options.maxTokens, nCtx / 4))
-        let promptLimit = max(16, nCtx - reserve)
+        let promptLimit = Self.promptTokenLimit(contextTokens: nCtx, maxTokens: options.maxTokens)
         let newTokens: [llama_token]
         if hy && rawTokens.count + options.maxTokens > nCtx {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "Selected conversation exceeds the specialist context budget."))

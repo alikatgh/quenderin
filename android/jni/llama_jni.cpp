@@ -238,8 +238,9 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     LOGI("generate: prompt_bytes=%zu tokens=%zu max_tokens=%d cached=%zu", prompt.size(), newTokens.size(), max_tokens, h->cached.size());
     if (newTokens.empty()) return std::string();
     if (h->specialist && (max_tokens != 512 || newTokens.size() + 512 > llama_n_ctx(h->ctx))) { failed = true; return {}; }
-    const int beam_limit = (int)llama_n_ctx(h->ctx) - std::max(256, std::min(max_tokens, (int)llama_n_ctx(h->ctx) / 4));
-    if (h->beam && ((int)newTokens.size() > beam_limit)) { failed = true; return {}; }
+    if (h->beam && (int)newTokens.size() > quenderin::promptTokenLimit((int)llama_n_ctx(h->ctx), max_tokens)) {
+        failed = true; return {};
+    }
 
 
     jmethodID on_token = nullptr;
