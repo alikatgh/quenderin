@@ -43,7 +43,7 @@ export function createSpeechRouter(deps: SpeechRouteDependencies): express.Route
     });
 
     router.get('/downloads', (_req, res) => {
-        res.json(downloads.snapshots().filter(snapshot => snapshot.phase !== 'idle'));
+        res.json(downloads.snapshots());
     });
 
     router.get('/downloads/:modelId', async (req, res) => {

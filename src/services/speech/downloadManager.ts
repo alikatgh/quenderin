@@ -202,10 +202,10 @@ function failure(
 }
 
 function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-    if (signal.aborted) return Promise.reject(signal.reason ?? new Error('Aborted'));
     return new Promise<T>((resolve, reject) => {
-        const onAbort = () => reject(signal.reason ?? new Error('Aborted'));
-        signal.addEventListener('abort', onAbort, { once: true });
+        const onAbort = () => reject(signal.reason);
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort, { once: true });
         promise.then(
             value => { signal.removeEventListener('abort', onAbort); resolve(value); },
             error => { signal.removeEventListener('abort', onAbort); reject(error); },
@@ -237,7 +237,7 @@ export class SpeechDownloadManager {
     }
 
     snapshots(): readonly SpeechDownloadSnapshot[] {
-        return this.options.catalog.curatedModels.map(model => this.snapshot(model.id) ?? this.idle(model));
+        return [...this.jobs.values()].map(job => job.snapshot);
     }
 
     snapshot(modelId: string): SpeechDownloadSnapshot | null {
@@ -535,10 +535,15 @@ export class SpeechDownloadManager {
             const request = async () => {
                 arm();
                 try {
-                    return await raceAbort(this.options.fetchImpl(modelDownloadUrl(model), {
+                    controller.signal.throwIfAborted();
+                    const pending = this.options.fetchImpl(modelDownloadUrl(model), {
                         headers: offset ? { Range: `bytes=${offset}-`, 'Accept-Encoding': 'identity' } : { 'Accept-Encoding': 'identity' },
                         signal: controller.signal,
-                    }), controller.signal);
+                    }).then(async reply => {
+                        if (controller.signal.aborted) await reply.discard?.();
+                        return reply;
+                    });
+                    return await raceAbort(pending, controller.signal);
                 } catch (err) {
                     if (signal.aborted) throw err;
                     throw failure('network');
@@ -571,7 +576,8 @@ export class SpeechDownloadManager {
                 throw new SpeechError('http-size', 502, 'The server advertised a file size that differs from the catalog.', response.status);
             }
             if (!response.body) throw failure('network');
-
+            controller.signal.throwIfAborted();
+            clearTimeout(timer);
             const file = await this.options.fs.open(part, offset ? 'a' : 'w');
             let bytes = offset;
             const rate = new RateMeter(offset);
@@ -586,6 +592,7 @@ export class SpeechDownloadManager {
             }, PROGRESS_TICK_MS);
             tick.unref?.();
             try {
+                arm();
                 const stream = response.body[Symbol.asyncIterator]();
                 try {
                     for (;;) {
@@ -622,6 +629,11 @@ export class SpeechDownloadManager {
             if (controller.signal.aborted) throw failure('network');
             if (error instanceof SpeechError && error.code === 'checksum-mismatch') {
                 await this.options.fs.unlink(part);
+            } else {
+                const actual = await this.options.fs.stat(part).catch(() => null);
+                if (actual && actual.size !== this.job(model).snapshot.downloadedBytes) {
+                    this.publish(model, 'downloading', Math.min(actual.size, modelFile(model).size));
+                }
             }
             throw error;
         } finally {

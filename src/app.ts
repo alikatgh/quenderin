@@ -95,7 +95,12 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             callback(new Error(`CORS: origin '${origin}' is not allowed`));
         }
     }));
-    app.use(express.json({ limit: '256kb' }));
+    const parseJson = express.json({ limit: '256kb' });
+    app.use((req, res, next) => {
+        // Dictation accepts a bounded raw WAV and must never reach the JSON error logger.
+        if (/^\/api\/speech\/transcribe\/?$/i.test(req.path)) return next();
+        return parseJson(req, res, next);
+    });
     // Local loopback server: cap request rate before auth and the filesystem/download routes.
     // 600/minute is enough for the dashboard's polls and still bounds a tight local flood.
     app.use(rateLimit({
@@ -133,12 +138,13 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // user data, token-gated like the device agent's ledger.
     const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/speech/settings', '/api/speech/downloads'];
     const requiresAuth = (req: express.Request): boolean => {
-        if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
+        const pathname = req.path.toLowerCase();
+        if (pathname.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
         // HEAD must gate exactly like GET: Express 5 falls an unmatched-HEAD back to the GET handler
         // (router: `if (method==='head' && !methods.head) method='get'`), so an un-tokened HEAD to a
         // protected read route would run the handler and leak existence/size via Content-Length
         // (and any GET side effects) with the body merely suppressed (bug hunt r-uc #3).
-        if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
+        if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return true;
         return false;
     };
     app.use((req, res, next) => {
