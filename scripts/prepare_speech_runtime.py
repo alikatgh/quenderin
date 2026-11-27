@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
@@ -147,6 +148,55 @@ def verify_library(library: Path, platform: str) -> dict:
     return {"library": str(library), "exportedSymbols": sorted(names), "isolated": True}
 
 
+def desktop_cli_name() -> str:
+    return "quenderin-speech-cli.exe" if os.name == "nt" else "quenderin-speech-cli"
+
+
+def verify_desktop(directory: Path) -> dict:
+    lock, _ = manifests()
+    cli = directory.resolve(strict=True) / desktop_cli_name()
+    if cli.is_symlink() or not cli.is_file():
+        raise ValueError("Staged desktop speech CLI is missing or unsafe")
+    identity = json.loads(subprocess.check_output([str(cli), "--version"], text=True, timeout=15))
+    if identity.get("abiVersion") != lock["abiVersion"] or identity.get("revision") != lock["revision"]:
+        raise ValueError("Desktop speech CLI does not match the pinned runtime")
+    return {"abiVersion": lock["abiVersion"], "revision": lock["revision"], "inferenceVerified": False}
+
+
+def build_desktop(work: Path) -> dict:
+    target = subprocess.check_output(
+        ["node", "-p", "({win32:'win',darwin:'mac',linux:'linux'})[process.platform] + '-' + ({arm:'armv7l'}[process.arch] || process.arch)"],
+        text=True,
+    ).strip()
+    if not re.fullmatch(r"(win|mac|linux)-(x64|arm64|armv7l)", target):
+        raise ValueError("Unsupported desktop speech host")
+    work = work.resolve()
+    source = work / "transcribe"
+    if source.exists():
+        verify(source)
+    else:
+        fetch(source)
+    build = work / "build"
+    subprocess.run([
+        "cmake", "-S", str(ROOT / "native/speech"), "-B", str(build),
+        f"-DTRANSCRIBE_SOURCE={source}", "-DCMAKE_BUILD_TYPE=Release",
+        "-DBUILD_SHARED_LIBS=OFF", "-DCMAKE_BUILD_RPATH_USE_ORIGIN=ON",
+        "-DGGML_NATIVE=OFF", "-DGGML_OPENMP=OFF",
+    ], check=True)
+    subprocess.run([
+        "cmake", "--build", str(build), "--config", "Release",
+        "--target", "quenderin-speech-cli", "--parallel", "4",
+    ], check=True)
+    bin_dir = build / "bin"
+    candidate = bin_dir / "Release"
+    if (candidate / desktop_cli_name()).is_file():
+        bin_dir = candidate
+    verify_desktop(bin_dir)
+    destination = ROOT / "build" / "speech" / target
+    shutil.copytree(bin_dir, destination, symlinks=True, dirs_exist_ok=True)
+    return verify_desktop(destination)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -155,6 +205,8 @@ def main() -> None:
     p = sub.add_parser("verify"); p.add_argument("--source", type=Path, required=True)
     p = sub.add_parser("verify-model"); p.add_argument("--model", required=True); p.add_argument("--directory", type=Path, required=True)
     p = sub.add_parser("verify-library"); p.add_argument("--library", type=Path, required=True); p.add_argument("--platform", choices=("apple", "elf"), required=True)
+    p = sub.add_parser("build-desktop"); p.add_argument("--work", type=Path, required=True)
+    p = sub.add_parser("verify-desktop"); p.add_argument("--directory", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == "check-manifests":
@@ -166,10 +218,14 @@ def main() -> None:
             result = verify(args.source)
         elif args.command == "verify-model":
             result = verify_model_file(args.model, args.directory)
-        else:
+        elif args.command == "verify-library":
             result = verify_library(args.library, args.platform)
+        elif args.command == "build-desktop":
+            result = build_desktop(args.work)
+        else:
+            result = verify_desktop(args.directory)
         print(json.dumps(result, sort_keys=True))
-    except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Speech verification failed: {error}\n")
 
 

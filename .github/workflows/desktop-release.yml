@@ -107,6 +107,8 @@ jobs:
         run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
       - name: Build and seal the pinned vision worker (no model weights)
         run: python scripts/build_vision_runtime.py build --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-desktop"
+      - name: Build the pinned local speech worker (no model weights)
+        run: python scripts/prepare_speech_runtime.py build-desktop --work "${{ runner.temp }}/speech-desktop"
       - name: Verify the actual Prism and image DSOs coexist in both load orders (no weights)
         shell: bash
         run: |
@@ -126,6 +128,8 @@ jobs:
         run: python scripts/build_desktop_diffusion.py verify --directory release/${{ matrix.unpacked }}/resources/diffusion --packaged
       - name: Probe the shipped vision worker and complete source identity
         run: python scripts/build_vision_runtime.py verify --directory release/${{ matrix.unpacked }}/resources/vision --packaged
+      - name: Probe the packaged local speech worker
+        run: python scripts/prepare_speech_runtime.py verify-desktop --directory release/${{ matrix.unpacked }}/resources/speech
       - name: Generate with the exact Bonsai model through the packaged addon
         if: matrix.os == 'ubuntu-latest'
         run: |
