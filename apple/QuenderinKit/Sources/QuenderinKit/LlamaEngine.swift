@@ -213,6 +213,27 @@ public actor LlamaEngine: InferenceEngine {
     }
     #endif
 
+    nonisolated private func plannedContextTokens(
+        for entry: ModelEntry,
+        specialist: Bool,
+        contextLengthChoice: ContextLengthChoice,
+        cacheType: KVCacheType
+    ) -> Int {
+        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
+        var contextCap: Int? = nil
+        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
+        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
+        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
+        return ContextWindow.resolveForLoad(
+            choice: effectiveChoice,
+            appBudgetGB: deviceBudgetGB,
+            modelWeightsGB: entry.ramGB,
+            kvCacheType: cacheType,
+            maxContextTokens: contextCap
+        )
+    }
+
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
         try await load(model: entry, at: fileURL, cancellation: nil)
     }
@@ -249,6 +270,11 @@ public actor LlamaEngine: InferenceEngine {
         // llama.cpp loads a split model through its first shard; verify every sibling first.
         try await ModelArtifactSet.inBackground { try InferencePerformanceIdentity.verifyInstalled(entry, firstFile: fileURL) }
         if cancellation?() == true { throw CancellationError() }
+        let ctxChoice = preferredContextLength
+        let plannedKV = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        guard plannedContextTokens(for: entry, specialist: false, contextLengthChoice: ctxChoice, cacheType: plannedKV) > 0 else {
+            throw InferenceError.loadFailed(reason: "Not enough memory for a context window at this setting.")
+        }
         #if canImport(llama)
         cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
         loadedPerformance = nil
@@ -261,7 +287,6 @@ public actor LlamaEngine: InferenceEngine {
             }
         }
         let loadStarted = ContinuousClock.now
-        let ctxChoice = preferredContextLength
         loadedNCtx = try loadLocked(entry: entry, path: fileURL.path, contextLengthChoice: ctxChoice, cancellation: cancellation)
         loaded = entry.id
         if let artifact = InferencePerformanceIdentity.verifiedArtifact(entry, firstFile: fileURL) {
@@ -502,29 +527,19 @@ public actor LlamaEngine: InferenceEngine {
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
+        // Size the context before freeing the previous model or allocating weights.
+        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        var nctx = plannedContextTokens(for: entry, specialist: specialist, contextLengthChoice: contextLengthChoice, cacheType: kvCacheType)
+        guard nctx > 0 else {
+            throw InferenceError.loadFailed(reason: "Not enough memory for a context window at this setting.")
+        }
+
         if let c = context { llama_free(c) }
         contextCancellation?.release(); contextCancellation = nil
         if let m = model { llama_model_free(m) }
         context = nil
         model = nil
         vocab = nil
-
-        // Size the context before allocating weights, including the separate f16 retry budget.
-        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
-        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
-        var contextCap: Int? = nil
-        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
-        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
-        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
-        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
-        func contextTokens(for cacheType: KVCacheType) -> Int {
-            ContextWindow.resolveForLoad(choice: effectiveChoice, appBudgetGB: deviceBudgetGB,
-                                         modelWeightsGB: entry.ramGB, kvCacheType: cacheType, maxContextTokens: contextCap)
-        }
-        var nctx = contextTokens(for: kvCacheType)
-        guard nctx > 0 else {
-            throw InferenceError.loadFailed(reason: "Not enough memory for a context window at this setting.")
-        }
 
         if !backendInitialized { SharedLlamaBackend.shared.acquire(); backendInitialized = true }  // once per process (L1)
 
@@ -648,7 +663,7 @@ public actor LlamaEngine: InferenceEngine {
             // nativeLoadedNCtx).
             ctxParams.type_k = GGML_TYPE_F16
             ctxParams.type_v = GGML_TYPE_F16
-            nctx = contextTokens(for: .f16)
+            nctx = plannedContextTokens(for: entry, specialist: specialist, contextLengthChoice: contextLengthChoice, cacheType: .f16)
             guard nctx > 0 else {
                 llama_model_free(m)
                 throw InferenceError.loadFailed(reason: "Not enough memory for an f16 context window at this setting.")
