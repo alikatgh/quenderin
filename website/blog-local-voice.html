@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Talk to your local model by voice — Quenderin blog</title>
+<meta name="description" content="Quenderin’s desktop source adds optional voice setup, 29 curated speech models from Handy, and push-to-talk dictation that runs on your computer." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<script src="theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/blog-local-voice" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="Talk to your local model by voice" />
+<meta property="og:description" content="Optional voice setup and local push-to-talk dictation in Quenderin’s desktop source, with 29 curated speech models from Handy." />
+<meta property="og:url" content="https://quenderin.org/blog-local-voice" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-11-27" />
+<meta property="article:modified_time" content="2026-11-27" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css?v=20261124-craft" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Talk to your local model by voice","description":"Optional voice setup and local push-to-talk dictation in Quenderin’s desktop source, with 29 curated speech models from Handy.","datePublished":"2026-11-27","dateModified":"2026-11-27","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-local-voice"}</script>
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a>
+      <a href="blog">&larr; Blog</a>
+      <a href="tell-me-more">Explore the app</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="eyebrow"><span class="qi qi-mic" aria-hidden="true"></span>Desktop &middot; source update</p>
+  <h1>Talk to your local model by voice</h1>
+  <p class="legal-updated"><time datetime="2026-11-27">27 November 2026</time> &middot; Quenderin</p>
+  <p>Hold the microphone button, say what you want to ask, and release. Quenderin transcribes what you said on your computer and puts the words in the chat composer. You can fix a name or finish a sentence before sending it to the local model you chose. This is an unreleased desktop source update.</p>
+
+  <h2 id="setup">Two choices in desktop setup</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#desktop"></use></svg>
+  <p>First, choose the local chat model you want to talk to. The second step, <strong>Talk to your local model by voice</strong>, is optional. Pick a speech model there or choose <strong>Skip &mdash; I’ll type</strong>. You can set up voice later in <strong>Settings → Voice</strong>.</p>
+  <ul>
+    <li><strong>Recommended.</strong> Parakeet Unified English 0.6B is a 697&nbsp;MB download and Handy’s faster English pick.</li>
+    <li><strong>More accurate.</strong> Qwen3-ASR 1.7B is a 2.0&nbsp;GB download with lower English word error in Handy’s results.</li>
+  </ul>
+  <p>Open <strong>Show all 29 models</strong> to search the curated catalog or filter by <strong>Live preview</strong> and <strong>Translates</strong>. The table shows an English accuracy grade (<strong>EN</strong>), speed bars (<strong>SPEED</strong>), and download <strong>SIZE</strong>. The download continues while you finish setup, can be resumed, and is checked against the catalog’s SHA-256 before installation.</p>
+
+  <h2 id="dictation">From the microphone to your draft</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#waveform"></use></svg>
+  <p>Once voice is enabled and the speech model is installed, hold the mic in chat or hold <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> (<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> on Mac). Quenderin asks for microphone access on first use. The existing <code>transcribe.cpp</code> runtime does the transcription locally, and the chat model receives the text when you send it.</p>
+
+  <h2 id="benchmarks">Where the grades and speed bars come from</h2>
+  <p>Handy’s results use the FLEURS test set for accuracy and the AMD Ryzen 4750U GPU with Vulkan for the speed bars. Those bars summarize the estimated wait for a 30-second recording on that hardware. Quenderin ran no inference benchmarks for this update. Real microphone capture and full-model inference verification are pending. <a href="https://models.handy.computer/" rel="noopener">See Handy’s published benchmarks</a>.</p>
+  <p>We adapted the model picker and resumable download handling from Handy by CJ Pais and use its <code>@handy-computer/models</code> 0.2.3 package for the catalog, recommendations, and grades. Both are MIT-licensed. <a href="https://github.com/cjpais/Handy" rel="noopener">Handy on GitHub</a> &middot; <a href="https://github.com/handy-computer/models" rel="noopener">Handy’s model package</a>.</p>
+
+  <p style="margin-top:2.5rem"><a href="docs/local-voice">Read the desktop voice guide</a> &middot; <a href="changelog#2026-11-27-local-voice">Changelog</a> &middot; <a href="blog">&larr; Back to the blog</a></p>
+</main>
+</body>
+</html>

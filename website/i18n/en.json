@@ -186,6 +186,7 @@
   "hw.cta.b2": "Explore the features →",
   "ft.lede": "Quenderin isn't a stripped-down toy because it runs locally — it's a capable assistant that happens to need nobody's servers. Here's what that buys you.",
   "ft.offline.b": "Download a model once and use it without internet. Browsing new models and downloading files uses a connection; your chats stay on your device.",
+  "ft.offline.voice": "The desktop source includes optional on-device dictation. <a href=\"docs/local-voice\">Read the voice setup guide →</a>",
   "ft.free.b": "No subscriptions, no per-token billing. Inference runs on hardware you already own.",
   "ft.agent.b": "Quenderin includes a tool-using agent that can carry out small tasks — but it ships with a <strong>hard safety blocklist</strong> it can never override on its own. It will not autonomously pay, delete, transfer money, or touch credentials. Sensitive actions are surfaced for you to confirm, never taken silently.",
   "ft.priv.b": "No accounts, no analytics, no telemetry. Your conversations stay on your device — and because it's open source, that's verifiable, not a promise.",

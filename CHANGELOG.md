@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — local voice on desktop (2026-11-27)
+
+- Desktop setup now asks you to pick a local chat model, then optionally set up
+  dictation. The picker offers 29 curated on-device speech models from Handy’s
+  MIT-licensed `@handy-computer/models` 0.2.3 catalog. The English picks are
+  Parakeet Unified English 0.6B (697 MB) and Qwen3-ASR 1.7B (2.0 GB).
+- Speech model downloads resume in the background and are checked with SHA-256
+  before installation. Push-to-talk in chat uses the existing local
+  `transcribe.cpp` runtime and puts the transcript in the composer for the chosen
+  local chat model. Change or enable dictation later in **Settings → Voice**.
+- English accuracy and speed indicators use Handy’s published FLEURS and Ryzen
+  4750U benchmarks. Quenderin ran no inference benchmarks. This is an unreleased
+  desktop source integration with live microphone and full-model inference
+  verification still pending.
+
 ## Unreleased — Kromoss diffusion & Hex native speech integrations (2026-11-22)
 
 - **Native Kromoss image generation (`lodestones/Kromoss`, Apache-2.0):**
