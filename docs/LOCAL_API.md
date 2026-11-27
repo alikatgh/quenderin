@@ -206,6 +206,9 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **One request at a time:** The API shares the app's exclusive on-device engine lease
   with the Quenderin Chat window. If another chat turn or API call is in flight, a new
   request waits up to 30 seconds and then returns `503` (`server_busy`).
+- **Connection limits:** The listener closes excess connections when all 16 slots are in use.
+  Clients have five seconds to send HTTP headers. The server checks those headers before waiting
+  up to 30 seconds for a body.
 - **Disconnect cancels generation:** Transport aborts/resets and socket errors cancel
   in-flight generation immediately, while valid TCP write-half-closed clients
   (`shutdown(SHUT_WR)`) still receive their full reply. For streaming (`"stream": true`)

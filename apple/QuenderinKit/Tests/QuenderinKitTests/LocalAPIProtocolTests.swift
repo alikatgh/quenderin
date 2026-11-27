@@ -213,6 +213,27 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(split.turns.count, 3)
     }
 
+    func testHeaderValidationRejectsBeforeAnIncompleteBodyArrives() {
+        let port: UInt16 = 11435
+        let header = "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost:11435\r\n"
+            + "Content-Type: application/json\r\nContent-Length: 2\r\n"
+        let incomplete = Data((header + "\r\n{").utf8)
+        let check: (LocalHTTPRequest) -> LocalAPIError? = {
+            LocalAPIGuard.check($0, port: port, requiredAPIKey: "fixture")
+        }
+        XCTAssertEqual(LocalHTTPRequest.parse(Data(header.utf8), validateHeaders: check), .needMore)
+        guard case .rejected(let error) = LocalHTTPRequest.parse(incomplete, validateHeaders: check) else {
+            return XCTFail("Expected the header check to reject before reading the body")
+        }
+        XCTAssertEqual(error.statusCode, 401)
+        let authorized = Data((header + "Authorization: Bearer fixture\r\n\r\n{").utf8)
+        XCTAssertEqual(LocalHTTPRequest.parse(authorized, validateHeaders: check), .needMore)
+        guard case .complete(let request, _) = LocalHTTPRequest.parse(authorized + Data("}".utf8), validateHeaders: check) else {
+            return XCTFail("Expected the authorized body to finish parsing")
+        }
+        XCTAssertEqual(request.body, Data("{}".utf8))
+    }
+
     func testDecodeDefaultsMaxCompletionTokensAndSingleStop() throws {
         let json = #"""
         {

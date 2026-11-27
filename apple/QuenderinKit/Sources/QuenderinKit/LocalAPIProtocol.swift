@@ -102,11 +102,17 @@ public struct LocalHTTPRequest: Sendable, Equatable {
         case complete(LocalHTTPRequest, consumedBytes: Int)
         case needMore
         case error(ParseError)
+        case rejected(LocalAPIError)
     }
 
     /// Incrementally parses a single HTTP/1.1 request from raw bytes.
     /// Rejects headers > 16 KiB, bodies > 4 MiB, and Transfer-Encoding (chunked) bodies.
     public static func parse(_ buffer: Data) -> ParseResult {
+        parse(buffer, validateHeaders: { _ in nil })
+    }
+
+    /// Runs the security gate once headers are available, even if the body is incomplete.
+    static func parse(_ buffer: Data, validateHeaders: (LocalHTTPRequest) -> LocalAPIError?) -> ParseResult {
         guard !buffer.isEmpty else { return .needMore }
 
         let separator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
@@ -219,14 +225,6 @@ public struct LocalHTTPRequest: Sendable, Equatable {
             return .error(.bodyTooLarge)
         }
 
-        let bodyStart = headerBlockEnd
-        let availableBodyBytes = buffer.endIndex - bodyStart
-        if availableBodyBytes < contentLength {
-            return .needMore
-        }
-
-        let bodyEnd = buffer.index(bodyStart, offsetBy: contentLength)
-        let body = contentLength == 0 ? Data() : Data(buffer[bodyStart..<bodyEnd])
         let path: String
         if let qIdx = rawTarget.firstIndex(of: "?") {
             path = String(rawTarget[..<qIdx])
@@ -234,6 +232,13 @@ public struct LocalHTTPRequest: Sendable, Equatable {
             path = rawTarget
         }
 
+        let head = LocalHTTPRequest(method: method, path: path, rawTarget: rawTarget,
+                                    httpVersion: version, headers: headers)
+        if let rejection = validateHeaders(head) { return .rejected(rejection) }
+        let bodyStart = headerBlockEnd
+        guard buffer.endIndex - bodyStart >= contentLength else { return .needMore }
+        let bodyEnd = buffer.index(bodyStart, offsetBy: contentLength)
+        let body = contentLength == 0 ? Data() : Data(buffer[bodyStart..<bodyEnd])
         let request = LocalHTTPRequest(
             method: method,
             path: path,

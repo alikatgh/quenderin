@@ -219,10 +219,12 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
+        let requiredKey = AppSettings.shared.localAPIKey
         let conn = LocalAPIConnection(
             connection: nwConnection,
             queue: queue,
-            writeTimeoutSeconds: Self.writeTimeoutSeconds
+            writeTimeoutSeconds: Self.writeTimeoutSeconds,
+            validateHeaders: { LocalAPIGuard.check($0, port: port, requiredAPIKey: requiredKey) }
         )
         let id = ObjectIdentifier(conn)
         connections[id] = conn
@@ -950,8 +952,10 @@ private final class LocalAPIConnection: @unchecked Sendable {
     private let connection: NWConnection
     private let queue: DispatchQueue
     private let writeTimeoutSeconds: Double
+    private let validateHeaders: @Sendable (LocalHTTPRequest) -> LocalAPIError?
     private let lock = NSLock()
     private var buffer = Data()
+    private var headersAccepted = false // connection queue only
     private var parsedRequest = false
     private var sendingFinal = false
     private var finished = false
@@ -972,10 +976,12 @@ private final class LocalAPIConnection: @unchecked Sendable {
         return disconnected
     }
 
-    init(connection: NWConnection, queue: DispatchQueue, writeTimeoutSeconds: Double) {
+    init(connection: NWConnection, queue: DispatchQueue, writeTimeoutSeconds: Double,
+         validateHeaders: @escaping @Sendable (LocalHTTPRequest) -> LocalAPIError?) {
         self.connection = connection
         self.queue = queue
         self.writeTimeoutSeconds = writeTimeoutSeconds
+        self.validateHeaders = validateHeaders
     }
 
     func attachWorkTask(_ task: Task<Void, Never>) {
@@ -1016,6 +1022,12 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 break
             }
         }
+        scheduleReadTimeout(seconds: 5, message: "Timed out waiting for HTTP headers.")
+        connection.start(queue: queue)
+        receiveNext()
+    }
+
+    private func scheduleReadTimeout(seconds: Double, message: String) {
         let timeout = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.lock.lock()
@@ -1023,20 +1035,23 @@ private final class LocalAPIConnection: @unchecked Sendable {
             let alreadyClosed = self.disconnected
             self.lock.unlock()
             if !alreadyParsed && !alreadyClosed {
-                self.sendAndClose(LocalHTTPResponse.error(.badRequest("Timed out waiting for HTTP request.")))
+                self.sendAndClose(LocalHTTPResponse.error(.badRequest(message)))
             }
         }
         lock.lock()
+        readTimeoutItem?.cancel()
         readTimeoutItem = timeout
         lock.unlock()
-        queue.asyncAfter(deadline: .now() + 30, execute: timeout)
-        connection.start(queue: queue)
-        receiveNext()
+        queue.asyncAfter(deadline: .now() + seconds, execute: timeout)
     }
 
     private func receiveNext() {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { @Sendable [weak self] data, _, isComplete, error in
             guard let self else { return }
+            self.lock.lock()
+            let receiving = !self.disconnected && !self.sendingFinal
+            self.lock.unlock()
+            guard receiving else { return }
             if error != nil {
                 self.markDisconnected()
                 return
@@ -1044,7 +1059,14 @@ private final class LocalAPIConnection: @unchecked Sendable {
             if let data, !data.isEmpty {
                 self.buffer.append(data)
             }
-            switch LocalHTTPRequest.parse(self.buffer) {
+            let parsed = LocalHTTPRequest.parse(self.buffer) { head in
+                guard !self.headersAccepted else { return nil }
+                if let rejection = self.validateHeaders(head) { return rejection }
+                self.headersAccepted = true
+                self.scheduleReadTimeout(seconds: 30, message: "Timed out waiting for HTTP body.")
+                return nil
+            }
+            switch parsed {
             case .complete(let request, _):
                 self.cancelReadTimeout(markParsed: true)
                 self.buffer.removeAll(keepingCapacity: false)
@@ -1057,6 +1079,9 @@ private final class LocalAPIConnection: @unchecked Sendable {
             case .error(let parseErr):
                 self.cancelReadTimeout(markParsed: true)
                 self.sendAndClose(LocalHTTPResponse.error(.fromParseError(parseErr)))
+            case .rejected(let error):
+                self.cancelReadTimeout(markParsed: true)
+                self.sendAndClose(LocalHTTPResponse.error(error))
             case .needMore:
                 if isComplete {
                     self.cancelReadTimeout(markParsed: true)
