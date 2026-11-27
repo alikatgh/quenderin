@@ -161,15 +161,7 @@ async function downloadCatalogModel(
   }
 }
 
-async function runPrintChat(llm: LlmService, argPrompt: string): Promise<void> {
-  const piped = !process.stdin.isTTY ? await readAllStdin() : '';
-  const prompt = [argPrompt, piped].filter(Boolean).join('\n\n');
-  if (!prompt) {
-    console.error('Nothing to answer: pass a prompt (`-p "…"`) or pipe input.');
-    process.exitCode = 1;
-    await llm.shutdown({ processExit: true });
-    return;
-  }
+async function runPrintChat(llm: LlmService, prompt: string): Promise<void> {
   await writePrintAnswer(process.stdout, onToken => llm.generalChat(prompt, onToken, { plainChat: true }));
   // Full engine dispose before exit — ggml-metal's atexit destructor asserts if the
   // device is still alive (llama.cpp #17869), turning a good run into exit 134.
@@ -267,7 +259,10 @@ program
       // ── -p print mode: one answer, plain stdout, exit. The pipe-friendly path.
       if (options.print !== undefined) {
         const arg = typeof options.print === 'string' ? options.print : '';
-        await runPrintChat(llm, arg);
+        const piped = !process.stdin.isTTY ? await readAllStdin() : '';
+        const prompt = [arg, piped].filter(Boolean).join('\n\n');
+        if (!prompt.trim()) throw new Error('Nothing to answer. Pass a prompt (`-p "…"`) or pipe input.');
+        await runPrintChat(llm, prompt);
         return;
       }
 
@@ -287,26 +282,23 @@ program
   .argument('[prompt...]', 'optional prompt for a one-shot answer (omit for interactive REPL)')
   .option('--no-download', 'fail instead of downloading if the model is not installed')
   .action(async (id: string, promptArgs: string[], options: { download?: boolean }) => {
-    const plan = planRun({
-      id,
-      promptArgs,
-      stdinIsTTY: Boolean(process.stdin.isTTY),
-      installed: installedModelIds().has(id),
-      known: MODEL_CATALOG.some(m => m.id === id),
-      allowDownload: options.download !== false,
-    });
-    if (plan.kind === 'error') {
-      console.error(plan.message);
-      process.exitCode = 1;
-      return;
-    }
-
-    const isPrint = plan.kind === 'print' || (plan.kind === 'download-then' && plan.next === 'print');
-    if (isPrint) setLogLevel('error');
-    const llm = new LlmService();
+    let llm: LlmService | undefined;
     try {
+      const stdinIsTTY = Boolean(process.stdin.isTTY);
+      const known = MODEL_CATALOG.some(m => m.id === id);
+      const installed = known && installedModelIds().has(id);
+      const allowDownload = options.download !== false;
+      const stdinText = !stdinIsTTY && known && (installed || allowDownload) ? await readAllStdin() : '';
+      const plan = planRun({ id, promptArgs, stdinIsTTY, stdinText, installed, known, allowDownload });
+      if (plan.kind === 'error') throw new Error(plan.message);
+
+      const prompt = plan.kind === 'print' || (plan.kind === 'download-then' && plan.next === 'print')
+        ? plan.prompt
+        : undefined;
+      if (prompt !== undefined) setLogLevel('error');
+      llm = new LlmService();
       if (plan.kind === 'download-then') {
-        const out = isPrint ? process.stderr : process.stdout;
+        const out = prompt === undefined ? process.stdout : process.stderr;
         out.write(`Model ${id} is not installed — downloading (SHA-256 verified)…\n`);
         const ok = await downloadCatalogModel(id, llm, out);
         if (!ok) {
@@ -315,19 +307,15 @@ program
         }
       }
       await llm.switchModel(id);
-      if (plan.kind === 'print') {
-        await runPrintChat(llm, plan.prompt);
-        return;
-      }
-      if (plan.kind === 'download-then' && plan.next === 'print') {
-        await runPrintChat(llm, plan.prompt ?? '');
+      if (prompt !== undefined) {
+        await runPrintChat(llm, prompt);
         return;
       }
       runReplChat(llm);
     } catch (e: unknown) {
       console.error(e instanceof Error ? e.message : String(e));
       process.exitCode = 1;
-      try { await llm.shutdown({ processExit: true }); } catch { /* failed native join must not free its backend */ }
+      try { await llm?.shutdown({ processExit: true }); } catch { /* failed native join must not free its backend */ }
     }
   });
 

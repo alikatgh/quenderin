@@ -69,16 +69,17 @@ describe('planRun', () => {
     expect(plan).toEqual({ kind: 'print', prompt: 'why is the sky blue?' });
   });
 
-  it('returns print with empty arg prompt when installed and stdin is piped without positional args', () => {
+  it('returns print with stdin when installed and there are no positional args', () => {
     const plan = planRun({
       id: 'llama32-1b',
       promptArgs: [],
       stdinIsTTY: false,
+      stdinText: 'input from a pipe',
       installed: true,
       known: true,
       allowDownload: true,
     });
-    expect(plan).toEqual({ kind: 'print', prompt: '' });
+    expect(plan).toEqual({ kind: 'print', prompt: 'input from a pipe' });
   });
 
   it('returns print with arg prompt when installed and both positional prompt and piped stdin exist', () => {
@@ -86,11 +87,12 @@ describe('planRun', () => {
       id: 'llama32-1b',
       promptArgs: ['Review', 'this', 'diff'],
       stdinIsTTY: false,
+      stdinText: 'diff contents',
       installed: true,
       known: true,
       allowDownload: true,
     });
-    expect(plan).toEqual({ kind: 'print', prompt: 'Review this diff' });
+    expect(plan).toEqual({ kind: 'print', prompt: 'Review this diff\n\ndiff contents' });
   });
 
   it('returns an error with download hint when not installed and allowDownload is false (--no-download)', () => {
@@ -136,16 +138,16 @@ describe('planRun', () => {
     });
   });
 
-  it('returns download-then print without prompt when not installed and stdin is piped with no args', () => {
-    const plan = planRun({
+  it.each([true, false])('rejects empty piped input before model work (installed: %s)', installed => {
+    expect(planRun({
       id: 'llama32-1b',
-      promptArgs: [],
+      promptArgs: [' ', '\t'],
       stdinIsTTY: false,
-      installed: false,
+      stdinText: ' \n\t ',
+      installed,
       known: true,
       allowDownload: true,
-    });
-    expect(plan).toEqual({ kind: 'download-then', next: 'print' });
+    })).toEqual({ kind: 'error', message: 'Nothing to answer. Use `quenderin run <id> "<prompt>"` or pipe input.' });
   });
 
   it('returns download-then print with prompt when not installed and both stdin and prompt args exist', () => {
@@ -153,6 +155,7 @@ describe('planRun', () => {
       id: 'llama32-1b',
       promptArgs: ['summarize', 'this'],
       stdinIsTTY: false,
+      stdinText: 'document',
       installed: false,
       known: true,
       allowDownload: true,
@@ -160,7 +163,7 @@ describe('planRun', () => {
     expect(plan).toEqual({
       kind: 'download-then',
       next: 'print',
-      prompt: 'summarize this',
+      prompt: 'summarize this\n\ndocument',
     });
   });
 });

@@ -28,6 +28,7 @@ export interface PlanRunInput {
   id: string;
   promptArgs: readonly string[];
   stdinIsTTY: boolean;
+  stdinText?: string;
   installed: boolean;
   known: boolean;
   allowDownload: boolean;
@@ -35,14 +36,15 @@ export interface PlanRunInput {
 
 export type RunPlan =
   | { kind: 'error'; message: string }
-  | { kind: 'download-then'; next: 'print' | 'repl'; prompt?: string }
+  | { kind: 'download-then'; next: 'print'; prompt: string }
+  | { kind: 'download-then'; next: 'repl' }
   | { kind: 'print'; prompt: string }
   | { kind: 'repl' };
 
 /**
  * Pure planner for `quenderin run <id> [prompt...]`.
  * Decides whether to error, download first, run one-shot print mode, or start the interactive REPL.
- * Caller reads piped stdin when `next === 'print'` or `kind === 'print'`.
+ * Piped input is resolved before provisioning a one-shot run.
  */
 export function planRun(input: PlanRunInput): RunPlan {
   const { id, promptArgs, stdinIsTTY, installed, known, allowDownload } = input;
@@ -54,26 +56,18 @@ export function planRun(input: PlanRunInput): RunPlan {
     };
   }
 
-  const prompt = promptArgs.join(' ').trim();
-  const isPrint = prompt.length > 0 || !stdinIsTTY;
-
-  if (!installed) {
-    if (!allowDownload) {
-      return {
-        kind: 'error',
-        message: `Model "${id}" is not installed. Run \`quenderin download ${id}\` first.`,
-      };
-    }
-    if (isPrint) {
-      return prompt.length > 0
-        ? { kind: 'download-then', next: 'print', prompt }
-        : { kind: 'download-then', next: 'print' };
-    }
-    return { kind: 'download-then', next: 'repl' };
+  if (!installed && !allowDownload) {
+    return {
+      kind: 'error',
+      message: `Model "${id}" is not installed. Run \`quenderin download ${id}\` first.`,
+    };
   }
 
-  if (isPrint) {
-    return { kind: 'print', prompt };
+  const piped = stdinIsTTY ? '' : input.stdinText?.trim();
+  const prompt = [promptArgs.join(' ').trim(), piped].filter(Boolean).join('\n\n');
+  if (!prompt && !stdinIsTTY) {
+    return { kind: 'error', message: 'Nothing to answer. Use `quenderin run <id> "<prompt>"` or pipe input.' };
   }
-  return { kind: 'repl' };
+  if (prompt) return installed ? { kind: 'print', prompt } : { kind: 'download-then', next: 'print', prompt };
+  return installed ? { kind: 'repl' } : { kind: 'download-then', next: 'repl' };
 }
