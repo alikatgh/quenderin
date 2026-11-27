@@ -32,6 +32,7 @@ import { platformCapabilities } from './services/capability/platformCapabilities
 import { registerImageCommands } from './commands/images.js';
 import { registerVoiceCommands } from './commands/voice.js';
 import { isModelInstalled, planRun } from './commands/run.js';
+import { writePrintAnswer } from './commands/printChat.js';
 
 const program = new Command();
 
@@ -169,12 +170,10 @@ async function runPrintChat(llm: LlmService, argPrompt: string): Promise<void> {
     await llm.shutdown({ processExit: true });
     return;
   }
-  await llm.generalChat(prompt, tok => process.stdout.write(tok), { plainChat: true });
-  process.stdout.write('\n');
+  await writePrintAnswer(process.stdout, onToken => llm.generalChat(prompt, onToken, { plainChat: true }));
   // Full engine dispose before exit — ggml-metal's atexit destructor asserts if the
   // device is still alive (llama.cpp #17869), turning a good run into exit 134.
   await llm.shutdown({ processExit: true });
-  process.exit(0);
 }
 
 function runReplChat(llm: LlmService): void {
