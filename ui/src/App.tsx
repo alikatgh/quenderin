@@ -327,6 +327,27 @@ function AppContent() {
     try { localStorage.removeItem('quenderin_last_outage'); } catch { /* best-effort */ }
   };
 
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const hasBlockingModal = Boolean(
+    showOnboarding
+    || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter))
+    || missionApproval
+    || (settings.privacyLockEnabled && isLocked)
+  );
+  useEffect(() => {
+    const node = dashboardRef.current;
+    if (!node) return;
+    if (hasBlockingModal) {
+      node.setAttribute('inert', '');
+      (node as HTMLDivElement & { inert?: boolean }).inert = true;
+    } else {
+      node.removeAttribute('inert');
+      (node as HTMLDivElement & { inert?: boolean }).inert = false;
+    }
+  }, [hasBlockingModal]);
+
+  const hideBackdropFromAt = Boolean(showOnboarding || missionApproval || (settings.privacyLockEnabled && isLocked));
+
   return (
     <>
       <PrivacyLock
@@ -403,7 +424,7 @@ function AppContent() {
         </div>
       )}
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-qteal-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div ref={dashboardRef} aria-hidden={hideBackdropFromAt || undefined} className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-qteal-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${hasBlockingModal ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (

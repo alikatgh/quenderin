@@ -12,6 +12,12 @@ interface ChatModel {
     runtimeMessage?: string;
 }
 
+interface PendingActivation {
+    modelId: string;
+    status: 'pending' | 'activating' | 'failed';
+    error: string | null;
+}
+
 export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommendedModelId, downloadingId, progress }: {
     onContinue: () => void;
     onImages: () => void;
@@ -22,6 +28,8 @@ export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommend
 }) {
     const [models, setModels] = useState<ChatModel[] | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [serverDownloadingId, setServerDownloadingId] = useState<string | null>(null);
+    const [pendingActivation, setPendingActivation] = useState<PendingActivation | null>(null);
     const [pickedId, setPickedId] = useState<string | null>(null);
     const [startedId, setStartedId] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -34,20 +42,37 @@ export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommend
         void apiFetch('/api/models/catalog', { signal: controller.signal })
             .then(async response => {
                 if (!response.ok) throw new Error('Could not load local chat models.');
-                const result: { catalog: ChatModel[]; activeModelId: string } = await response.json();
+                const result: {
+                    catalog: ChatModel[];
+                    activeModelId: string;
+                    downloadingModelId?: string | null;
+                    pendingActivation?: PendingActivation | null;
+                } = await response.json();
                 if (controller.signal.aborted) return;
                 setModels(result.catalog);
                 setActiveId(result.activeModelId);
+                setServerDownloadingId(result.downloadingModelId ?? null);
+                setPendingActivation(result.pendingActivation ?? null);
             }).catch(() => { if (!controller.signal.aborted) setError('Could not load local chat models.'); });
         return () => controller.abort();
     }, [installed, reload]);
 
+    const activeDownloadId = serverDownloadingId ?? (progress > 0 && !installed ? downloadingId : null) ?? startedId;
     const selected = models?.find(m => m.id === pickedId)
+        ?? models?.find(m => m.id === activeDownloadId && m.runtimeCompatible)
         ?? models?.find(m => m.id === activeId && m.isDownloaded && m.runtimeCompatible)
         ?? models?.find(m => m.id === recommendedModelId && m.runtimeCompatible)
         ?? models?.find(m => m.runtimeCompatible);
     const downloading = !!selected && !selected.isDownloaded &&
-        (selected.id === startedId || (downloadingId === selected.id && progress > 0 && !installed));
+        (selected.id === startedId || selected.id === serverDownloadingId || (downloadingId === selected.id && progress > 0 && !installed));
+    const otherDownload = !!activeDownloadId && !!selected && activeDownloadId !== selected.id;
+    const activationFailure = pendingActivation?.status === 'failed' && (!selected || pendingActivation.modelId === selected.id)
+        ? pendingActivation.error
+        : null;
+    const activationWaiting = (pendingActivation?.status === 'pending' || pendingActivation?.status === 'activating')
+        && (!selected || pendingActivation.modelId === selected.id)
+        ? (pendingActivation.error ?? 'Activating downloaded chat model…')
+        : null;
 
     async function chooseModel(continueAfter: boolean) {
         if (!selected) return;
@@ -61,10 +86,14 @@ export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommend
             });
             if (!response.ok) {
                 const result = await response.json().catch(() => null);
+                if (result?.activeDownloadModelId) setServerDownloadingId(String(result.activeDownloadModelId));
                 throw new Error(result?.error ?? 'Could not select the local chat model.');
             }
             if (selected.isDownloaded) setActiveId(selected.id);
-            else setStartedId(selected.id);
+            else {
+                setStartedId(selected.id);
+                setServerDownloadingId(selected.id);
+            }
             if (continueAfter) onContinue();
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Could not select the local chat model.');
@@ -97,7 +126,9 @@ export function WelcomeChatModelStep({ onContinue, onImages, onVision, recommend
                 </label>
             ) : error ? <button type="button" className={textButton} onClick={() => { setError(null); setReload(n => n + 1); }}>Retry loading chat models</button>
                 : <p role="status" className="text-sm">{models ? 'No compatible local chat models found.' : 'Loading chat models…'}</p>}
-            {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+            {(error || activationFailure) && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error ?? activationFailure}</p>}
+            {activationWaiting && <p role="status" className="text-xs text-zinc-600 dark:text-zinc-400">{activationWaiting}</p>}
+            {otherDownload && !error && <p role="status" className="text-xs text-amber-800 dark:text-amber-300">Another chat model download is already in progress. Wait for it to finish before starting a different model.</p>}
             {downloading && progress > 0 && progress < 100 && downloadingId === selected.id && <DownloadWaitPlayground progress={progress} />}
             {selected && !selected.isDownloaded && (
                 <button type="button" disabled={busy} className={textButton} onClick={() => void chooseModel(false)}>

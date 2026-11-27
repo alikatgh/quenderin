@@ -55,20 +55,24 @@ export function useMicrophone(): MicrophoneController {
     }, []);
 
     const acquire = useCallback(async (signal: AbortSignal) => {
-        if (!supported()) return null;
+        if (!supported() || signal.aborted) return null;
         setError(null);
         try {
             const bridge = mediaBridge();
-            if (bridge && !await bridge.request()) throw new DOMException('Microphone access denied.', 'NotAllowedError');
+            if (bridge && !await bridge.request()) {
+                if (signal.aborted) return null;
+                throw new DOMException('Microphone access denied.', 'NotAllowedError');
+            }
             if (signal.aborted) return null;
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            setPermission('granted');
             if (signal.aborted) {
                 stopTracks(stream);
                 return null;
             }
+            setPermission('granted');
             return stream;
         } catch (cause) {
+            if (signal.aborted) return null;
             const name = cause && typeof cause === 'object' && 'name' in cause ? cause.name : '';
             if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
                 setPermission('denied');

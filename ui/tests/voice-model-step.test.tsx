@@ -1,12 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WelcomeWizard } from '../src/App.js';
 import { VoiceModelStep } from '../src/components/onboarding/VoiceModelStep.js';
 import { VoiceSettingsSection } from '../src/components/settings/VoiceSettingsSection.js';
-import type { SpeechDownloadErrorKind } from '../src/lib/speech/types.js';
+import { useSpeechDownload } from '../src/lib/speech/useSpeechDownload.js';
+import type { SpeechApi } from '../src/lib/speech/api.js';
+import type { SpeechDownloadErrorKind, SpeechDownloadSnapshot } from '../src/lib/speech/types.js';
 import { accurate, catalogFixture, recommended, snapshot, speechFixture } from './speechFixtures.js';
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const showAll = () => fireEvent.click(screen.getByRole('button', { name: 'Show all 29 models' }));
 
 describe('Handy voice model step', () => {
@@ -125,12 +127,39 @@ describe('Handy voice model step', () => {
         const finish = vi.fn();
         const speech = speechFixture();
         render(<VoiceModelStep speech={{
-            ...speech, downloads: { ...speech.downloads, snapshots: { [recommended]: snapshot('error', { error: { kind, message, status: null } }) } },
+            ...speech,
+            settings: { ...speech.settings!, voiceEnabled: true, modelId: recommended },
+            downloads: { ...speech.downloads, snapshots: { [recommended]: snapshot('error', { error: { kind, message, status: null } }) } },
         }} onFinish={finish} />);
         expect(screen.getByRole('alert').textContent).toBe(message);
         fireEvent.click(screen.getByRole('button', { name: /Skip.*type/ }));
         await waitFor(() => expect(finish).toHaveBeenCalledOnce());
         expect(speech.updateSettings).toHaveBeenCalledWith({ voiceEnabled: false });
+    });
+
+    it('finishes immediately on Skip when loaded picker already has voice disabled even if backend drops', async () => {
+        const finish = vi.fn();
+        const speech = speechFixture();
+        speech.updateSettings.mockRejectedValue(new Error('offline'));
+        render(<VoiceModelStep speech={speech} onFinish={finish} />);
+        expect(screen.getByRole('radio', { name: /Recommended/ })).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: /Skip.*type/ }));
+        await waitFor(() => expect(finish).toHaveBeenCalledOnce());
+        expect(speech.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it('keeps error and retry visible on Skip when loaded picker has voice enabled and PUT fails', async () => {
+        const finish = vi.fn();
+        const speech = speechFixture({
+            settings: { voiceEnabled: true, modelId: recommended, autoSend: false, updatedAt: '2026-11-27T00:00:00.000Z' },
+        });
+        speech.updateSettings.mockRejectedValueOnce(new Error('backend down')).mockResolvedValueOnce(undefined);
+        render(<VoiceModelStep speech={speech} onFinish={finish} />);
+        fireEvent.click(screen.getByRole('button', { name: /Skip.*type/ }));
+        expect((await screen.findByRole('alert')).textContent).toMatch(/Could not turn off voice/);
+        expect(finish).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole('button', { name: /Skip.*type/ }));
+        await waitFor(() => expect(finish).toHaveBeenCalledOnce());
     });
 
     it('keeps voice optional when the service cannot be reached', async () => {
@@ -141,6 +170,36 @@ describe('Handy voice model step', () => {
         expect(screen.getByRole('alert').textContent).toBe('Service unavailable.');
         fireEvent.click(screen.getByRole('button', { name: /Skip.*type/ }));
         await waitFor(() => expect(finish).toHaveBeenCalledOnce());
+    });
+
+    it('reconciles a missed final installed WebSocket event on a healthy connection while a download is active', async () => {
+        vi.useFakeTimers();
+        const downloading = snapshot('downloading', { updatedAt: '2026-11-27T00:00:01.000Z' });
+        const installed = snapshot('installed', {
+            downloadedBytes: downloading.totalBytes, percent: 100, updatedAt: '2026-11-27T00:00:02.000Z',
+        });
+        const listDownloads = vi.fn<SpeechApi['listDownloads']>()
+            .mockResolvedValueOnce([downloading])
+            .mockResolvedValueOnce([installed]);
+        const api = { listDownloads } as unknown as SpeechApi;
+
+        function Probe({ events }: { events: Readonly<Record<string, SpeechDownloadSnapshot>> }) {
+            const { snapshots } = useSpeechDownload(true, events, api);
+            return <output>{snapshots[recommended]?.phase ?? 'none'}</output>;
+        }
+
+        render(<Probe events={{ [recommended]: downloading }} />);
+        await act(async () => { await Promise.resolve(); });
+        expect(screen.getByRole('status').textContent).toBe('downloading');
+
+        // Final WS frame is dropped; bounded reconciliation polls authoritative REST snapshot.
+        await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+        expect(listDownloads).toHaveBeenCalledTimes(2);
+        expect(screen.getByRole('status').textContent).toBe('installed');
+
+        // Once no job is active on a connected socket, polling stops.
+        await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+        expect(listDownloads).toHaveBeenCalledTimes(2);
     });
 });
 

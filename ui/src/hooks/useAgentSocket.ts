@@ -417,18 +417,6 @@ export function useAgentSocket() {
         return true;
     };
 
-    const manualVoiceStart = () => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'manual_voice_start' }));
-        }
-    };
-
-    const manualVoiceStop = () => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'manual_voice_stop' }));
-        }
-    };
-
     const resetSession = () => {
         setLogs([]);
         setStatus('idle');
@@ -579,7 +567,7 @@ export function useAgentSocket() {
         wsReady, speechDownloadEvents, downloadModelId,
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, stopAgent, loadSession,
+        pauseAgent, resumeAgent, stopChat, stopAgent, loadSession,
         taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask,
         missionApproval, answerMissionApproval,
     };

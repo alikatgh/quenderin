@@ -100,6 +100,33 @@ describe('push-to-talk capture', () => {
         expect(transcribe).not.toHaveBeenCalled();
     });
 
+    it('ignores a deferred permission rejection from a cancelled attempt once a new recording starts', async () => {
+        let failFirst!: (error: Error) => void;
+        mic.getUserMedia
+            .mockImplementationOnce(() => new Promise((_resolve, reject) => { failFirst = reject; }))
+            .mockResolvedValueOnce(mic.stream);
+        const transcribe = vi.fn(async () => ({ text: 'Second recording', autoSend: false }));
+        const insert = vi.fn();
+        render(<VoiceInputButton transcribe={transcribe} onTranscript={insert} />);
+
+        // First press starts acquisition, then user lets go (aborting attempt 1).
+        pointerDown();
+        pointerUp();
+
+        // Second press immediately acquires microphone and begins recording.
+        pointerDown();
+        await waitFor(() => expect(button().getAttribute('aria-pressed')).toBe('true'));
+
+        // Deferred rejection from attempt 1 arrives mid-recording and must NOT clobber state.
+        await act(async () => failFirst(new DOMException('Late denial', 'NotAllowedError')));
+        expect(screen.queryByRole('alert')).toBeNull();
+        expect(button().getAttribute('aria-pressed')).toBe('true');
+
+        // Releasing attempt 2 transcribes normally.
+        pointerUp();
+        await waitFor(() => expect(insert).toHaveBeenCalledWith({ text: 'Second recording', autoSend: false }));
+    });
+
     it('holds Ctrl+Shift+M and releases when a modifier key lifts', async () => {
         const transcribe = vi.fn(async () => ({ text: 'Spoken shortcut', autoSend: true }));
         const insert = vi.fn();
@@ -150,8 +177,11 @@ describe('composer transcription', () => {
     }
 
     it.each([
-        ['General Chat', false], ['General Chat', true], ['Agent Chat', false], ['Agent Chat', true],
-    ] as const)('%s appends speech and respects auto-send=%s', async (view, autoSend) => {
+        ['General Chat', false, false],
+        ['General Chat', true, true],
+        ['Agent Chat', false, false],
+        ['Agent Chat', true, false],
+    ] as const)('%s appends speech with auto-send=%s (auto-submits=%s)', async (view, autoSend, shouldSubmit) => {
         const fetch = mockSpeech(autoSend);
         const send = vi.fn();
         const voice = { modelId: 'local-fixture', onSettings: vi.fn() };
@@ -169,7 +199,7 @@ describe('composer transcription', () => {
         expect(fetch).toHaveBeenCalledWith('/api/speech/transcribe?modelId=local-fixture', expect.objectContaining({
             body: expect.any(Blob), method: 'POST', headers: expect.any(Headers), signal: expect.any(AbortSignal),
         }));
-        if (autoSend) expect(send.mock.calls[0][0]).toBe('Draft local transcript');
+        if (shouldSubmit) expect(send.mock.calls[0][0]).toBe('Draft local transcript');
         else expect(send).not.toHaveBeenCalled();
     });
 

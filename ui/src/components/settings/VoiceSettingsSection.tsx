@@ -36,9 +36,13 @@ export function VoiceSettingsSection({ speech, focusVoice }: { speech: SpeechSet
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={settings?.autoSend ?? false} disabled={saving || !settings?.voiceEnabled}
+                            aria-describedby="voice-autosend-hint"
                             onChange={e => void toggle('autoSend', e.target.checked)} className="accent-qteal-600" /> Automatically send transcript
                     </label>
                 </div>
+                <p id="voice-autosend-hint" className="text-xs text-zinc-600 dark:text-zinc-400">
+                    Auto-send applies to General Chat only. Device-agent goals always stay in the draft until you run them.
+                </p>
                 <Model catalog={catalog} settings={settings} downloads={downloads.snapshots} onSelect={speech.refreshDownload}
                     onUse={id => speech.updateSettings({ modelId: id, voiceEnabled: true })}
                     onAction={(action, id) => action === 'remove' ? speech.removeModel(id) : downloads.run(action, id)} />

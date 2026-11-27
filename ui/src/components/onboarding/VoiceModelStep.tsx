@@ -9,8 +9,23 @@ export function VoiceModelStep({ speech, onFinish }: { speech: SpeechSetup; onFi
     useEffect(() => { heading.current?.focus(); }, []);
 
     async function skip() {
-        await speech.updateSettings({ voiceEnabled: false });
-        onFinish();
+        setSkipError(null);
+        if (speech.settings && !speech.settings.voiceEnabled) {
+            onFinish();
+            return;
+        }
+        try {
+            await speech.updateSettings({ voiceEnabled: false });
+            onFinish();
+        } catch {
+            if (!speech.settings?.voiceEnabled) {
+                onFinish();
+                return;
+            }
+            const message = 'Could not turn off voice. Reconnect and try again.';
+            setSkipError(message);
+            throw new Error(message);
+        }
     }
 
     return (
@@ -26,10 +41,7 @@ export function VoiceModelStep({ speech, onFinish }: { speech: SpeechSetup; onFi
                 <div className="space-y-2">
                     {speech.loadError ? <p role="alert" className="text-sm">{speech.loadError}</p> : <p role="status" className="text-sm">Loading voice models…</p>}
                     {speech.loadError && <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => void speech.load()}>Retry</button>}
-                    <button type="button" className="rounded-lg px-3 py-2 text-sm" onClick={() => void skip().catch(() => {
-                        if (!speech.settings?.voiceEnabled) onFinish();
-                        else setSkipError('Could not turn off voice. Reconnect and try again.');
-                    })}>Skip — I’ll type</button>
+                    <button type="button" className="rounded-lg px-3 py-2 text-sm" onClick={() => void skip().catch(() => {})}>Skip — I’ll type</button>
                     {skipError && <p role="alert">{skipError}</p>}
                 </div>
             )}

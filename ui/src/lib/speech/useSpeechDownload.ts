@@ -32,17 +32,25 @@ export function useSpeechDownload(
 
     useEffect(() => {
         let live = true;
-        const load = () => {
-            void api.listDownloads().then(rows => {
-                if (live) setRestSnapshots(current => rows.reduce(mergeSpeechSnapshot, current));
-            }).catch(() => {});
-        };
-        load();
-        const fallback = connected ? undefined : window.setInterval(load, 2500);
-        return () => { live = false; window.clearInterval(fallback); };
+        void api.listDownloads().then(rows => {
+            if (live) setRestSnapshots(current => rows.reduce(mergeSpeechSnapshot, current));
+        }).catch(() => {});
+        return () => { live = false; };
     }, [connected, api]);
 
     const snapshots = useMemo(() => Object.values(events).reduce(mergeSpeechSnapshot, restSnapshots), [events, restSnapshots]);
+    const hasActive = useMemo(() => Object.values(snapshots).some(isSpeechDownloadActive), [snapshots]);
+
+    useEffect(() => {
+        if (connected && !hasActive) return;
+        let live = true;
+        const poll = window.setInterval(() => {
+            void api.listDownloads().then(rows => {
+                if (live) setRestSnapshots(current => rows.reduce(mergeSpeechSnapshot, current));
+            }).catch(() => {});
+        }, 2500);
+        return () => { live = false; window.clearInterval(poll); };
+    }, [connected, hasActive, api]);
     const remove = async (modelId: string) => {
         const { snapshot, settings } = await api.removeModel(modelId);
         accept(snapshot);

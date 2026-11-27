@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { catalog, CURATED_MODELS, modelFile } from '@handy-computer/models';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { WelcomeWizard } from '../src/App.js';
+import App, { WelcomeWizard } from '../src/App.js';
 import { useSpeechSetup } from '../src/lib/speech/useSpeechSetup.js';
 import type {
     SpeechDownloadSnapshot, SpeechModelListResponse, SpeechSettingsResponse, UpdateSpeechSettingsRequest,
@@ -126,4 +126,94 @@ it('finishes setup while the separately chosen voice model is downloading', asyn
         { method: 'PUT', url: '/api/speech/settings', body: { modelId: accurateId, voiceEnabled: true } },
     ]);
     expect(dashboard.settings()).toMatchObject({ modelId: accurateId, voiceEnabled: true, autoSend: false });
+});
+
+it('surfaces a 409 busy chat-model download error without advancing to step 2', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        if (url === '/api/models/catalog') return new Response(JSON.stringify(chatCatalog), { status: 200 });
+        if (url === '/api/models/download') {
+            return new Response(JSON.stringify({
+                error: 'Another chat model download is already in progress.',
+                code: 'MODEL_DOWNLOAD_BUSY',
+                activeDownloadModelId: 'other-chat',
+            }), { status: 409 });
+        }
+        if (url === '/api/speech/models') return new Response(JSON.stringify(voiceCatalog), { status: 200 });
+        if (url === '/api/speech/settings') return new Response(JSON.stringify({ voiceEnabled: false, modelId: null, autoSend: false, updatedAt: '2026-01-01T00:00:00Z' }), { status: 200 });
+        if (url === '/api/speech/downloads') return new Response('[]', { status: 200 });
+        return new Response('{}', { status: 404 });
+    }));
+    render(<Wizard />);
+    await chooseChat('new-chat');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Voice' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/already in progress/);
+    expect(screen.getByRole('progressbar', { name: 'Setup step' }).getAttribute('aria-valuenow')).toBe('1');
+});
+
+it('keeps background dashboard inert and traps forward and backward Tab on step 2 entry', async () => {
+    if (!HTMLElement.prototype.scrollTo) HTMLElement.prototype.scrollTo = () => {};
+    if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = () => {};
+    const storage = new Map<string, string>([['quenderin_disclaimer_accepted', 'true']]);
+    vi.stubGlobal('localStorage', {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => { storage.set(key, value); },
+        removeItem: (key: string) => { storage.delete(key); },
+        clear: () => storage.clear(),
+    });
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    class StubSocket {
+        static OPEN = 1;
+        readyState = 1;
+        send = vi.fn();
+        close = vi.fn();
+    }
+    vi.stubGlobal('WebSocket', StubSocket);
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/models/catalog') return new Response(JSON.stringify(chatCatalog), { status: 200 });
+        if (url === '/api/models/switch') return new Response('{}', { status: 200 });
+        if (url === '/api/speech/models') return new Response(JSON.stringify(voiceCatalog), { status: 200 });
+        if (url === '/api/speech/settings') return new Response(JSON.stringify({ voiceEnabled: false, modelId: null, autoSend: false, updatedAt: '2026-01-01T00:00:00Z' }), { status: 200 });
+        if (url === '/api/speech/downloads' || url.startsWith('/api/speech/downloads/')) return new Response(url.endsWith('/downloads') ? '[]' : '{}', { status: url.endsWith('/downloads') ? 200 : 404 });
+        if (url === '/health') return new Response(JSON.stringify({ activeModel: 'Current chat' }), { status: 200 });
+        if (url === '/ready') return new Response(JSON.stringify({ ready: true, stage: 'ready' }), { status: 200 });
+        return new Response(JSON.stringify({ sessions: [] }), { status: 200 });
+    }));
+
+    const { container } = render(<App />);
+    const dialog = await screen.findByRole('dialog', { name: 'Welcome Setup Wizard' });
+    const inertBackdrop = container.querySelector('[inert]');
+    expect(inertBackdrop).toBeTruthy();
+    expect(inertBackdrop?.getAttribute('aria-hidden')).toBe('true');
+
+    await chooseChat('installed-chat');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Voice' }));
+    const heading = await screen.findByRole('heading', { name: 'Talk to your local model by voice' });
+    expect(document.activeElement).toBe(heading);
+
+    // Shift+Tab from the programmatically focused heading wraps to the last control inside the dialog.
+    const skipButton = screen.getByRole('button', { name: /Skip.*type/ });
+    fireEvent.keyDown(heading, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(skipButton);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    // Forward Tab from the last control wraps to the first focusable control inside the dialog.
+    const firstRadio = screen.getByRole('radio', { name: /Recommended/ });
+    fireEvent.keyDown(skipButton, { key: 'Tab' });
+    expect(document.activeElement).toBe(firstRadio);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    // Shift+Tab from the first control wraps back to the last control inside the dialog.
+    fireEvent.keyDown(firstRadio, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(skipButton);
+
+    // Forward Tab from the focused heading moves into the first control of step 2.
+    heading.focus();
+    fireEvent.keyDown(heading, { key: 'Tab' });
+    expect(document.activeElement).toBe(firstRadio);
+
+    // Dismissing the wizard removes inert from the dashboard.
+    fireEvent.click(skipButton);
+    await screen.findByText('What can I help you with?');
+    expect(container.querySelector('[inert]')).toBeNull();
 });

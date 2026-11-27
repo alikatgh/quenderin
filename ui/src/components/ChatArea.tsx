@@ -237,11 +237,10 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                     />
                     <div className="absolute right-3 bottom-2.5 flex items-center gap-2">
                         <VoiceComposerControl voice={voice} disabled={status === 'running'}
-                            onTranscript={({ text, autoSend }) => {
+                            onTranscript={({ text }) => {
                                 const draft = appendTranscript(goal, text);
                                 setGoal(draft);
-                                if (autoSend && status !== 'running') onStart(draft);
-                                else textareaRef.current?.focus();
+                                textareaRef.current?.focus();
                             }} />
                         <button
                             type="button"
