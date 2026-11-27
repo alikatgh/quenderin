@@ -1,3 +1,4 @@
+import type { SpeechDownloadManager } from '../services/speech/downloadManager.js';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
@@ -96,7 +97,8 @@ export class WebSocketManager {
         private authToken: string = '',
         /** The GOVERNED task agent (createGovernedAgent behind approval/undo seams) — the
          *  dashboard twin of `quenderin do`. Optional so tests of the legacy paths are unchanged. */
-        private taskService?: DashboardTaskService
+        private taskService?: DashboardTaskService,
+        private speechDownloads?: SpeechDownloadManager,
     ) {
         // Restrict the upgrade to /ws — without `path`, ws upgrades ANY HTTP path (H19).
         // r20: cap the raw frame size — without maxPayload the ws default accepts ~100 MiB frames,
@@ -215,6 +217,9 @@ export class WebSocketManager {
             this.voiceService.on('action_required', pushActionRequired);
             this.llmService.on('action_required', pushActionRequired);
             this.llmService.on('model_download_progress', pushModelDownloadProgress);
+            const unsubscribeSpeech = this.speechDownloads?.subscribe(snapshot => {
+                this.safeSend(ws, JSON.stringify({ type: 'speech_download_progress', snapshot }));
+            });
 
             // The governed task channel: steps stream live; an approval question renders the
             // renderer's dialog. Registered per-connection with the same stale-cleanup discipline
@@ -586,6 +591,7 @@ export class WebSocketManager {
                 this.voiceService.off('action_required', pushActionRequired);
                 this.llmService.off('action_required', pushActionRequired);
                 this.llmService.off('model_download_progress', pushModelDownloadProgress);
+                unsubscribeSpeech?.();
                 if (this.taskService) {
                     this.taskService.off('step', pushTaskStep);
                     this.taskService.off('approval_request', pushTaskApproval);

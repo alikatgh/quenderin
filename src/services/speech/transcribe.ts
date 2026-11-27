@@ -1,56 +1,63 @@
+import { type DictationFormatOptions, type HexSpeechAdapter, validateWavBuffer } from '../hexSpeechAdapter.js';
+import { findCatalogModel } from './catalog.js';
+import { SpeechError } from './errors.js';
+import { engineCompatibility } from './grading.js';
 import type {
-    DictationFormatOptions,
-    HexSpeechAdapter,
-} from '../hexSpeechAdapter.js';
-import type {
-    HandySpeechCatalog,
-    HandySpeechModel,
-} from './types.js';
-import type {
-    SpeechTranscriptionRequest,
-    SpeechTranscriptionResponse,
+    HandySpeechCatalog, HandySpeechModel, SpeechTranscriptionRequest, SpeechTranscriptionResponse,
 } from './types.js';
 
 export interface TranscribeSpeechOptions {
     readonly catalog: HandySpeechCatalog;
-    /** Pinned transcribe.cpp version from shared/speech-runtime.json. */
     readonly pinnedEngineVersion: string;
-    /** Reuse the existing native adapter; do not construct a second one per request. */
-    readonly adapter: HexSpeechAdapter;
+    readonly modelsDir: string;
+    readonly maxAudioBytes: number;
+    readonly adapter: Pick<HexSpeechAdapter, 'transcribe'>;
     readonly format?: DictationFormatOptions;
     readonly signal?: AbortSignal;
 }
 
-/**
- * Turn a captured WAV into text fully locally: validate the 16 kHz mono PCM
- * contract, gate on the pinned engine, then hand the bytes to the existing
- * HexSpeechAdapter/transcribe.cpp runtime. No cloud call is made.
- */
 export async function transcribeSpeech(
-    _options: TranscribeSpeechOptions,
-    _request: SpeechTranscriptionRequest,
+    options: TranscribeSpeechOptions,
+    request: SpeechTranscriptionRequest,
 ): Promise<SpeechTranscriptionResponse> {
-    throw new Error('TODO(stage2): validate WAV, verify model/engine, call HexSpeechAdapter and map the result.');
+    validateTranscriptionAudio(request.wav, options.maxAudioBytes);
+    const model = assertModelTranscribable(options.catalog, request.modelId, options.pinnedEngineVersion);
+    try {
+        const result = await options.adapter.transcribe({
+            model: model.id, directory: options.modelsDir, wav: request.wav,
+            signal: options.signal, format: options.format, language: request.language,
+            timestamps: model.capabilities.timestamps,
+        });
+        return { ...result, autoSend: request.autoSend ?? false };
+    } catch (error) {
+        if (options.signal?.aborted) throw new SpeechError('cancelled', 409, 'Transcription was cancelled.');
+        const message = error instanceof Error ? error.message : '';
+        if (/already running|current text operation|using the local engine/i.test(message)) {
+            throw new SpeechError('speech-busy', 409, 'Finish the current local model operation before dictating again.');
+        }
+        if (/runtime.*(?:unavailable|identity|ABI)|regular executable/i.test(message)
+            || (error as NodeJS.ErrnoException | undefined)?.code === 'EACCES') {
+            throw new SpeechError('runtime-unavailable', 503, 'The pinned local speech runtime is unavailable. Install a Quenderin build with the speech runtime.');
+        }
+        throw new SpeechError('transcription-failed', 502, 'The local speech engine could not transcribe the recording. Try recording again or choose a different voice model.');
+    }
 }
 
-/** Reject unknown models and models whose minEngine is newer than the runtime. */
-export function assertModelTranscribable(
-    _catalog: HandySpeechCatalog,
-    _modelId: string,
-    _pinnedEngineVersion: string,
-): HandySpeechModel {
-    throw new Error('TODO(stage2): resolve the model and gate on minEngine <= pinned runtime.');
+export function assertModelTranscribable(catalog: HandySpeechCatalog, modelId: string, pinnedEngineVersion: string): HandySpeechModel {
+    const model = findCatalogModel(catalog, modelId);
+    if (!model) throw new SpeechError('unknown-model', 404, 'Unknown speech model.');
+    if (engineCompatibility(model.minEngine, pinnedEngineVersion) !== 'supported') {
+        throw new SpeechError('unsupported-engine', 409, `Needs newer speech engine (${model.minEngine}).`);
+    }
+    return model;
 }
 
-/** Enforce the WAV size cap before buffering the request body. */
-export function validateTranscriptionAudio(_wav: Buffer, _maxBytes: number): void {
-    throw new Error('TODO(stage2): enforce the size cap and the 16 kHz mono 16-bit PCM WAV contract.');
-}
-
-/** Map the adapter's SpeechTranscriptionResult onto the REST response body. */
-export function toTranscriptionResponse(
-    _result: Awaited<ReturnType<HexSpeechAdapter['transcribe']>>,
-    _autoSend: boolean,
-): SpeechTranscriptionResponse {
-    throw new Error('TODO(stage2): map rawText/text/language/backend/durationMs/segments.');
+export function validateTranscriptionAudio(wav: Buffer, maxBytes: number): void {
+    if (wav.length > maxBytes) throw new SpeechError('audio-too-large', 413, 'The recording is too large.');
+    try {
+        validateWavBuffer(wav);
+        if (wav.readUInt32LE(4) !== wav.length - 8) throw new Error('RIFF size mismatch.');
+    } catch {
+        throw new SpeechError('invalid-audio', 415, 'Audio must be non-empty 16 kHz mono 16-bit PCM WAV.');
+    }
 }

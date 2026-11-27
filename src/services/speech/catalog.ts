@@ -1,58 +1,46 @@
-import { fileURLToPath } from 'node:url';
+import { catalog, modelFile } from '@handy-computer/models';
 import path from 'node:path';
-import type {
-    HandySpeechCatalog,
-    HandySpeechModel,
-} from './types.js';
+import type { HandySpeechCatalog, HandySpeechModel } from './types.js';
 
-export interface LoadHandyCatalogOptions {
-    /** Explicit snapshot path (tests, packaged overrides). */
-    readonly snapshotPath?: string;
+const idPattern = /^[a-z0-9][a-z0-9._-]*$/i;
+const repoPattern = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
+const filenamePattern = /^[a-z0-9][a-z0-9._-]*\.gguf$/i;
+
+function validatePin(model: HandySpeechModel) {
+    const file = modelFile(model);
+    if (!repoPattern.test(model.repository) || !/^[0-9a-f]{40}$/.test(model.revision)
+        || !filenamePattern.test(file.filename) || !/^[0-9a-f]{64}$/.test(file.sha256)
+        || !Number.isSafeInteger(file.size) || file.size <= 0) {
+        throw new Error(`Invalid Handy artifact pin for ${model.id}.`);
+    }
+    return file;
 }
 
-/**
- * Candidate locations for shared/handy-speech-catalog.json, most-specific first:
- *   1. an explicit path,
- *   2. the repo/asar layout relative to this module,
- *   3. process.cwd()/shared (dev + `npm test`).
- */
-export function handyCatalogPaths(explicitPath?: string): readonly string[] {
-    const candidates = [
-        explicitPath,
-        fileURLToPath(new URL('../../../shared/handy-speech-catalog.json', import.meta.url)),
-        path.join(process.cwd(), 'shared', 'handy-speech-catalog.json'),
-    ];
-    return [...new Set(candidates.filter((candidate): candidate is string => typeof candidate === 'string'))];
+/** The package owns the schema. Validate the pinned files at our disk and network boundary. */
+export function loadHandySpeechCatalog(source: HandySpeechCatalog = catalog): HandySpeechCatalog {
+    const ids = new Set<string>();
+    const filenames = new Set<string>();
+    for (const model of source.curatedModels) {
+        const filename = validatePin(model).filename.toLowerCase();
+        if (model.role !== 'asr' || !model.curated || !idPattern.test(model.id) || ids.has(model.id)
+            || filenames.has(filename) || (model.minEngine && !/^\d+\.\d+\.\d+$/.test(model.minEngine))) {
+            throw new Error(`Invalid or duplicate curated Handy model ${model.id}.`);
+        }
+        ids.add(model.id);
+        filenames.add(filename);
+    }
+    if (!ids.size) throw new Error('The Handy catalog has no curated speech models.');
+    return source;
 }
 
-/**
- * Validate the generated snapshot before any of it reaches the UI. The snapshot
- * is generated, not hand-edited: reject duplicate ids, non-ASR rows, missing
- * files/results and non-HTTPS download URLs with a concrete error.
- */
-export function parseHandySpeechCatalog(_raw: unknown): HandySpeechCatalog {
-    throw new Error('TODO(stage2): validate shared/handy-speech-catalog.json (29 curated ASR rows, results, URLs).');
+export function findCatalogModel(catalog: HandySpeechCatalog, modelId: string): HandySpeechModel | undefined {
+    return catalog.curatedModels.find(model => model.id === modelId);
 }
 
-/** Load and validate the pinned Handy catalog snapshot. */
-export function loadHandySpeechCatalog(_options: LoadHandyCatalogOptions = {}): HandySpeechCatalog {
-    throw new Error('TODO(stage2): read shared/handy-speech-catalog.json from handyCatalogPaths() and parse it.');
+export function modelDownloadUrl(model: HandySpeechModel): string {
+    return `https://huggingface.co/${model.repository}/resolve/${model.revision}/${validatePin(model).filename}`;
 }
 
-/** Look up one curated ASR model; undefined for an unknown id. */
-export function findCatalogModel(
-    _catalog: HandySpeechCatalog,
-    _modelId: string,
-): HandySpeechModel | undefined {
-    throw new Error('TODO(stage2): find a catalog model by id.');
-}
-
-/** The pinned Hugging Face URL for the model's default-quant file. */
-export function modelDownloadUrl(_model: HandySpeechModel): string {
-    throw new Error('TODO(stage2): return model.file.url after validating it.');
-}
-
-/** Path where the installed GGUF lives, under the app's speech model directory. */
-export function installedModelPath(_modelsDir: string, _model: HandySpeechModel): string {
-    throw new Error('TODO(stage2): join modelsDir with the catalog filename.');
+export function installedModelPath(modelsDir: string, model: HandySpeechModel): string {
+    return path.join(modelsDir, validatePin(model).filename);
 }

@@ -9,6 +9,7 @@ import { sanitizeNoteFilename } from './utils/notes.js';
 import { MemoryService } from './services/memory.service.js';
 import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
+import { createSpeechRouter, type SpeechRouteDependencies } from './routes/speech.js';
 import docsRoute from './routes/docs.js';
 import { step5Routes } from './routes/step5.js';
 import { registerHyMemoryRoutes } from './routes/hyMemory.js';
@@ -48,7 +49,7 @@ const GOAL_TEMPLATES = [
     { id: 'navigate-settings', category: 'Navigation',   label: 'Change a setting',       template: 'Go to Settings and turn on {setting name}' },
 ];
 
-export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService, sessionService?: SessionService, memoryService?: MemoryService, authToken: string = ''): Express {
+export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService, sessionService?: SessionService, memoryService?: MemoryService, authToken: string = '', speech?: SpeechRouteDependencies): Express {
     const app = express();
 
     const isAllowedLocalOrigin = (origin: string): boolean => {
@@ -130,7 +131,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // data, so its GET requires the token like the other read-protected prefixes.
     // /api/tasks returns the governed agent's per-task action history (goals + what was done) —
     // user data, token-gated like the device agent's ledger.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks'];
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/speech/settings', '/api/speech/downloads'];
     const requiresAuth = (req: express.Request): boolean => {
         if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
         // HEAD must gate exactly like GET: Express 5 falls an unmatched-HEAD back to the GET handler
@@ -231,6 +232,8 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         });
     });
 
+
+    if (speech) app.use('/api/speech', createSpeechRouter(speech));
 
     if (llmService) {
         const checkRuntime = (entry: RuntimeModelDescriptor) =>

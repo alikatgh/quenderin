@@ -6,6 +6,7 @@ import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
 import { createApp } from './app.js';
+import { createDashboardSpeech } from './services/speech/dashboardSpeech.js';
 import { WebSocketManager } from './websocket/index.js';
 import { generateAuthToken } from './security/authToken.js';
 import { AgentService } from './services/agent.service.js';
@@ -229,7 +230,8 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
 
     // 2. Setup Express
     setReadiness(false, 'starting-http-server', `Binding HTTP server on port ${selectedPort}`);
-    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService, authToken);
+    const speech = createDashboardSpeech();
+    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService, authToken, speech);
     const server = createServer(app);
     const connections = new Set<net.Socket>();
     server.on('connection', socket => { connections.add(socket); socket.once('close', () => connections.delete(socket)); });
@@ -265,7 +267,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             for (const socket of connections) socket.destroy();
         });
         shutdownTask = Promise.all([
-            nativeCleanup, httpClosed,
+            nativeCleanup, httpClosed, speech.downloads.shutdown(),
             ocrService.terminate().catch(e => logger.debug('[Shutdown] OCR terminate error:', e)),
             cleanupOrphanedTempFiles().catch(e => logger.debug('[Shutdown] Temp cleanup error:', e)),
         ]).then(() => { logger.info('[System] Native work joined and HTTP server closed.'); }).finally(() => {
@@ -296,7 +298,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
 
         server.listen(selectedPort, BIND_HOST, async () => {
-            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken, taskService);
+            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken, taskService, speech.downloads);
             setReadiness(true, 'serving', `Listening on ${BIND_HOST}:${selectedPort}`);
             logger.critical(`Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {

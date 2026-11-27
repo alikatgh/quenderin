@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
@@ -151,7 +152,7 @@ export interface HexCapabilitiesResponse {
 export interface SpeechNativeRequest {
     model: string;
     directory: string;
-    wav: string;
+    wav: string | Buffer;
     vad?: boolean;
     runtime?: string;
     language?: string;
@@ -361,6 +362,8 @@ export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleC
     let sampleRate = 0;
     let bitsPerSample = 0;
     let dataSize = 0;
+    let blockAlign = 0;
+    let byteRate = 0;
     let offset = 12;
     while (offset + 8 <= buffer.length) {
         const chunkId = buffer.toString('ascii', offset, offset + 4);
@@ -374,13 +377,16 @@ export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleC
             channels = buffer.readUInt16LE(payload + 2);
             sampleRate = buffer.readUInt32LE(payload + 4);
             bitsPerSample = buffer.readUInt16LE(payload + 14);
+            byteRate = buffer.readUInt32LE(payload + 8);
+            blockAlign = buffer.readUInt16LE(payload + 12);
         } else if (chunkId === 'data') {
             dataSize = chunkSize;
             break;
         }
         offset = payload + chunkSize + (chunkSize & 1);
     }
-    if (audioFormat !== 1 || channels !== 1 || sampleRate !== SPEECH_SAMPLE_RATE_HZ || bitsPerSample !== 16 || dataSize < 2) {
+    if (audioFormat !== 1 || channels !== 1 || sampleRate !== SPEECH_SAMPLE_RATE_HZ || bitsPerSample !== 16
+        || byteRate !== SPEECH_SAMPLE_RATE_HZ * 2 || blockAlign !== 2 || dataSize < 2 || dataSize % 2 !== 0) {
         throw new Error('WAV audio must be non-empty 16 kHz mono 16-bit PCM.');
     }
     const sampleCount = Math.floor(dataSize / 2);
@@ -923,14 +929,24 @@ export class HexSpeechAdapter {
     private async transcribeWithCliLease(request: SpeechNativeRequest, lease: NativeWorkloadLease): Promise<SpeechTranscriptionResult> {
         if (this.active) throw new Error('A speech transcription is already running in this process.');
         this.active = true;
+        let temporaryDirectory: string | undefined;
         try {
             abortIfNeeded(request.signal);
+            const executable = await this.runtime(request.runtime);
             const verified = await this.verify(request.model, request.directory, {
                 includeVad: Boolean(request.vad),
                 signal: request.signal,
             });
-            const wavPath = await this.readVerifiedWavPath(request.wav);
-            const executable = await this.runtime(request.runtime);
+            let wavPath: string;
+            if (Buffer.isBuffer(request.wav)) {
+                validateWavBuffer(request.wav);
+                // The CLI takes a file path. Keep captured audio private and delete it on every exit.
+                temporaryDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'quenderin-speech-'));
+                wavPath = await fs.promises.realpath(temporaryDirectory).then(directory => path.join(directory, 'capture.wav'));
+                await fs.promises.writeFile(wavPath, request.wav, { mode: 0o600, flag: 'wx', signal: request.signal });
+            } else {
+                wavPath = await this.readVerifiedWavPath(request.wav);
+            }
 
             let version: { abiVersion?: number; revision?: string };
             try {
@@ -1001,7 +1017,11 @@ export class HexSpeechAdapter {
                 segments: Array.isArray(parsed.segments) ? parsed.segments : [],
             };
         } finally {
-            this.active = false;
+            try {
+                if (temporaryDirectory) await fs.promises.rm(temporaryDirectory, { recursive: true, force: true });
+            } finally {
+                this.active = false;
+            }
         }
     }
 
