@@ -261,8 +261,9 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **Browser isolation (`Origin` check & no CORS):** Any request carrying an `Origin`
   header is rejected with `403`, and the server never emits `Access-Control-Allow-*`
   headers. Random web pages in your browser cannot probe or drive the local API.
-- **Strict `Content-Type` on `POST`:** `POST` requests must send
-  `Content-Type: application/json` (case-insensitive prefix), else `415`.
+- **Strict `Content-Type` on `POST`:** Send one `Content-Type` header with the case-insensitive
+  media type `application/json` and any valid parameters. A missing or malformed value returns
+  `415`. Repeating the header returns `400`.
 - **Optional Bearer authentication:** When you leave the API key blank, any or no
   `Authorization` header is accepted (matching Ollama's dummy-key convention). When you
   set a key, every request must send `Authorization: Bearer <key>` (checked in constant

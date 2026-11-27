@@ -132,6 +132,21 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(LocalAPIGuard.check(missing, port: port)?.statusCode, 415)
         XCTAssertEqual(LocalAPIGuard.check(plain, port: port)?.statusCode, 415)
         XCTAssertEqual(LocalAPIGuard.check(tricky, port: port)?.statusCode, 415)
+
+        for value in ["application/json garbage", "application/json; charset",
+                      "application/json; charset=", "application/json; charset=utf-8, text/plain",
+                      #"application/json; charset="utf-8"#] {
+            let request = LocalHTTPRequest(method: "POST", path: "/v1/chat/completions",
+                                           headers: ["Host": "localhost:11435", "Content-Type": value])
+            XCTAssertEqual(LocalAPIGuard.check(request, port: port)?.statusCode, 415, value)
+        }
+        let quoted = LocalHTTPRequest(method: "POST", path: "/v1/chat/completions", headers: [
+            "Host": "localhost:11435", "Content-Type": #"application/json; profile="a, b\"c"; charset=utf-8"#,
+        ])
+        XCTAssertNil(LocalAPIGuard.check(quoted, port: port))
+
+        let duplicate = Data("POST /v1/chat/completions HTTP/1.1\r\nHost: localhost:11435\r\nContent-Type: application/json; charset=utf-8\r\ncontent-type: text/plain\r\n\r\n".utf8)
+        XCTAssertEqual(LocalHTTPRequest.parse(duplicate), .error(.duplicateHeader("content-type")))
     }
 
     func testGuardBearerKeyOptionalAndConstantTime() {

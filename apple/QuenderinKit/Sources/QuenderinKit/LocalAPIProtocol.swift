@@ -197,7 +197,7 @@ public struct LocalHTTPRequest: Sendable, Equatable {
                 continue
             }
 
-            if lowerName == "host" || lowerName == "authorization" || lowerName == "origin" {
+            if lowerName == "host" || lowerName == "authorization" || lowerName == "origin" || lowerName == "content-type" {
                 if headers[lowerName] != nil {
                     return .error(.duplicateHeader(rawName))
                 }
@@ -364,7 +364,7 @@ public enum LocalAPIGuard {
     /// 2. Any `Origin` header present -> 403 (blocks browser pages; no CORS headers are ever sent).
     /// 3. Optional bearer key: when `requiredAPIKey` is non-empty, requires `Authorization: Bearer <key>`
     ///    using constant-time byte comparison -> 401. When empty/nil, any/no Authorization is accepted.
-    /// 4. `POST` requests require `Content-Type: application/json` (prefix match, case-insensitive) -> 415.
+    /// 4. `POST` requests require `Content-Type: application/json` with valid optional parameters -> 415.
     public static func check(
         _ request: LocalHTTPRequest,
         port: UInt16,
@@ -432,13 +432,17 @@ public enum LocalAPIGuard {
         return token.isEmpty ? nil : token
     }
 
+    private static let jsonContentType = {
+        // HTTP parameter = token "=" ( token / quoted-string ). Commas are valid inside quotes.
+        let token = #"[!#$%&'*+\-.^_\x60|~0-9A-Za-z]+"#
+        let quoted = #""(?:[\t\x20\x21\x23-\x5B\x5D-\x7E\x{80}-\x{10FFFF}]|\\[\t\x20-\x7E\x{80}-\x{10FFFF}])*""#
+        return try! NSRegularExpression(
+            pattern: #"\A[ \t]*(?i:application/json)(?:[ \t]*;[ \t]*\#(token)=(?:\#(token)|\#(quoted)))*[ \t]*\z"#
+        )
+    }()
+
     private static func isJSONContentType(_ raw: String) -> Bool {
-        let lowered = raw.trimmingCharacters(in: CharacterSet(charactersIn: " \t")).lowercased()
-        let media = "application/json"
-        guard lowered.hasPrefix(media) else { return false }
-        if lowered.count == media.count { return true }
-        let next = lowered[lowered.index(lowered.startIndex, offsetBy: media.count)]
-        return next == ";" || next == " " || next == "\t"
+        jsonContentType.firstMatch(in: raw, range: NSRange(raw.startIndex..., in: raw)) != nil
     }
 }
 
