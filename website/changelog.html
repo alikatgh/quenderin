@@ -40,6 +40,16 @@
   <h1>What's new</h1>
   <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
 
+  <h2 id="2026-11-24">24 November 2026 &middot; iPhone 0.6.3 on the App Store</h2>
+  <ul>
+    <li><strong>iPhone 0.6.3 is live.</strong> Released 24 November 2026 (25 November in UTC+8), checked on 27 November. The store notes list refreshed on-device engines and model catalogs, plus experimental entries for local image generation (Kromoss, with an optional 8-step mode) and on-device speech recognition. Experimental entries are manual choices, nothing is downloaded until you choose a model, and they are not tested inference.</li>
+    <li><strong>Mac is still 0.6.1</strong>, released 9 November. 0.6.3 is not on the Mac App Store.</li>
+    <li><strong>Android is still closed-test 0.2.0.</strong> Source targets 0.6.3, but the only 0.6.3 Android artifact is an unsigned GitHub draft candidate. It is not a Play release.</li>
+    <li><strong>France remains unavailable</strong> while <a href="https://github.com/alikatgh/quenderin/issues/217" rel="noopener">issue #217</a> is open.</li>
+    <li><strong>Merged on main, not in a store build.</strong> <a href="https://github.com/alikatgh/quenderin/pull/250" rel="noopener">PR #250</a> landed on 27 November: an opt-in, loopback-only local API for macOS (off by default), thinking modes (Off, Auto, Hide), <code>quenderin run</code>, and vision in the chat composer behind a disabled flag.</li>
+  </ul>
+  <p>No model weights were downloaded and no simulator or phone was run for this note. <a href="blog-apple-063-november-2026">Read the update note</a>.</p>
+
   <h2 id="2026-11-22-integrations">22 November 2026 &middot; Native Kromoss diffusion &amp; Hex speech source integrations</h2>
   <ul>
     <li><strong>Kromoss 8-step DMD2 image generation (Apache-2.0).</strong> Upgraded <code>native/diffusion</code> C ABI to v2 with <code>lora_path</code>, <code>cfg</code>, <code>flow_shift</code>, and QKV LoRA remapping, wiring <code>kromoss</code> and <code>kromoss-dmd2</code> across Desktop CLI, Apple <code>QuenderinKit</code>, and Android <code>quenderin-core</code> while reusing MOSS encoders.</li>
@@ -53,7 +63,7 @@
     <li><strong>Self-hosted open-source typography &amp; icon font.</strong> Installed DINish variable sans, ChunkFive display slab headlines (both SIL OFL 1.1), and scoped Lucide <code>.qi-*</code> icons (ISC) under <code>website/fonts/</code> across all 35 marketing/blog/legal routes and all 30 documentation pages with zero external CDNs.</li>
     <li><strong>Refreshed roadmap &amp; feature icons.</strong> Updated <code>roadmap</code> to reflect the 28-model catalog, July 2026 CLI launch date, and Lucide status indicators; replaced inline accordion SVGs on <code>tell-me-more</code> with Lucide icon font classes.</li>
   </ul>
-  <p>This is a website and documentation release; native store app versions remain unchanged (Mac/iPhone 0.6.0 on the App Store, 0.6.1 unsubmitted in source, Android 0.2.0 closed beta). <a href="blog-website-fonts-docs-november-2026">Read the full update note</a>.</p>
+  <p>This is a website and documentation release; native store app versions were unchanged by it (iPhone 0.6.2 and Mac 0.6.1 on the App Store at that point, Android 0.2.0 closed beta). <a href="blog-website-fonts-docs-november-2026">Read the full update note</a>.</p>
 
   <h2 id="2026-11-09">9 November 2026 &middot; On-device chat, not yet a store build</h2>
   <ul>
