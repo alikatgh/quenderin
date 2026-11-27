@@ -186,6 +186,7 @@
   "hw.cta.b2": "Explore os recursos →",
   "ft.lede": "O Quenderin não é um brinquedo limitado só porque roda localmente — é um assistente capaz que simplesmente não precisa dos servidores de ninguém. Veja o que isso te dá.",
   "ft.offline.b": "Descarregue um modelo uma vez e use-o sem internet. Explorar novos modelos e descarregar ficheiros requer uma ligação; as conversas ficam no dispositivo.",
+  "ft.offline.voice": "O código-fonte da aplicação para computador inclui ditado opcional no dispositivo. <a href=\"docs/local-voice\">Leia o guia de configuração de voz →</a>",
   "ft.free.b": "Sem assinaturas, sem cobrança por token. A inferência roda em hardware que você já tem.",
   "ft.agent.b": "O Quenderin inclui um agente que usa ferramentas e dá conta de pequenas tarefas — mas vem com uma <strong>lista de bloqueio de segurança rígida</strong> que ele nunca pode ignorar por conta própria. Ele não vai pagar, apagar, transferir dinheiro nem mexer em credenciais de forma autônoma. Ações sensíveis são apresentadas para você confirmar, jamais executadas em silêncio.",
   "ft.priv.b": "Sem contas, sem analytics, sem telemetria. Suas conversas ficam no seu dispositivo — e, como é código aberto, isso é verificável, não uma promessa.",

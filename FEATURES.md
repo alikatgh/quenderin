@@ -253,6 +253,9 @@ Quenderin integrates a separate, symbol-isolated `stable-diffusion.cpp` C ABI (`
 
 ## 12. Local speech & dictation (Hex + `transcribe.cpp`)
 
+The desktop setup offers 29 speech models from Handy for push-to-talk dictation
+in chat. See the [desktop local voice guide](docs/LOCAL_VOICE.md).
+
 Quenderin natively embeds MIT-licensed speech recognition and dictation formatting across C++ (`native/speech`, ABI v1), Desktop TypeScript (`HexSpeechAdapter`, `VoiceService`, `quenderin voice`), Apple `QuenderinKit`, and Android Kotlin (`quenderin-core`):
 
 - **20 pinned speech models + Silero VAD v6.2 (`shared/speech-model-catalog.json`):** Parakeet (Unified EN, v2, v3, Ultra), Orukeet, Fluid Speech Pro, Whisper Large v3 Turbo, Ivrit, NB-Whisper, KB-Whisper, Qwen3-ASR 0.6B/1.7B, SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite Speech 5.0, and on-device Apple Speech.

@@ -186,6 +186,7 @@
   "hw.cta.b2": "Jelajahi fiturnya →",
   "ft.lede": "Quenderin bukan mainan yang dipreteli hanya karena berjalan secara lokal — ini asisten cakap yang kebetulan tidak butuh server siapa pun. Inilah yang Anda dapatkan.",
   "ft.offline.b": "Unduh model sekali lalu gunakan tanpa internet. Menjelajahi model baru dan mengunduh file memerlukan koneksi; chat tetap di perangkat Anda.",
+  "ft.offline.voice": "Kode sumber aplikasi desktop mencakup fitur dikte opsional yang berjalan di perangkat. <a href=\"docs/local-voice\">Baca panduan penyiapan suara →</a>",
   "ft.free.b": "Tanpa langganan, tanpa tagihan per token. Inferensi berjalan di perangkat keras yang sudah Anda miliki.",
   "ft.agent.b": "Quenderin menyertakan agen yang dapat memakai perkakas untuk menjalankan tugas kecil — tapi ia hadir dengan <strong>daftar blokir keamanan yang ketat</strong> yang tidak bisa ia timpa sendiri. Ia tidak akan secara otomatis membayar, menghapus, mentransfer uang, atau menyentuh kredensial. Tindakan sensitif selalu dimunculkan untuk Anda konfirmasi, tidak pernah dilakukan diam-diam.",
   "ft.priv.b": "Tanpa akun, tanpa analitik, tanpa telemetri. Percakapan Anda tetap di perangkat Anda — dan karena bersifat open source, itu bisa dibuktikan, bukan sekadar janji.",

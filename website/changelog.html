@@ -40,6 +40,13 @@
   <h1>What's new</h1>
   <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
 
+  <h2 id="2026-11-27-local-voice">27 November 2026 &middot; Local voice on desktop (unreleased)</h2>
+  <ul>
+    <li><strong>Optional voice setup.</strong> After choosing a local chat model, you can choose from 29 curated Handy speech models. The English picks are <strong>Recommended</strong> Parakeet Unified English 0.6B (697&nbsp;MB) and <strong>More accurate</strong> Qwen3-ASR 1.7B (2.0&nbsp;GB). Downloads can continue after setup, support pause and resume, and are checked with SHA-256 before installation.</li>
+    <li><strong>Push-to-talk.</strong> The local <code>transcribe.cpp</code> runtime processes recordings on your computer. The transcript goes into the <strong>Chat</strong> or <strong>Device Agent</strong> draft by default. Open <strong>Settings → Voice</strong> to enable dictation or change the speech model.</li>
+  </ul>
+  <p>Quenderin adapted the picker and resumable downloads from Handy by CJ Pais (MIT). Grades and speed bars use Handy’s published benchmarks. Release verification still needs a real microphone, full-model inference, and packaged Electron testing. <a href="https://github.com/cjpais/Handy" rel="noopener">Handy on GitHub</a> &middot; <a href="blog-local-voice">Read the desktop update</a> &middot; <a href="docs/local-voice">Voice setup guide</a></p>
+
   <h2 id="2026-11-22-integrations">22 November 2026 &middot; Native Kromoss diffusion &amp; Hex speech source integrations</h2>
   <ul>
     <li><strong>Kromoss 8-step DMD2 image generation (Apache-2.0).</strong> Upgraded <code>native/diffusion</code> C ABI to v2 with <code>lora_path</code>, <code>cfg</code>, <code>flow_shift</code>, and QKV LoRA remapping, wiring <code>kromoss</code> and <code>kromoss-dmd2</code> across Desktop CLI, Apple <code>QuenderinKit</code>, and Android <code>quenderin-core</code> while reusing MOSS encoders.</li>

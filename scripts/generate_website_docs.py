@@ -92,6 +92,15 @@ PAGES: tuple[DocPage, ...] = (
         sources=("FEATURES.md", "docs/SHELL_ROUTER_SETTINGS.md", "docs/ADDING_A_CAPABILITY.md"),
     ),
     DocPage(
+        slug="local-voice",
+        category="Agent & Product",
+        icon="qi-mic",
+        title="Local voice on desktop",
+        kicker="Product · Dictation",
+        description="Choose an optional speech model during desktop setup, dictate into chat, and manage on-device transcription in Settings.",
+        sources=("docs/LOCAL_VOICE.md",),
+    ),
+    DocPage(
         slug="cli-and-agent",
         category="Agent & Product",
         icon="qi-bot",

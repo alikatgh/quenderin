@@ -23,16 +23,16 @@ test('self-hosted font assets exist and use WOFF2 compression', () => {
     assert.ok(!lucideCss.includes('[class*=" icon-"]'), 'Lucide CSS must not hijack .icon-* selectors');
 });
 
-test('all 30 documentation HTML files and valid search indexes exist', () => {
+test('all 31 documentation HTML files and valid search indexes exist', () => {
     const htmlFiles = readdirSync(docsDir).filter((f) => f.endsWith('.html'));
-    assert.equal(htmlFiles.length, 30);
+    assert.equal(htmlFiles.length, 31);
 
     const indexJson = JSON.parse(readFileSync(path.join(docsDir, 'search-index.json'), 'utf8'));
-    assert.equal(indexJson.length, 30);
+    assert.equal(indexJson.length, 31);
 
     const ctx = { window: {} };
     vm.runInNewContext(readFileSync(path.join(docsDir, 'search-index.js'), 'utf8'), ctx);
-    assert.equal(ctx.window.QUENDERIN_DOCS_INDEX.length, 30);
+    assert.equal(ctx.window.QUENDERIN_DOCS_INDEX.length, 31);
 
     for (const entry of indexJson) {
         assert.ok(existsSync(path.join(docsDir, `${entry.slug}.html`)));
