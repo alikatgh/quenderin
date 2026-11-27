@@ -1,5 +1,6 @@
+import { appendTranscript, VoiceComposerControl, type VoiceComposerOptions } from './VoiceComposerControl.js';
 import { useRef, useEffect, useState } from 'react';
-import { Sparkles, BookOpen, ArrowRight, User, AlertCircle, Activity, Eye, BrainCircuit, Zap, CheckCircle2, ArrowUpRight, Mic } from 'lucide-react';
+import { Sparkles, BookOpen, ArrowRight, User, AlertCircle, Activity, Eye, BrainCircuit, Zap, CheckCircle2, ArrowUpRight } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,8 +13,7 @@ interface ChatAreaProps {
     setGoal: (goal: string) => void;
     onStart: (goal: string, attachments?: { name: string, content: string }[]) => void;
     setCurrentView: (view: 'chat' | 'docs') => void;
-    onVoiceStart: () => void;
-    onVoiceStop: () => void;
+    voice?: VoiceComposerOptions;
     /** Trust-loop pause/intervene (Q-281): halt a running mission for manual takeover, then resume. */
     agentPaused: boolean;
     onPause: () => void;
@@ -22,10 +22,9 @@ interface ChatAreaProps {
 
 interface GoalTemplate { id: string; category: string; label: string; template: string; }
 
-export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView, onVoiceStart, onVoiceStop, agentPaused, onPause, onResume }: ChatAreaProps) {
+export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView, voice, agentPaused, onPause, onResume }: ChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [isRecording, setIsRecording] = useState(false);
     const [templates, setTemplates] = useState<GoalTemplate[]>([]);
     const [override, setOverride] = useState('');   // Q-281: optional instruction handed to the agent on resume
 
@@ -237,18 +236,13 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                         }}
                     />
                     <div className="absolute right-3 bottom-2.5 flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
-                            aria-pressed={isRecording}
-                            onPointerDown={() => { setIsRecording(true); onVoiceStart() }}
-                            onPointerUp={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
-                            onPointerLeave={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
-                            onBlur={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
-                            className={`p-2 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-                        >
-                            <Mic className="w-[18px] h-[18px]" />
-                        </button>
+                        <VoiceComposerControl voice={voice} disabled={status === 'running'}
+                            onTranscript={({ text, autoSend }) => {
+                                const draft = appendTranscript(goal, text);
+                                setGoal(draft);
+                                if (autoSend && status !== 'running') onStart(draft);
+                                else textareaRef.current?.focus();
+                            }} />
                         <button
                             type="button"
                             aria-label="Run agent goal"

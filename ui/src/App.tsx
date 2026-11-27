@@ -179,8 +179,11 @@ function AppContent() {
     };
   }, []);
 
-  const { wsReady, speechDownloadEvents, downloadModelId, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask, missionApproval, answerMissionApproval } = useAgentSocket();
+  const { wsReady, speechDownloadEvents, downloadModelId, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask, missionApproval, answerMissionApproval } = useAgentSocket();
   const speech = useSpeechSetup(wsReady, speechDownloadEvents);
+  const voiceModelId = speech.settings?.voiceEnabled
+    ? speech.catalog?.models.find(row => row.model.id === speech.settings?.modelId && row.installed && row.engine.compatibility === 'supported')?.model.id
+    : undefined;
   const openVoiceSettings = () => {
     setCurrentView('settings');
     requestAnimationFrame(() => document.getElementById('voice-settings-heading')?.scrollIntoView({ block: 'center' }));
@@ -564,8 +567,8 @@ function AppContent() {
               setChatInput={setChatInput}
               onSend={handleSendChat}
               onStop={stopChat}
-              onVoiceStart={manualVoiceStart}
-              onVoiceStop={manualVoiceStop}
+              voice={{ modelId: voiceModelId, onSettings: openVoiceSettings, blocked: !wsReady || showOnboarding || !!missionApproval ||
+                (settings.privacyLockEnabled && isLocked) || !!(requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) }}
               activePresetId={activePresetId}
               onSwitchPreset={switchPreset}
             />
@@ -577,8 +580,8 @@ function AppContent() {
               setGoal={setGoal}
               onStart={handleStartAgent}
               setCurrentView={setCurrentView}
-              onVoiceStart={manualVoiceStart}
-              onVoiceStop={manualVoiceStop}
+              voice={{ modelId: voiceModelId, onSettings: openVoiceSettings, blocked: !wsReady || showOnboarding || !!missionApproval ||
+                (settings.privacyLockEnabled && isLocked) || !!(requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) }}
               agentPaused={agentPaused}
               onPause={pauseAgent}
               onResume={resumeAgent}

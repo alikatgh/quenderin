@@ -1,38 +1,52 @@
-/** Browser-side audio → WAV encoder for local transcription. */
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 CJ Pais
+// Downmix adapted from Handy src-tauri/src/audio_toolkit/audio/decode.rs
+// at 05efc5fc180197dc0fa9d568dd9812904b723b8b. See THIRD_PARTY_NOTICES.md.
 
-export const SPEECH_SAMPLE_RATE_HZ = 16000 as const;
-/** Matches shared/speech-runtime.json bounds.maxAudioBytes (64 MiB). */
+export const SPEECH_SAMPLE_RATE_HZ = 16000;
 export const SPEECH_MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 
-export interface EncodedWav {
-    readonly blob: Blob;
-    readonly bytes: number;
-    readonly durationMs: number;
-    readonly sampleRate: number;
-    readonly channels: 1;
+export function audioBufferToWav16k(audio: AudioBuffer): Blob {
+    const size = 44 + audio.length * 2;
+    if (size > SPEECH_MAX_AUDIO_BYTES) throw new Error('The recording is too large. Try a shorter recording.');
+    if (!audio.length || !audio.numberOfChannels || audio.sampleRate !== SPEECH_SAMPLE_RATE_HZ) {
+        throw new Error('Could not convert the recording to 16 kHz speech audio.');
+    }
+    const buffer = new ArrayBuffer(size);
+    const view = new DataView(buffer);
+    const ascii = (offset: number, value: string) => {
+        for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+    };
+    ascii(0, 'RIFF');
+    view.setUint32(4, size - 8, true);
+    ascii(8, 'WAVEfmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, SPEECH_SAMPLE_RATE_HZ, true);
+    view.setUint32(28, SPEECH_SAMPLE_RATE_HZ * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    ascii(36, 'data');
+    view.setUint32(40, size - 44, true);
+
+    const channels = Array.from({ length: audio.numberOfChannels }, (_, i) => audio.getChannelData(i));
+    for (let frame = 0; frame < audio.length; frame++) {
+        let sum = 0;
+        for (const channel of channels) sum += channel[frame];
+        const sample = Math.max(-1, Math.min(1, sum / channels.length));
+        view.setInt16(44 + frame * 2, Math.round(sample * (sample < 0 ? 32768 : 32767)), true);
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
 }
 
-/** Encode mono Float32 samples in [-1, 1] as a 16-bit PCM WAV. */
-export function encodePcm16Wav(_samples: Float32Array, _sampleRate?: number): Blob {
-    throw new Error('TODO(stage2): write a 44-byte RIFF header + clamped int16 LE samples.');
-}
-
-/** Linear resample to 16 kHz (mic devices usually run at 44.1/48 kHz). */
-export function downsampleTo16k(_samples: Float32Array, _inputSampleRate: number): Float32Array {
-    throw new Error('TODO(stage2): resample mono Float32 audio to 16 kHz.');
-}
-
-/** Convert an AudioBuffer (from MediaRecorder/WebAudio) to the backend contract. */
-export function audioBufferToWav16k(_buffer: AudioBuffer): EncodedWav {
-    throw new Error('TODO(stage2): mix to mono, resample and encode.');
-}
-
-/** Decode any recorded Blob and return a 16 kHz mono WAV. */
-export async function blobToWav16k(_blob: Blob): Promise<EncodedWav> {
-    throw new Error('TODO(stage2): decode via AudioContext, mix to mono, resample and encode.');
-}
-
-/** Guard used before POSTing so oversized recordings fail in the composer, not the server. */
-export function assertWavWithinLimit(_wav: EncodedWav): void {
-    throw new Error('TODO(stage2): reject WAVs above SPEECH_MAX_AUDIO_BYTES with a readable message.');
+export async function blobToWav16k(recording: Blob): Promise<Blob> {
+    if (!recording.size) throw new Error('No audio was captured. Hold the microphone button while speaking.');
+    // Web Audio decodes and resamples the recorder's native format using its audio resampler.
+    const context = new AudioContext({ sampleRate: SPEECH_SAMPLE_RATE_HZ });
+    try {
+        return audioBufferToWav16k(await context.decodeAudioData(await recording.arrayBuffer()));
+    } finally {
+        await context.close();
+    }
 }

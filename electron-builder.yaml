@@ -16,12 +16,18 @@ extraResources:
     to: vision
     filter:
       - "**/*"
+  - from: build/speech/${os}-${arch}
+    to: speech
+    filter:
+      - "**/*"
 directories:
   output: release
   # Icon resources (icon.icns / icon.ico / icon.png) — build/ is gitignored TS output,
   # so the electron-builder resources live under brand/ instead.
   buildResources: brand/electron
 mac:
+  extendInfo:
+    NSMicrophoneUsageDescription: Quenderin records audio when you dictate into chat and transcribes it on this computer.
   category: public.app-category.productivity
   # Lab / R&D only — not a public distribution channel.
   target:
