@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCK_PATH = ROOT / "shared/speech-runtime.json"
@@ -177,12 +178,15 @@ def build_desktop(work: Path) -> dict:
     else:
         fetch(source)
     build = work / "build"
-    platform_flags = []
+    platform_flags = [f"-DPython3_EXECUTABLE={sys.executable}"]
     if target.startswith("win-"):
-        platform_flags.append("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
+        arch_flag = "ARM64" if target.endswith("arm64") else "x64"
+        platform_flags.extend(["-A", arch_flag, "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"])
     elif target.startswith("mac-"):
         arch = "x86_64" if target.endswith("x64") else "arm64"
         platform_flags.extend(["-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3", f"-DCMAKE_OSX_ARCHITECTURES={arch}"])
+    elif target.startswith("linux-"):
+        platform_flags.append("-DCMAKE_BUILD_RPATH=$ORIGIN")
     subprocess.run([
         "cmake", "-S", str(ROOT / "native/speech"), "-B", str(build),
         f"-DTRANSCRIBE_SOURCE={source}", "-DCMAKE_BUILD_TYPE=Release",
@@ -199,7 +203,9 @@ def build_desktop(work: Path) -> dict:
         bin_dir = candidate
     verify_desktop(bin_dir)
     destination = ROOT / "build" / "speech" / target
-    shutil.copytree(bin_dir, destination, symlinks=True, dirs_exist_ok=True)
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(bin_dir, destination, symlinks=True)
     return verify_desktop(destination)
 
 

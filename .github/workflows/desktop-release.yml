@@ -86,6 +86,7 @@ jobs:
           npm run typecheck
           npm run lint
           npm test
+          npm run test:handy-catalog
       - name: Build backend + dashboard UI
         run: npm run build
       - name: Prepare the pinned Prism desktop runtime

@@ -50,6 +50,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Verify Handy speech catalog parity
+        run: npm run test:handy-catalog
+
       - name: Install UI dependencies
         run: cd ui && npm ci
 
@@ -376,13 +379,15 @@ jobs:
       - name: Probe the packaged local speech worker
         if: runner.os != 'macOS'
         run: python scripts/prepare_speech_runtime.py verify-desktop --directory release/${{ matrix.unpacked }}/resources/speech
-      - name: Verify the macOS lab application's packaged image runtime
+      - name: Verify the macOS lab application's packaged runtimes and entitlements
         if: runner.os == 'macOS'
         run: |
-          resources="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)/Contents/Resources"
+          app="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)"
+          resources="$app/Contents/Resources"
           python3 scripts/build_desktop_diffusion.py verify --directory "$resources/diffusion" --packaged
           python3 scripts/build_vision_runtime.py verify --directory "$resources/vision" --packaged
           python3 scripts/prepare_speech_runtime.py verify-desktop --directory "$resources/speech"
+          python3 scripts/verify_mac_electron_entitlements.py --app "$app"
 
   # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
   #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was

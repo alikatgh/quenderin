@@ -26,6 +26,9 @@ directories:
   # so the electron-builder resources live under brand/ instead.
   buildResources: brand/electron
 mac:
+  hardenedRuntime: true
+  entitlements: brand/electron/entitlements.mac.plist
+  entitlementsInherit: brand/electron/entitlements.mac.inherit.plist
   extendInfo:
     NSMicrophoneUsageDescription: Quenderin records audio when you dictate into chat and transcribes it on this computer.
   category: public.app-category.productivity
