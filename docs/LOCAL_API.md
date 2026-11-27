@@ -217,7 +217,9 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   cancels or releases the turn—on a transport error/reset or the first response write.
 - **Clamped sampling parameters:** `max_tokens` / `max_completion_tokens` defaults to
   `512` (clamped `1`–`4096`), `temperature` is clamped `0`–`2`, `top_p` is clamped
-  `0`–`1`. `stop` accepts a string or an array of strings.
+  `0`–`1`. `stop` accepts a string or an array of up to four distinct nonempty strings,
+  each at most 256 UTF-8 bytes. Empty strings and duplicates are discarded. Exceeding either
+  limit returns `400`. Stop sequences match the exact UTF-8 text.
 - **Completion limits and failures:** Reaching the requested token cap or filling the model's
   context during generation produces `finish_reason: "length"`. A native decode failure after
   partial output returns HTTP 500 (`decode_failed`) for buffered requests. If SSE headers are

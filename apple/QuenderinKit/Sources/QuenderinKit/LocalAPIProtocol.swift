@@ -575,6 +575,9 @@ public enum LocalAPIFinishReason: String, Sendable, Equatable {
 
 /// Pure OpenAI-compatible JSON + SSE codec for `/v1/models` and `/v1/chat/completions`.
 public enum LocalAPICodec {
+    static let maxStopSequences = 4
+    static let maxStopSequenceBytes = 256
+
     /// Generates an OpenAI-style completion ID (`chatcmpl-<hex>`).
     public static func makeCompletionID() -> String {
         let hex = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
@@ -757,18 +760,28 @@ public enum LocalAPICodec {
         // stop (string or array of strings)
         var stop: [String] = []
         if let rawStop = root.exactValue(forKey: "stop"), !rawStop.isNull {
+            let entries: [WireJSONValue]
             switch rawStop {
-            case .string(let s):
-                if !s.isEmpty { stop = [s] }
-            case .array(let arr):
-                for item in arr {
-                    guard case .string(let s) = item else {
-                        return .failure(.badRequest("'stop' array entries must be strings."))
-                    }
-                    if !s.isEmpty { stop.append(s) }
-                }
+            case .string: entries = [rawStop]
+            case .array(let arr): entries = arr
             default:
                 return .failure(.badRequest("'stop' must be a string or an array of strings."))
+            }
+            var seen = Set<Data>()
+            for item in entries {
+                guard case .string(let sequence) = item else {
+                    return .failure(.badRequest("'stop' array entries must be strings."))
+                }
+                guard !sequence.isEmpty else { continue }
+                guard sequence.utf8.count <= maxStopSequenceBytes else {
+                    return .failure(.badRequest("Each 'stop' sequence may contain up to \(maxStopSequenceBytes) UTF-8 bytes."))
+                }
+                if seen.insert(Data(sequence.utf8)).inserted {
+                    guard stop.count < maxStopSequences else {
+                        return .failure(.badRequest("'stop' accepts up to \(maxStopSequences) distinct nonempty sequences."))
+                    }
+                    stop.append(sequence)
+                }
             }
         }
 

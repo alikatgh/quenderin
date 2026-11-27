@@ -48,6 +48,21 @@ final class StopSequenceScannerTests: XCTestCase {
         XCTAssertFalse(stopped)
     }
 
+    func testRetainsOnlyAPotentialStopPrefix() {
+        var scanner = StopSequenceScanner(stops: [String(repeating: "z", count: 256), "END", "ENDING"])
+        XCTAssertEqual(scanner.feed("answer ").emit, "answer ")
+        XCTAssertEqual(scanner.feed("next E").emit, "next ")
+        XCTAssertEqual(scanner.feed("x").emit, "Ex")
+        XCTAssertEqual(scanner.flush(), "")
+    }
+
+    func testExactUnicodeStopCanCrossAScalarBoundary() {
+        let stop = "e\u{0301}!"
+        let (output, stopped) = run(["a é! e", "\u{0301}", "! after"], stops: [stop])
+        XCTAssertEqual(output, "a é! ")
+        XCTAssertTrue(stopped)
+    }
+
     func testEmitsNothingWhenTheStopIsAtTheVeryStart() {
         let (out, stopped) = run(["</think>only reasoning was wanted"], stops: ["</think>"])
         XCTAssertEqual(out, "")

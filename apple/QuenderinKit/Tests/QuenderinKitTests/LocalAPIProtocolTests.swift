@@ -242,6 +242,25 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(minReq.maxTokens, 512)
     }
 
+    func testStopSequencesAreDeduplicatedAndBoundedByUTF8Bytes() throws {
+        func decode(_ stop: Any) throws -> Result<LocalAPIChatRequest, LocalAPIError> {
+            let body = try JSONSerialization.data(withJSONObject: [
+                "messages": [["role": "user", "content": "hello"]],
+                "stop": stop,
+            ])
+            return LocalAPICodec.decodeChatRequest(body, availableModelIDs: ["m1"], activeModelID: "m1")
+        }
+        let longest = String(repeating: "🙂", count: 64)
+        let decoded = try decode(["", "first", "first", longest, "third", "fourth", ""]).get()
+        XCTAssertEqual(decoded.stop, ["first", longest, "third", "fourth"])
+        XCTAssertThrowsError(try decode(longest + "a").get()) { error in
+            XCTAssertEqual((error as? LocalAPIError)?.statusCode, 400)
+        }
+        XCTAssertThrowsError(try decode(["1", "2", "3", "4", "5"]).get()) { error in
+            XCTAssertEqual((error as? LocalAPIError)?.statusCode, 400)
+        }
+    }
+
     func testDecodeRejectionsModelImagesAndTools() {
         // Unknown model -> 404 model_not_found
         let badModel = Data(#"{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}"#.utf8)
