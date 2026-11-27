@@ -22,8 +22,8 @@ unreleased.
 ### Changed
 
 - **Vision in the Apple chat composer.** The still-image path is wired behind
-  the disabled `FeatureFlags.visionInChat` flag. Android defines the same flag and documents the future
-  routing. See the [vision implementation note](docs/VISION_IN_CHAT.md).
+  the disabled `FeatureFlags.visionInChat` flag. Android defines the same flag
+  and documents the future routing. See the [vision implementation note](docs/VISION_IN_CHAT.md).
 
 ## Apple 0.6.3 — iPhone App Store (2026-11-24)
 
@@ -232,10 +232,10 @@ Published as the GitHub release
   real app icons, and an install-to-offline-reply guide. Refreshed download, FAQ, README, and social materials.
 - Repaired the homepage CSS 3D phone: continuous rounded depth, readable screen, and mobile copy first.
 
-## 0.2.0 — iOS on the App Store (2026-07-20)
+## 0.2.0 — iOS on the App Store (2026-07-19)
 - **Quenderin: Offline AI Chat is live on the App Store** — free, on iPhone, worldwide (175 regions):
   <https://apps.apple.com/app/id6789854363>. The native SwiftUI app, fully offline and on-device —
-  our first public store release. The Mac app is also available as of the September website update.
+  our first public store release (20 July in Ulaanbaatar). The Mac app is also available as of the September website update.
 
 ## Engineering — native 0.3.0 candidate
 

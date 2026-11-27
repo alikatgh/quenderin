@@ -1,6 +1,11 @@
 # Local OpenAI-Compatible API (macOS)
 
-Quenderin for macOS includes an **opt-in, loopback-only** HTTP server that speaks the
+The local API is unreleased work on `main` as of 27 November 2026.
+Its implementation is in macOS source at
+[`6f16e273`](https://github.com/alikatgh/quenderin/commit/6f16e273f961d0fa9b011246b913e48a0b890605).
+See the [public release status](RELEASE.md).
+
+The macOS implementation is an **opt-in, loopback-only** HTTP server that speaks the
 OpenAI Chat Completions API. Any script, editor plugin, or SDK that accepts a custom
 `base_url` can talk directly to the local model already running inside Quenderin — with
 zero cloud traffic, no accounts, and no extra daemon to install.
