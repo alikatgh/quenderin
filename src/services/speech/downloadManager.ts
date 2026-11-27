@@ -192,8 +192,25 @@ const errorMessages: Record<SpeechDownloadErrorKind, string> = {
     unknown: 'The speech model download failed. Try again.',
 };
 
-function failure(kind: SpeechDownloadErrorKind, status = 500, message = errorMessages[kind]): SpeechError {
-    return new SpeechError(kind, status, message);
+function failure(
+    kind: SpeechDownloadErrorKind,
+    status = 500,
+    message = errorMessages[kind],
+    httpStatus: number | null = null,
+): SpeechError {
+    return new SpeechError(kind, status, message, httpStatus);
+}
+
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+    if (signal.aborted) return Promise.reject(signal.reason ?? new Error('Aborted'));
+    return new Promise<T>((resolve, reject) => {
+        const onAbort = () => reject(signal.reason ?? new Error('Aborted'));
+        signal.addEventListener('abort', onAbort, { once: true });
+        promise.then(
+            value => { signal.removeEventListener('abort', onAbort); resolve(value); },
+            error => { signal.removeEventListener('abort', onAbort); reject(error); },
+        );
+    });
 }
 
 interface Job {
@@ -305,7 +322,11 @@ export class SpeechDownloadManager {
 
     classifyError(error: unknown, status?: number): SpeechDownloadError {
         if (error instanceof SpeechError && Object.hasOwn(errorMessages, error.code)) {
-            return { kind: error.code as SpeechDownloadErrorKind, message: error.message, status: status ?? null };
+            return {
+                kind: error.code as SpeechDownloadErrorKind,
+                message: error.message,
+                status: status ?? error.httpStatus ?? null,
+            };
         }
         const code = (error as NodeJS.ErrnoException | undefined)?.code;
         const kind: SpeechDownloadErrorKind =
@@ -469,8 +490,7 @@ export class SpeechDownloadManager {
                 return;
             } catch (error) {
                 if (signal.aborted) return;
-                const status = error instanceof SpeechError && error.status !== 500 ? error.status : undefined;
-                const classified = this.classifyError(error, status);
+                const classified = this.classifyError(error);
                 if (classified.kind === 'network' && attempt < this.policy.maxAttempts) {
                     const jitter = 0.75 + (this.options.random ?? Math.random)() * 0.5;
                     const ms = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (attempt - 1) * jitter);
@@ -515,20 +535,23 @@ export class SpeechDownloadManager {
             const request = async () => {
                 arm();
                 try {
-                    return await this.options.fetchImpl(modelDownloadUrl(model), {
+                    return await raceAbort(this.options.fetchImpl(modelDownloadUrl(model), {
                         headers: offset ? { Range: `bytes=${offset}-`, 'Accept-Encoding': 'identity' } : { 'Accept-Encoding': 'identity' },
                         signal: controller.signal,
-                    });
-                } catch {
+                    }), controller.signal);
+                } catch (err) {
+                    if (signal.aborted) throw err;
                     throw failure('network');
                 }
             };
             response = await request();
             if (offset && response.status === 416) {
-                // A full part was handled before HTTP. The remote object ends before this pin.
+                // Stale partial past remote EOF: clear .part and restart once from zero automatically.
+                await response.discard?.();
                 await this.options.fs.unlink(part);
+                offset = 0;
                 this.publish(model, 'downloading', 0);
-                throw failure('http-416', 416);
+                response = await request();
             }
             if (offset && response.status === 200) {
                 await this.options.fs.unlink(part);
@@ -536,16 +559,16 @@ export class SpeechDownloadManager {
             }
             if (!response.ok) {
                 const { kind, message } = this.classifyError(null, response.status);
-                throw failure(kind, response.status, message);
+                throw failure(kind, response.status, message, response.status);
             }
             const total = modelFile(model).size;
             if (response.status === 206 && (!offset || contentRangeStart(response.headers.get('content-range')) !== offset)) {
                 await this.options.fs.unlink(part);
-                throw failure('http-416', 416, 'The server returned an unexpected byte range. Retry from the beginning.');
+                throw failure('http-416', 416, 'The server returned an unexpected byte range. Retry from the beginning.', 416);
             }
             const length = response.headers.get('content-length');
             if (length !== null && (!/^\d+$/.test(length) || Number(length) + offset !== total)) {
-                throw new SpeechError('http-size', 502, 'The server advertised a file size that differs from the catalog.');
+                throw new SpeechError('http-size', 502, 'The server advertised a file size that differs from the catalog.', response.status);
             }
             if (!response.body) throw failure('network');
 
@@ -567,7 +590,12 @@ export class SpeechDownloadManager {
                 try {
                     for (;;) {
                         let next: IteratorResult<Uint8Array>;
-                        try { next = await stream.next(); } catch { throw failure('network'); }
+                        try {
+                            next = await raceAbort(stream.next(), controller.signal);
+                        } catch (err) {
+                            if (signal.aborted) throw err;
+                            throw failure('network');
+                        }
                         controller.signal.throwIfAborted();
                         clearTimeout(timer);
                         if (next.done) break;
@@ -578,7 +606,11 @@ export class SpeechDownloadManager {
                         arm();
                     }
                 } finally {
-                    await stream.return?.();
+                    if (controller.signal.aborted) {
+                        void stream.return?.().catch(() => {});
+                    } else {
+                        await stream.return?.();
+                    }
                 }
                 progress();
                 if (bytes !== total) throw failure('checksum-mismatch');

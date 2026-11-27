@@ -85,6 +85,11 @@ export function createSpeechRouter(deps: SpeechRouteDependencies): express.Route
             next(new SpeechError('invalid-audio', 415, 'Send audio with Content-Type audio/wav.'));
             return;
         }
+        const declaredLength = req.headers['content-length'];
+        if (typeof declaredLength === 'string' && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxAudioBytes) {
+            next(new SpeechError('audio-too-large', 413, 'The recording is too large.'));
+            return;
+        }
         if (transcribing) {
             next(new SpeechError('speech-busy', 409, 'A transcription is already in progress.'));
             return;
