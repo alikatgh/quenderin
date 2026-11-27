@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "Create a local image",
   "tmm.oct.c6.p": "Use the separate Images workspace. Each generation writes a new PNG and preserves existing files.",
   "tmm.oct.c6.sum": "Files, memory & access",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein and MOSS Image Base/SFT require complete component sets and at least 24 GiB of available memory.",
+  "tmm.oct.c6.d1": "Kromoss (8-step DMD2), FLUX 3 Image Klein, and MOSS Image Base/SFT require complete component sets and substantial device memory.",
   "tmm.oct.c6.d2": "FLUX files require your own publisher access and license decision.",
   "tmm.oct.notes.sum": "Catalog & runtime notes",
   "tmm.oct.notes.p1": "The 28 curated text choices include Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks runtime support, complete files and available memory before loading.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>Works offline.</strong> On a plane, in a SCIF, on bad hotel wifi — it's your CPU.",
   "wla.s3.l2": "<strong>No per-action billing, no rate limits, no outages.</strong> Run it a thousand times; it costs the same as running it once.",
   "wla.s4.h2": "The honest caveat",
-  "wla.s4.p": "A smaller local model will sometimes choose a clumsy action. The difference is what happens when it does: with Quenderin, the worst case is a <em>refused</em> action in your log — never a surprise on your disk — because the safety lives in the harness, not in hoping the model is smart. We publish <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">every failure mode we know about</a>. That's the whole bet: trust is engineered, not assumed."
+  "wla.s4.p": "A smaller local model will sometimes choose a clumsy action. The difference is what happens when it does: with Quenderin, the worst case is a <em>refused</em> action in your log — never a surprise on your disk — because the safety lives in the harness, not in hoping the model is smart. We publish <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">every failure mode we know about</a>. That's the whole bet: trust is engineered, not assumed.",
+  "simple.update.latest.title": "Kromoss local images, native Hex speech, and full docs portal",
+  "catalog.filter.search": "Filter models by name, task, or quant…",
+  "catalog.filter.clear": "Clear search",
+  "catalog.filter.all": "All (28)",
+  "catalog.filter.phone": "Phone · ≤4 GB RAM",
+  "catalog.filter.laptop": "Laptop · ≤12 GB RAM",
+  "catalog.filter.workstation": "Workstation · 16+ GB",
+  "catalog.filter.stable": "Everyday only",
+  "catalog.filter.count": "Showing {shown} of {total} models",
+  "catalog.filter.empty": "No models match this filter.",
+  "catalog.filter.reset": "Reset filters",
+  "catalog.choicecaveat": "Once you choose a model, Quenderin keeps that choice. If its file is missing or this build cannot run it, the app says so and does not switch you to a different model. A first launch with no choice still suggests one that fits the device. Experimental engine support is source integration: it is not tested inference, and it is separate from an app being on the App Store or Google Play."
 }

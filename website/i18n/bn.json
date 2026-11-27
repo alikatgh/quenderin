@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "লোকাল ছবি তৈরি করুন",
   "tmm.oct.c6.p": "পৃথক Images ওয়ার্কস্পেস ব্যবহার করুন; প্রতিটি জেনারেশন নতুন PNG লেখে ও আগের ফাইল রক্ষা করে।",
   "tmm.oct.c6.sum": "ফাইল, মেমোরি ও অ্যাক্সেস",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein এবং MOSS Image Base/SFT-র জন্য সব উপাদান এবং ন্যূনতম 24 GiB মেমোরি দরকার।",
+  "tmm.oct.c6.d1": "Kromoss (8-ধাপ DMD2), FLUX 3 Image Klein এবং MOSS Image Base/SFT-এর জন্য সম্পূর্ণ কম্পোনেন্ট সেট এবং যথেষ্ট ডিভাইস মেমোরি প্রয়োজন।",
   "tmm.oct.c6.d2": "FLUX ফাইলের জন্য নিজস্ব পাবলিশার অ্যাক্সেস ও লাইসেন্স সিদ্ধান্ত প্রয়োজন।",
   "tmm.oct.notes.sum": "ক্যাটালগ ও রানটাইম নোট",
   "tmm.oct.notes.p1": "২৮টি টেক্সট পছন্দের মধ্যে Bonsai 2, LFM2.5, Jais 3, Nemotron 3.5 Bolt ও MiniCPM-V 4.7 রয়েছে; লোডের আগে রানটাইম, ফাইল ও মেমোরি যাচাই হয়।",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>অফলাইনেও চলে</strong> আপনার CPU-তে।",
   "wla.s3.l2": "<strong>প্রতি কাজের বিল, সীমা বা সার্ভার বিভ্রাট নেই।</strong>",
   "wla.s4.h2": "সৎ সতর্কতা",
-  "wla.s4.p": "ভুল হলে তা লগে <em>প্রত্যাখ্যাত</em> হয়, ডিস্কে নয়। দেখুন <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">সব জ্ঞাত ব্যর্থতা</a>।"
+  "wla.s4.p": "ভুল হলে তা লগে <em>প্রত্যাখ্যাত</em> হয়, ডিস্কে নয়। দেখুন <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">সব জ্ঞাত ব্যর্থতা</a>।",
+  "simple.update.latest.title": "Kromoss লোকাল ইমেজ, নেটিভ Hex স্পিচ ও সম্পূর্ণ ডকস পোর্টাল",
+  "catalog.filter.search": "নাম, কাজ বা কোয়ান্টাইজেশন দিয়ে মডেল খুঁজুন…",
+  "catalog.filter.clear": "খোঁজ মুছুন",
+  "catalog.filter.all": "সবগুলো (28)",
+  "catalog.filter.phone": "ফোন · ≤4 GB RAM",
+  "catalog.filter.laptop": "ল্যাপটপ · ≤12 GB RAM",
+  "catalog.filter.workstation": "ওয়ার্কস্টেশন · 16+ GB",
+  "catalog.filter.stable": "শুধু দৈনন্দিন মডেল",
+  "catalog.filter.count": "{total}টি মডেলের মধ্যে {shown}টি দেখাচ্ছে",
+  "catalog.filter.empty": "এই ফিল্টারে কোনো মডেল মেলেনি।",
+  "catalog.filter.reset": "ফিল্টার রিসেট করুন",
+  "catalog.choicecaveat": "একবার কোনো মডেল বেছে নিলে Quenderin সেই পছন্দটিই ধরে রাখে। ফাইলটি না থাকলে বা এই বিল্ড এটি চালাতে না পারলে অ্যাপ তা জানিয়ে দেয় এবং নিজে থেকে অন্য মডেলে সরে যায় না। প্রথমবার চালুর সময় কোনো পছন্দ না থাকলে ডিভাইসের উপযোগী একটি মডেল প্রস্তাব করা হয়। পরীক্ষামূলক ইঞ্জিন সমর্থন কেবল সোর্স ইন্টিগ্রেশন—এটি পরীক্ষিত ইনফারেন্স নয় এবং App Store বা Google Play-এর প্রকাশিত সংস্করণ থেকে আলাদা।"
 }

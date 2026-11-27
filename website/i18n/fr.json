@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "Créer une image locale",
   "tmm.oct.c6.p": "Utilisez l'espace Images séparé. Chaque génération écrit un nouveau PNG et préserve vos fichiers existants.",
   "tmm.oct.c6.sum": "Fichiers, mémoire et accès",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein et MOSS Image Base/SFT demandent l'ensemble complet des composants et au moins 24 Gio de mémoire.",
+  "tmm.oct.c6.d1": "Kromoss (DMD2 en 8 étapes), FLUX 3 Image Klein et MOSS Image Base/SFT nécessitent des composants complets et une mémoire importante.",
   "tmm.oct.c6.d2": "Les fichiers FLUX requièrent votre propre accès éditeur et décision de licence.",
   "tmm.oct.notes.sum": "Notes catalogue et exécution",
   "tmm.oct.notes.p1": "Les 28 choix texte incluent Bonsai 2, LFM2.5 24B-A2B, cinq tailles Jais 3, Nemotron 3.5 Bolt et MiniCPM-V 4.7. Les choix expérimentaux sont manuels.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>Fonctionne hors ligne</strong> en avion ou réseau faible.",
   "wla.s3.l2": "<strong>Zéro coût à l'usage, zéro quota ni panne serveur.</strong>",
   "wla.s4.h2": "La limite assumée",
-  "wla.s4.p": "Au pire, une action est <em>refusée</em> dans votre journal plutôt qu'appliquée par erreur. Consultez <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">nos modes de défaillance</a>."
+  "wla.s4.p": "Au pire, une action est <em>refusée</em> dans votre journal plutôt qu'appliquée par erreur. Consultez <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">nos modes de défaillance</a>.",
+  "simple.update.latest.title": "Images locales Kromoss, dictée native Hex et portail de documentation",
+  "catalog.filter.search": "Filtrer par nom, usage ou quantification…",
+  "catalog.filter.clear": "Effacer la recherche",
+  "catalog.filter.all": "Tous (28)",
+  "catalog.filter.phone": "Téléphone · ≤4 Go RAM",
+  "catalog.filter.laptop": "Portable · ≤12 Go RAM",
+  "catalog.filter.workstation": "Station · 16+ Go",
+  "catalog.filter.stable": "Usage courant uniquement",
+  "catalog.filter.count": "{shown} modèles affichés sur {total}",
+  "catalog.filter.empty": "Aucun modèle ne correspond à ce filtre.",
+  "catalog.filter.reset": "Réinitialiser les filtres",
+  "catalog.choicecaveat": "Une fois un modèle choisi, Quenderin conserve ce choix. Si son fichier est absent ou si cette version ne peut pas l’exécuter, l’application vous l’indique sans basculer automatiquement vers un autre modèle. Au premier lancement sans choix, elle suggère un modèle adapté à votre appareil. La prise en charge expérimentale d’un moteur correspond à une intégration source : ce n’est pas une inférence testée, et elle est distincte des versions publiées sur l’App Store ou Google Play."
 }

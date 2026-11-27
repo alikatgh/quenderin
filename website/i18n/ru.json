@@ -472,7 +472,7 @@
   "tmm.oct.c6.h3": "Создать изображение локально",
   "tmm.oct.c6.p": "Используйте отдельный раздел Images. Каждая генерация создаёт новый PNG, сохраняя существующие файлы.",
   "tmm.oct.c6.sum": "Файлы, память и доступ",
-  "tmm.oct.c6.d1": "FLUX 3 Image Klein и MOSS Image Base/SFT требуют полный набор компонентов и минимум 24 GiB памяти.",
+  "tmm.oct.c6.d1": "Kromoss (8-шаговый DMD2), FLUX 3 Image Klein и MOSS Image Base/SFT требуют полного комплекта файлов и значительного объёма памяти.",
   "tmm.oct.c6.d2": "Для FLUX нужен ваш собственный доступ к релизу и оценка лицензии.",
   "tmm.oct.notes.sum": "Примечания к каталогу",
   "tmm.oct.notes.p1": "В 28 текстовых вариантов входят Bonsai 2, LFM2.5, Jais 3, Nemotron 3.5 Bolt и MiniCPM-V 4.7 с проверкой рантайма, файлов и памяти.",
@@ -551,5 +551,17 @@
   "wla.s3.l1": "<strong>Работает офлайн</strong> на вашем процессоре.",
   "wla.s3.l2": "<strong>Без тарификации за шаги, лимитов и сбоев серверов.</strong>",
   "wla.s4.h2": "Честная оговорка",
-  "wla.s4.p": "Худшее при ошибке малой модели — <em>отклонённое</em> действие в логе, а не сюрприз на диске. См. <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">список сбоев</a>."
+  "wla.s4.p": "Худшее при ошибке малой модели — <em>отклонённое</em> действие в логе, а не сюрприз на диске. См. <a href=\"https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md\" rel=\"noopener\">список сбоев</a>.",
+  "simple.update.latest.title": "Локальная генерация Kromoss, нативная речь Hex и полный портал документации",
+  "catalog.filter.search": "Фильтр моделей по названию, задаче или квантованию…",
+  "catalog.filter.clear": "Очистить поиск",
+  "catalog.filter.all": "Все (28)",
+  "catalog.filter.phone": "Телефон · ≤4 ГБ ОЗУ",
+  "catalog.filter.laptop": "Ноутбук · ≤12 ГБ ОЗУ",
+  "catalog.filter.workstation": "Рабочая станция · 16+ ГБ",
+  "catalog.filter.stable": "Только базовые",
+  "catalog.filter.count": "Показано {shown} из {total} моделей",
+  "catalog.filter.empty": "Подходящих моделей не найдено.",
+  "catalog.filter.reset": "Сбросить фильтры",
+  "catalog.choicecaveat": "После выбора модели Quenderin сохраняет этот выбор. Если файл отсутствует или текущая сборка не может его запустить, приложение сообщит об этом и не переключит вас на другую модель. При первом запуске без выбора оно по-прежнему предложит подходящую модель для вашего устройства. Экспериментальная поддержка движка — это интеграция в исходный код, а не протестированный инференс и не статус публикации в App Store или Google Play."
 }
