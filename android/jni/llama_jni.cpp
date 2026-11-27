@@ -551,11 +551,12 @@ Java_ai_quenderin_core_LlamaEngine_nativeSupportsBonsai(JNIEnv* /*env*/, jclass 
 }
 
 JNIEXPORT jlong JNICALL
-Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject thiz,
+Java_ai_quenderin_core_LlamaEngine_nativeLoadWithF16Retry(JNIEnv* env, jobject thiz,
                                               jstring model_path, jint context_tokens, jint threads,
                                               jint kv_cache_quant, jfloat temperature, jfloat top_p,
                                               jint gpu_layers, jstring native_lib_dir,
-                                              jboolean verified_muse, jboolean verified_beam, jboolean verified_hy, jboolean verified_granite) {
+                                              jboolean verified_muse, jboolean verified_beam, jboolean verified_hy, jboolean verified_granite,
+                                              jint f16_retry_context) {
     // The app's nativeLibraryDir, where Gradle unpacked the ggml CPU-variant backends
     // (libggml-cpu-android_armv*.so). Loaded once; ggml scores them against the live CPU and
     // registers the best (e.g. armv8.6 DOTPROD+I8MM on an S23) — the fast matmul kernels a single
@@ -693,18 +694,16 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject thiz,
         cp.type_v = GGML_TYPE_Q8_0;
     }
     llama_context* ctx = llama_init_from_model(model, cp);
-    if (!ctx && kv_cache_quant == 1) {
+    if (!ctx && kv_cache_quant == 1 && f16_retry_context != 0) {
         // Quantized V-cache without Flash Attention support → init fails. Retry with f16 KV (more
         // memory, always valid) rather than failing the load on exactly the memory-tight devices
         // that picked q8_0. Twin of iOS LlamaEngine.loadLocked's fallback.
         LOGE("context init failed with q8_0 KV cache — retrying with f16 (model likely lacks flash-attention support)");
         cp.type_k = GGML_TYPE_F16;
         cp.type_v = GGML_TYPE_F16;
-        // n_ctx above was sized in Kotlin assuming Q8_0's cheaper per-token cost
-        // (KVCachePolicy.kt Q8_0.relativeCostPerToken = 0.53); f16 costs ~1/0.53 more per token, so
-        // shrink n_ctx by that same ratio here or the f16 retry roughly doubles its memory budget on
-        // exactly the memory-tight devices this sizing exists to protect.
-        cp.n_ctx = std::max<uint32_t>(512, (uint32_t) (cp.n_ctx * 0.53f));
+        // Manual sizing supplies the f16 budget directly. Auto keeps the historical ratio.
+        cp.n_ctx = f16_retry_context > 0 ? static_cast<uint32_t>(f16_retry_context)
+            : std::max<uint32_t>(512, static_cast<uint32_t>(cp.n_ctx * 0.53f));
         cp.n_batch  = std::min<uint32_t>(cp.n_batch, cp.n_ctx);
         cp.n_ubatch = cp.n_batch;
         ctx = llama_init_from_model(model, cp);
@@ -755,6 +754,18 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject thiz,
     h->kvCacheNativeId = cp.type_k == GGML_TYPE_Q8_0 ? 1 : 0;
     LOGI("nativeLoad: OK, handle=%p n_ctx=%u affinity=%s", (void*) h, cp.n_ctx, tp ? "on" : "off");
     return reinterpret_cast<jlong>(h);
+}
+
+JNIEXPORT jlong JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject thiz,
+                                              jstring model_path, jint context_tokens, jint threads,
+                                              jint kv_cache_quant, jfloat temperature, jfloat top_p,
+                                              jint gpu_layers, jstring native_lib_dir,
+                                              jboolean verified_muse, jboolean verified_beam,
+                                              jboolean verified_hy, jboolean verified_granite) {
+    return Java_ai_quenderin_core_LlamaEngine_nativeLoadWithF16Retry(env, thiz, model_path,
+        context_tokens, threads, kv_cache_quant, temperature, top_p, gpu_layers, native_lib_dir,
+        verified_muse, verified_beam, verified_hy, verified_granite, -1);
 }
 
 JNIEXPORT jstring JNICALL

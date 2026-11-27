@@ -165,15 +165,17 @@ class LlamaEngine(
     private fun currentThermal(): ThermalLevel = thermalSnapshot?.invoke() ?: thermalLevel
 
     /** Same load configuration used by candidate admission; requested offload is never called actual GPU. */
-    fun plannedContext(model: ModelEntry): Int {
-        val kv = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
+    fun plannedContext(model: ModelEntry): Int =
+        plannedContext(model, contextLengthChoiceValue, KVCachePolicy.recommend(deviceBudgetGb, model.ramGB))
+
+    private fun plannedContext(model: ModelEntry, choice: ContextLengthChoice, kv: KVCacheType): Int {
         val cap = when {
             ModelRuntimeSupport.isBeam(model) -> 4096
             ModelRuntimeSupport.isMuse(model) -> ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS
             ModelRuntimeSupport.isBonsai(model) -> ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS
             else -> null
         }
-        return ContextWindow.resolveForLoad(contextLengthChoiceValue, deviceBudgetGb, model.ramGB, kv, cap)
+        return ContextWindow.resolveForLoad(choice, deviceBudgetGb, model.ramGB, kv, cap)
     }
     fun candidateEnvironment(model: ModelEntry, contextTokens: Int = plannedContext(model)): String {
         val base = if (threads > 0) threads else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
@@ -291,6 +293,10 @@ class LlamaEngine(
         }
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         ModelRuntimeSupport.metadataUnavailableReason(filePath, model)?.let { throw IllegalStateException(it) }
+        val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
+        val contextChoice = contextLengthChoiceValue
+        val nctx = plannedContext(model, contextChoice, kvCacheType)
+        check(nctx > 0) { "Not enough memory for a context window at this setting." }
         cancelRequested = false
         // Unknown publisher hashes remain usable manually but can never become measured evidence.
         val artifactIdentity = InferencePerformanceIdentity.artifact(model)
@@ -306,18 +312,20 @@ class LlamaEngine(
         // If the device is already thermally throttling, start with fewer threads (heat is the
         // sustained-load ceiling on a phone, not memory).
         val t = ThermalThrottle.recommendedThreads(currentThermal(), base)
-        // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
-        // per-token memory, near-lossless), which the cache-aware n_ctx turns into ~2× context.
-        val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
-        // n_ctx from the real app-memory budget, this model's footprint, the cache dtype, and the
-        // user's context-length preference (AUTO matches exact recommend(...) behaviour).
-        val nctx = plannedContext(model)
         if (ModelRuntimeSupport.isBeam(model)) {
             val free = minOf(deviceBudgetGb, NativeModelResources.availableMemoryBytes().toDouble() / (1024.0 * 1024 * 1024))
             check(MemoryFitness.check(model, deviceBudgetGb, free).canLoad) { ModelRuntimeSupport.BEAM_UNAVAILABLE_MESSAGE }
         }
-        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers,
-            nativeLibDir, verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model), verifiedBeam = ModelRuntimeSupport.isVerifiedBeamManifest(model), verifiedHy = false, verifiedGranite = false)
+        val verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model)
+        val verifiedBeam = ModelRuntimeSupport.isVerifiedBeamManifest(model)
+        handle = if (contextChoice != ContextLengthChoice.AUTO && kvCacheType == KVCacheType.Q8_0) {
+            val f16RetryContext = plannedContext(model, contextChoice, KVCacheType.F16)
+            nativeLoadWithF16Retry(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(),
+                gpuLayers, nativeLibDir, verifiedMuse, verifiedBeam, false, false, f16RetryContext)
+        } else {
+            nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(),
+                gpuLayers, nativeLibDir, verifiedMuse, verifiedBeam, false, false)
+        }
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         if (receipt != null && artifactReceipts.current(model, filePath) != receipt) {
             nativeFree(handle); handle = 0L; throw IllegalStateException("Model artifact changed during loading.")
@@ -572,6 +580,7 @@ class LlamaEngine(
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
     private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean, verifiedBeam: Boolean, verifiedHy: Boolean, verifiedGranite: Boolean): Long
+    private external fun nativeLoadWithF16Retry(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean, verifiedBeam: Boolean, verifiedHy: Boolean, verifiedGranite: Boolean, f16RetryContext: Int): Long
     private external fun nativeCompleteHyMemoryStreaming(handle: Long, prompt: String, sink: TokenSink): String
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String

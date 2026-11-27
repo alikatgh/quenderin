@@ -494,6 +494,23 @@ public actor LlamaEngine: InferenceEngine {
         model = nil
         vocab = nil
 
+        // Size the context before allocating weights, including the separate f16 retry budget.
+        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
+        var contextCap: Int? = nil
+        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
+        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
+        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
+        func contextTokens(for cacheType: KVCacheType) -> Int {
+            ContextWindow.resolveForLoad(choice: effectiveChoice, appBudgetGB: deviceBudgetGB,
+                                         modelWeightsGB: entry.ramGB, kvCacheType: cacheType, maxContextTokens: contextCap)
+        }
+        var nctx = contextTokens(for: kvCacheType)
+        guard nctx > 0 else {
+            throw InferenceError.loadFailed(reason: "Not enough memory for a context window at this setting.")
+        }
+
         if !backendInitialized { SharedLlamaBackend.shared.acquire(); backendInitialized = true }  // once per process (L1)
 
         var modelParams = llama_model_default_params()
@@ -575,24 +592,6 @@ public actor LlamaEngine: InferenceEngine {
         // llama.cpp — pin the behavior instead of trusting a default that has changed before.
         // (LlamaFlashAttentionTests pins the enum contract against framework bumps.)
         ctxParams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO
-        // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
-        // per-token memory, near-lossless), which the cache-aware n_ctx then turns into ~2× context.
-        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
-        // n_ctx from the real app-memory budget, this model's footprint, the cache dtype, and the
-        // user's context-length preference (`.auto` produces exact `recommend(...)` behaviour).
-        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
-        var contextCap: Int? = nil
-        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
-        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
-        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
-        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
-        var nctx = ContextWindow.resolveForLoad(
-            choice: effectiveChoice,
-            appBudgetGB: deviceBudgetGB,
-            modelWeightsGB: entry.ramGB,
-            kvCacheType: kvCacheType,
-            maxContextTokens: contextCap
-        )
         ctxParams.n_ctx = UInt32(nctx)
         // Bound the logical and physical prefill batches, as on Android. Native calls
         // can then return to the Stop check every 512 tokens, instead of 2048.
@@ -629,13 +628,11 @@ public actor LlamaEngine: InferenceEngine {
             // nativeLoadedNCtx).
             ctxParams.type_k = GGML_TYPE_F16
             ctxParams.type_v = GGML_TYPE_F16
-            nctx = ContextWindow.resolveForLoad(
-                choice: effectiveChoice,
-                appBudgetGB: deviceBudgetGB,
-                modelWeightsGB: entry.ramGB,
-                kvCacheType: .f16,
-                maxContextTokens: contextCap
-            )
+            nctx = contextTokens(for: .f16)
+            guard nctx > 0 else {
+                llama_model_free(m)
+                throw InferenceError.loadFailed(reason: "Not enough memory for an f16 context window at this setting.")
+            }
             ctxParams.n_ctx = UInt32(nctx)
             ctxParams.n_batch = min(ctxParams.n_batch, UInt32(nctx))
             ctxParams.n_ubatch = ctxParams.n_batch
