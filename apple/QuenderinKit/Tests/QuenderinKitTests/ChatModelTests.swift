@@ -86,6 +86,26 @@ final class ChatModelTests: XCTestCase {
         XCTAssertEqual(chat.messages.map(\.text), ["question", "reply"])
     }
 
+    func testInvalidatedPreparationAfterGenerateStartCancelsAndReleasesEngine() async throws {
+        let raw = BlockingStartEngine()
+        let engine = CoordinatedInferenceEngine(raw)
+        let chat = ChatModel(engine: engine)
+        var accepted = false
+        let sendTask = Task {
+            await chat.send("question", onAccepted: { accepted = true })
+        }
+
+        await raw.waitForStart()
+        chat.invalidatePendingPreparation()
+        await raw.releaseStart()
+        await sendTask.value
+
+        XCTAssertFalse(accepted)
+        XCTAssertTrue(chat.messages.isEmpty)
+        let lease = try await engine.acquireExclusiveInferenceLease(timeoutSeconds: 1)
+        await lease.release()
+    }
+
     func testResetClearsConversation() async {
         let chat = ChatModel(engine: await loadedMock("ok"))
         await chat.send("hi")
@@ -171,6 +191,40 @@ private actor CapturingEngine: InferenceEngine {
         return AsyncThrowingStream { continuation in
             continuation.yield(reply)
             continuation.finish()
+        }
+    }
+}
+
+private actor BlockingStartEngine: InferenceEngine {
+    private var startWaiter: CheckedContinuation<Void, Never>?
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+    private var started = false
+    private var released = false
+
+    func loadedModelID() async -> String? { "blocking" }
+    func load(model: ModelEntry, at fileURL: URL) async throws {}
+    func unload() async {}
+
+    func waitForStart() async {
+        if started { return }
+        await withCheckedContinuation { startWaiter = $0 }
+    }
+
+    func releaseStart() {
+        released = true
+        releaseWaiter?.resume()
+        releaseWaiter = nil
+    }
+
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        started = true
+        startWaiter?.resume()
+        startWaiter = nil
+        if !released {
+            await withCheckedContinuation { releaseWaiter = $0 }
+        }
+        return AsyncThrowingStream { continuation in
+            continuation.onTermination = { _ in }
         }
     }
 }

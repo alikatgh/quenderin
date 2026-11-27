@@ -423,7 +423,17 @@ public final class ChatModel: ObservableObject {
             preparationError = "Your message and attachments are kept. " + OnboardingModel.describe(error)
             return
         }
-        guard preparation.isCurrent(), !Task.isCancelled else { return }
+        guard preparation.isCurrent(), !Task.isCancelled else {
+            engine.requestCancel()
+            let abandon = Task {
+                do {
+                    for try await _ in stream { break }
+                } catch {}
+            }
+            abandon.cancel()
+            await abandon.value
+            return
+        }
         lastHitTokenCap = false
         hasOrdinaryInference = true
         didAcceptModel?(selectedModel, automaticSelected)
