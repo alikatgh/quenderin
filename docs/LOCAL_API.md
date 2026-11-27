@@ -229,7 +229,9 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   supported; image parts are rejected with `400` (`images are not supported by this
   endpoint yet`).
 - **Installed models only (no automatic downloads or deletions):** The API only uses models
-  already loaded in Quenderin or already installed on disk. When switching to another installed
+  already loaded in Quenderin or already installed on disk. Discovery includes registered sideloads
+  and multipart models whose shards are present together at their expected sizes. Listed files
+  are verified when selected, including on the first request after launch. When switching to another installed
   model, Quenderin verifies its SHA-256 digest whenever one is pinned (catalog/manifest models
   and sideloaded models with a known digest) and always checks the GGUF header; community
   models without a pinned digest are checked by GGUF header only, and a model already loaded in

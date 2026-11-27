@@ -786,11 +786,8 @@ public final class OnboardingModel: ObservableObject {
 
     /// Resolve a size-complete colocated candidate. The engine verifies hashes in the background before loading.
     static func resolveModelFile(model: ModelEntry, primary: URL? = nil) -> URL? {
-        guard ModelArtifactSet.isMultipart(model) else {
-            return resolveModelFile(filename: model.filename, primary: primary)
-        }
         let storage = FileManagerModelStorage(directory: primary ?? defaultModelsDir(), extraSearchDirs: legacyModelsDirs())
-        return storage.candidateFirstFiles(for: model).first
+        return storage.candidateFile(for: model)
     }
 
     /// First existing file URL for `filename` across primary + legacy dirs (load path).

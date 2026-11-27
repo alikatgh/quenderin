@@ -98,6 +98,42 @@ final class ModelArtifactSetTests: XCTestCase {
         XCTAssertTrue(OfflineReadinessChecker.evaluate(model: model, in: dir).isReadyForOffline)
     }
 
+    #if os(macOS)
+    @MainActor
+    func testLocalAPIDiscoversSideloadsAndColdMultipartCandidatesBeforeVerification() throws {
+        let split = try fixture()
+        let dir = try directory()
+        let first = dir.appendingPathComponent(split.filename)
+        try firstData.write(to: first)
+        let sideload = ModelEntry(id: "hf:fixture", label: "Sideload", filename: "sideload.gguf",
+                                  ramGB: 1, sizeLabel: "tiny", paramsBillions: 1, quantization: "Q2_K",
+                                  urlString: "", sha256: nil)
+        try firstData.write(to: dir.appendingPathComponent(sideload.filename))
+        let suite = "test.api.models.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        SideloadedModels(defaults: defaults).record(sideload)
+        let registry = SideloadedModels(defaults: defaults)
+        let storage = FileManagerModelStorage(directory: dir)
+        func ids() -> [String] {
+            LocalAPIServer.installedModels(activeID: "active", catalog: [split], sideloaded: registry, storage: storage)
+                .map(\.id)
+        }
+        XCTAssertEqual(ids(), ["active", sideload.id], "An incomplete shard set is excluded")
+
+        try secondData.write(to: dir.appendingPathComponent(split.artifacts![1].filename))
+        XCTAssertFalse(ModelArtifactSet.isVerified(split, firstFile: first))
+        XCTAssertEqual(ids(), ["active", split.id, sideload.id])
+        XCTAssertFalse(ModelArtifactSet.isVerified(split, firstFile: first), "Listing does not hash weights")
+        for id in [split.id, sideload.id] {
+            let body = Data(#"{"model":"\#(id)","messages":[{"role":"user","content":"hello"}]}"#.utf8)
+            let request = try LocalAPICodec.decodeChatRequest(body, availableModelIDs: ids(), activeModelID: "active").get()
+            XCTAssertEqual(request.model, id)
+        }
+        XCTAssertNoThrow(try InferencePerformanceIdentity.verifyInstalled(split, firstFile: first))
+    }
+    #endif
+
     @MainActor
     func testInstallerAggregatesProgressAndReusesCompletedFiles() async throws {
         let model = try fixture()

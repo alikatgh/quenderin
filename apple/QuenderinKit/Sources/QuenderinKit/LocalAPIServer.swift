@@ -266,7 +266,7 @@ public final class LocalAPIServer: ObservableObject {
 
         switch (request.method, request.path) {
         case ("GET", "/v1/models"):
-            let models = await availableModels()
+            let models = availableModels(activeID: await currentActiveModelID())
             guard isListenerActive(generation: generation) else {
                 connection.cancel()
                 return
@@ -299,8 +299,8 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        let models = await availableModels()
         let activeID = await currentActiveModelID()
+        let models = availableModels(activeID: activeID)
         let availableIDs = models.map(\.id)
         let bodyData = request.body
 
@@ -818,12 +818,21 @@ public final class LocalAPIServer: ObservableObject {
         return nil
     }
 
-    private func availableModels() async -> [LocalAPIModelInfo] {
-        let activeID = await currentActiveModelID()
-        let manager = ModelManager(
-            storage: OnboardingModel.defaultModelStorage(),
-            activeModelID: activeID
+    private func availableModels(activeID: String?) -> [LocalAPIModelInfo] {
+        Self.installedModels(
+            activeID: activeID,
+            catalog: ModelCatalog.models,
+            sideloaded: SideloadedModels.shared,
+            storage: OnboardingModel.defaultModelStorage()
         )
+    }
+
+    static func installedModels(
+        activeID: String?,
+        catalog: [ModelEntry],
+        sideloaded: SideloadedModels,
+        storage: FileManagerModelStorage
+    ) -> [LocalAPIModelInfo] {
         var seen: Set<String> = []
         var result: [LocalAPIModelInfo] = []
 
@@ -832,12 +841,17 @@ public final class LocalAPIServer: ObservableObject {
             result.append(LocalAPIModelInfo(id: activeID))
         }
 
-        for installed in manager.installed() where ModelRuntimeSupport.supports(installed.model) {
-            if seen.insert(installed.model.id).inserted {
-                result.append(LocalAPIModelInfo(id: installed.model.id))
-            }
+        let candidates = (catalog + sideloaded.all).compactMap { entry -> (id: String, size: Int64)? in
+            guard seen.insert(entry.id).inserted, ModelRuntimeSupport.supports(entry),
+                  let file = storage.candidateFile(for: entry),
+                  let identity = ModelArtifactReceipts.Identity.read(file) else { return nil }
+            let size = ModelArtifactSet.isMultipart(entry) ? entry.downloadBytes ?? identity.size : identity.size
+            return (entry.id, size)
+        }.sorted {
+            if $0.size != $1.size { return $0.size > $1.size }
+            return $0.id < $1.id
         }
-
+        result.append(contentsOf: candidates.map { LocalAPIModelInfo(id: $0.id) })
         return result
     }
 
