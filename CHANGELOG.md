@@ -1,36 +1,149 @@
 # Changelog
 
-## Unreleased — Kromoss diffusion & Hex native speech integrations (2026-11-22)
+Notable changes to Quenderin, newest first. Store dates are the public listing
+dates (UTC) checked on 27 November 2026. Sections marked **source only** are
+merged on `main` but are not a store build.
 
-- **Native Kromoss image generation (`lodestones/Kromoss`, Apache-2.0):**
-  Bumped the symbol-isolated diffusion C ABI (`native/diffusion`) to v2 with
-  `QUENDERIN_DIFFUSION_KROMOSS = 4` and `QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5`,
-  explicit `cfg`, `flow_shift`, and `lora_path` parameters, and an upstream
-  QKV LoRA key-remapping patch (`scripts/patches/sd-cpp-moss-lora-qkv.patch`)
-  supporting the 8-step `8-steps-dmd2-lora.safetensors` accelerator alongside
-  reused MOSS Image text encoder/VAE/tokenizer artifacts. Wired end-to-end across
-  C CLI/JNI, Desktop TypeScript (`ImageGenerationService`, `quenderin image`),
-  Apple Swift (`ImageModels`, `ImageGenerationEngine`), and Android Kotlin
-  (`ImageModels`, `ImageModelInstaller`, `ImageGenerationEngine`).
-- **Native Hex + `transcribe.cpp` speech & dictation (`anomalyco/hex` +
-  `anomalyco/transcribe.cpp`, MIT):** Pinned Silero VAD v6.2 and all 20 speech
-  presets (Parakeet Unified/v2/v3/Ultra, Orukeet, Fluid Speech Pro, Whisper
-  Large v3 Turbo, Ivrit, NB-Whisper, KB-Whisper, Qwen3-ASR 0.6B/1.7B,
-  SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite
-  Speech 5.0, Apple Speech) in `shared/speech-model-catalog.json`. Added a
-  symbol-isolated `native/speech` C ABI (`quenderin_speech_*`), CLI
-  (`quenderin-speech-cli`), and JNI bridge, Desktop `HexSpeechAdapter`
-  supporting both `hex service --embedded` loopback v2 HTTP/SSE and native CLI,
-  `quenderin voice` CLI commands, `VoiceService` integration without storing
-  spoken transcripts in logs, Apple `SpeechModels`/`SpeechFormatting`/`NativeSpeechEngine`,
-  and Android `SpeechModels`/`SpokenTextFormatter`/`NativeSpeechEngine`.
-- **Verification scope:** All native C/C++ fixture harnesses, Swift/Clang
-  resource-cleanup harnesses, Kotlin verifier checks, and Vitest unit suites
-  ran against synthetic weights and audio fixtures (`inferenceVerified: false`).
-  No multi-GB model weights were downloaded and no phone/simulator inference
-  runs were executed locally.
+## Unreleased
 
-## Unreleased — mobile MAX bindings (2026-10-26)
+Merged on `main` on 27 November 2026 (`6f16e273`,
+[PR #250](https://github.com/alikatgh/quenderin/pull/250)). That merge contains no
+store build and no website deploy.
+
+### Added
+
+- **Ollama-parity local API, off by default (macOS).** An opt-in HTTP server that
+  serves the OpenAI Chat Completions API on loopback only (`127.0.0.1`, default
+  port `11435`, beside Ollama's `11434`), with SSE streaming and model selection
+  limited to installed models. Nothing listens until it is turned on in Settings.
+  iOS never compiles it. See `docs/LOCAL_API.md`.
+- **`quenderin run <model> [prompt]`.** A CLI shortcut that downloads a model if
+  needed, then starts a chat or prints one answer.
+- **Thinking modes.** A chat setting with three choices: Off, Auto, and Hide.
+
+### Changed
+
+- **Vision in the main composer, still off.** Still images are wired into the
+  chat composer, but `FeatureFlags.visionInChat = false` in both the Swift and
+  Kotlin sources, so the apps show no change and keep the existing
+  "vision not available yet" refusal. The separate experimental vision workflow
+  is unchanged. See `docs/VISION_IN_CHAT.md`.
+
+## Apple 0.6.3 — iPhone App Store (2026-11-24)
+
+iPhone 0.6.3 is live on the App Store, released 24 November 2026 (25 November in
+UTC+8) and checked on 27 November. The Mac App Store build is still 0.6.1;
+0.6.3 is not on the Mac App Store.
+
+### Added
+
+- **Updated on-device engines and model catalogs.**
+- **Experimental local image generation (Kromoss), with an optional 8-step
+  mode.** Experimental entries are manual choices. They are not tested
+  inference.
+- **Experimental on-device speech recognition.**
+
+Nothing is downloaded until a model is chosen. Local models stay on the device,
+no Quenderin account is needed, and optional remote destinations are unchanged
+and send data only when chosen.
+
+### Source integration behind the experimental entries
+
+- **Kromoss (`lodestones/Kromoss`, Apache-2.0).** The symbol-isolated diffusion
+  C ABI (`native/diffusion`) moved to v2 with `QUENDERIN_DIFFUSION_KROMOSS = 4`
+  and `QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5`, explicit `cfg`, `flow_shift` and
+  `lora_path`, and an upstream QKV LoRA key-remapping patch for the 8-step DMD2
+  LoRA, reusing MOSS Image text encoder/VAE/tokenizer artifacts. Wired through
+  the C CLI/JNI, desktop TypeScript, Apple Swift and Android Kotlin.
+- **Speech (`anomalyco/hex` + `anomalyco/transcribe.cpp`, MIT).** Silero VAD
+  v6.2 and 20 speech presets are pinned in `shared/speech-model-catalog.json`,
+  behind the `native/speech` C ABI, a JNI bridge, desktop `quenderin voice`
+  commands, and Apple and Android speech engines.
+- **Verification scope.** Native harnesses and unit suites ran against synthetic
+  weights and audio fixtures (`inferenceVerified: false`). No multi-GB weights
+  were downloaded and no phone or simulator inference was run.
+
+## Apple 0.6.2 — iPhone App Store (2026-11-13)
+
+iPhone 0.6.2 was released on 13 November 2026 and was the current iPhone version
+until 0.6.3. Its store notes were not captured in the 27 November check, so this
+entry records the date only and does not claim its contents. Mac had no 0.6.2
+release and stayed on 0.6.1.
+
+## Apple 0.6.1 — iPhone and Mac App Store (2026-11-09)
+
+iPhone and Mac 0.6.1 were both released on 9 November 2026. The 0.6.1 store
+draft, saved the same day, describes:
+
+### Added
+
+- **On-device model roles.** Chat, output check, and photos or speech can each
+  use a different model already on the device. Choosing a role does not download
+  a model.
+- **A checker.** When a checker model is installed, a reply or tool result is
+  checked before it is shown. With no checker selected, a shape and word check
+  still runs on the device.
+- **Look and Listen.** A photo or speech model already on the device is loaded
+  for the sample, then the previous local model is restored. A missing file is
+  not downloaded.
+- **Local tools.** Calculator, units and dates can each be turned off, and a
+  tool that is off does not run. iPhone and Android accept only a server on the
+  device; Mac can also run a named local command.
+- **Doctor and Practice.** Doctor reports this chat's models, notes and tools
+  without starting a chat or running a model. Practice scores saved tool
+  questions, not the model.
+
+### Fixed
+
+- On iPhone, Done dismisses the chat keyboard and keeps the draft. On iPhone and
+  Mac, a reply is readable by accessibility tools from the text on screen.
+
+## Apple 0.6.0 — iPhone (2026-11-01) and Mac (2026-11-06)
+
+iPhone 0.6.0 shipped on 1 November 2026 and Mac 0.6.0 on 6 November.
+
+### Added
+
+- **Optional DeepSeek** with your own API key, and an optional connection to a
+  prepared Remote Harness computer, each with its own conversation, trust and
+  approval controls.
+
+### Changed
+
+- Improved local Automatic model selection, remote drafts and session recovery,
+  formatted messages, and code copying.
+- Fixed Stop settlement so accepted text is preserved and cancelled turns do not
+  become completed replies; Continue is offered only after a confirmed
+  token-budget stop.
+- Improved accessibility, error recovery and Unicode number parsing, and updated
+  the privacy disclosures for local and optional remote processing.
+
+## Desktop 0.2.1 — Windows and Linux (2026-10-12)
+
+Published as the GitHub release
+[Quenderin v0.2.1](https://github.com/alikatgh/quenderin/releases/tag/v0.2.1) on
+12 October 2026 (source `156b150f`).
+
+### Added
+
+- **Ternary Bonsai 2 27B as an experimental manual choice** on Windows and Linux.
+  The installers include the pinned Prism llama.cpp CPU runtime that its packed
+  ternary weights need.
+- The model downloads separately: 5,946,648,928 bytes, pinned by revision and
+  SHA-256. Installation and loading keep the existing runtime and memory checks,
+  and default recommendations are unchanged. A roughly 6 GB download does not
+  establish RAM fit or device performance.
+
+### Notes
+
+- Assets: `Quenderin-Setup-x64.exe`, `Quenderin-Portable-x64.exe`,
+  `Quenderin-x86_64.AppImage` and `Quenderin-amd64.deb`.
+- The release notes record packaged-addon execution on both platforms and
+  SHA-verified full-model load and generation through the packaged Linux addon.
+  The Swift and Android Bonsai integrations are separate source work, and signed
+  native and store distribution remain separate.
+
+## Source only — mobile MAX bindings (2026-10-26)
 
 - Refresh the missing mobile MAX inputs: main `8d5597…` still has no
   Android/Adreno/Qualcomm/Dragonfly source, the only official release is
@@ -54,7 +167,7 @@
   is wired into model selection; phone performance/UI and store submission
   remain deferred.
 
-## Unreleased — mobile MAX adapter boundary (2026-10-25)
+## Source only — mobile MAX adapter boundary (2026-10-25)
 
 - Add a vendor-neutral model-adapter boundary for a future mobile MAX backend:
   exact file sizes and SHA-256 receipts, exact runner ABI, telemetry/crash
@@ -76,7 +189,7 @@
   store submission remain deferred; no model-weight download, simulator or
   physical-device run was performed.
 
-## Unreleased — October open-model integrations (2026-10-18)
+## Source only — October open-model integrations (2026-10-18)
 
 - Add nine pinned experimental text entries across all catalogs: MiniCPM-V 4.7
   1B/35B-A3B, LFM2.5-24B-A2B, all five Jais 3 sizes and Nemotron 3.5 Bolt 74B-A9B.
@@ -102,7 +215,7 @@
 - No local model-weight downloads or simulator/device runs. Full inference,
   native rendered UI, performance and new store distribution remain unverified.
 
-## Unreleased — native 0.4.0: Bonsai 2 and Muse Spark Open (2026-10-16)
+## Source only — Bonsai 2 and Muse Spark Open (2026-10-16)
 
 - Added experimental Bonsai 2 2B, 4B, and 9B manual choices across Android,
   iOS/macOS, and the shared desktop catalog. PTQ1_0 downloads are pinned to
@@ -142,7 +255,7 @@
   <https://apps.apple.com/app/id6789854363>. The native SwiftUI app, fully offline and on-device —
   our first public store release. The Mac app is also available as of the September website update.
 
-## Unreleased — native 0.3.0 candidate
+## Source only — native 0.3.0 candidate
 
 - **Mac, iPhone and Android model discovery:** model selection now includes recent
   releases from the website's hourly feed, compact-download filters, model cards,
