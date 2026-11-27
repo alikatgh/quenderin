@@ -108,11 +108,13 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
     const detailCss = readFileSync(path.join(websiteDir, 'detail-page.css'), 'utf8');
     assert.match(detailCss, /\.detail-page\s+\.btn\s*\{[^}]*border-radius:\s*var\(--r-md\)/);
 
-    // 3. tell-me-more.html: alternating section rhythm + Nov 22 refresh + translated catalog roles
+    // 3. tell-me-more.html: alternating section rhythm + Nov 27 refresh + translated catalog roles
     const tmm = readFileSync(path.join(websiteDir, 'tell-me-more.html'), 'utf8');
     assert.equal(adjacentTintCollisions(tmm), 0, 'tell-me-more.html must alternate .section and .section.tint cleanly');
-    assert.ok(tmm.includes('22 November 2026'), 'tell-me-more.html latest-update must reflect 22 November 2026');
-    assert.ok(!tmm.includes('9 November update</a>'), 'tell-me-more.html caveat should point to 22 November update');
+    assert.ok(tmm.includes('27 November 2026'), 'tell-me-more.html latest-update must reflect 27 November 2026');
+    assert.ok(!tmm.includes('>9 November update</a>'), 'tell-me-more.html must omit the stale 9 November update link');
+    const privacyCaveat = tmm.match(/<p\b[^>]*\bdata-i18n-html="tmm\.priv\.caveat"[^>]*>(.*?)<\/p>/s)?.[1] ?? '';
+    assert.ok(privacyCaveat.includes('<a href="#latest-update">27 November update</a>'), 'tell-me-more.html privacy caveat must link to the 27 November update');
     assert.ok(tmm.includes('data-i18n="catalog.role.experimental_text"'));
     assert.ok(tmm.includes('data-i18n="catalog.role.experimental_prism"'));
     for (let c = 1; c <= 6; c += 1) {
@@ -122,7 +124,7 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
 
     // 4. All top-level marketing/legal/blog HTML pages: <=650-char <p>, theme.js, theme-toggle, unified styles cache-buster, zero analytics
     const topPages = readdirSync(websiteDir).filter((f) => f.endsWith('.html'));
-    assert.equal(topPages.length, 37);
+    assert.equal(topPages.length, 38); // Includes the new 0.6.3 blog post.
     for (const file of topPages) {
         const html = readFileSync(path.join(websiteDir, file), 'utf8');
         const stats = paragraphStats(html);
