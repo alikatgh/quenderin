@@ -837,6 +837,11 @@ public enum LocalAPICodec {
             responseFormat = .text
         }
 
+        if !stop.isEmpty, responseFormat.gbnfGrammar != nil {
+            return .failure(.badRequest("Nonempty 'stop' sequences cannot be used with JSON response formats.",
+                                        code: "unsupported_response_format"))
+        }
+
         return .success(LocalAPIChatRequest(
             model: resolvedModel,
             messages: messages,

@@ -249,6 +249,28 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(request.body, Data("{}".utf8))
     }
 
+    func testDecodeRejectsStopsThatCanCutJSONShortInEitherResponseMode() throws {
+        for responseFormat in [
+            #"{"type":"json_object"}"#,
+            #"{"type":"json_schema","json_schema":{"strict":true,"schema":{"type":"object","additionalProperties":false}}}"#,
+        ] {
+            for stream in [false, true] {
+                let body = #"{"messages":[{"role":"user","content":"Return an empty object."}],"stream":\#(stream),"response_format":\#(responseFormat),"stop":"}"}"#
+                let result = LocalAPICodec.decodeChatRequest(Data(body.utf8), availableModelIDs: ["m"], activeModelID: "m")
+                guard case .failure(let error) = result else {
+                    return XCTFail("A stop sequence could remove the required closing brace")
+                }
+                XCTAssertEqual(error.statusCode, 400)
+                XCTAssertEqual(error.code, "unsupported_response_format")
+
+                let emptyStop = body.replacingOccurrences(of: #""stop":"}""#, with: #""stop":[""]"#)
+                let request = try LocalAPICodec.decodeChatRequest(Data(emptyStop.utf8), availableModelIDs: ["m"], activeModelID: "m").get()
+                XCTAssertTrue(request.stop.isEmpty)
+                XCTAssertNotNil(request.responseFormat.gbnfGrammar)
+            }
+        }
+    }
+
     func testDecodeDefaultsMaxCompletionTokensAndSingleStop() throws {
         let json = #"""
         {

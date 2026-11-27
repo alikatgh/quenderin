@@ -137,7 +137,10 @@ Quenderin enforces JSON output at the llama.cpp GBNF grammar level for standard 
 Models that do not support grammar-constrained decoding (**Beam**, **Jais**, and **Muse**) reject
 `response_format` JSON/schema requests with `400` (`unsupported_response_format`). If native
 grammar-sampler initialization fails for any model, the request also fails with `400`
-(`unsupported_response_format`) rather than continuing unconstrained:
+(`unsupported_response_format`).
+
+Combining a JSON response format with a nonempty `stop` sequence returns `400`
+(`unsupported_response_format`) before generation in both buffered and streaming modes.
 
 ### Any valid JSON object (`json_object`)
 
