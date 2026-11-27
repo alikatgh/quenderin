@@ -1,7 +1,8 @@
 # Vision in the main chat composer (`FeatureFlags.visionInChat`)
 
-This document records how still-image vision is wired into the main chat composer, why it ships
-disabled, and the exact physical-device verification required before flipping the flag.
+The still-image path in the Apple chat composer merged in
+[PR #250](https://github.com/alikatgh/quenderin/pull/250).
+It remains unreleased and disabled in source as of 27 November 2026.
 
 ## Current status: OFF by default
 
@@ -17,7 +18,7 @@ returns `true` only when **all three** hold:
 2. The pinned native vision runtime is linked and passes its ABI/revision/patch check
 3. A complete, verified vision model (main GGUF + projector GGUF) is installed
 
-Because `visionInChat` is `false`, the shipped apps show **no user-visible change**:
+With `visionInChat` set to `false`, source builds retain the existing attachment behavior.
 
 - Apple `ChatView` keeps the existing paperclip help text
   (`"Attach a text, PDF, or image (images: vision not available yet)"`) and routes image picks to

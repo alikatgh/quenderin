@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iPhone 0.6.3 is on the App Store — Quenderin</title>
+<meta name="description" content="Quenderin 0.6.3 refreshes on-device engines and model catalogs on iPhone. See the current Mac and Android versions and the unreleased work on main." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<script src="theme.js"></script>
+<link rel="canonical" href="https://quenderin.org/blog-apple-063-november-2026" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="iPhone 0.6.3 is on the App Store" />
+<meta property="og:description" content="Quenderin 0.6.3 brings experimental local image generation and speech recognition entries to iPhone. The Mac App Store version is 0.6.1." />
+<meta property="og:url" content="https://quenderin.org/blog-apple-063-november-2026" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-11-27" />
+<meta property="article:modified_time" content="2026-11-27" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="styles.css?v=20261124-craft" />
+<link rel="stylesheet" href="lucide-icons.css?v=20261122-polish" />
+<link rel="preload" href="fonts/chunkfive-regular.woff2" as="font" type="font/woff2" crossorigin />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"iPhone 0.6.3 is on the App Store","datePublished":"2026-11-27","dateModified":"2026-11-27","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-apple-063-november-2026"}</script>
+<link rel="stylesheet" href="blog-illustrations.css?v=20261028" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog"><a href="docs/"><span class="qi qi-book-open" aria-hidden="true"></span>Docs</a> <a href="blog">← Blog</a><a href="tell-me-more">Explore the app</a><a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<main class="container legal" id="main">
+  <p class="eyebrow">App update</p>
+  <h1>iPhone 0.6.3 is on the App Store</h1>
+  <p class="legal-updated"><time datetime="2026-11-27">27 November 2026</time> &middot; Quenderin</p>
+  <p>Quenderin 0.6.3 refreshes the on-device engines and model catalogs on iPhone. It adds experimental entries for local image generation with Kromoss, including an optional 8-step mode, and for on-device speech recognition.</p>
+
+  <h2 id="available">What you can install today</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#devices"></use></svg>
+  <p><strong>iPhone 0.6.3</strong> was released on <time datetime="2026-11-24T22:00:09Z">24 November UTC</time> (25 November in Ulaanbaatar). <strong>Mac 0.6.1</strong> was released on <time datetime="2026-11-09T23:16:40Z">9 November UTC</time>. <a href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener">iPhone App Store</a> · <a href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener">Mac App Store</a>.</p>
+  <p>The App Store listing remains unavailable in France. <a href="https://github.com/alikatgh/quenderin/issues/217" rel="noopener">Follow issue #217</a>.</p>
+  <p>On Android, Google Play closed testing serves <strong>0.2.0</strong>. Android 0.6.3 is an unsigned GitHub draft candidate. <a href="download">Download the current apps</a>.</p>
+
+  <h2 id="unreleased">Unreleased work on main</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#conversation"></use></svg>
+  <p>These changes merged to <code>main</code> on <time datetime="2026-11-27T11:03:29+08:00">27 November at 11:03 in Ulaanbaatar</time> (<code>6f16e273</code>) and remain unreleased. <a href="https://github.com/alikatgh/quenderin/pull/250" rel="noopener">PR #250</a>.</p>
+  <ul>
+    <li><strong>A local API for macOS.</strong> The Ollama-style API is loopback-only and off by default. Once enabled, apps on the same Mac can use an installed Quenderin model through the OpenAI-compatible chat endpoint. <a href="https://github.com/alikatgh/quenderin/blob/main/docs/LOCAL_API.md" rel="noopener">Local API guide</a>.</li>
+    <li><strong>Thinking modes.</strong> Choose Off, Auto, or Hide in chat settings.</li>
+    <li><strong><code>quenderin run &lt;model&gt; [prompt]</code>.</strong> Start an interactive chat or print one reply. The command can download the chosen model if needed.</li>
+    <li><strong>Vision in the Apple chat composer.</strong> Still-image support is behind a disabled flag. <a href="https://github.com/alikatgh/quenderin/blob/main/docs/VISION_IN_CHAT.md" rel="noopener">Vision implementation note</a>.</li>
+  </ul>
+
+  <h2 id="verification">Experimental entries and verification</h2>
+  <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#boundaries"></use></svg>
+  <p>Choose an experimental model to start its download. The image and speech integrations were checked with host fixtures. Full-weight inference and device behavior remain unverified. <a href="blog-kromoss-hex-november-2026">Read the engineering notes</a>.</p>
+  <p>Local models stay on your device. Local chat needs no Quenderin account. Optional remote destinations receive conversation data only when you choose them. <a href="changelog#2026-11-24">Read the changelog</a>.</p>
+</main>
+</body>
+</html>

@@ -71,7 +71,7 @@
 
   <main class="docs-main" id="main">
     <article class="docs-article">
-      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Quality, Research &amp; Evolution</span></div><div class="docs-kicker"><span class="qi qi-history" aria-hidden="true"></span>History · Releases</div><h1>Changelog &amp; Engineering Updates</h1><p class="docs-lead">Release history from v0.1.0 through v0.6.x plus detailed October 2026 model and engineering publication records.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>21 min read (4,886 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>4 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Quality, Research &amp; Evolution</span></div><div class="docs-kicker"><span class="qi qi-history" aria-hidden="true"></span>History · Releases</div><h1>Changelog &amp; Engineering Updates</h1><p class="docs-lead">Release history from v0.1.0 through v0.6.x plus detailed October 2026 model and engineering publication records.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>23 min read (5,324 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>4 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
       <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 4 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/CHANGELOG.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>CHANGELOG.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-10-16-muse-bonsai/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/social/2026-10-16-muse-bonsai/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-10-18-open-models/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/social/2026-10-18-open-models/README.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/social/2026-11-22-kromoss-hex-docs/README.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/social/2026-11-22-kromoss-hex-docs/README.md</a></div></details>
       <details class="docs-mobile-toc">
         <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
@@ -80,13 +80,64 @@
       <div class="docs-prose">
         <section class="docs-subdoc" id="src-changelog-md"><h2 id="src-changelog-md-heading">Changelog</h2><div class="docs-subdoc-meta"><span><span class="qi qi-file-text" aria-hidden="true"></span> <code>CHANGELOG.md</code></span><a href="https://github.com/alikatgh/quenderin/blob/main/CHANGELOG.md" rel="noopener" target="_blank">View on GitHub <span class="qi qi-arrow-up-right" aria-hidden="true"></span></a></div>
 <h3 id="changelog">Changelog<a class="docs-heading-anchor" href="#changelog" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h3>
-<h4 id="unreleased-kromoss-diffusion-hex-native-speech-integrations-2026-11-22">Unreleased — Kromoss diffusion &amp; Hex native speech integrations (2026-11-22)<a class="docs-heading-anchor" href="#unreleased-kromoss-diffusion-hex-native-speech-integrations-2026-11-22" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>App Store dates use UTC. Dated engineering entries record the source and verification scope at the time. See <a href="release-store#src-docs-release-md">release status</a> for storefront availability.</p>
+<h4 id="unreleased">Unreleased<a class="docs-heading-anchor" href="#unreleased" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p><a href="https://github.com/alikatgh/quenderin/pull/250" rel="noopener" target="_blank">PR #250<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> merged to <code>main</code> on 27 November 2026 at 11:03 in Ulaanbaatar (<code>6f16e273</code>). Its changes remain unreleased.</p>
+<h5 id="added">Added<a class="docs-heading-anchor" href="#added" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
 <ul>
-<li><strong>Native Kromoss image generation (<code>lodestones/Kromoss</code>, Apache-2.0):</strong> Bumped the symbol-isolated diffusion C ABI (<code>native/diffusion</code>) to v2 with <code>QUENDERIN_DIFFUSION_KROMOSS = 4</code> and <code>QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5</code>, explicit <code>cfg</code>, <code>flow_shift</code>, and <code>lora_path</code> parameters, and an upstream QKV LoRA key-remapping patch (<code>scripts/patches/sd-cpp-moss-lora-qkv.patch</code>) supporting the 8-step <code>8-steps-dmd2-lora.safetensors</code> accelerator alongside reused MOSS Image text encoder/VAE/tokenizer artifacts. Wired end-to-end across C CLI/JNI, Desktop TypeScript (<code>ImageGenerationService</code>, <code>quenderin image</code>), Apple Swift (<code>ImageModels</code>, <code>ImageGenerationEngine</code>), and Android Kotlin (<code>ImageModels</code>, <code>ImageModelInstaller</code>, <code>ImageGenerationEngine</code>).</li>
-<li><strong>Native Hex + <code>transcribe.cpp</code> speech &amp; dictation (<code>anomalyco/hex</code> + <code>anomalyco/transcribe.cpp</code>, MIT):</strong> Pinned Silero VAD v6.2 and all 20 speech presets (Parakeet Unified/v2/v3/Ultra, Orukeet, Fluid Speech Pro, Whisper Large v3 Turbo, Ivrit, NB-Whisper, KB-Whisper, Qwen3-ASR 0.6B/1.7B, SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite Speech 5.0, Apple Speech) in <code>shared/speech-model-catalog.json</code>. Added a symbol-isolated <code>native/speech</code> C ABI (<code>quenderin_speech_*</code>), CLI (<code>quenderin-speech-cli</code>), and JNI bridge, Desktop <code>HexSpeechAdapter</code> supporting both <code>hex service --embedded</code> loopback v2 HTTP/SSE and native CLI, <code>quenderin voice</code> CLI commands, <code>VoiceService</code> integration without storing spoken transcripts in logs, Apple <code>SpeechModels</code>/<code>SpeechFormatting</code>/<code>NativeSpeechEngine</code>, and Android <code>SpeechModels</code>/<code>SpokenTextFormatter</code>/<code>NativeSpeechEngine</code>.</li>
-<li><strong>Verification scope:</strong> All native C/C++ fixture harnesses, Swift/Clang resource-cleanup harnesses, Kotlin verifier checks, and Vitest unit suites ran against synthetic weights and audio fixtures (<code>inferenceVerified: false</code>). No multi-GB model weights were downloaded and no phone/simulator inference runs were executed locally.</li>
+<li><strong>Local API for macOS.</strong> The opt-in API adds Ollama-style local access via OpenAI-compatible chat completions and an installed-model list. It binds to loopback only and is off by default. See the <a href="https://github.com/alikatgh/quenderin/blob/main/docs/LOCAL_API.md" rel="noopener" target="_blank">local API guide<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</li>
+<li><strong>Thinking modes.</strong> Choose Off, Auto, or Hide in chat settings.</li>
+<li><strong><code>quenderin run &lt;model&gt; [prompt]</code>.</strong> Start an interactive chat or print a single reply. The command can download the selected model if needed.</li>
 </ul>
-<h4 id="unreleased-mobile-max-bindings-2026-10-26">Unreleased — mobile MAX bindings (2026-10-26)<a class="docs-heading-anchor" href="#unreleased-mobile-max-bindings-2026-10-26" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="changed">Changed<a class="docs-heading-anchor" href="#changed" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Vision in the Apple chat composer.</strong> The still-image path is wired behind the disabled <code>FeatureFlags.visionInChat</code> flag. Android defines the same flag and documents the future routing. See the <a href="https://github.com/alikatgh/quenderin/blob/main/docs/VISION_IN_CHAT.md" rel="noopener" target="_blank">vision implementation note<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</li>
+</ul>
+<h4 id="apple-0-6-3-iphone-app-store-2026-11-24">Apple 0.6.3 — iPhone App Store (2026-11-24)<a class="docs-heading-anchor" href="#apple-0-6-3-iphone-app-store-2026-11-24" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Released at <code>2026-11-24T22:00:09Z</code> (25 November in Ulaanbaatar). The current Mac App Store version is 0.6.1.</p>
+<h5 id="added-2">Added<a class="docs-heading-anchor" href="#added-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Experimental Kromoss local image generation with an optional 8-step mode.</li>
+<li>Experimental on-device speech recognition.</li>
+</ul>
+<h5 id="changed-2">Changed<a class="docs-heading-anchor" href="#changed-2" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Refreshed the on-device engines and model catalogs. Experimental entries require manual selection. Model downloads begin only when you choose a model.</li>
+</ul>
+<p>Full-weight inference for the new experimental entries remains unverified.</p>
+<h4 id="engineering-kromoss-and-hex-source-integrations-2026-11-22">Engineering — Kromoss and Hex source integrations (2026-11-22)<a class="docs-heading-anchor" href="#engineering-kromoss-and-hex-source-integrations-2026-11-22" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>See the <a href="https://quenderin.org/blog-kromoss-hex-november-2026" rel="noopener" target="_blank">engineering post<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> for platform coverage and host fixture results.</p>
+<ul>
+<li><strong>Kromoss (<code>lodestones/Kromoss</code>, Apache-2.0).</strong> The symbol-isolated diffusion C ABI (<code>native/diffusion</code>) moved to v2 with <code>QUENDERIN_DIFFUSION_KROMOSS = 4</code> and <code>QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5</code>, explicit <code>cfg</code>, <code>flow_shift</code> and <code>lora_path</code>, and an upstream QKV LoRA key-remapping patch for the 8-step DMD2 LoRA, reusing MOSS Image text encoder/VAE/tokenizer artifacts. Wired through the C CLI/JNI, desktop TypeScript, Apple Swift and Android Kotlin.</li>
+<li><strong>Speech (<code>anomalyco/hex</code> + <code>anomalyco/transcribe.cpp</code>, MIT).</strong> Silero VAD v6.2 and 20 speech presets are pinned in <code>shared/speech-model-catalog.json</code>, behind the <code>native/speech</code> C ABI, a JNI bridge, desktop <code>quenderin voice</code> commands, and Apple and Android speech engines.</li>
+<li><strong>Verification scope.</strong> Native harnesses and unit suites ran against synthetic weights and audio fixtures (<code>inferenceVerified: false</code>). No multi-GB weights were downloaded and no phone or simulator inference was run.</li>
+</ul>
+<h4 id="apple-0-6-2-iphone-app-store-2026-11-13">Apple 0.6.2 — iPhone App Store (2026-11-13)<a class="docs-heading-anchor" href="#apple-0-6-2-iphone-app-store-2026-11-13" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="changed-3">Changed<a class="docs-heading-anchor" href="#changed-3" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>On a fresh install, the app explains the next step when a model is unavailable. See the <a href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" target="_blank">iPhone version history<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</li>
+</ul>
+<h4 id="apple-0-6-1-iphone-and-mac-app-store-2026-11-09">Apple 0.6.1 — iPhone and Mac App Store (2026-11-09)<a class="docs-heading-anchor" href="#apple-0-6-1-iphone-and-mac-app-store-2026-11-09" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Released at <code>2026-11-09T22:18:47Z</code> on iPhone and <code>2026-11-09T23:16:40Z</code> on Mac. See the <a href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" target="_blank">iPhone version history<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> and the <a href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" target="_blank">Mac version history<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a>.</p>
+<h5 id="added-3">Added<a class="docs-heading-anchor" href="#added-3" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>On-device model roles.</strong> Choose already-installed models for chat, output checks, and photos or speech.</li>
+<li><strong>Output checks.</strong> An installed checker can review a reply or tool result before it is shown.</li>
+<li><strong>Look and Listen.</strong> An installed photo or speech model handles the sample, then the app restores the previous model.</li>
+<li><strong>Local tools, Doctor, and Practice.</strong> Local tools can be turned off individually. Doctor reports the chat configuration, and Practice scores tool use on saved questions.</li>
+</ul>
+<h4 id="apple-0-6-0-iphone-2026-11-01-and-mac-2026-11-06">Apple 0.6.0 — iPhone (2026-11-01) and Mac (2026-11-06)<a class="docs-heading-anchor" href="#apple-0-6-0-iphone-2026-11-01-and-mac-2026-11-06" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h5 id="added-4">Added<a class="docs-heading-anchor" href="#added-4" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Optional connections to DeepSeek with your API key or to a Remote Harness computer you prepare. Each destination has its own conversation, trust, and approval controls.</li>
+</ul>
+<h5 id="changed-4">Changed<a class="docs-heading-anchor" href="#changed-4" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Improved automatic model selection, remote draft and session recovery, formatted replies, and code copying.</li>
+<li>Stop preserves accepted text. Continue is available after a confirmed token-budget stop.</li>
+<li>Improved accessibility, error recovery, and Unicode number parsing. Updated privacy disclosures for on-device and optional remote processing.</li>
+</ul>
+<h4 id="engineering-mobile-max-bindings-2026-10-26">Engineering — mobile MAX bindings (2026-10-26)<a class="docs-heading-anchor" href="#engineering-mobile-max-bindings-2026-10-26" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
 <li>Refresh the missing mobile MAX inputs: main <code>8d5597…</code> still has no Android/Adreno/Qualcomm/Dragonfly source, the only official release is <code>max/v26.7.0</code>, 26.7.0 publishes no Android/iOS wheel, no MEF exists, and the demo author has no public build source. The MLX tokenizer is recorded as an unadopted, unverified candidate. MAX stays blocked and unselectable.</li>
 <li>Add an Android JNI bridge and pure-Kotlin facade over the canonical C boundary: registry IDs, run-scoped callbacks/cancellation, supplementary Unicode and embedded NUL, explicit close-while-busy, and a hosted JNI/JVM fixture with a test-only synthetic runner. Production links no runner.</li>
@@ -94,14 +145,14 @@
 <li>Harden the boundary: Android validates exactly 64 lowercase hash bytes before copying and snapshots the caller's file list; Apple cancel holds the model pointer lock across the bounded native call so close cannot free it mid-cancel. Both bindings add run-specific pending cancellation so a cancel before native admission is honored and a delayed token cannot cancel a later run.</li>
 <li>No vendor SDK, runner, weights, simulator or device was used. Neither binding is wired into model selection; phone performance/UI and store submission remain deferred.</li>
 </ul>
-<h4 id="unreleased-mobile-max-adapter-boundary-2026-10-25">Unreleased — mobile MAX adapter boundary (2026-10-25)<a class="docs-heading-anchor" href="#unreleased-mobile-max-adapter-boundary-2026-10-25" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h4 id="engineering-mobile-max-adapter-boundary-2026-10-25">Engineering — mobile MAX adapter boundary (2026-10-25)<a class="docs-heading-anchor" href="#engineering-mobile-max-adapter-boundary-2026-10-25" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
 <li>Add a vendor-neutral model-adapter boundary for a future mobile MAX backend: exact file sizes and SHA-256 receipts, exact runner ABI, telemetry/crash opt-outs, single-flight leases, bounded prompt/output/context/stream budgets, UTF-8 reassembly, token-boundary cancellation, capability probing and numeric-only performance reports. It loads no vendor runtime and contains no tokenizer, sampler, weights or GGUF loader.</li>
 <li>Add an inert runner double and sanitizer fixture covering verification failures, symlinks, opt-outs, streaming, split UTF-8, cancellation, sink abort, runner failure, output caps, context clamping, invalid requests and cleanup. Host compilation only; no SDK, weights or device.</li>
 <li>Record the mobile MAX audit in <code>native/max-runtime/mobile-lock.json</code>: pinned MAX 26.7 source contains no Android/Adreno/Qualcomm/Dragonfly paths, the Bonsai 2B GGUF is pinned but has no reviewed MEF/tokenizer/cache contract, mobile redistribution and telemetry are unreviewed, and the reported Snapdragon demonstration has no located public source/build recipe.</li>
 <li>Keep mobile MAX out of Automatic and reject unverified support, inference, phone-performance and store claims in a checked lock. Phone validation and store submission remain deferred; no model-weight download, simulator or physical-device run was performed.</li>
 </ul>
-<h4 id="unreleased-october-open-model-integrations-2026-10-18">Unreleased — October open-model integrations (2026-10-18)<a class="docs-heading-anchor" href="#unreleased-october-open-model-integrations-2026-10-18" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h4 id="engineering-october-open-model-integrations-2026-10-18">Engineering — October open-model integrations (2026-10-18)<a class="docs-heading-anchor" href="#engineering-october-open-model-integrations-2026-10-18" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
 <li>Add nine pinned experimental text entries across all catalogs: MiniCPM-V 4.7 1B/35B-A3B, LFM2.5-24B-A2B, all five Jais 3 sizes and Nemotron 3.5 Bolt 74B-A9B. Use complete model sizes, conservative memory floors, manual selection and compiled runtime gates. MiniCPM vision/video remains unavailable.</li>
 <li>Backport K2 Horizon, Arabic tokenization and per-layer Nemotron expert metadata onto the pinned Prism/Muse engine. Add publisher-specific Jais/Nemotron prompts, bounded final-answer filtering and generated-tensor graph/save-reload fixtures.</li>
@@ -112,7 +163,7 @@
 <li>Record remaining gaps for Super VL, Step 5, Beam, Granite Switch, Hy-Memory and the announced E4B artifact. Do not list these as ready chat downloads.</li>
 <li>No local model-weight downloads or simulator/device runs. Full inference, native rendered UI, performance and new store distribution remain unverified.</li>
 </ul>
-<h4 id="unreleased-native-0-4-0-bonsai-2-and-muse-spark-open-2026-10-16">Unreleased — native 0.4.0: Bonsai 2 and Muse Spark Open (2026-10-16)<a class="docs-heading-anchor" href="#unreleased-native-0-4-0-bonsai-2-and-muse-spark-open-2026-10-16" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h4 id="engineering-bonsai-2-and-muse-spark-open-2026-10-16">Engineering — Bonsai 2 and Muse Spark Open (2026-10-16)<a class="docs-heading-anchor" href="#engineering-bonsai-2-and-muse-spark-open-2026-10-16" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
 <li>Added experimental Bonsai 2 2B, 4B, and 9B manual choices across Android, iOS/macOS, and the shared desktop catalog. PTQ1_0 downloads are pinned to immutable publisher revisions, exact sizes, and SHA-256 checksums.</li>
 <li>Use size-specific conservative memory estimates for the verified small Bonsai files; preserve runtime checks, headroom, the 4,096-token cap, and existing defaults.</li>
@@ -122,7 +173,19 @@
 <li>Add the Muse prompt adapter and bounded final-channel streaming parser. Private reasoning stays hidden; unsupported raw, tool and grammar requests are rejected. Require conservative memory headroom and cap context at 4,096 tokens; ordinary phones cannot fit this model. No distributed or remote execution is introduced.</li>
 <li>Keep Muse out of automatic recommendations. Electron/CLI Muse installation stays unavailable until its multipart and chat adapters are implemented.</li>
 <li>Add an engineering post explaining the implementation, verification boundaries, and improvements: graph correctness, measured memory/performance, recovery, structured tools, multimodal inputs and upstream maintenance.</li>
-<li>No model weights were downloaded onto the development computer and no simulator or device was launched. Signed builds, full Muse inference and store publication are separate gates; this unreleased entry does not claim they have passed.</li>
+<li>No model weights were downloaded onto the development computer and no simulator or device was launched. Signed builds, full Muse inference and store publication were pending at this milestone.</li>
+</ul>
+<h4 id="desktop-0-2-1-windows-and-linux-2026-10-12">Desktop 0.2.1 — Windows and Linux (2026-10-12)<a class="docs-heading-anchor" href="#desktop-0-2-1-windows-and-linux-2026-10-12" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<p>Published as the GitHub release <a href="https://github.com/alikatgh/quenderin/releases/tag/v0.2.1" rel="noopener" target="_blank">Quenderin v0.2.1<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> on 12 October 2026 (source <code>156b150f</code>).</p>
+<h5 id="added-5">Added<a class="docs-heading-anchor" href="#added-5" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li><strong>Ternary Bonsai 2 27B as an experimental manual choice</strong> on Windows and Linux. The installers include the pinned Prism llama.cpp CPU runtime that its packed ternary weights need.</li>
+<li>The 5,946,648,928-byte model downloads separately and is pinned by revision and SHA-256. Quenderin checks runtime compatibility and available memory before loading it.</li>
+</ul>
+<h5 id="notes">Notes<a class="docs-heading-anchor" href="#notes" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h5>
+<ul>
+<li>Installers include <code>Quenderin-Setup-x64.exe</code>, <code>Quenderin-Portable-x64.exe</code>, <code>Quenderin-x86_64.AppImage</code> and <code>Quenderin-amd64.deb</code>.</li>
+<li>The release notes record packaged-addon execution on both platforms and SHA-verified full-model load and generation through the packaged Linux addon.</li>
 </ul>
 <h4 id="apple-apps-available-marketing-update-2026-09-30">Apple apps available — marketing update (2026-09-30)<a class="docs-heading-anchor" href="#apple-apps-available-marketing-update-2026-09-30" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
@@ -130,11 +193,11 @@
 <li>Added the Apple launch blog post and website changelog entry, platform-specific store links, real app icons, and an install-to-offline-reply guide. Refreshed download, FAQ, README, and social materials.</li>
 <li>Repaired the homepage CSS 3D phone: continuous rounded depth, readable screen, and mobile copy first.</li>
 </ul>
-<h4 id="0-2-0-ios-on-the-app-store-2026-07-20">0.2.0 — iOS on the App Store (2026-07-20)<a class="docs-heading-anchor" href="#0-2-0-ios-on-the-app-store-2026-07-20" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h4 id="0-2-0-ios-on-the-app-store-2026-07-19">0.2.0 — iOS on the App Store (2026-07-19)<a class="docs-heading-anchor" href="#0-2-0-ios-on-the-app-store-2026-07-19" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
-<li><strong>Quenderin: Offline AI Chat is live on the App Store</strong> — free, on iPhone, worldwide (175 regions): <a href="https://apps.apple.com/app/id6789854363" rel="noopener" target="_blank">https://apps.apple.com/app/id6789854363</a>. The native SwiftUI app, fully offline and on-device — our first public store release. The Mac app is also available as of the September website update.</li>
+<li><strong>Quenderin: Offline AI Chat is live on the App Store</strong> — free, on iPhone, worldwide (175 regions): <a href="https://apps.apple.com/app/id6789854363" rel="noopener" target="_blank">https://apps.apple.com/app/id6789854363</a>. The native SwiftUI app, fully offline and on-device — our first public store release (20 July in Ulaanbaatar). The Mac app is also available as of the September website update.</li>
 </ul>
-<h4 id="unreleased-native-0-3-0-candidate">Unreleased — native 0.3.0 candidate<a class="docs-heading-anchor" href="#unreleased-native-0-3-0-candidate" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
+<h4 id="engineering-native-0-3-0-candidate">Engineering — native 0.3.0 candidate<a class="docs-heading-anchor" href="#engineering-native-0-3-0-candidate" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ul>
 <li><strong>Mac, iPhone and Android model discovery:</strong> model selection now includes recent releases from the website's hourly feed, compact-download filters, model cards, compatibility labels and a saved snapshot that survives offline relaunches. Refreshing metadata never changes the active model or starts a weights download. Only checksum matches from the built-in catalog expose the existing install flow.</li>
 <li>The Apple model library now uses the iPhone selector's per-app memory budget for fit badges and recommendations, and adapts its grid to phone widths.</li>

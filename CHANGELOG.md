@@ -1,36 +1,109 @@
 # Changelog
 
-## Unreleased — Kromoss diffusion & Hex native speech integrations (2026-11-22)
+App Store dates use UTC. Dated engineering entries record the source and
+verification scope at the time. See [release status](docs/RELEASE.md) for
+storefront availability.
 
-- **Native Kromoss image generation (`lodestones/Kromoss`, Apache-2.0):**
-  Bumped the symbol-isolated diffusion C ABI (`native/diffusion`) to v2 with
-  `QUENDERIN_DIFFUSION_KROMOSS = 4` and `QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5`,
-  explicit `cfg`, `flow_shift`, and `lora_path` parameters, and an upstream
-  QKV LoRA key-remapping patch (`scripts/patches/sd-cpp-moss-lora-qkv.patch`)
-  supporting the 8-step `8-steps-dmd2-lora.safetensors` accelerator alongside
-  reused MOSS Image text encoder/VAE/tokenizer artifacts. Wired end-to-end across
-  C CLI/JNI, Desktop TypeScript (`ImageGenerationService`, `quenderin image`),
-  Apple Swift (`ImageModels`, `ImageGenerationEngine`), and Android Kotlin
-  (`ImageModels`, `ImageModelInstaller`, `ImageGenerationEngine`).
-- **Native Hex + `transcribe.cpp` speech & dictation (`anomalyco/hex` +
-  `anomalyco/transcribe.cpp`, MIT):** Pinned Silero VAD v6.2 and all 20 speech
-  presets (Parakeet Unified/v2/v3/Ultra, Orukeet, Fluid Speech Pro, Whisper
-  Large v3 Turbo, Ivrit, NB-Whisper, KB-Whisper, Qwen3-ASR 0.6B/1.7B,
-  SenseVoice Small, Cohere Transcribe, Nemotron 3.5 ASR, GigaAM v3, Granite
-  Speech 5.0, Apple Speech) in `shared/speech-model-catalog.json`. Added a
-  symbol-isolated `native/speech` C ABI (`quenderin_speech_*`), CLI
-  (`quenderin-speech-cli`), and JNI bridge, Desktop `HexSpeechAdapter`
-  supporting both `hex service --embedded` loopback v2 HTTP/SSE and native CLI,
-  `quenderin voice` CLI commands, `VoiceService` integration without storing
-  spoken transcripts in logs, Apple `SpeechModels`/`SpeechFormatting`/`NativeSpeechEngine`,
-  and Android `SpeechModels`/`SpokenTextFormatter`/`NativeSpeechEngine`.
-- **Verification scope:** All native C/C++ fixture harnesses, Swift/Clang
-  resource-cleanup harnesses, Kotlin verifier checks, and Vitest unit suites
-  ran against synthetic weights and audio fixtures (`inferenceVerified: false`).
-  No multi-GB model weights were downloaded and no phone/simulator inference
-  runs were executed locally.
+## Unreleased
 
-## Unreleased — mobile MAX bindings (2026-10-26)
+[PR #250](https://github.com/alikatgh/quenderin/pull/250) merged to `main` on
+27 November 2026 at 11:03 in Ulaanbaatar (`6f16e273`). Its changes remain
+unreleased.
+
+### Added
+
+- **Local API for macOS.** The opt-in API adds Ollama-style local access via
+  OpenAI-compatible chat completions and an installed-model list. It binds to
+  loopback only and is off by default. See the [local API guide](docs/LOCAL_API.md).
+- **Thinking modes.** Choose Off, Auto, or Hide in chat settings.
+- **`quenderin run <model> [prompt]`.** Start an interactive chat or print a
+  single reply. The command can download the selected model if needed.
+
+### Changed
+
+- **Vision in the Apple chat composer.** The still-image path is wired behind
+  the disabled `FeatureFlags.visionInChat` flag. Android defines the same flag
+  and documents the future routing. See the [vision implementation note](docs/VISION_IN_CHAT.md).
+
+## Apple 0.6.3 — iPhone App Store (2026-11-24)
+
+Released at `2026-11-24T22:00:09Z` (25 November in Ulaanbaatar).
+The current Mac App Store version is 0.6.1.
+
+### Added
+
+- Experimental Kromoss local image generation with an optional 8-step mode.
+- Experimental on-device speech recognition.
+
+### Changed
+
+- Refreshed the on-device engines and model catalogs. Experimental entries
+  require manual selection. Model downloads begin only when you choose a model.
+
+Full-weight inference for the new experimental entries remains unverified.
+
+## Engineering — Kromoss and Hex source integrations (2026-11-22)
+
+See the [engineering post](https://quenderin.org/blog-kromoss-hex-november-2026)
+for platform coverage and host fixture results.
+
+- **Kromoss (`lodestones/Kromoss`, Apache-2.0).** The symbol-isolated diffusion
+  C ABI (`native/diffusion`) moved to v2 with `QUENDERIN_DIFFUSION_KROMOSS = 4`
+  and `QUENDERIN_DIFFUSION_KROMOSS_DMD2 = 5`, explicit `cfg`, `flow_shift` and
+  `lora_path`, and an upstream QKV LoRA key-remapping patch for the 8-step DMD2
+  LoRA, reusing MOSS Image text encoder/VAE/tokenizer artifacts. Wired through
+  the C CLI/JNI, desktop TypeScript, Apple Swift and Android Kotlin.
+- **Speech (`anomalyco/hex` + `anomalyco/transcribe.cpp`, MIT).** Silero VAD
+  v6.2 and 20 speech presets are pinned in `shared/speech-model-catalog.json`,
+  behind the `native/speech` C ABI, a JNI bridge, desktop `quenderin voice`
+  commands, and Apple and Android speech engines.
+- **Verification scope.** Native harnesses and unit suites ran against synthetic
+  weights and audio fixtures (`inferenceVerified: false`). No multi-GB weights
+  were downloaded and no phone or simulator inference was run.
+
+## Apple 0.6.2 — iPhone App Store (2026-11-13)
+
+### Changed
+
+- On a fresh install, the app explains the next step when a model is unavailable.
+  See the [iPhone version history](https://apps.apple.com/app/id6789854363?platform=iphone).
+
+## Apple 0.6.1 — iPhone and Mac App Store (2026-11-09)
+
+Released at `2026-11-09T22:18:47Z` on iPhone and `2026-11-09T23:16:40Z`
+on Mac. See the [iPhone version history](https://apps.apple.com/app/id6789854363?platform=iphone)
+and the [Mac version history](https://apps.apple.com/app/id6789854363?platform=mac).
+
+### Added
+
+- **On-device model roles.** Choose already-installed models for chat, output
+  checks, and photos or speech.
+- **Output checks.** An installed checker can review a reply or tool result
+  before it is shown.
+- **Look and Listen.** An installed photo or speech model handles the sample,
+  then the app restores the previous model.
+- **Local tools, Doctor, and Practice.** Local tools can be turned off
+  individually. Doctor reports the chat configuration, and Practice scores
+  tool use on saved questions.
+
+## Apple 0.6.0 — iPhone (2026-11-01) and Mac (2026-11-06)
+
+### Added
+
+- Optional connections to DeepSeek with your API key or to a Remote Harness
+  computer you prepare. Each destination has its own conversation, trust, and
+  approval controls.
+
+### Changed
+
+- Improved automatic model selection, remote draft and session recovery,
+  formatted replies, and code copying.
+- Stop preserves accepted text. Continue is available after a confirmed
+  token-budget stop.
+- Improved accessibility, error recovery, and Unicode number parsing. Updated
+  privacy disclosures for on-device and optional remote processing.
+
+## Engineering — mobile MAX bindings (2026-10-26)
 
 - Refresh the missing mobile MAX inputs: main `8d5597…` still has no
   Android/Adreno/Qualcomm/Dragonfly source, the only official release is
@@ -54,7 +127,7 @@
   is wired into model selection; phone performance/UI and store submission
   remain deferred.
 
-## Unreleased — mobile MAX adapter boundary (2026-10-25)
+## Engineering — mobile MAX adapter boundary (2026-10-25)
 
 - Add a vendor-neutral model-adapter boundary for a future mobile MAX backend:
   exact file sizes and SHA-256 receipts, exact runner ABI, telemetry/crash
@@ -76,7 +149,7 @@
   store submission remain deferred; no model-weight download, simulator or
   physical-device run was performed.
 
-## Unreleased — October open-model integrations (2026-10-18)
+## Engineering — October open-model integrations (2026-10-18)
 
 - Add nine pinned experimental text entries across all catalogs: MiniCPM-V 4.7
   1B/35B-A3B, LFM2.5-24B-A2B, all five Jais 3 sizes and Nemotron 3.5 Bolt 74B-A9B.
@@ -102,7 +175,7 @@
 - No local model-weight downloads or simulator/device runs. Full inference,
   native rendered UI, performance and new store distribution remain unverified.
 
-## Unreleased — native 0.4.0: Bonsai 2 and Muse Spark Open (2026-10-16)
+## Engineering — Bonsai 2 and Muse Spark Open (2026-10-16)
 
 - Added experimental Bonsai 2 2B, 4B, and 9B manual choices across Android,
   iOS/macOS, and the shared desktop catalog. PTQ1_0 downloads are pinned to
@@ -128,7 +201,29 @@
   structured tools, multimodal inputs and upstream maintenance.
 - No model weights were downloaded onto the development computer and no simulator
   or device was launched. Signed builds, full Muse inference and store publication
-  are separate gates; this unreleased entry does not claim they have passed.
+  were pending at this milestone.
+
+## Desktop 0.2.1 — Windows and Linux (2026-10-12)
+
+Published as the GitHub release
+[Quenderin v0.2.1](https://github.com/alikatgh/quenderin/releases/tag/v0.2.1) on
+12 October 2026 (source `156b150f`).
+
+### Added
+
+- **Ternary Bonsai 2 27B as an experimental manual choice** on Windows and Linux.
+  The installers include the pinned Prism llama.cpp CPU runtime that its packed
+  ternary weights need.
+- The 5,946,648,928-byte model downloads separately and is pinned by revision
+  and SHA-256. Quenderin checks runtime compatibility and available memory
+  before loading it.
+
+### Notes
+
+- Installers include `Quenderin-Setup-x64.exe`, `Quenderin-Portable-x64.exe`,
+  `Quenderin-x86_64.AppImage` and `Quenderin-amd64.deb`.
+- The release notes record packaged-addon execution on both platforms and
+  SHA-verified full-model load and generation through the packaged Linux addon.
 
 ## Apple apps available — marketing update (2026-09-30)
 - **Quenderin is free on the App Store for Mac and iPhone:**
@@ -137,12 +232,12 @@
   real app icons, and an install-to-offline-reply guide. Refreshed download, FAQ, README, and social materials.
 - Repaired the homepage CSS 3D phone: continuous rounded depth, readable screen, and mobile copy first.
 
-## 0.2.0 — iOS on the App Store (2026-07-20)
+## 0.2.0 — iOS on the App Store (2026-07-19)
 - **Quenderin: Offline AI Chat is live on the App Store** — free, on iPhone, worldwide (175 regions):
   <https://apps.apple.com/app/id6789854363>. The native SwiftUI app, fully offline and on-device —
-  our first public store release. The Mac app is also available as of the September website update.
+  our first public store release (20 July in Ulaanbaatar). The Mac app is also available as of the September website update.
 
-## Unreleased — native 0.3.0 candidate
+## Engineering — native 0.3.0 candidate
 
 - **Mac, iPhone and Android model discovery:** model selection now includes recent
   releases from the website's hourly feed, compact-download filters, model cards,

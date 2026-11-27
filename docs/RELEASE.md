@@ -4,6 +4,22 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 27 November 2026 — public release status
+
+- **iPhone App Store:** 0.6.3, released at `2026-11-24T22:00:09Z` (25 November
+  in Ulaanbaatar). See the [iPhone listing](https://apps.apple.com/us/app/quenderin-offline-ai-chat/id6789854363)
+  and [US iTunes Lookup](https://itunes.apple.com/us/lookup?id=6789854363).
+- **Mac App Store:** 0.6.1, released at `2026-11-09T23:16:40Z` per the
+  [Mac product page](https://apps.apple.com/us/app/id6789854363?platform=mac).
+  The shared app ID returns the iPhone listing in iTunes Lookup even when
+  `entity=macSoftware` is requested. Use the Mac product page for Mac releases.
+- **France:** Apple's French storefront returns HTTP 404 and its iTunes Lookup
+  returns zero results. [Issue #217](https://github.com/alikatgh/quenderin/issues/217)
+  tracks restoring availability.
+- **Android:** Google Play closed testing serves 0.2.0 (build 2), per the
+  25 November console check below. Android 0.6.3 (build 8) is the unsigned
+  GitHub draft candidate `android-beta-0.6.3-candidate-54d7ad2`.
+
 ## 24 November 2026 — Apple 0.6.3 / build floor (35), Android updates, and store handoff refresh
 
 Source preparation refreshed on `main` ahead of store uploads (no signed store
@@ -32,9 +48,9 @@ downloaded locally, and no simulator or physical device was run):
   keystore (`upload-keystore.p12`, outside git).
 - **Store copy & open compliance gates.** Refreshed
   [the 0.6.1 store draft](releases/2026-11-09-native-061/store-copy.md) to reflect
-  Kromoss and Hex as experimental source integrations (`inferenceVerified: false`),
-  separate from live store builds (`0.6.0` on App Store, `0.2.0` on Play Closed
-  testing - Alpha). Open owner gates remain unchanged: Apple export compliance /
+  Kromoss and Hex as experimental source integrations (`inferenceVerified: false`).
+  The store versions at source preparation were iPhone 0.6.2, Mac 0.6.1 and
+  Play Closed testing - Alpha 0.2.0. Open owner gates include Apple export compliance /
   French encryption filing (Issue `#217`), Play `Declare your trader status`
   banner, and Play Production 12-tester / 14-day threshold (`7` opted-in as of
   22 November).

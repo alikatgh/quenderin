@@ -76,15 +76,18 @@ licenses, memory floors, supported inputs, and reproduction commands. The
 
 ## Apps and availability
 
-The repository moves ahead of the stores. The latest recorded release checks
-are **19–20 October 2026**; follow the download links for current availability.
+Release status as of **27 November 2026**. Follow the download links for current
+availability.
 
 | Platform | Client | Distribution and recorded status |
 |---|---|---|
-| **macOS** | Native SwiftUI, shared `QuenderinKit` | Free [Mac App Store app](https://apps.apple.com/app/id6789854363). Version 0.5.0 (22) was submitted on 19 October; submission does not mean approval. |
-| **iOS** | Native SwiftUI, shared `QuenderinKit` | Free [App Store app](https://apps.apple.com/app/id6789854363). Version 0.5.0 (22) was submitted on 19 October. |
-| **Android** | Kotlin / Jetpack Compose | Existing Google Play closed Alpha. The 0.5.0 bundle is built and verified but unsigned for store distribution; its upload is blocked on the existing upload key. |
-| **Windows / Linux** | Electron and TypeScript | [Preview downloads](https://quenderin.org/download.html). Published installers have their own release history; they do not automatically include every change on `main`. |
+| **macOS** | Native SwiftUI, shared `QuenderinKit` | Free [Mac App Store app](https://apps.apple.com/app/id6789854363?platform=mac). Version **0.6.1**, released 9 November 2026 UTC. |
+| **iPhone** | Native SwiftUI, shared `QuenderinKit` | Free [App Store app](https://apps.apple.com/app/id6789854363?platform=iphone). Version **0.6.3**, released 24 November 2026 UTC (25 November in Ulaanbaatar). |
+| **Android** | Kotlin / Jetpack Compose | Google Play **closed testing** on **0.2.0**. Android **0.6.3** is an unsigned GitHub draft candidate. |
+| **Windows / Linux** | Electron and TypeScript | [Preview downloads](https://quenderin.org/download.html). The latest GitHub desktop release is **v0.2.1** (12 October 2026). |
+
+The App Store listing is unavailable in France. Follow
+[issue #217](https://github.com/alikatgh/quenderin/issues/217) for restoration.
 
 The Electron macOS build is a development testbed; the public Mac product is the
 native App Store app. See [release evidence](docs/RELEASE.md) and the
