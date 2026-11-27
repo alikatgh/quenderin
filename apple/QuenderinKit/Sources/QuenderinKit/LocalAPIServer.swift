@@ -219,12 +219,12 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        let requiredKey = AppSettings.shared.localAPIKey
+        let settings = AppSettings.shared
         let conn = LocalAPIConnection(
             connection: nwConnection,
             queue: queue,
             writeTimeoutSeconds: Self.writeTimeoutSeconds,
-            validateHeaders: { LocalAPIGuard.check($0, port: port, requiredAPIKey: requiredKey) }
+            validateHeaders: { settings.validateLocalAPIHeaders($0, port: port) }
         )
         let id = ObjectIdentifier(conn)
         connections[id] = conn
@@ -260,8 +260,7 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        let requiredKey = AppSettings.shared.localAPIKey
-        if let rejection = LocalAPIGuard.check(request, port: port, requiredAPIKey: requiredKey.isEmpty ? nil : requiredKey) {
+        if let rejection = AppSettings.shared.validateLocalAPIHeaders(request, port: port) {
             connection.sendAndClose(LocalHTTPResponse.error(rejection))
             return
         }

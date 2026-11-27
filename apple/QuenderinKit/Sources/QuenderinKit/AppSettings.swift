@@ -1,5 +1,8 @@
 #if canImport(SwiftUI)
 import SwiftUI
+#if os(macOS)
+import os
+#endif
 
 /// User preferences that change how the app LOOKS and BEHAVES — one observable store,
 /// UserDefaults-backed, every default matching the app's behavior before the setting existed
@@ -130,7 +133,19 @@ public final class AppSettings: ObservableObject {
         }
     }
     /// Optional Bearer API key for the macOS local API. Blank accepts any/no Authorization header.
-    @Published public var localAPIKey: String { didSet { save(localAPIKey, "localAPIKey") } }
+    @Published public var localAPIKey: String {
+        didSet {
+            let key = localAPIKey
+            localAPIKeySnapshot.withLock { $0 = key }
+            save(key, "localAPIKey")
+        }
+    }
+    private nonisolated let localAPIKeySnapshot: OSAllocatedUnfairLock<String>
+
+    nonisolated func validateLocalAPIHeaders(_ request: LocalHTTPRequest, port: UInt16) -> LocalAPIError? {
+        let key = localAPIKeySnapshot.withLock { $0 }
+        return LocalAPIGuard.check(request, port: port, requiredAPIKey: key)
+    }
     #endif
 
     /// The active download network policy, derived from the toggle above. The onboarding + model-library
@@ -163,7 +178,9 @@ public final class AppSettings: ObservableObject {
         localAPIEnabled = defaults.object(forKey: Self.key("localAPIEnabled")) as? Bool ?? false
         let storedPort = defaults.object(forKey: Self.key("localAPIPort")) as? Int ?? Int(LocalAPIGuard.defaultPort)
         localAPIPort = Int(LocalAPIGuard.clampPort(storedPort))
-        localAPIKey = defaults.string(forKey: Self.key("localAPIKey")) ?? ""
+        let key = defaults.string(forKey: Self.key("localAPIKey")) ?? ""
+        localAPIKeySnapshot = OSAllocatedUnfairLock(initialState: key)
+        localAPIKey = key
         #endif
     }
 }

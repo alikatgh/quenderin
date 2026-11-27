@@ -275,4 +275,5 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **Optional Bearer authentication:** When you leave the API key blank, any or no
   `Authorization` header is accepted (matching Ollama's dummy-key convention). When you
   set a key, every request must send `Authorization: Bearer <key>` (checked in constant
-  time), else `401`.
+  time), else `401`. Header validation uses the current key even if the client opened
+  the connection before a key change.

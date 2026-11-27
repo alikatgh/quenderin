@@ -249,6 +249,32 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(request.body, Data("{}".utf8))
     }
 
+    #if os(macOS)
+    @MainActor
+    func testHeaderValidationUsesKeyConfiguredAfterConnectionSetup() async throws {
+        let suite = "LocalAPIKeyRotation-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.localAPIKey = "old-fixture"
+        let validate: @Sendable (LocalHTTPRequest) -> LocalAPIError? = {
+            settings.validateLocalAPIHeaders($0, port: 11435)
+        }
+        func parse(_ key: String) -> LocalHTTPRequest.ParseResult {
+            let head = "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost:11435\r\n"
+                + "Content-Type: application/json\r\nContent-Length: 2\r\nAuthorization: Bearer \(key)\r\n\r\n"
+            return LocalHTTPRequest.parse(Data(head.utf8), validateHeaders: validate)
+        }
+        XCTAssertEqual(parse("old-fixture"), .needMore)
+        settings.localAPIKey = "new-fixture"
+        XCTAssertEqual(parse("new-fixture"), .needMore)
+        guard case .rejected(let error) = parse("old-fixture") else {
+            return XCTFail("The old key should be rejected before reading the body")
+        }
+        XCTAssertEqual(error.statusCode, 401)
+    }
+    #endif
+
     func testDecodeRejectsStopsThatCanCutJSONShortInEitherResponseMode() throws {
         for responseFormat in [
             #"{"type":"json_object"}"#,
