@@ -44,6 +44,28 @@ describe('LlmService plain chat', () => {
         expect(result.text).toBe('İ Before after.');
         expect(visible.join('')).toBe(result.text);
     });
+
+    it('flushes trailing non-tool prefixes like "<" or "<tool" at end of plain chat', async () => {
+        const svc = new LlmService();
+        const chunks = ['Use x <', 'tool'];
+        const prompt = vi.fn(async (_input: string, options: { onTextChunk?: (text: string) => void }) => {
+            for (const chunk of chunks) options.onTextChunk?.(chunk);
+            return chunks.join('');
+        });
+        const stub = svc as unknown as {
+            getModelAndContext: () => Promise<unknown>;
+            createChatSession: (options: { systemPrompt: string }) => unknown;
+        };
+        vi.spyOn(stub, 'getModelAndContext').mockResolvedValue({ context: { getSequence: vi.fn() } });
+        vi.spyOn(stub, 'createChatSession').mockReturnValue({ prompt });
+        const visible: string[] = [];
+
+        const result = await svc.generalChat('symbol', token => visible.push(token), { plainChat: true });
+
+        expect(executeToolCalls).not.toHaveBeenCalled();
+        expect(result.text).toBe('Use x <tool');
+        expect(visible.join('')).toBe('Use x <tool');
+    });
 });
 
 /**

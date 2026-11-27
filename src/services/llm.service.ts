@@ -1864,6 +1864,16 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
             }
 
+            if (toolFilter && onToken) {
+                const tail = stripControlTokensWithOptions(toolFilter.flush(), { trim: false });
+                if (tail) {
+                    if (firstTokenTime === null) firstTokenTime = performance.now();
+                    tokenCount++;
+                    this.tokenBuffer += tail;
+                    onToken(tail);
+                }
+            }
+
             // ─── Tool Call Processing (XML fallback path only) ──────────────
             // With native functions the library already ran the call/result loop inside prompt()
             // and the response is final text. The XML loop below serves older bindings.
@@ -1872,7 +1882,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // second call instead of running it. Bounded by MAX_TOOL_ROUNDS so a model that keeps
             // emitting tool calls can't loop forever — after the cap, any remaining markup is stripped.
             const MAX_TOOL_ROUNDS = plainChat || useNativeFunctions || jais ? 0 : 3;
-            let finalResponse = stripControlTokens(plainChat ? new ToolCallStreamFilter().feed(response) : response);
+            const plainResponse = plainChat
+                ? (() => { const filter = new ToolCallStreamFilter(); return filter.feed(response) + filter.flush(); })()
+                : response;
+            let finalResponse = stripControlTokens(plainResponse);
 
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {
                 const calls = parseToolCalls(finalResponse);

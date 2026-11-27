@@ -75,6 +75,12 @@ export class ToolCallStreamFilter {
         }
         return visible;
     }
+
+    flush(): string {
+        const tail = this.insideCall ? '' : this.pending;
+        this.pending = '';
+        return tail;
+    }
 }
 
 /** Format tool results for injecting back into the conversation */
