@@ -1,0 +1,129 @@
+import { useState } from 'react';
+import { catalog, CURATED_MODELS, modelFile } from '@handy-computer/models';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { WelcomeWizard } from '../src/App.js';
+import { useSpeechSetup } from '../src/lib/speech/useSpeechSetup.js';
+import type {
+    SpeechDownloadSnapshot, SpeechModelListResponse, SpeechSettingsResponse, UpdateSpeechSettingsRequest,
+} from '../src/lib/speech/types.js';
+
+const recommendedId = 'parakeet-unified-en-0.6b';
+const accurateId = 'Qwen3-ASR-1.7B';
+const chatCatalog = {
+    activeModelId: 'current-chat',
+    catalog: [
+        { id: 'current-chat', label: 'Current chat', sizeLabel: '1 GB', isDownloaded: true, runtimeCompatible: true },
+        { id: 'installed-chat', label: 'Installed chat', sizeLabel: '2 GB', isDownloaded: true, runtimeCompatible: true },
+        { id: 'new-chat', label: 'New chat', sizeLabel: '3 GB', isDownloaded: false, runtimeCompatible: true },
+    ],
+};
+const voiceCatalog: SpeechModelListResponse = {
+    recommendedModelId: recommendedId, accurateModelId: accurateId, runtimeEngineVersion: '0.4.1',
+    methodology: catalog.methodology,
+    models: CURATED_MODELS.map(model => ({
+        model, englishGrade: { letter: 'none', label: '?' }, waitSeconds: null, speedLevel: 0,
+        engine: { pinnedVersion: '0.4.1', requiredVersion: model.minEngine ?? null, compatibility: 'supported' },
+        installed: false, installedBytes: null,
+    })),
+};
+const noEvents = {};
+
+function Wizard() {
+    const [open, setOpen] = useState(true);
+    const speech = useSpeechSetup(true, noEvents);
+    return open ? <WelcomeWizard speech={speech} onDismiss={() => setOpen(false)} onImages={() => {}} onVision={() => {}}
+        downloadModelId={null} downloadProgress={0} /> : <p>Setup complete</p>;
+}
+
+function mockDashboard(initial: SpeechSettingsResponse) {
+    let settings = initial;
+    let download: SpeechDownloadSnapshot | undefined;
+    const writes: { method: string; url: string; body: unknown }[] = [];
+    const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
+    vi.stubGlobal('fetch', vi.fn(async (url: string, { method = 'GET', body }: RequestInit = {}) => {
+        if (method !== 'GET') writes.push({ method, url, body: typeof body === 'string' ? JSON.parse(body) : null });
+        if (url === '/api/models/catalog') return response(chatCatalog);
+        if (url === '/api/models/switch' || url === '/api/models/download') return response({});
+        if (url === '/api/speech/models') return response(voiceCatalog);
+        if (url === '/api/speech/settings') {
+            if (method === 'PUT') settings = { ...settings, ...JSON.parse(String(body)) as UpdateSpeechSettingsRequest };
+            return response(settings);
+        }
+        if (url === '/api/speech/downloads') {
+            if (method === 'GET') return response(download ? [download] : []);
+            const { modelId } = JSON.parse(String(body));
+            const row = voiceCatalog.models.find(entry => entry.model.id === modelId);
+            if (!row) throw Error('Unexpected voice model id in test request.');
+            const totalBytes = modelFile(row.model).size;
+            download = {
+                modelId, phase: 'downloading', downloadedBytes: Math.floor(totalBytes / 4), totalBytes, percent: 25,
+                bytesPerSecond: null, etaSeconds: null, error: null, updatedAt: settings.updatedAt,
+            };
+            return response(download, 202);
+        }
+        if (url.startsWith('/api/speech/downloads/')) {
+            return download?.modelId === decodeURIComponent(url.split('/').at(-1)!) ? response(download) :
+                response({ error: 'No download.', code: 'download-not-found' }, 404);
+        }
+        throw Error(`Unexpected dashboard request in test: ${url}`);
+    }));
+    return { writes, settings: () => settings };
+}
+
+async function chooseChat(modelId: string) {
+    expect(screen.getByRole('progressbar', { name: 'Setup step' }).getAttribute('aria-valuenow')).toBe('1');
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Chat model' }), { target: { value: modelId } });
+}
+
+async function expectVoiceStep() {
+    await screen.findByRole('heading', { name: 'Talk to your local model by voice' });
+    expect(screen.getByRole('progressbar', { name: 'Setup step' }).getAttribute('aria-valuenow')).toBe('2');
+    expect(screen.getByText('Optional')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Recommended.*Parakeet Unified English/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /More accurate.*Qwen3-ASR 1.7B/ })).toBeTruthy();
+}
+
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+it('switches to an installed chat model and persists Skip on the optional voice step', async () => {
+    const dashboard = mockDashboard({ voiceEnabled: true, modelId: recommendedId, autoSend: false, updatedAt: '2026-01-01T00:00:00Z' });
+    render(<Wizard />);
+    await chooseChat('installed-chat');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Voice' }));
+    await expectVoiceStep();
+    expect(screen.getByRole('button', { name: `Show all ${CURATED_MODELS.length} models` })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Skip.*type/ }));
+
+    await screen.findByText('Setup complete');
+    expect(dashboard.writes).toEqual([
+        { method: 'POST', url: '/api/models/switch', body: { modelId: 'installed-chat' } },
+        { method: 'PUT', url: '/api/speech/settings', body: { voiceEnabled: false } },
+    ]);
+    expect(dashboard.settings()).toMatchObject({ voiceEnabled: false, modelId: recommendedId });
+});
+
+it('finishes setup while the separately chosen voice model is downloading', async () => {
+    const dashboard = mockDashboard({ voiceEnabled: false, modelId: null, autoSend: false, updatedAt: '2026-01-01T00:00:00Z' });
+    render(<Wizard />);
+    await chooseChat('new-chat');
+    fireEvent.click(screen.getByRole('button', { name: 'Download chat model' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue while downloading' }));
+    await expectVoiceStep();
+    expect(screen.getByText('Downloads while you finish setup')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Download 697 MB' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('radio', { name: /More accurate.*Qwen3-ASR 1.7B/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download 2.0 GB' }));
+    const progress = await screen.findByRole<HTMLProgressElement>('progressbar', { name: /Qwen3-ASR 1.7B download progress/ });
+    expect(progress.value).toBe(25);
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish setup' }));
+
+    await screen.findByText('Setup complete');
+    expect(dashboard.writes).toEqual([
+        { method: 'POST', url: '/api/models/download', body: { modelId: 'new-chat', activate: true } },
+        { method: 'POST', url: '/api/speech/downloads', body: { modelId: accurateId } },
+        { method: 'PUT', url: '/api/speech/settings', body: { modelId: accurateId, voiceEnabled: true } },
+    ]);
+    expect(dashboard.settings()).toMatchObject({ modelId: accurateId, voiceEnabled: true, autoSend: false });
+});
