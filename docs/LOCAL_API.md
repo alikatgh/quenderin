@@ -231,7 +231,8 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   context during generation produces `finish_reason: "length"`. A native decode failure after
   partial output returns HTTP 500 (`decode_failed`) for buffered requests. If SSE headers are
   already committed, the server sends a `data:` frame containing an `error` object and closes
-  the stream without a finish reason or `[DONE]`.
+  the stream without a finish reason or `[DONE]`. The server counts an SSE completion once the
+  transport accepts its terminal frame.
 - **Context sizing:** If a manual context setting exceeds the model's estimated memory budget,
   Quenderin loads a smaller window that fits. A model switch returns `503` when no manual
   window fits. A 256-token context leaves up to 192 tokens for the rendered prompt and

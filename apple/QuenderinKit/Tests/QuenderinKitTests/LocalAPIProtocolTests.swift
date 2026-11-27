@@ -757,6 +757,36 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertTrue(containsBytes(nfdBytes, in: grammarBytes))
     }
 
+    func testSSEWriterReportsSuccessOnlyWhenTransportAcceptsTerminalFrame() async {
+        let first = Data("data: first\n\n".utf8)
+        let done = LocalAPICodec.streamDoneFrame
+        for acceptsFinal in [false, true] {
+            let buffer = LocalSSEStreamBuffer()
+            buffer.append(first)
+            let served = await buffer.writeFrames { bytes, final in
+                if final {
+                    XCTAssertEqual(bytes, done)
+                    return acceptsFinal
+                }
+                XCTAssertEqual(bytes, first)
+                buffer.finish(finalData: done)
+                return true
+            }
+            XCTAssertEqual(served, acceptsFinal)
+            XCTAssertEqual(buffer.isAborted, !acceptsFinal)
+        }
+
+        let disconnected = LocalSSEStreamBuffer()
+        disconnected.append(first)
+        disconnected.abort()
+        disconnected.finish(finalData: done)
+        let served = await disconnected.writeFrames { _, _ in
+            XCTFail("An aborted stream must not write its terminal frame")
+            return true
+        }
+        XCTAssertFalse(served)
+    }
+
     func testLocalSSEStreamBufferCoalescesAndFinishesWithoutBlockingProducer() async {
         let buffer = LocalSSEStreamBuffer(maxBufferedBytes: 64 * 1024)
         // Producer enqueues many pieces and finishes BEFORE the slow reader calls nextBatch().

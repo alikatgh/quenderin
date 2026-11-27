@@ -549,7 +549,7 @@ public final class LocalAPIServer: ObservableObject {
         // 2) The exclusive inference lease and request gate are released the instant native
         //    generation completes, never held while draining buffered SSE frames to a slow reader.
         let sseBuffer = LocalSSEStreamBuffer()
-        var writerTask: Task<Void, Never>?
+        var writerTask: Task<Bool, Never>?
         var headersStarted = false
 
         func startWriterIfNeeded() {
@@ -565,29 +565,11 @@ public final class LocalAPIServer: ObservableObject {
                 sseBuffer.enqueueProbe()
             }
             writerTask = Task { [connection, sseBuffer] in
-                while true {
-                    let batch = await sseBuffer.nextBatch()
-                    if batch.isAborted || connection.isDisconnected {
-                        connection.cancel()
-                        return
-                    }
-                    if batch.isFinished {
-                        if !batch.data.isEmpty {
-                            connection.sendAndClose(batch.data)
-                        } else {
-                            connection.cancel()
-                        }
-                        return
-                    }
-                    if !batch.data.isEmpty {
-                        let ok = await connection.send(batch.data)
-                        if !ok {
-                            sseBuffer.abort()
-                            connection.cancel()
-                            return
-                        }
-                    }
+                let sent = await sseBuffer.writeFrames { data, final in
+                    await connection.send(data, final: final)
                 }
+                if !sent { connection.cancel() }
+                return sent
             }
         }
 
@@ -645,6 +627,12 @@ public final class LocalAPIServer: ObservableObject {
             // generation has finished; slow socket draining below can never starve in-app chat.
             await releaseLease()
             await releaseGate()
+            guard !Task.isCancelled, !connection.isDisconnected, !sseBuffer.isAborted else {
+                sseBuffer.abort()
+                writerTask?.cancel()
+                connection.cancel()
+                return
+            }
 
             var tailData = Data()
             if splitThinking {
@@ -665,17 +653,12 @@ public final class LocalAPIServer: ObservableObject {
                 id: id, created: created, model: model, finishReason: finishReason
             ))
             tailData.append(LocalAPICodec.streamDoneFrame)
-            requestsServed += 1
-
-            if headersStarted {
-                sseBuffer.finish(finalData: tailData)
-                await writerTask?.value
-            } else {
-                var full = LocalHTTPResponse.sseHeaders()
-                full.append(LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant"))
-                full.append(tailData)
-                connection.sendAndClose(full)
+            startWriterIfNeeded()
+            sseBuffer.finish(finalData: tailData)
+            if await writerTask?.value == true {
+                requestsServed += 1
             }
+            connection.cancel()
         } catch InferenceError.cancelled {
             lease.requestCancel()
             await releaseLease()
@@ -701,7 +684,8 @@ public final class LocalAPIServer: ObservableObject {
             let apiError = error as? LocalAPIError ?? .internalError("Generation failed: \(error.localizedDescription)")
             if headersStarted && !connection.isDisconnected {
                 sseBuffer.finish(finalData: LocalAPICodec.encodeStreamError(apiError))
-                await writerTask?.value
+                _ = await writerTask?.value
+                connection.cancel()
             } else {
                 sseBuffer.abort()
                 writerTask?.cancel()
@@ -1159,7 +1143,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
 
     /// Sends one SSE/response chunk with a bounded write deadline so a stalled reader cannot
     /// block inference or starve in-app chat.
-    func send(_ data: Data) async -> Bool {
+    func send(_ data: Data, final: Bool) async -> Bool {
         if isDisconnected { return false }
         return await withCheckedContinuation { continuation in
             let timeoutItem = DispatchWorkItem { [weak self] in
@@ -1178,11 +1162,16 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 continuation.resume(returning: false)
                 return
             }
+            if final {
+                sendingFinal = true
+                streamingProbeHook = nil
+            }
             pendingWrite = (continuation, timeoutItem)
             lock.unlock()
 
             queue.asyncAfter(deadline: .now() + writeTimeoutSeconds, execute: timeoutItem)
-            connection.send(content: data, completion: .contentProcessed { @Sendable [weak self] error in
+            let context: NWConnection.ContentContext = final ? .finalMessage : .defaultMessage
+            connection.send(content: data, contentContext: context, isComplete: true, completion: .contentProcessed { @Sendable [weak self] error in
                 guard let self else { return }
                 guard let pending = self.takePendingWrite() else { return }
                 pending.timeout.cancel()
@@ -1190,7 +1179,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
                     self.markDisconnected()
                     pending.continuation.resume(returning: false)
                 } else {
-                    pending.continuation.resume(returning: true)
+                    pending.continuation.resume(returning: !self.isDisconnected)
                 }
             })
         }

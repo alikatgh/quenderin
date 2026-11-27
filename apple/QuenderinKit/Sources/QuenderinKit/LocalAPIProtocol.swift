@@ -1447,6 +1447,19 @@ public final class LocalSSEStreamBuffer: @unchecked Sendable {
         resumeWaiter?.resume(returning: Batch(data: Data(), isFinished: true, isAborted: true))
     }
 
+    /// Drains ordered batches and reports whether the transport accepted the terminal bytes.
+    func writeFrames(send: @Sendable (Data, Bool) async -> Bool) async -> Bool {
+        while true {
+            let batch = await nextBatch()
+            guard !Task.isCancelled, !batch.isAborted, !batch.data.isEmpty else { return false }
+            guard await send(batch.data, batch.isFinished) else {
+                abort()
+                return false
+            }
+            if batch.isFinished { return true }
+        }
+    }
+
     /// Awaits the next coalesced batch of bytes for the socket writer.
     public func nextBatch() async -> Batch {
         await withTaskCancellationHandler {
