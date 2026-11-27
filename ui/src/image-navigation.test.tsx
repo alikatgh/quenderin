@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import App from './App.js';
 
 vi.mock('./hooks/useAgentSocket.js', () => ({ useAgentSocket: () => ({
-    wsReady: true, logs: [], status: 'idle', currentUI: [],
+    wsReady: true, speechDownloadEvents: {}, downloadModelId: null, logs: [], status: 'idle', currentUI: [],
     requiredAction: { code: 'MODEL_MISSING', message: 'A text model must be installed.' }, downloadProgress: 0,
     settings: { privacyLockEnabled: false, privacyPassphrase: '', themePreference: 'light' },
     resetSession: vi.fn(), clearRequiredAction: vi.fn(), updateSettings: vi.fn(),
@@ -20,6 +20,7 @@ beforeEach(() => {
     vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
+        if (url.startsWith('/api/speech/') || url === '/api/models/catalog') return new Response('{}', { status: 503 });
         return new Response(JSON.stringify(url.includes('/health') ? { isBrainInstalled: false } : url.includes('/ready') ? { ready: false, stage: 'model_missing' } : { sessions: [] }), { status: 200 });
     }));
 });
