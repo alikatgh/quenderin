@@ -246,10 +246,16 @@ public enum JSONOutputGrammar {
                 // Keyword value shapes apply even if the instance type makes the constraint inert.
                 switch (k, v) {
                 case ("title", .string), ("description", .string), ("$schema", .string),
-                     ("properties", .object), ("required", .array), ("enum", .array),
+                     ("properties", .object), ("enum", .array),
                      ("items", .object), ("items", .array), ("items", .bool),
                      ("additionalProperties", .object), ("additionalProperties", .bool):
                     break
+                case ("required", .array(let items)):
+                    for item in items {
+                        guard case .string = item else {
+                            return .failure(.invalid("'required' entries must be strings"))
+                        }
+                    }
                 case ("title", _), ("description", _), ("$schema", _), ("properties", _),
                      ("required", _), ("enum", _), ("items", _), ("additionalProperties", _):
                     return .failure(.invalid("Invalid value for JSON Schema keyword '\(k)'"))

@@ -183,7 +183,8 @@ Supported JSON Schema keywords compile directly to a deterministic GBNF grammar
 (`object`, `properties`, `required`, `string`, string `enum`, `number`, `integer`,
 `boolean`, `null`, `array`, `items`). Strict schemas support boolean
 `additionalProperties`, including a closed object with no declared properties.
-Invalid schemas return `400` (`invalid_response_schema`). Set `json_schema.strict`
+Invalid schemas, including malformed `required` entries and `additionalProperties` values,
+return `400` (`invalid_response_schema`) in both modes. Set `json_schema.strict`
 to `true` to receive `400` (`unsupported_response_format`) for unsupported constraints
 such as `anyOf`, `$ref`, or schema-valued `additionalProperties`. With `strict` omitted
 or set to `false`, unsupported schemas can fall back to the generic JSON object grammar.
