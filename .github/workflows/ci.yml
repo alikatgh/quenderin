@@ -50,6 +50,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Verify Handy speech catalog parity
+        run: npm run test:handy-catalog
+
       - name: Install UI dependencies
         run: cd ui && npm ci
 
@@ -341,6 +344,8 @@ jobs:
         run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
       - name: Build and seal the pinned vision worker (no weights)
         run: python scripts/build_vision_runtime.py build --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-desktop"
+      - name: Build the pinned local speech worker (no model weights)
+        run: python scripts/prepare_speech_runtime.py build-desktop --work "${{ runner.temp }}/speech-desktop"
       - name: Exercise bounded image parsing and vision prompt fixtures (no weights)
         run: python scripts/test_vision_runtime.py --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-fixtures"
       - name: Load the actual Prism and image DSOs together in both orders (no weights)
@@ -356,12 +361,18 @@ jobs:
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # Exercise electron-builder's real Hardened Runtime + entitlements signing path on macOS with ad-hoc signing (`-`), no distribution keys.
+          CSC_FOR_PULL_REQUEST: ${{ runner.os == 'macOS' && 'true' || '' }}
           # robotjs 0.9.x src/xdisplay.c calls strdup() without <string.h>, which GCC 14 on ubuntu-latest rejects.
           CFLAGS: ${{ runner.os == 'Linux' && '-D_GNU_SOURCE -include string.h' || '' }}
         run: |
           npm run build
           native_arch="$(node -p process.arch)"
-          npx --no-install electron-builder --dir ${{ matrix.target }} --"$native_arch" --publish never
+          extra_args=()
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            extra_args+=(-c.mac.identity=- -c.mac.timestamp=none)
+          fi
+          npx --no-install electron-builder --dir ${{ matrix.target }} --"$native_arch" --publish never "${extra_args[@]}"
       - name: Probe the addon inside the actual packaged ASAR
         if: runner.os != 'macOS'
         run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
@@ -371,12 +382,19 @@ jobs:
       - name: Verify the shipped vision worker and exact compiled capability
         if: runner.os != 'macOS'
         run: python scripts/build_vision_runtime.py verify --directory release/${{ matrix.unpacked }}/resources/vision --packaged
-      - name: Verify the macOS lab application's packaged image runtime
+      - name: Probe the packaged local speech worker
+        if: runner.os != 'macOS'
+        run: python scripts/prepare_speech_runtime.py verify-desktop --directory release/${{ matrix.unpacked }}/resources/speech
+      - name: Verify the macOS lab application's packaged runtimes and entitlements
         if: runner.os == 'macOS'
         run: |
-          resources="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)/Contents/Resources"
+          app="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)"
+          resources="$app/Contents/Resources"
           python3 scripts/build_desktop_diffusion.py verify --directory "$resources/diffusion" --packaged
           python3 scripts/build_vision_runtime.py verify --directory "$resources/vision" --packaged
+          python3 scripts/prepare_speech_runtime.py verify-desktop --directory "$resources/speech"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          python3 scripts/verify_mac_electron_entitlements.py --app "$app" --require-signed
 
   # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
   #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was

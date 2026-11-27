@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
@@ -9,6 +10,8 @@ import { nativeWorkloads, type NativeWorkloadLease } from './nativeWorkloads.js'
 export const SPEECH_SAMPLE_RATE_HZ = 16000;
 export const SPEECH_MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 export const SPEECH_TRANSCRIPTION_TIMEOUT_MS = 5 * 60 * 1000;
+export const SPEECH_CAPTURE_TEMP_PREFIX = 'quenderin-speech-capture-';
+export const SPEECH_CAPTURE_FILENAME = 'capture.wav';
 const STDOUT_LIMIT = 256 * 1024;
 const STDERR_LIMIT = 64 * 1024;
 
@@ -151,7 +154,7 @@ export interface HexCapabilitiesResponse {
 export interface SpeechNativeRequest {
     model: string;
     directory: string;
-    wav: string;
+    wav: string | Buffer;
     vad?: boolean;
     runtime?: string;
     language?: string;
@@ -350,7 +353,11 @@ export function formatDictationTranscript(text: string, options: DictationFormat
 }
 
 export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleCount: number; durationMs: number } {
-    if (buffer.length < 44 || buffer.length > SPEECH_MAX_AUDIO_BYTES) {
+    if (typeof buffer === 'string' || Array.isArray(buffer) || !Buffer.isBuffer(buffer)) {
+        throw new Error('Audio must be a RIFF WAVE buffer.');
+    }
+    const totalBytes = buffer.byteLength;
+    if (totalBytes < 44 || totalBytes > SPEECH_MAX_AUDIO_BYTES) {
         throw new Error('WAV audio size must be between 44 bytes and 64 MiB.');
     }
     if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
@@ -361,12 +368,14 @@ export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleC
     let sampleRate = 0;
     let bitsPerSample = 0;
     let dataSize = 0;
+    let blockAlign = 0;
+    let byteRate = 0;
     let offset = 12;
-    while (offset + 8 <= buffer.length) {
+    while (offset + 8 <= totalBytes) {
         const chunkId = buffer.toString('ascii', offset, offset + 4);
         const chunkSize = buffer.readUInt32LE(offset + 4);
         const payload = offset + 8;
-        if (payload + chunkSize > buffer.length) {
+        if (payload + chunkSize > totalBytes) {
             throw new Error('Truncated WAV chunk.');
         }
         if (chunkId === 'fmt ' && chunkSize >= 16) {
@@ -374,13 +383,16 @@ export function validateWavBuffer(buffer: Buffer): { sampleRate: number; sampleC
             channels = buffer.readUInt16LE(payload + 2);
             sampleRate = buffer.readUInt32LE(payload + 4);
             bitsPerSample = buffer.readUInt16LE(payload + 14);
+            byteRate = buffer.readUInt32LE(payload + 8);
+            blockAlign = buffer.readUInt16LE(payload + 12);
         } else if (chunkId === 'data') {
             dataSize = chunkSize;
             break;
         }
         offset = payload + chunkSize + (chunkSize & 1);
     }
-    if (audioFormat !== 1 || channels !== 1 || sampleRate !== SPEECH_SAMPLE_RATE_HZ || bitsPerSample !== 16 || dataSize < 2) {
+    if (audioFormat !== 1 || channels !== 1 || sampleRate !== SPEECH_SAMPLE_RATE_HZ || bitsPerSample !== 16
+        || byteRate !== SPEECH_SAMPLE_RATE_HZ * 2 || blockAlign !== 2 || dataSize < 2 || dataSize % 2 !== 0) {
         throw new Error('WAV audio must be non-empty 16 kHz mono 16-bit PCM.');
     }
     const sampleCount = Math.floor(dataSize / 2);
@@ -923,14 +935,24 @@ export class HexSpeechAdapter {
     private async transcribeWithCliLease(request: SpeechNativeRequest, lease: NativeWorkloadLease): Promise<SpeechTranscriptionResult> {
         if (this.active) throw new Error('A speech transcription is already running in this process.');
         this.active = true;
+        let temporaryDirectory: string | undefined;
         try {
             abortIfNeeded(request.signal);
+            const executable = await this.runtime(request.runtime);
             const verified = await this.verify(request.model, request.directory, {
                 includeVad: Boolean(request.vad),
                 signal: request.signal,
             });
-            const wavPath = await this.readVerifiedWavPath(request.wav);
-            const executable = await this.runtime(request.runtime);
+            let wavPath: string;
+            if (Buffer.isBuffer(request.wav)) {
+                validateWavBuffer(request.wav);
+                // The CLI takes a file path. Keep captured audio private and delete it on every exit.
+                temporaryDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), SPEECH_CAPTURE_TEMP_PREFIX));
+                wavPath = await fs.promises.realpath(temporaryDirectory).then(directory => path.join(directory, SPEECH_CAPTURE_FILENAME));
+                await fs.promises.writeFile(wavPath, request.wav, { mode: 0o600, flag: 'wx', signal: request.signal });
+            } else {
+                wavPath = await this.readVerifiedWavPath(request.wav);
+            }
 
             let version: { abiVersion?: number; revision?: string };
             try {
@@ -1001,7 +1023,11 @@ export class HexSpeechAdapter {
                 segments: Array.isArray(parsed.segments) ? parsed.segments : [],
             };
         } finally {
-            this.active = false;
+            try {
+                if (temporaryDirectory) await fs.promises.rm(temporaryDirectory, { recursive: true, force: true });
+            } finally {
+                this.active = false;
+            }
         }
     }
 

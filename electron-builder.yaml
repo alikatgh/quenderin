@@ -16,12 +16,21 @@ extraResources:
     to: vision
     filter:
       - "**/*"
+  - from: build/speech/${os}-${arch}
+    to: speech
+    filter:
+      - "**/*"
 directories:
   output: release
   # Icon resources (icon.icns / icon.ico / icon.png) — build/ is gitignored TS output,
   # so the electron-builder resources live under brand/ instead.
   buildResources: brand/electron
 mac:
+  hardenedRuntime: true
+  entitlements: brand/electron/entitlements.mac.plist
+  entitlementsInherit: brand/electron/entitlements.mac.inherit.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: Quenderin records audio when you dictate into chat and transcribes it on this computer.
   category: public.app-category.productivity
   # Lab / R&D only — not a public distribution channel.
   target:
@@ -99,6 +108,7 @@ files:
   - node_modules/**/*
   - public/**/*
   - package.json
+  - THIRD_PARTY_NOTICES.md
   # Runtime data next to dist/ inside the asar (sampling-profiles, model catalog, safety list).
   # samplingProfiles.ts resolves ../../../shared from dist/src/services — without this glob the
   # packaged local-inference path falls back to EMBEDDED recipes (or used to hard-throw).

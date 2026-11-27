@@ -1,3 +1,4 @@
+import type { SpeechDownloadManager } from '../services/speech/downloadManager.js';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
@@ -96,7 +97,8 @@ export class WebSocketManager {
         private authToken: string = '',
         /** The GOVERNED task agent (createGovernedAgent behind approval/undo seams) — the
          *  dashboard twin of `quenderin do`. Optional so tests of the legacy paths are unchanged. */
-        private taskService?: DashboardTaskService
+        private taskService?: DashboardTaskService,
+        private speechDownloads?: SpeechDownloadManager,
     ) {
         // Restrict the upgrade to /ws — without `path`, ws upgrades ANY HTTP path (H19).
         // r20: cap the raw frame size — without maxPayload the ws default accepts ~100 MiB frames,
@@ -215,6 +217,57 @@ export class WebSocketManager {
             this.voiceService.on('action_required', pushActionRequired);
             this.llmService.on('action_required', pushActionRequired);
             this.llmService.on('model_download_progress', pushModelDownloadProgress);
+            const pendingSpeechPhases = new Map<string, string>();
+            let speechFlushTimer: ReturnType<typeof setTimeout> | null = null;
+            const rawSocket = (ws as WebSocket & { _socket?: { on?: (ev: string, fn: () => void) => void; off?: (ev: string, fn: () => void) => void } })._socket;
+            const clearPendingSpeech = () => {
+                if (speechFlushTimer) {
+                    clearTimeout(speechFlushTimer);
+                    speechFlushTimer = null;
+                }
+                pendingSpeechPhases.clear();
+                rawSocket?.off?.('drain', flushPendingSpeech);
+            };
+            const scheduleSpeechFlush = () => {
+                if (speechFlushTimer || pendingSpeechPhases.size === 0 || ws.readyState !== WebSocket.OPEN) return;
+                speechFlushTimer = setTimeout(flushPendingSpeech, 100);
+                speechFlushTimer.unref?.();
+            };
+            const flushPendingSpeech = () => {
+                if (speechFlushTimer) {
+                    clearTimeout(speechFlushTimer);
+                    speechFlushTimer = null;
+                }
+                if (ws.readyState !== WebSocket.OPEN) {
+                    pendingSpeechPhases.clear();
+                    return;
+                }
+                for (const [modelId, payload] of pendingSpeechPhases) {
+                    if (ws.bufferedAmount > MAX_SEND_BUFFER_BYTES) {
+                        scheduleSpeechFlush();
+                        return;
+                    }
+                    pendingSpeechPhases.delete(modelId);
+                    ws.send(payload);
+                }
+            };
+            rawSocket?.on?.('drain', flushPendingSpeech);
+            const unsubscribeSpeech = this.speechDownloads?.subscribe(snapshot => {
+                if (ws.readyState !== WebSocket.OPEN) return;
+                const payload = JSON.stringify({ type: 'speech_download_progress', snapshot });
+                if (ws.bufferedAmount <= MAX_SEND_BUFFER_BYTES) {
+                    pendingSpeechPhases.delete(snapshot.modelId);
+                    ws.send(payload);
+                    return;
+                }
+                if (snapshot.phase !== 'downloading') {
+                    // Preserve MAX_SEND_BUFFER_BYTES: coalesce at most one latest phase frame per model
+                    // and flush it once the socket drains; active-job REST polling also reconciles state.
+                    pendingSpeechPhases.set(snapshot.modelId, payload);
+                    scheduleSpeechFlush();
+                }
+                this.safeSend(ws, payload);
+            });
 
             // The governed task channel: steps stream live; an approval question renders the
             // renderer's dialog. Registered per-connection with the same stale-cleanup discipline
@@ -586,6 +639,8 @@ export class WebSocketManager {
                 this.voiceService.off('action_required', pushActionRequired);
                 this.llmService.off('action_required', pushActionRequired);
                 this.llmService.off('model_download_progress', pushModelDownloadProgress);
+                unsubscribeSpeech?.();
+                clearPendingSpeech();
                 if (this.taskService) {
                     this.taskService.off('step', pushTaskStep);
                     this.taskService.off('approval_request', pushTaskApproval);

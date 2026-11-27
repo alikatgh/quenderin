@@ -9,6 +9,7 @@ import { sanitizeNoteFilename } from './utils/notes.js';
 import { MemoryService } from './services/memory.service.js';
 import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
+import { createSpeechRouter, type SpeechRouteDependencies } from './routes/speech.js';
 import docsRoute from './routes/docs.js';
 import { step5Routes } from './routes/step5.js';
 import { registerHyMemoryRoutes } from './routes/hyMemory.js';
@@ -48,7 +49,7 @@ const GOAL_TEMPLATES = [
     { id: 'navigate-settings', category: 'Navigation',   label: 'Change a setting',       template: 'Go to Settings and turn on {setting name}' },
 ];
 
-export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService, sessionService?: SessionService, memoryService?: MemoryService, authToken: string = ''): Express {
+export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService, sessionService?: SessionService, memoryService?: MemoryService, authToken: string = '', speech?: SpeechRouteDependencies): Express {
     const app = express();
 
     const isAllowedLocalOrigin = (origin: string): boolean => {
@@ -94,7 +95,12 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             callback(new Error(`CORS: origin '${origin}' is not allowed`));
         }
     }));
-    app.use(express.json({ limit: '256kb' }));
+    const parseJson = express.json({ limit: '256kb' });
+    app.use((req, res, next) => {
+        // Dictation accepts a bounded raw WAV and must never reach the JSON error logger.
+        if (/^\/api\/speech\/transcribe\/?$/i.test(req.path)) return next();
+        return parseJson(req, res, next);
+    });
     // Local loopback server: cap request rate before auth and the filesystem/download routes.
     // 600/minute is enough for the dashboard's polls and still bounds a tight local flood.
     app.use(rateLimit({
@@ -130,14 +136,15 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // data, so its GET requires the token like the other read-protected prefixes.
     // /api/tasks returns the governed agent's per-task action history (goals + what was done) —
     // user data, token-gated like the device agent's ledger.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks'];
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/models', '/api/speech/models', '/api/speech/settings', '/api/speech/downloads'];
     const requiresAuth = (req: express.Request): boolean => {
-        if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
+        const pathname = req.path.toLowerCase();
+        if (pathname.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
         // HEAD must gate exactly like GET: Express 5 falls an unmatched-HEAD back to the GET handler
         // (router: `if (method==='head' && !methods.head) method='get'`), so an un-tokened HEAD to a
         // protected read route would run the handler and leak existence/size via Content-Length
         // (and any GET side effects) with the body merely suppressed (bug hunt r-uc #3).
-        if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
+        if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return true;
         return false;
     };
     app.use((req, res, next) => {
@@ -232,7 +239,158 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     });
 
 
+    if (speech) {
+        app.get('/api/speech/credits', (_req, res) => {
+            res.type('text/plain').sendFile(path.join(publicPath, '..', 'THIRD_PARTY_NOTICES.md'));
+        });
+        app.use('/api/speech', createSpeechRouter(speech));
+    }
+
     if (llmService) {
+        interface ActiveChatDownload {
+            modelId: string;
+            activate: boolean;
+            activationRevision: number | null;
+            promise: Promise<void>;
+        }
+        interface PendingChatActivation {
+            modelId: string;
+            revision: number;
+            status: 'pending' | 'activating' | 'failed';
+            code: string | null;
+            error: string | null;
+            attempts: number;
+            timer?: ReturnType<typeof setTimeout>;
+        }
+        const MAX_ACTIVATION_RETRIES = 12;
+        const rawRetryMs = Number(process.env.QUENDERIN_MODEL_ACTIVATION_RETRY_MS);
+        const activationRetryMs = Number.isFinite(rawRetryMs) && rawRetryMs >= 5 ? rawRetryMs : 1500;
+        let modelChoiceRevision = 0;
+        let activeDownload: ActiveChatDownload | null = null;
+        let pendingActivation: PendingChatActivation | null = null;
+
+        const clearPendingActivation = () => {
+            if (pendingActivation?.timer) clearTimeout(pendingActivation.timer);
+            pendingActivation = null;
+        };
+
+        const isTransientBusyError = (error: unknown): boolean => {
+            const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+            const message = error instanceof Error ? error.message : String(error ?? '');
+            return code === 'INFERENCE_BUSY'
+                || /already running|current .* operation|using the local engine|busy/i.test(message);
+        };
+
+        const classifyChatModelError = (
+            error: unknown,
+            stage: 'download' | 'activation',
+        ): { code: string; message: string } => {
+            const errCode = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+            const rawMessage = error instanceof Error ? error.message : String(error ?? '');
+            if (isTransientBusyError(error)) {
+                return {
+                    code: 'MODEL_ACTIVATION_BUSY',
+                    message: 'Could not activate the downloaded chat model while another local operation was running. Try again or select it in Settings.',
+                };
+            }
+            if (errCode === 'MODEL_RUNTIME_UNSUPPORTED') {
+                return {
+                    code: 'MODEL_RUNTIME_UNSUPPORTED',
+                    message: 'This chat model requires a compatible local runtime before it can be activated.',
+                };
+            }
+            if (errCode === 'MODEL_MEMORY_UNSAFE') {
+                return {
+                    code: 'MODEL_MEMORY_UNSAFE',
+                    message: 'Not enough available memory to load this chat model. Choose a smaller model in Settings.',
+                };
+            }
+            if (errCode === 'ENOSPC' || errCode === 'EDQUOT' || /not enough.*(?:disk|space)|enospc/i.test(rawMessage)) {
+                return {
+                    code: 'MODEL_DISK_FULL',
+                    message: 'Not enough free disk space to finish installing the chat model. Free some space and try again.',
+                };
+            }
+            if (errCode === 'EACCES' || errCode === 'EPERM' || errCode === 'EROFS' || errCode === 'ELOOP') {
+                return {
+                    code: 'MODEL_STORAGE_PERMISSION',
+                    message: 'Quenderin could not access the local models folder. Check folder permissions and try again.',
+                };
+            }
+            if (errCode === 'ENOENT') {
+                return {
+                    code: 'MODEL_FILE_MISSING',
+                    message: 'The downloaded chat model file could not be found. Download it again.',
+                };
+            }
+            if (/integrity|sha-?256|checksum|corrupt|gguf|magic|truncat/i.test(rawMessage)) {
+                return {
+                    code: 'MODEL_INTEGRITY_FAILED',
+                    message: 'The downloaded chat model failed verification. Download it again.',
+                };
+            }
+            if (
+                errCode === 'ETIMEDOUT' || errCode === 'ECONNRESET' || errCode === 'ENOTFOUND'
+                || errCode === 'ECONNREFUSED' || errCode === 'ABORT_ERR'
+                || /network|fetch|http\s+\d|timed?\s*out/i.test(rawMessage)
+            ) {
+                return {
+                    code: 'MODEL_DOWNLOAD_NETWORK',
+                    message: 'The chat model download was interrupted. Check your connection and try again.',
+                };
+            }
+            if (stage === 'download') {
+                return {
+                    code: 'MODEL_DOWNLOAD_FAILED',
+                    message: 'The chat model download failed before activation. Try downloading it again.',
+                };
+            }
+            return {
+                code: 'MODEL_ACTIVATION_FAILED',
+                message: 'Could not activate the downloaded chat model. Try again or select a model in Settings.',
+            };
+        };
+
+        const attemptActivation = async (modelId: string, revision: number, attempt = 0): Promise<void> => {
+            if (revision !== modelChoiceRevision) return;
+            clearPendingActivation();
+            pendingActivation = { modelId, revision, status: 'activating', code: null, error: null, attempts: attempt };
+            try {
+                await llmService.switchModel(modelId);
+                if (pendingActivation?.revision === revision) clearPendingActivation();
+            } catch (error) {
+                logger.error('Background model activation failed:', error);
+                if (revision !== modelChoiceRevision) return;
+                const busy = isTransientBusyError(error);
+                if (busy && attempt < MAX_ACTIVATION_RETRIES) {
+                    const nextAttempt = attempt + 1;
+                    const timer = setTimeout(() => {
+                        void attemptActivation(modelId, revision, nextAttempt);
+                    }, activationRetryMs);
+                    timer.unref?.();
+                    pendingActivation = {
+                        modelId,
+                        revision,
+                        status: 'pending',
+                        code: 'MODEL_ACTIVATION_BUSY',
+                        error: 'Waiting for the current local AI or speech operation to finish before activating this model.',
+                        attempts: nextAttempt,
+                        timer,
+                    };
+                    return;
+                }
+                const classified = classifyChatModelError(error, 'activation');
+                pendingActivation = {
+                    modelId,
+                    revision,
+                    status: 'failed',
+                    code: classified.code,
+                    error: classified.message,
+                    attempts: attempt + 1,
+                };
+            }
+        };
+
         const checkRuntime = (entry: RuntimeModelDescriptor) =>
             llmService.checkModelRuntime?.(entry) ?? Promise.resolve(getModelRuntimeCompatibility(entry));
         app.get('/api/models/catalog', async (_req, res) => {
@@ -252,11 +410,29 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 };
             }));
             // activeModelId lets the Model Manager render the Active badge + Use buttons (r9 H1).
-            res.json({ catalog, activeModelId: llmService.getActiveModelId() });
+            res.json({
+                catalog,
+                activeModelId: llmService.getActiveModelId(),
+                downloadingModelId: activeDownload?.modelId ?? llmService.getActiveDownloadModelId?.() ?? null,
+                downloadingActivate: activeDownload ? activeDownload.activate : false,
+                pendingActivation: pendingActivation
+                    ? {
+                        modelId: pendingActivation.modelId,
+                        status: pendingActivation.status,
+                        code: pendingActivation.code,
+                        error: pendingActivation.error,
+                    }
+                    : null,
+            });
         });
 
         app.post('/api/models/download', async (req, res) => {
-            const modelId = req.body?.modelId as string | undefined;
+            const rawModelId: unknown = req.body?.modelId;
+            if (rawModelId !== undefined && (Array.isArray(rawModelId) || typeof rawModelId !== 'string')) {
+                res.status(400).json({ error: 'Invalid modelId' });
+                return;
+            }
+            const modelId = rawModelId;
             // Reject an unknown id instead of silently downloading the fallback model (L5; mirrors DELETE).
             if (modelId !== undefined && !MODEL_CATALOG.some(m => m.id === modelId)) {
                 res.status(400).json({ error: `Unknown modelId: ${modelId}` });
@@ -278,16 +454,85 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                     return;
                 }
             }
-            llmService.downloadModel(requestedModelId).catch(e => logger.error("Background model download failed:", e));
-            res.json({ message: "Model download initiated.", modelId: requestedModelId });
+            const activate = req.body?.activate === true;
+            const inFlightModelId = activeDownload?.modelId ?? llmService.getActiveDownloadModelId?.() ?? null;
+            if (inFlightModelId && inFlightModelId !== requestedModelId) {
+                const inFlightLabel = MODEL_CATALOG.find(m => m.id === inFlightModelId)?.label ?? inFlightModelId;
+                res.status(409).json({
+                    error: `Another chat model download (${inFlightLabel}) is already in progress. Wait for it to finish before starting a different model.`,
+                    code: 'MODEL_DOWNLOAD_BUSY',
+                    activeDownloadModelId: inFlightModelId,
+                });
+                return;
+            }
+            if (activeDownload && activeDownload.modelId === requestedModelId) {
+                if (activate) {
+                    clearPendingActivation();
+                    ++modelChoiceRevision;
+                    activeDownload.activate = true;
+                    activeDownload.activationRevision = modelChoiceRevision;
+                }
+                res.json({
+                    message: 'Model download already in progress.',
+                    modelId: requestedModelId,
+                    status: 'downloading',
+                    joined: true,
+                    activate: activeDownload.activate,
+                });
+                return;
+            }
+            let activationRevision: number | null = null;
+            if (activate) {
+                clearPendingActivation();
+                ++modelChoiceRevision;
+                activationRevision = modelChoiceRevision;
+            }
+            const job: ActiveChatDownload = {
+                modelId: requestedModelId,
+                activate,
+                activationRevision,
+                promise: Promise.resolve(),
+            };
+            activeDownload = job;
+            job.promise = Promise.resolve()
+                .then(() => llmService.downloadModel(requestedModelId))
+                .then(async () => {
+                    if (activeDownload === job) activeDownload = null;
+                    if (job.activate && job.activationRevision !== null && job.activationRevision === modelChoiceRevision) {
+                        await attemptActivation(requestedModelId, job.activationRevision);
+                    }
+                })
+                .catch(error => {
+                    if (activeDownload === job) activeDownload = null;
+                    logger.error('Background model download or activation failed:', error);
+                    if (job.activate && job.activationRevision !== null && job.activationRevision === modelChoiceRevision) {
+                        const classified = classifyChatModelError(error, 'download');
+                        pendingActivation = {
+                            modelId: requestedModelId,
+                            revision: job.activationRevision,
+                            status: 'failed',
+                            code: classified.code,
+                            error: classified.message,
+                            attempts: 0,
+                        };
+                    }
+                });
+            res.json({
+                message: 'Model download initiated.',
+                modelId: requestedModelId,
+                status: 'downloading',
+                joined: false,
+                activate: job.activate,
+            });
         });
 
         /** Switch active model (pins selection until changed again) */
         app.post('/api/models/switch', async (req, res) => {
-            const modelId = req.body?.modelId as string | undefined;
-            if (!modelId || !MODEL_CATALOG.some(m => m.id === modelId)) {
+            const rawModelId: unknown = req.body?.modelId;
+            if (Array.isArray(rawModelId) || typeof rawModelId !== 'string' || !rawModelId || !MODEL_CATALOG.some(m => m.id === rawModelId)) {
                 return res.status(400).json({ error: 'Unknown or missing modelId' });
             }
+            const modelId = rawModelId;
             const entry = MODEL_CATALOG.find(m => m.id === modelId)!;
             const runtime = await checkRuntime(entry);
             if (!runtime.canLoad) {
@@ -304,6 +549,8 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 return res.status(404).json({ error: 'Model file not found on disk. Download it first.' });
             }
             try {
+                clearPendingActivation();
+                ++modelChoiceRevision;
                 await llmService.switchModel(modelId);
                 res.json({ message: 'Model switched.', modelId, activeModel: llmService.getActiveModelLabel() });
             } catch (err) {

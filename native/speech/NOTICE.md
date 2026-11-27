@@ -1,7 +1,7 @@
 # Third-Party Notices — Quenderin Native Speech Runtime (`native/speech`)
 
 Quenderin's local speech integration incorporates concepts, protocol contracts, model
-catalog pins, and dictation formatting components from two MIT-licensed open-source
+catalog pins, and dictation formatting components from four MIT-licensed open-source
 projects:
 
 1. **Hex** (`https://github.com/anomalyco/hex`, commit `fd2fafc91b67754065af17b9db70bb1cbbc13bb1`)
@@ -17,6 +17,26 @@ projects:
    - Copyright (c) Anomaly
    - Reused components:
      - Unified C inference API (`include/transcribe.h`) across Whisper, Parakeet TDT, Nemotron ASR, Cohere Transcribe, Qwen3-ASR, SenseVoice, GigaAM, Granite Speech, and Silero VAD inside a symbol-isolated shared library.
+
+3. **Handy** (`https://github.com/cjpais/Handy`, commit `05efc5fc180197dc0fa9d568dd9812904b723b8b`)
+   - License: MIT License
+   - Copyright (c) 2025 CJ Pais
+   - Reused components:
+     - Desktop onboarding model picker and table, plus the four-bar speed presentation
+     - Resumable HTTP downloader from `src-tauri/src/managers/model/download.rs` and audio downmix from `src-tauri/src/audio_toolkit/audio/decode.rs`
+     - Accuracy grade bands (`GRADE_CEILINGS` A:5 B:10 C:20 D:30) and speed meter (`SPEED_CUTOFFS` [2, 3.5, 7.5, 20]; four-bar display)
+
+4. **@handy-computer/models** (`https://github.com/handy-computer/models`, v0.2.3)
+   - License: MIT License (as declared in the package manifest)
+   - Reused components:
+     - Pinned catalog, default-quant artifacts and model licenses
+     - English recommendations, accuracy grades and benchmark wait times
+
+   The model weights themselves are not redistributed by Quenderin. Each catalog entry
+   carries its own license (for example, Parakeet Unified English 0.6B is `cc-by-4.0`);
+   the picker shows that license per model, and downloads go directly to the pinned
+   Hugging Face revision recorded in the pinned package. The desktop app displays the notices under
+   Settings → Voice → Voice credits and licenses.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in

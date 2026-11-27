@@ -1,3 +1,5 @@
+import type { SpeechDownloadEvent, SpeechDownloadSnapshot } from '../lib/speech/types.js';
+import { mergeSpeechSnapshot } from '../lib/speech/useSpeechDownload.js';
 import { useState, useEffect, useRef } from 'react';
 import { UIElement, LogEntry, RequiredAction } from '../types/index.js';
 import { authToken, apiFetch } from '../lib/api.js';
@@ -52,7 +54,8 @@ type AgentMessage =
     | { type: 'error'; message: string }
     | { type: 'done' }
     | { type: 'action_required'; data: RequiredAction }
-    | { type: 'model_download_progress'; data?: { progress?: number } }
+    | { type: 'model_download_progress'; data?: { progress?: number; modelId?: string } }
+    | SpeechDownloadEvent
     | { type: 'agent_paused'; isPaused: boolean; isRunning: boolean }     // Q-281: trust-loop pause ack
     | { type: 'agent_resumed'; manualAction: string | null; isPaused: boolean; isRunning: boolean }
     | { type: 'preset_changed'; presetId: string }
@@ -89,6 +92,8 @@ export function useAgentSocket() {
     const [currentUI, setCurrentUI] = useState<UIElement[]>([]);
     const [requiredAction, setRequiredAction] = useState<RequiredAction | null>(null);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
+    const [downloadModelId, setDownloadModelId] = useState<string | null>(null);
+    const [speechDownloadEvents, setSpeechDownloadEvents] = useState<Readonly<Record<string, SpeechDownloadSnapshot>>>({});
     const [wsReady, setWsReady] = useState(false);
     const [activePresetId, setActivePresetId] = useState<string>('general');
     const [agentPaused, setAgentPaused] = useState(false);   // Q-281: true while a run is parked for intervention
@@ -236,6 +241,10 @@ export function useAgentSocket() {
                     return; // Don't add to general logs, this is an interactive modal trigger
                 } else if (data.type === 'model_download_progress') {
                     setDownloadProgress(data.data?.progress ?? 0);
+                    setDownloadModelId(data.data?.modelId ?? null);
+                    return;
+                } else if (data.type === 'speech_download_progress') {
+                    setSpeechDownloadEvents(current => mergeSpeechSnapshot(current, data.snapshot));
                     return;
                 } else if (data.type === 'preset_changed') {
                     setActivePresetId(data.presetId);
@@ -408,18 +417,6 @@ export function useAgentSocket() {
         return true;
     };
 
-    const manualVoiceStart = () => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'manual_voice_start' }));
-        }
-    };
-
-    const manualVoiceStop = () => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'manual_voice_stop' }));
-        }
-    };
-
     const resetSession = () => {
         setLogs([]);
         setStatus('idle');
@@ -567,10 +564,10 @@ export function useAgentSocket() {
     };
 
     return {
-        wsReady,
+        wsReady, speechDownloadEvents, downloadModelId,
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, stopAgent, loadSession,
+        pauseAgent, resumeAgent, stopChat, stopAgent, loadSession,
         taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask,
         missionApproval, answerMissionApproval,
     };

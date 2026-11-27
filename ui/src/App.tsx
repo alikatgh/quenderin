@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, ArrowRight, Download, CheckCircle2, BrainCircuit, Mic } from 'lucide-react';
+import { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react';
+import { Menu, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
 import { apiFetch, hasAuthToken } from './lib/api.js';
 import { ThemeProvider } from './context/ThemeContext.js';
@@ -15,7 +15,13 @@ import { PrivacyLock } from './components/PrivacyLock.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { hashPassphrase, isPassphraseHash } from './lib/passphrase.js';
 import { useFocusTrap } from './lib/useFocusTrap.js';
-import { DownloadWaitPlayground } from './components/DownloadWaitPlayground.js';
+import { WelcomeChatModelStep } from './components/onboarding/WelcomeChatModelStep.js';
+import { ChatModelActivationBanner } from './components/onboarding/ChatModelActivationBanner.js';
+import { VoiceModelStep } from './components/onboarding/VoiceModelStep.js';
+import { useChatModelSetup, type ChatModelSetup } from './lib/useChatModelSetup.js';
+import { useSpeechSetup, type SpeechSetup } from './lib/speech/useSpeechSetup.js';
+import { isSpeechDownloadActive } from './lib/speech/useSpeechDownload.js';
+import { DownloadStatus } from './vendor/handy/components/onboarding/DownloadStatus.js';
 
 // Lazy-load heavy components — they import syntax highlighter, markdown,
 // and data-fetching code that isn't needed on initial render.
@@ -29,197 +35,37 @@ function LazyFallback() {
   return <div className="flex items-center justify-center h-full text-zinc-400 dark:text-zinc-500 text-sm">Loading...</div>;
 }
 
-function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress }: { onDismiss: () => void, onImages: () => void, onVision: () => void, downloadProgress: number }) {
+export function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress, downloadModelId, recommendedModelId, speech, chatSetup }: {
+  onDismiss: () => void;
+  onImages: () => void;
+  onVision: () => void;
+  downloadProgress: number;
+  downloadModelId: string | null;
+  recommendedModelId?: string;
+  speech: SpeechSetup;
+  chatSetup?: ChatModelSetup;
+}) {
   const [step, setStep] = useState(1);
-  // r11 backlog #5: full modal focus management — into the dialog on open, Tab wrapped inside,
-  // restored to the opener on close (initial-focus alone left Tab escaping behind the backdrop).
   const panelRef = useFocusTrap<HTMLDivElement>();
-  const [isFinishing, setIsFinishing] = useState(false);
-  const [isModelDownloading, setIsModelDownloading] = useState(false);
-  // r10: a failed kickoff used to just reset the spinner — the user clicked, nothing visibly
-  // happened, and there was no hint why. Keep the reason on screen next to the retry.
-  const [modelDlError, setModelDlError] = useState<string | null>(null);
-  const [isVoiceDownloading, setIsVoiceDownloading] = useState(false);
-  const [voiceDownloadProgress, setVoiceDownloadProgress] = useState(0);
-
-  const handleDownloadModel = async () => {
-    setIsModelDownloading(true);
-    setModelDlError(null);
-    try {
-      const res = await apiFetch('/api/models/download', { method: 'POST' });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        throw new Error(detail?.error || `The server rejected the download (${res.status}).`);
-      }
-    } catch (e) {
-      setIsModelDownloading(false);
-      setModelDlError(e instanceof Error && e.message ? e.message : 'Download failed — is the backend running?');
-    }
-  };
-
-  const handleDownloadVoice = async () => {
-    setIsVoiceDownloading(true);
-    // Hoisted + cleared in finally: the progress-simulator interval was only cleared on the success
-    // path, so a throw from apiFetch left it running forever (firing setState every 500ms) (deep-hunt).
-    let interval: ReturnType<typeof setInterval> | undefined;
-    try {
-      // Simulate progress since unzipper progress is complex, the whole zip is just 50MB
-      setVoiceDownloadProgress(10);
-      interval = setInterval(() => {
-        setVoiceDownloadProgress(p => p >= 90 ? 90 : p + 10);
-      }, 500);
-
-      const res = await apiFetch('/api/voice/download', { method: 'POST' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      setVoiceDownloadProgress(100);
-      setTimeout(() => setIsVoiceDownloading(false), 1000);
-    } catch {
-      setIsVoiceDownloading(false);
-      setVoiceDownloadProgress(0);
-    } finally {
-      if (interval) clearInterval(interval);
-    }
-  };
-
-  const handleFinish = async () => {
-    setIsFinishing(true);
-    try {
-      await new Promise(r => setTimeout(r, 500));
-      onDismiss();
-    } catch {
-      // Best-effort: dismissing should still complete even if the delay/onDismiss throws.
-    } finally {
-      setIsFinishing(false);
-    }
-  };
+  const localChatSetup = useChatModelSetup(downloadModelId, downloadProgress, !chatSetup);
+  const chat = chatSetup ?? localChatSetup;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Welcome Setup Wizard">
-      <div ref={panelRef} tabIndex={-1} className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 focus:outline-none">
-
-        {/* Header Progress Bar */}
-        <div role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label="Setup step" className="w-full h-1 bg-zinc-100 dark:bg-zinc-800">
-          <div className="h-full bg-qteal-500 transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} />
+      <div ref={panelRef} tabIndex={-1} className={`max-h-[calc(100dvh-2rem)] w-full overflow-auto rounded-2xl border border-zinc-200 bg-white text-zinc-900 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 ${step === 1 ? 'max-w-md' : 'max-w-xl'}`}>
+        <div role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={2} aria-label="Setup step" className="h-1 w-full bg-zinc-100 dark:bg-zinc-800">
+          <div className="h-full bg-qteal-500 motion-safe:transition-all" style={{ width: `${step * 50}%` }} />
         </div>
-
-        <div className="p-6">
-          {step === 1 && (
-            <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <TerminalSquare className="w-6 h-6 text-qteal-500 mb-4" />
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Welcome to Quenderin</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
-                A private assistant that runs 100% locally on your computer. It watches your phone screen and controls your apps, just like a human would.
-              </p>
-              <button onClick={() => setStep(2)} className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group">
-                Next: Setup AI Knowledge <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button type="button" onClick={onImages} className="mt-3 w-full rounded-lg py-2 text-[13px] font-medium text-qteal-600 dark:text-qteal-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-qteal-500">Use images first</button>
-              <button type="button" onClick={onVision} className="mt-1 w-full rounded-lg py-2 text-[13px] font-medium text-qteal-600 dark:text-qteal-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-qteal-500">Ask about an image</button>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <BrainCircuit className="w-6 h-6 text-emerald-500 mb-4" />
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Get AI Knowledge</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
-                Download the AI model to understand your screen and help you:
-              </p>
-
-              {downloadProgress === 100 ? (
-                <div className="animate-in fade-in duration-300 mb-6">
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">Knowledge Installed Successfully</p>
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">The AI assistant is now saved to your computer.</p>
-                    </div>
-                  </div>
-                </div>
-              ) : isModelDownloading || downloadProgress > 0 ? (
-                <div className="animate-in fade-in duration-300">
-                  <DownloadWaitPlayground progress={downloadProgress} />
-                </div>
-              ) : (
-                <div className="animate-in fade-in duration-300 mb-6">
-                  <button onClick={handleDownloadModel} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
-                    <Download className="w-5 h-5" /> {modelDlError ? 'Retry Download' : 'Get Knowledge Automatically'}
-                  </button>
-                  {modelDlError && (
-                    <p className="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{modelDlError}</p>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setStep(3)}
-                // Download continues in the background — don't trap the user on a dead wait.
-                className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group"
-              >
-                {(isModelDownloading || (downloadProgress > 0 && downloadProgress < 100))
-                  ? 'Continue while downloading'
-                  : 'Next: Enable Voice'}
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <Mic className="w-6 h-6 text-blue-500 mb-4" />
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Enable Voice Helper</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
-                Talk to Quenderin directly with voice control. Fully offline.
-              </p>
-
-              {voiceDownloadProgress === 100 ? (
-                <div className="animate-in fade-in duration-300 mb-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Voice Helper Ready</p>
-                      <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">You can now talk to your assistant offline.</p>
-                    </div>
-                  </div>
-                </div>
-              ) : isVoiceDownloading || voiceDownloadProgress > 0 ? (
-                <div className="animate-in fade-in duration-300 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50">
-                  <div className="flex justify-between text-xs font-semibold mb-2">
-                    <span className="text-blue-600 dark:text-blue-400">Installing Voice Helper...</span>
-                    <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">{voiceDownloadProgress}%</span>
-                  </div>
-                  <div
-                    className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-2 overflow-hidden"
-                    role="progressbar"
-                    aria-label="Voice model download progress"
-                    aria-valuenow={voiceDownloadProgress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div
-                      className="bg-blue-500 h-2 transition-all duration-300 ease-out"
-                      style={{ width: `${voiceDownloadProgress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ) : (
-                <div className="animate-in fade-in duration-300 mb-6">
-                  <button onClick={handleDownloadVoice} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
-                    <Download className="w-5 h-5" /> Download Voice Engine (50MB)
-                  </button>
-                </div>
-              )}
-
-              <button
-                onClick={handleFinish}
-                disabled={(voiceDownloadProgress < 100 && isVoiceDownloading) || isFinishing}
-                className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isFinishing ? "Finishing..." : <>Finish Setup <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>}
-              </button>
-            </div>
-          )}
+        <div className="p-4 sm:p-6">
+          {step === 1
+            ? <WelcomeChatModelStep chat={chat} onContinue={() => setStep(2)} onImages={onImages} onVision={onVision}
+                recommendedModelId={recommendedModelId} downloadingId={downloadModelId} progress={downloadProgress} />
+            : (
+              <div className="space-y-4">
+                <ChatModelActivationBanner chat={chat} compact />
+                <VoiceModelStep speech={speech} onFinish={onDismiss} />
+              </div>
+            )}
         </div>
       </div>
     </div>
@@ -291,10 +137,6 @@ function AppContent() {
           const data = await res.json();
           setHealthData(data);
           if (data.activeModel) setActiveModel(data.activeModel);
-          if (data.isBrainInstalled) {
-            try { localStorage.setItem('quenderin_setup_complete', 'true'); } catch { /* best-effort */ }
-            setShowOnboarding(false);
-          }
         }
       } catch {
         // Silent block for dev environment cross-origin resets
@@ -347,7 +189,23 @@ function AppContent() {
     };
   }, []);
 
-  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask, missionApproval, answerMissionApproval } = useAgentSocket();
+  const { wsReady, speechDownloadEvents, downloadModelId, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask, missionApproval, answerMissionApproval } = useAgentSocket();
+  const chatSetup = useChatModelSetup(downloadModelId, downloadProgress);
+  const speech = useSpeechSetup(wsReady, speechDownloadEvents);
+  useEffect(() => {
+    const activeEntry = chatSetup.models?.find(model => model.id === chatSetup.activeModelId && model.isDownloaded);
+    if (activeEntry) setActiveModel(activeEntry.label);
+  }, [chatSetup.activeModelId, chatSetup.models]);
+  const voiceModelId = speech.settings?.voiceEnabled
+    ? speech.catalog?.models.find(row => row.model.id === speech.settings?.modelId && row.installed && row.engine.compatibility === 'supported')?.model.id
+    : undefined;
+  const [focusVoice, setFocusVoice] = useState(false);
+  const openVoiceSettings = () => {
+    setFocusVoice(true);
+    setCurrentView('settings');
+  };
+  useEffect(() => { if (currentView !== 'settings') setFocusVoice(false); }, [currentView]);
+
 
   const { setDarkMode } = useTheme();
 
@@ -484,6 +342,27 @@ function AppContent() {
     try { localStorage.removeItem('quenderin_last_outage'); } catch { /* best-effort */ }
   };
 
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const hasBlockingModal = Boolean(
+    showOnboarding
+    || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter))
+    || missionApproval
+    || (settings.privacyLockEnabled && isLocked)
+  );
+  useLayoutEffect(() => {
+    const node = dashboardRef.current;
+    if (!node) return;
+    if (hasBlockingModal) {
+      node.setAttribute('inert', '');
+      (node as HTMLDivElement & { inert?: boolean }).inert = true;
+    } else {
+      node.removeAttribute('inert');
+      (node as HTMLDivElement & { inert?: boolean }).inert = false;
+    }
+  }, [hasBlockingModal]);
+
+  const hideBackdropFromAt = Boolean(showOnboarding || missionApproval || (settings.privacyLockEnabled && isLocked));
+
   return (
     <>
       <PrivacyLock
@@ -499,7 +378,7 @@ function AppContent() {
           <button onClick={() => setTokenBannerDismissed(true)} className="ml-1 rounded px-2 py-0.5 text-amber-950/70 hover:bg-amber-950/10 transition-colors" aria-label="Dismiss">✕</button>
         </div>
       )}
-      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} />}
+      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} downloadModelId={downloadModelId} recommendedModelId={healthData?.recommendedModelId} speech={speech} chatSetup={chatSetup} />}
       {!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
         <TroubleshooterGuide
           action={requiredAction}
@@ -560,7 +439,7 @@ function AppContent() {
         </div>
       )}
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-qteal-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div ref={dashboardRef} aria-hidden={hideBackdropFromAt || undefined} className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-qteal-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${hasBlockingModal ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (
@@ -608,6 +487,18 @@ function AppContent() {
         />
 
         <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-background transition-colors">
+          {!showOnboarding && (
+            <ChatModelActivationBanner chat={chatSetup} onOpenSettings={() => setCurrentView('settings')} />
+          )}
+          {!showOnboarding && currentView !== 'settings' && Object.values(speech.downloads.snapshots)
+            .filter(snapshot => isSpeechDownloadActive(snapshot) || snapshot.phase === 'paused' || snapshot.phase === 'error')
+            .map(snapshot => (
+              <div key={snapshot.modelId} className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
+                <DownloadStatus name={speech.catalog?.models.find(row => row.model.id === snapshot.modelId)?.model.name ?? snapshot.modelId} snapshot={snapshot} />
+                <button type="button" onClick={openVoiceSettings} className="shrink-0 rounded px-2 py-1 text-xs font-medium text-qteal-700 underline dark:text-qteal-300">Voice settings</button>
+              </div>
+            ))}
+
 
           {showRecoveryBanner && (
             <div role="status" aria-live="polite" className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
@@ -669,6 +560,8 @@ function AppContent() {
             <ErrorBoundary fallbackLabel="Settings">
             <Suspense fallback={<LazyFallback />}>
             <SettingsArea
+              voice={speech}
+              focusVoice={focusVoice}
               currentSettings={settings}
               onBack={() => setCurrentView('general_chat')}
               onSave={updateSettings}
@@ -716,8 +609,8 @@ function AppContent() {
               setChatInput={setChatInput}
               onSend={handleSendChat}
               onStop={stopChat}
-              onVoiceStart={manualVoiceStart}
-              onVoiceStop={manualVoiceStop}
+              voice={{ modelId: voiceModelId, onSettings: openVoiceSettings, blocked: !wsReady || showOnboarding || !!missionApproval ||
+                (settings.privacyLockEnabled && isLocked) || !!(requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) }}
               activePresetId={activePresetId}
               onSwitchPreset={switchPreset}
             />
@@ -729,8 +622,8 @@ function AppContent() {
               setGoal={setGoal}
               onStart={handleStartAgent}
               setCurrentView={setCurrentView}
-              onVoiceStart={manualVoiceStart}
-              onVoiceStop={manualVoiceStop}
+              voice={{ modelId: voiceModelId, onSettings: openVoiceSettings, blocked: !wsReady || showOnboarding || !!missionApproval ||
+                (settings.privacyLockEnabled && isLocked) || !!(requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) }}
               agentPaused={agentPaused}
               onPause={pauseAgent}
               onResume={resumeAgent}

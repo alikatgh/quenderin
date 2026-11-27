@@ -6,6 +6,7 @@ import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
 import { createApp } from './app.js';
+import { createDashboardSpeech } from './services/speech/dashboardSpeech.js';
 import { WebSocketManager } from './websocket/index.js';
 import { generateAuthToken } from './security/authToken.js';
 import { AgentService } from './services/agent.service.js';
@@ -26,7 +27,7 @@ import { AndroidProvider } from './services/providers/android.provider.js';
 import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { BackgroundDaemonService } from './services/backgroundDaemon.service.js';
 import { VoiceService, type VoiceSpeechConfig } from './services/voice.service.js';
-import { HexSpeechAdapter } from './services/hexSpeechAdapter.js';
+import { HexSpeechAdapter, SPEECH_CAPTURE_FILENAME, SPEECH_CAPTURE_TEMP_PREFIX } from './services/hexSpeechAdapter.js';
 import { LlmService } from './services/llm.service.js';
 import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
@@ -70,7 +71,9 @@ async function cleanupOrphanedTempFiles(): Promise<void> {
         const maxAgeMs = TEMP_FILE_MAX_AGE_MS;
 
         for (const entry of entries) {
-            if (!entry.startsWith('desktop_screen_') &&
+            const capture = entry.startsWith(SPEECH_CAPTURE_TEMP_PREFIX)
+                && /^[a-zA-Z0-9]{6}$/.test(entry.slice(SPEECH_CAPTURE_TEMP_PREFIX.length));
+            if (!capture && !entry.startsWith('desktop_screen_') &&
                 !entry.startsWith('screen_') &&
                 !entry.startsWith('window_dump_') &&
                 !entry.startsWith('quenderin_voice_')) {
@@ -78,8 +81,12 @@ async function cleanupOrphanedTempFiles(): Promise<void> {
             }
             try {
                 const filePath = path.join(tmpDir, entry);
-                const stat = await fs.stat(filePath);
-                if (now - stat.mtimeMs > maxAgeMs) {
+                const stat = await fs.lstat(filePath);
+                if (now - stat.mtimeMs <= maxAgeMs) continue;
+                if (capture && stat.isDirectory() && (!process.getuid || stat.uid === process.getuid())) {
+                    await fs.rm(path.join(filePath, SPEECH_CAPTURE_FILENAME), { force: true });
+                    await fs.rmdir(filePath);
+                } else if (!capture && stat.isFile()) {
                     await fs.unlink(filePath);
                 }
             } catch { /* file may have been deleted by another process */ }
@@ -229,7 +236,8 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
 
     // 2. Setup Express
     setReadiness(false, 'starting-http-server', `Binding HTTP server on port ${selectedPort}`);
-    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService, authToken);
+    const speech = createDashboardSpeech();
+    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService, authToken, speech);
     const server = createServer(app);
     const connections = new Set<net.Socket>();
     server.on('connection', socket => { connections.add(socket); socket.once('close', () => connections.delete(socket)); });
@@ -265,7 +273,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             for (const socket of connections) socket.destroy();
         });
         shutdownTask = Promise.all([
-            nativeCleanup, httpClosed,
+            nativeCleanup, httpClosed, speech.downloads.shutdown(),
             ocrService.terminate().catch(e => logger.debug('[Shutdown] OCR terminate error:', e)),
             cleanupOrphanedTempFiles().catch(e => logger.debug('[Shutdown] Temp cleanup error:', e)),
         ]).then(() => { logger.info('[System] Native work joined and HTTP server closed.'); }).finally(() => {
@@ -296,7 +304,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
 
         server.listen(selectedPort, BIND_HOST, async () => {
-            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken, taskService);
+            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken, taskService, speech.downloads);
             setReadiness(true, 'serving', `Listening on ${BIND_HOST}:${selectedPort}`);
             logger.critical(`Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {

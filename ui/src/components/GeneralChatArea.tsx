@@ -1,5 +1,6 @@
+import { appendTranscript, VoiceComposerControl, type VoiceComposerOptions } from './VoiceComposerControl.js';
 import { useRef, useEffect, useState } from 'react';
-import { User, Loader2, MessageSquareText, Mic, FileText, X, Code, PenTool, GraduationCap, Sparkles, ArrowUpRight, Square } from 'lucide-react';
+import { User, Loader2, MessageSquareText, FileText, X, Code, PenTool, GraduationCap, Sparkles, ArrowUpRight, Square } from 'lucide-react';
 import { LogEntry, RequiredAction } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,8 +17,7 @@ interface GeneralChatAreaProps {
     setChatInput: (val: string) => void;
     onSend: (msg: string, attachments: { name: string, content: string }[]) => void;
     onStop: () => void;   // Q-292: cancel the in-flight reply
-    onVoiceStart: () => void;
-    onVoiceStop: () => void;
+    voice?: VoiceComposerOptions;
     activePresetId: string;
     onSwitchPreset: (id: string) => void;
 }
@@ -46,7 +46,7 @@ function stripToolCallXml(text: string): string {
 }
 
 
-export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, onOpenTroubleshooter, chatInput, setChatInput, onSend, onStop, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
+export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, onOpenTroubleshooter, chatInput, setChatInput, onSend, onStop, voice, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const shouldAutoScrollRef = useRef(true);
@@ -57,7 +57,6 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
     const [isQueuing, setIsQueuing] = useState(false);
     const [attachments, setAttachments] = useState<{ name: string, content: string }[]>([]);
     const [lastSentPayload, setLastSentPayload] = useState<{ message: string, attachments: { name: string, content: string }[] } | null>(null);
-    const [isRecording, setIsRecording] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [thinkingSec, setThinkingSec] = useState(0);
 
@@ -174,16 +173,6 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
 
     const removeAttachment = (index: number) => {
         setAttachments(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const startRecording = () => {
-        setIsRecording(true);
-        onVoiceStart();
-    };
-
-    const stopRecording = () => {
-        setIsRecording(false);
-        onVoiceStop();
     };
 
     useEffect(() => {
@@ -434,20 +423,18 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                             }}
                         />
                         <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                            <button
-                                type="button"
-                                aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
-                                aria-pressed={isRecording}
-                                // Q-318: Pointer events (not mouse-only) so press-and-hold to talk works on
-                                // TOUCH devices too — a tap/hold never fires onMouseDown reliably. Matches
-                                // the agent view's ChatArea, which already uses pointer events.
-                                onPointerDown={startRecording}
-                                onPointerUp={stopRecording}
-                                onPointerLeave={isRecording ? stopRecording : undefined}
-                                className={`p-2 rounded-lg transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-                            >
-                                <Mic className="w-4.5 h-4.5" />
-                            </button>
+                            <VoiceComposerControl voice={voice} disabled={isQueuing || status === 'running'}
+                                onTranscript={({ text, autoSend }) => {
+                                    const draft = appendTranscript(chatInput, text);
+                                    setChatInput(draft);
+                                    if (autoSend && status !== 'running' && !isQueuing) {
+                                        onSend(draft, attachments);
+                                        setLastSentPayload({ message: draft, attachments: [...attachments] });
+                                        setAttachments([]);
+                                    } else {
+                                        textareaRef.current?.focus();
+                                    }
+                                }} />
                             {status === 'running' ? (
                                 /* Q-292: while a reply streams the primary button STOPS it (the partial
                                    stays in the transcript). Follow-ups can still be queued with Enter. */

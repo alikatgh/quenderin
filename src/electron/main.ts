@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage, ipcMain, dialog, systemPreferences, type IpcMainInvokeEvent } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startDashboardServer } from '../server.js';
@@ -53,7 +53,17 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadURL(`http://localhost:${PORT}`);
+    const trustedUrl = `http://localhost:${PORT}/`;
+    const contents = mainWindow.webContents;
+    contents.session.setPermissionCheckHandler((sender, permission, origin, details) =>
+        sender === contents && permission === 'media' && details.mediaType === 'audio'
+        && details.isMainFrame && origin === new URL(trustedUrl).origin && contents.getURL() === trustedUrl);
+    contents.session.setPermissionRequestHandler((sender, permission, respond, details) => {
+        respond(sender === contents && permission === 'media' && details.isMainFrame
+            && details.requestingUrl === trustedUrl && contents.getURL() === trustedUrl
+            && 'mediaTypes' in details && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio');
+    });
+    void mainWindow.loadURL(trustedUrl);
 
     // Pin all navigation + new-window requests to the trusted local origin. The renderer displays
     // untrusted agent/LLM/on-screen content; without these guards a reflected link or injected
@@ -163,6 +173,22 @@ app.whenReady().then(async () => {
     ];
 
     if (process.platform === 'darwin') {
+        function assertMicrophoneSender(event: IpcMainInvokeEvent) {
+            const trustedUrl = `http://localhost:${PORT}/`;
+            const contents = mainWindow?.webContents;
+            if (!contents || event.sender !== contents || event.senderFrame !== contents.mainFrame
+                || event.senderFrame.url !== trustedUrl || contents.getURL() !== trustedUrl) {
+                throw new Error('Untrusted microphone permission request.');
+            }
+        }
+        ipcMain.handle('quenderin:microphone:status', event => {
+            assertMicrophoneSender(event);
+            return systemPreferences.getMediaAccessStatus('microphone');
+        });
+        ipcMain.handle('quenderin:microphone:request', event => {
+            assertMicrophoneSender(event);
+            return systemPreferences.askForMediaAccess('microphone');
+        });
         Menu.setApplicationMenu(Menu.buildFromTemplate([
             {
                 label: 'Quenderin',

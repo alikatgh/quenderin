@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     HexLoopbackClient,
     HexSpeechAdapter,
+    SPEECH_CAPTURE_FILENAME,
     applyVocabularySpelling,
     formatDictationTranscript,
     validateWavBuffer,
@@ -328,6 +329,41 @@ describe('Hex & transcribe.cpp speech integration', () => {
         expect(spawnMock).toHaveBeenCalledWith(fakeBin, ['service', '--embedded'], expect.objectContaining({ shell: false }));
         expect(client.baseUrl).toBe('http://127.0.0.1:44444');
         await client.close();
+    });
+
+    it.each([true, false])('clears private WAV captures on native completion (success=%s)', async success => {
+        const runtime = path.join(tmpDir, 'fixture-speech-cli');
+        await fs.promises.writeFile(runtime, '', { mode: 0o755 });
+        const wav = createPcm16MonoWav([0, 1200, -1200, 0]);
+        let capturePath: string | undefined;
+        const adapter = new HexSpeechAdapter({
+            catalog, runtimeLock, bundledRuntimePath: runtime,
+            spawnProcess: (_file, args) => {
+                const child = Object.assign(new EventEmitter(), {
+                    stdout: new PassThrough(), stderr: new PassThrough(), exitCode: null, signalCode: null, kill: vi.fn(),
+                });
+                const probe = args.includes('--version');
+                if (!probe) {
+                    capturePath = args[args.indexOf('--wav') + 1];
+                    expect(path.basename(capturePath)).toBe(SPEECH_CAPTURE_FILENAME);
+                    expect(fs.readFileSync(capturePath)).toEqual(wav);
+                    if (process.platform !== 'win32') {
+                        expect(fs.statSync(capturePath).mode & 0o777).toBe(0o600);
+                        expect(fs.statSync(path.dirname(capturePath)).mode & 0o777).toBe(0o700);
+                    }
+                }
+                queueMicrotask(() => {
+                    child.stdout.end(JSON.stringify(probe ? { abiVersion: 1, revision: PINNED_REV } : { ok: true, text: 'Offline fixture' }));
+                    child.emit('close', probe || success ? 0 : 1, null);
+                });
+                return child as never;
+            },
+        });
+        const task = adapter.transcribe({ model: 'parakeet_unified_en', directory: tmpDir, wav });
+        if (success) await expect(task).resolves.toMatchObject({ text: 'Offline fixture' });
+        else await expect(task).rejects.toThrow();
+        expect(capturePath).toBeDefined();
+        await expect(fs.promises.access(path.dirname(capturePath!))).rejects.toMatchObject({ code: 'ENOENT' });
     });
 
     it('runs quenderin-speech-cli with version handshake, cancellation, and VoiceService command emission without logging transcripts', async () => {

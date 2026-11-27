@@ -1,3 +1,5 @@
+import { VoiceSettingsSection } from './settings/VoiceSettingsSection.js';
+import type { SpeechSetup } from '../lib/speech/useSpeechSetup.js';
 import { useState, useEffect, useRef } from 'react';
 import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, Cpu } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
@@ -19,6 +21,8 @@ interface Settings {
 }
 
 interface SettingsAreaProps {
+    voice?: SpeechSetup;
+    focusVoice?: boolean;
     onBack: () => void;
     currentSettings: Settings;
     onSave: (newSettings: Settings) => void;
@@ -83,7 +87,7 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
     );
 }
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
+export function SettingsArea({ voice, focusVoice, onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     // Q-530: the passphrase the user types lives ONLY in this in-memory draft — it is hashed on save and
     // never stored in `settings` (which is what gets persisted to localStorage). Empty draft on save =
@@ -222,6 +226,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                 <div className="flex items-center justify-between mb-10">
                     <div className="flex items-center gap-4">
                         <button
+                            type="button"
+                            aria-label="Back to chat"
                             onClick={onBack}
                             className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qteal-500/40"
                         >
@@ -499,6 +505,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     </section>
 
                     <ModelManagerSection />
+
+                    {voice && <VoiceSettingsSection speech={voice} focusVoice={focusVoice} />}
 
                     {/* Hardware Info Section */}
                     {(hardwareTier || hardwareArch || hardwareCpuCores) && (

@@ -292,6 +292,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private nativeAborts = new Set<AbortController>();
     private nativeInitializations = new Set<Promise<unknown>>();
     private isDownloading: boolean = false;
+    private activeDownloadModelId: string | null = null;
     private generalChatSession: LlamaChatSession | null = null;
     /** The engine handle from getLlama() — retained ONLY so shutdown() can dispose the
      *  Metal/GPU device before exit (see shutdown's doc comment). */
@@ -390,6 +391,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     /** The pinned/auto-selected model id — lets the catalog endpoint mark the active row (r9 H1). */
     public getActiveModelId(): string {
         return this.activeModelId;
+    }
+
+    public getActiveDownloadModelId(): string | null {
+        return this.isDownloading ? this.activeDownloadModelId : null;
     }
 
     /** Create a LlamaChatSession using the dynamically imported class */
@@ -1270,12 +1275,16 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             return;
         }
         this.isDownloading = true;
+        this.activeDownloadModelId = entry.id;
         if ('artifacts' in entry) {
             try {
                 await installMultipartModel(entry, path.dirname(modelPath(entry.id)), fraction =>
                     this.emit('model_download_progress', { progress: Math.min(100, fraction * 100), modelId: entry.id }));
                 this.emit('model_download_progress', { progress: 100, modelId: entry.id });
-            } finally { this.isDownloading = false; }
+            } finally {
+                this.isDownloading = false;
+                this.activeDownloadModelId = null;
+            }
             return;
         }
 
@@ -1308,6 +1317,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     await verifyModelIntegrity(dest, entry.sha256);
                     this.emit('model_download_progress', { progress: 100, modelId: entry.id });
                     this.isDownloading = false;
+                    this.activeDownloadModelId = null;
                     // Clean up stale metadata
                     if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
                     return;
@@ -1344,6 +1354,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         if (diskLowMessage) {
             // Q-287: a definitive low-disk result must ABORT — previously it only emitted the event
             // and fell through, downloading multiple GB into a low-disk condition.
+            this.isDownloading = false;
+            this.activeDownloadModelId = null;
             logger.warn(`[LLM] ${diskLowMessage}`);
             this.emit('action_required', { code: 'DISK_SPACE_LOW', title: 'Insufficient Disk Space', message: diskLowMessage });
             const err = new Error(diskLowMessage);
@@ -1390,6 +1402,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     fs.renameSync(staging, dest);
                     if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
                     this.isDownloading = false;
+                    this.activeDownloadModelId = null;
                     return;
                 }
             }
@@ -1516,12 +1529,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
 
             this.isDownloading = false;
+            this.activeDownloadModelId = null;
 
         } catch (error) {
             logger.error("Model download pipeline failed:", error);
             // DON'T delete partial file — keep it for resume on next attempt
             // But do keep the metadata file so we can resume
             this.isDownloading = false;
+            this.activeDownloadModelId = null;
             throw error;
         }
     }

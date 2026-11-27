@@ -42,12 +42,15 @@ function makeResponse(status: number, headers: LocalResponse['headers'], body: s
 
 export function localRequest(
     url: string,
-    opts: { method?: string; headers?: Record<string, string>; body?: string } = {},
+    opts: { method?: string; headers?: Record<string, string>; body?: string | Buffer } = {},
 ): Promise<LocalResponse> {
     const method = opts.method ?? 'GET';
     const headers = { ...opts.headers };
     if (opts.body !== undefined && headers['Content-Type'] === undefined && headers['content-type'] === undefined) {
         headers['Content-Type'] = 'application/json';
+    }
+    if (Buffer.isBuffer(opts.body) && headers['Content-Length'] === undefined && headers['content-length'] === undefined) {
+        headers['Content-Length'] = String(opts.body.length);
     }
     return new Promise((resolve, reject) => {
         const req = http.request(url, { method, headers, agent: false }, (res) => {

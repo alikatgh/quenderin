@@ -54,3 +54,10 @@ const vision: VisionWorkflowAPI = {
     },
 };
 contextBridge.exposeInMainWorld('quenderinVision', vision);
+
+if (process.platform === 'darwin') {
+    contextBridge.exposeInMainWorld('quenderinMicrophone', {
+        status: () => ipcRenderer.invoke('quenderin:microphone:status'),
+        request: () => ipcRenderer.invoke('quenderin:microphone:request'),
+    });
+}
