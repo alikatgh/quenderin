@@ -39,6 +39,7 @@
     "check:website-docs": "python3 scripts/generate_website_docs.py --check",
     "refresh:model-releases": "node scripts/refresh_model_releases.mjs",
     "test:website-catalog": "node --test scripts/tests/model-releases.test.mjs",
+    "test:handy-catalog": "node --test scripts/tests/handy-speech-catalog.test.mjs",
     "test:website-docs": "node --test scripts/tests/website-docs.test.mjs",
     "check:catalog-urls": "python3 scripts/check_catalog_urls.py",
     "check:agent-parity": "python3 scripts/check_agent_parity.py",
