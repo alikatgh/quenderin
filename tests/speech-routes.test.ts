@@ -255,7 +255,7 @@ describe('dashboard speech routes', () => {
         expect(transcribe).toHaveBeenCalledExactlyOnceWith({ wav: audio, modelId: model.id, language: 'en', autoSend: true }, expect.any(AbortSignal));
     });
 
-    it('streams real progress frames and delivers terminal installed transitions even under WS backpressure', async () => {
+    it('preserves the WS send-buffer cap across repeated phase changes, reconciles via REST, and flushes only the latest coalesced phase on drain', async () => {
         const llm = Object.assign(new EventEmitter(), { isCurrentlyGenerating: () => ({ isGenerating: false }) });
         const wsManager = new WebSocketManager(server, {} as never, new EventEmitter() as never, llm as never, new EventEmitter() as never,
             undefined, TOKEN, undefined, downloads);
@@ -266,12 +266,43 @@ describe('dashboard speech routes', () => {
         await once(ws, 'open');
         const listeners = getEventListeners(llm, 'model_download_progress');
         expect(listeners).toHaveLength(1);
-        // Simulate server-side send-buffer backpressure on the active socket.
+
+        // Saturate the server-side send buffer beyond MAX_SEND_BUFFER_BYTES.
         const serverSocket = (wsManager as unknown as { activeWs: WebSocket }).activeWs;
-        Object.defineProperty(serverSocket, 'bufferedAmount', { value: MAX_SEND_BUFFER_BYTES + 1024, configurable: true });
+        let simulatedBuffered = MAX_SEND_BUFFER_BYTES + 1024;
+        Object.defineProperty(serverSocket, 'bufferedAmount', {
+            get: () => simulatedBuffered,
+            configurable: true,
+        });
+        const sendSpy = vi.spyOn(serverSocket, 'send');
+
+        // Repeated pause/resume phase transitions while stalled, then final completion.
+        fetch.mockImplementationOnce(() => new Promise(() => {}))
+            .mockImplementationOnce(() => new Promise(() => {}))
+            .mockResolvedValueOnce(httpFixture(200, fixtureBytes));
         await request('/downloads', 'POST', { modelId: model.id });
-        await vi.waitFor(() => expect(frames.map(f => JSON.parse(f))).toContainEqual(expect.objectContaining({
-            type: 'speech_download_progress', snapshot: expect.objectContaining({ phase: 'installed', modelId: model.id }),
-        })));
+        await request(`/downloads/${model.id}/pause`, 'POST');
+        await request(`/downloads/${model.id}/resume`, 'POST');
+        await request(`/downloads/${model.id}/pause`, 'POST');
+        await request(`/downloads/${model.id}/resume`, 'POST');
+        await vi.waitFor(() => expect(downloads.snapshot(model.id)?.phase).toBe('installed'));
+
+        // Send-buffer cap was strictly preserved: zero speech_download_progress frames sent while saturated.
+        expect(sendSpy).not.toHaveBeenCalled();
+
+        // Active-job REST reconciliation still reports the authoritative terminal installed snapshot.
+        const restList = await request('/downloads', 'GET');
+        expect(restList.status).toBe(200);
+        expect(restList.json()).toContainEqual(expect.objectContaining({ modelId: model.id, phase: 'installed' }));
+
+        // Once the socket drains, only the single latest coalesced phase frame (installed) is flushed.
+        simulatedBuffered = 0;
+        await vi.waitFor(() => {
+            const speechFrames = frames
+                .map(f => JSON.parse(f) as { type: string; snapshot?: { modelId: string; phase: string } })
+                .filter(f => f.type === 'speech_download_progress');
+            expect(speechFrames).toHaveLength(1);
+            expect(speechFrames[0].snapshot).toMatchObject({ modelId: model.id, phase: 'installed' });
+        });
     });
 });

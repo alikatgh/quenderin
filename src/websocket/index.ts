@@ -217,15 +217,56 @@ export class WebSocketManager {
             this.voiceService.on('action_required', pushActionRequired);
             this.llmService.on('action_required', pushActionRequired);
             this.llmService.on('model_download_progress', pushModelDownloadProgress);
-            const unsubscribeSpeech = this.speechDownloads?.subscribe(snapshot => {
-                const payload = JSON.stringify({ type: 'speech_download_progress', snapshot });
-                if (snapshot.phase === 'downloading') {
-                    this.safeSend(ws, payload);
-                } else if (ws.readyState === WebSocket.OPEN) {
-                    // Never drop terminal or phase-transition frames (installed/error/paused/idle/verifying/queued)
-                    // under backpressure so the renderer reliably learns when dictation becomes ready.
+            const pendingSpeechPhases = new Map<string, string>();
+            let speechFlushTimer: ReturnType<typeof setTimeout> | null = null;
+            const rawSocket = (ws as WebSocket & { _socket?: { on?: (ev: string, fn: () => void) => void; off?: (ev: string, fn: () => void) => void } })._socket;
+            const clearPendingSpeech = () => {
+                if (speechFlushTimer) {
+                    clearTimeout(speechFlushTimer);
+                    speechFlushTimer = null;
+                }
+                pendingSpeechPhases.clear();
+                rawSocket?.off?.('drain', flushPendingSpeech);
+            };
+            const scheduleSpeechFlush = () => {
+                if (speechFlushTimer || pendingSpeechPhases.size === 0 || ws.readyState !== WebSocket.OPEN) return;
+                speechFlushTimer = setTimeout(flushPendingSpeech, 100);
+                speechFlushTimer.unref?.();
+            };
+            const flushPendingSpeech = () => {
+                if (speechFlushTimer) {
+                    clearTimeout(speechFlushTimer);
+                    speechFlushTimer = null;
+                }
+                if (ws.readyState !== WebSocket.OPEN) {
+                    pendingSpeechPhases.clear();
+                    return;
+                }
+                for (const [modelId, payload] of pendingSpeechPhases) {
+                    if (ws.bufferedAmount > MAX_SEND_BUFFER_BYTES) {
+                        scheduleSpeechFlush();
+                        return;
+                    }
+                    pendingSpeechPhases.delete(modelId);
                     ws.send(payload);
                 }
+            };
+            rawSocket?.on?.('drain', flushPendingSpeech);
+            const unsubscribeSpeech = this.speechDownloads?.subscribe(snapshot => {
+                if (ws.readyState !== WebSocket.OPEN) return;
+                const payload = JSON.stringify({ type: 'speech_download_progress', snapshot });
+                if (ws.bufferedAmount <= MAX_SEND_BUFFER_BYTES) {
+                    pendingSpeechPhases.delete(snapshot.modelId);
+                    ws.send(payload);
+                    return;
+                }
+                if (snapshot.phase !== 'downloading') {
+                    // Preserve MAX_SEND_BUFFER_BYTES: coalesce at most one latest phase frame per model
+                    // and flush it once the socket drains; active-job REST polling also reconciles state.
+                    pendingSpeechPhases.set(snapshot.modelId, payload);
+                    scheduleSpeechFlush();
+                }
+                this.safeSend(ws, payload);
             });
 
             // The governed task channel: steps stream live; an approval question renders the
@@ -599,6 +640,7 @@ export class WebSocketManager {
                 this.llmService.off('action_required', pushActionRequired);
                 this.llmService.off('model_download_progress', pushModelDownloadProgress);
                 unsubscribeSpeech?.();
+                clearPendingSpeech();
                 if (this.taskService) {
                     this.taskService.off('step', pushTaskStep);
                     this.taskService.off('approval_request', pushTaskApproval);

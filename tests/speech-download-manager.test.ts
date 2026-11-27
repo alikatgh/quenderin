@@ -3,7 +3,8 @@
 // Cases adapted from Handy src-tauri/src/managers/model/download/tests.rs
 // at 05efc5fc180197dc0fa9d568dd9812904b723b8b. See THIRD_PARTY_NOTICES.md.
 import { catalog, modelFile } from '@handy-computer/models';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { lstat, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -355,6 +356,175 @@ describe('resumable Handy downloads', () => {
         } finally {
             await manager.shutdown();
             await rm(sharedDir, { recursive: true, force: true });
+        }
+    });
+
+    it('serializes multiple concurrent process contenders after abrupt owner death without unlinking the lock file', async () => {
+        const sharedDir = await mkdtemp(path.join(os.tmpdir(), 'quenderin-speech-multiprocess-lock-'));
+        const lockFile = installedModelPath(sharedDir, model) + '.lock';
+        const moduleUrl = new URL('../src/services/speech/downloadManager.ts', import.meta.url).href;
+
+        const spawnWorker = (mode: 'owner' | 'contender') => {
+            const script = mode === 'owner'
+                ? `(async () => {
+                    const { speechDownloadFs } = await import(${JSON.stringify(moduleUrl)});
+                    const lock = await speechDownloadFs.acquireLock(${JSON.stringify(lockFile)});
+                    if (!lock) { process.stdout.write('BUSY\\n'); process.exit(2); }
+                    process.stdout.write('HELD:' + process.pid + '\\n');
+                    setInterval(() => {}, 10_000);
+                })().catch(err => { console.error(err); process.exit(1); });`
+                : `(async () => {
+                    const { speechDownloadFs } = await import(${JSON.stringify(moduleUrl)});
+                    process.stdout.write('READY\\n');
+                    await new Promise(resolve => {
+                        process.stdin.once('data', () => resolve(undefined));
+                        process.stdin.once('end', () => resolve(undefined));
+                    });
+                    const lock = await speechDownloadFs.acquireLock(${JSON.stringify(lockFile)});
+                    if (!lock) { process.stdout.write('BUSY\\n'); process.exit(0); }
+                    process.stdout.write('WON\\n');
+                    await new Promise(resolve => setTimeout(resolve, 600));
+                    await lock.release();
+                    process.exit(0);
+                })().catch(err => { console.error(err); process.exit(1); });`;
+            return spawn(process.execPath, ['--import', 'tsx', '-e', script], {
+                cwd: path.resolve(import.meta.dirname, '..'),
+                stdio: ['pipe', 'pipe', 'pipe'],
+            });
+        };
+
+        try {
+            const owner = spawnWorker('owner');
+            const ownerPid = await new Promise<number>((resolve, reject) => {
+                let out = '';
+                let err = '';
+                owner.stdout.on('data', chunk => {
+                    out += chunk.toString();
+                    const match = out.match(/HELD:(\d+)\n/);
+                    if (match) resolve(Number(match[1]));
+                });
+                owner.stderr.on('data', chunk => { err += chunk.toString(); });
+                owner.once('exit', code => reject(new Error(`Owner exited early (${code}): ${err}`)));
+            });
+            expect(ownerPid).toBe(owner.pid);
+
+            const inodeBefore = await lstat(lockFile, { bigint: true });
+
+            // While owner is alive, another OS process cannot acquire the lock.
+            const liveContenderResult = await new Promise<string>((resolve, reject) => {
+                const child = spawnWorker('contender');
+                let out = '';
+                let err = '';
+                let releasedBarrier = false;
+                child.stdout.on('data', chunk => {
+                    out += chunk.toString();
+                    if (!releasedBarrier && out.includes('READY\n')) {
+                        releasedBarrier = true;
+                        child.stdin.end('GO\n');
+                    }
+                });
+                child.stderr.on('data', chunk => { err += chunk.toString(); });
+                child.once('exit', code => code === 0 ? resolve(out.replace('READY\n', '').trim()) : reject(new Error(`Contender failed (${code}): ${err}`)));
+            });
+            expect(liveContenderResult).toBe('BUSY');
+
+            // Boot 6 contenders up to the barrier BEFORE killing the owner, then release all 6 simultaneously.
+            const contenders = Array.from({ length: 6 }, () => {
+                const child = spawnWorker('contender');
+                let out = '';
+                let err = '';
+                const ready = new Promise<void>((resolve, reject) => {
+                    child.stdout.on('data', chunk => {
+                        out += chunk.toString();
+                        if (out.includes('READY\n')) resolve();
+                    });
+                    child.stderr.on('data', chunk => { err += chunk.toString(); });
+                    child.once('exit', code => reject(new Error(`Contender exited before barrier (${code}): ${err}`)));
+                });
+                const done = new Promise<string>((resolve, reject) => {
+                    child.once('exit', code => code === 0
+                        ? resolve(out.replace('READY\n', '').trim())
+                        : reject(new Error(`Contender failed (${code}): ${err}`)));
+                });
+                return { child, ready, done };
+            });
+            await Promise.all(contenders.map(c => c.ready));
+
+            // Abruptly kill the owner process; the kernel releases the flock immediately on EOF/exit.
+            const ownerExited = new Promise<void>(resolve => owner.once('exit', () => resolve()));
+            process.kill(ownerPid, 'SIGKILL');
+            await ownerExited;
+            // Brief yield so the kernel EOF wakes the lock helper process before all 6 contenders race.
+            await new Promise(resolve => setTimeout(resolve, 25));
+
+            // Release all 6 already-booted contenders at the exact same instant.
+            for (const c of contenders) c.child.stdin.end('GO\n');
+            const results = await Promise.all(contenders.map(c => c.done));
+
+            expect(results.filter(r => r === 'WON')).toHaveLength(1);
+            expect(results.filter(r => r === 'BUSY')).toHaveLength(5);
+
+            // Lock file remained in place with the exact same inode (never unlinked).
+            const inodeAfter = await lstat(lockFile, { bigint: true });
+            expect(inodeAfter.dev).toBe(inodeBefore.dev);
+            expect(inodeAfter.ino).toBe(inodeBefore.ino);
+
+            // After the winner released cleanly, this process can acquire and release the lock.
+            const lock = await speechDownloadFs.acquireLock!(lockFile);
+            expect(lock).not.toBeNull();
+            await lock!.release();
+        } finally {
+            await rm(sharedDir, { recursive: true, force: true });
+        }
+    }, 20_000);
+
+    it('classifies a locked preflight error, releases the lock, drains the next queued job, and allows retry', async () => {
+        const releaseSpy = vi.fn(async () => {});
+        const acquireLock = vi.fn(async () => ({ release: releaseSpy }));
+        const disk = speechFsFixture();
+        const originalStat = disk.fs.stat.bind(disk.fs);
+        let finalStatCalls = 0;
+        let failLockedPreflight = true;
+        const fsWithPreflightFault = {
+            ...disk.fs,
+            acquireLock,
+            async stat(filePath: string) {
+                if (filePath === final && failLockedPreflight) {
+                    finalStatCalls++;
+                    // Call 1 is start()'s unlocked check (returns null to enqueue).
+                    // Call 2 is download()'s locked checkInstalled preflight.
+                    if (finalStatCalls === 2) {
+                        throw Object.assign(new Error('permission denied on model path'), { code: 'EACCES' });
+                    }
+                }
+                return originalStat(filePath);
+            },
+        };
+        const unhandled: unknown[] = [];
+        const onUnhandled = (reason: unknown) => { unhandled.push(reason); };
+        process.on('unhandledRejection', onUnhandled);
+        const { manager, fetch } = setup({ fs: fsWithPreflightFault, maxConcurrent: 1 });
+        fetch.mockImplementation(async () => httpFixture(200, fixtureBytes));
+        try {
+            await manager.start(model.id);
+            await manager.start(second.id);
+
+            // First job reaches terminal error state (never stranded in queued) and releases its lock.
+            const failed = await completes(manager, 'error');
+            expect(failed.error?.kind).toBe('permission');
+            expect(releaseSpy).toHaveBeenCalled();
+
+            // Second queued job automatically drains and finishes cleanly.
+            await vi.waitFor(() => expect(manager.snapshot(second.id)?.phase).toBe('installed'));
+            expect(unhandled).toEqual([]);
+
+            // Subsequent retry creates new work instead of returning a stale queued snapshot.
+            failLockedPreflight = false;
+            const retried = await manager.retry(model.id);
+            expect(retried.phase).toBe('queued');
+            await completes(manager, 'installed');
+        } finally {
+            process.off('unhandledRejection', onUnhandled);
         }
     });
 });

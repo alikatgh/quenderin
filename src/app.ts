@@ -136,7 +136,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // data, so its GET requires the token like the other read-protected prefixes.
     // /api/tasks returns the governed agent's per-task action history (goals + what was done) —
     // user data, token-gated like the device agent's ledger.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/speech/models', '/api/speech/settings', '/api/speech/downloads'];
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks', '/api/models', '/api/speech/models', '/api/speech/settings', '/api/speech/downloads'];
     const requiresAuth = (req: express.Request): boolean => {
         const pathname = req.path.toLowerCase();
         if (pathname.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
@@ -250,13 +250,14 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         interface ActiveChatDownload {
             modelId: string;
             activate: boolean;
-            revision: number;
+            activationRevision: number | null;
             promise: Promise<void>;
         }
         interface PendingChatActivation {
             modelId: string;
             revision: number;
             status: 'pending' | 'activating' | 'failed';
+            code: string | null;
             error: string | null;
             attempts: number;
             timer?: ReturnType<typeof setTimeout>;
@@ -280,10 +281,80 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 || /already running|current .* operation|using the local engine|busy/i.test(message);
         };
 
+        const classifyChatModelError = (
+            error: unknown,
+            stage: 'download' | 'activation',
+        ): { code: string; message: string } => {
+            const errCode = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+            const rawMessage = error instanceof Error ? error.message : String(error ?? '');
+            if (isTransientBusyError(error)) {
+                return {
+                    code: 'MODEL_ACTIVATION_BUSY',
+                    message: 'Could not activate the downloaded chat model while another local operation was running. Try again or select it in Settings.',
+                };
+            }
+            if (errCode === 'MODEL_RUNTIME_UNSUPPORTED') {
+                return {
+                    code: 'MODEL_RUNTIME_UNSUPPORTED',
+                    message: 'This chat model requires a compatible local runtime before it can be activated.',
+                };
+            }
+            if (errCode === 'MODEL_MEMORY_UNSAFE') {
+                return {
+                    code: 'MODEL_MEMORY_UNSAFE',
+                    message: 'Not enough available memory to load this chat model. Choose a smaller model in Settings.',
+                };
+            }
+            if (errCode === 'ENOSPC' || errCode === 'EDQUOT' || /not enough.*(?:disk|space)|enospc/i.test(rawMessage)) {
+                return {
+                    code: 'MODEL_DISK_FULL',
+                    message: 'Not enough free disk space to finish installing the chat model. Free some space and try again.',
+                };
+            }
+            if (errCode === 'EACCES' || errCode === 'EPERM' || errCode === 'EROFS' || errCode === 'ELOOP') {
+                return {
+                    code: 'MODEL_STORAGE_PERMISSION',
+                    message: 'Quenderin could not access the local models folder. Check folder permissions and try again.',
+                };
+            }
+            if (errCode === 'ENOENT') {
+                return {
+                    code: 'MODEL_FILE_MISSING',
+                    message: 'The downloaded chat model file could not be found. Download it again.',
+                };
+            }
+            if (/integrity|sha-?256|checksum|corrupt|gguf|magic|truncat/i.test(rawMessage)) {
+                return {
+                    code: 'MODEL_INTEGRITY_FAILED',
+                    message: 'The downloaded chat model failed verification. Download it again.',
+                };
+            }
+            if (
+                errCode === 'ETIMEDOUT' || errCode === 'ECONNRESET' || errCode === 'ENOTFOUND'
+                || errCode === 'ECONNREFUSED' || errCode === 'ABORT_ERR'
+                || /network|fetch|http\s+\d|timed?\s*out/i.test(rawMessage)
+            ) {
+                return {
+                    code: 'MODEL_DOWNLOAD_NETWORK',
+                    message: 'The chat model download was interrupted. Check your connection and try again.',
+                };
+            }
+            if (stage === 'download') {
+                return {
+                    code: 'MODEL_DOWNLOAD_FAILED',
+                    message: 'The chat model download failed before activation. Try downloading it again.',
+                };
+            }
+            return {
+                code: 'MODEL_ACTIVATION_FAILED',
+                message: 'Could not activate the downloaded chat model. Try again or select a model in Settings.',
+            };
+        };
+
         const attemptActivation = async (modelId: string, revision: number, attempt = 0): Promise<void> => {
             if (revision !== modelChoiceRevision) return;
             clearPendingActivation();
-            pendingActivation = { modelId, revision, status: 'activating', error: null, attempts: attempt };
+            pendingActivation = { modelId, revision, status: 'activating', code: null, error: null, attempts: attempt };
             try {
                 await llmService.switchModel(modelId);
                 if (pendingActivation?.revision === revision) clearPendingActivation();
@@ -301,20 +372,20 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                         modelId,
                         revision,
                         status: 'pending',
+                        code: 'MODEL_ACTIVATION_BUSY',
                         error: 'Waiting for the current local AI or speech operation to finish before activating this model.',
                         attempts: nextAttempt,
                         timer,
                     };
                     return;
                 }
-                const message = busy
-                    ? 'Could not activate the downloaded chat model while another local operation was running. Select it in Settings to activate.'
-                    : (error instanceof Error && error.message ? error.message : 'Failed to activate the downloaded chat model.');
+                const classified = classifyChatModelError(error, 'activation');
                 pendingActivation = {
                     modelId,
                     revision,
                     status: 'failed',
-                    error: message,
+                    code: classified.code,
+                    error: classified.message,
                     attempts: attempt + 1,
                 };
             }
@@ -343,8 +414,14 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 catalog,
                 activeModelId: llmService.getActiveModelId(),
                 downloadingModelId: activeDownload?.modelId ?? llmService.getActiveDownloadModelId?.() ?? null,
+                downloadingActivate: activeDownload ? activeDownload.activate : false,
                 pendingActivation: pendingActivation
-                    ? { modelId: pendingActivation.modelId, status: pendingActivation.status, error: pendingActivation.error }
+                    ? {
+                        modelId: pendingActivation.modelId,
+                        status: pendingActivation.status,
+                        code: pendingActivation.code,
+                        error: pendingActivation.error,
+                    }
                     : null,
             });
         });
@@ -390,10 +467,10 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             }
             if (activeDownload && activeDownload.modelId === requestedModelId) {
                 if (activate) {
+                    clearPendingActivation();
+                    ++modelChoiceRevision;
                     activeDownload.activate = true;
-                    if (pendingActivation && pendingActivation.modelId !== requestedModelId) {
-                        clearPendingActivation();
-                    }
+                    activeDownload.activationRevision = modelChoiceRevision;
                 }
                 res.json({
                     message: 'Model download already in progress.',
@@ -404,15 +481,16 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 });
                 return;
             }
+            let activationRevision: number | null = null;
             if (activate) {
                 clearPendingActivation();
                 ++modelChoiceRevision;
+                activationRevision = modelChoiceRevision;
             }
-            const revision = modelChoiceRevision;
             const job: ActiveChatDownload = {
                 modelId: requestedModelId,
                 activate,
-                revision,
+                activationRevision,
                 promise: Promise.resolve(),
             };
             activeDownload = job;
@@ -420,21 +498,21 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 .then(() => llmService.downloadModel(requestedModelId))
                 .then(async () => {
                     if (activeDownload === job) activeDownload = null;
-                    if (job.activate && job.revision === modelChoiceRevision) {
-                        await attemptActivation(requestedModelId, job.revision);
+                    if (job.activate && job.activationRevision !== null && job.activationRevision === modelChoiceRevision) {
+                        await attemptActivation(requestedModelId, job.activationRevision);
                     }
                 })
                 .catch(error => {
                     if (activeDownload === job) activeDownload = null;
                     logger.error('Background model download or activation failed:', error);
-                    if (job.activate && job.revision === modelChoiceRevision) {
+                    if (job.activate && job.activationRevision !== null && job.activationRevision === modelChoiceRevision) {
+                        const classified = classifyChatModelError(error, 'download');
                         pendingActivation = {
                             modelId: requestedModelId,
-                            revision: job.revision,
+                            revision: job.activationRevision,
                             status: 'failed',
-                            error: error instanceof Error && error.message
-                                ? error.message
-                                : 'Model download failed before activation.',
+                            code: classified.code,
+                            error: classified.message,
                             attempts: 0,
                         };
                     }

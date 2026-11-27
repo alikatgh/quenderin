@@ -3,8 +3,9 @@
 // Port of Handy src-tauri/src/managers/model/download.rs at 05efc5fc180197dc0fa9d568dd9812904b723b8b.
 // See native/speech/NOTICE.md.
 import { modelFile } from '@handy-computer/models';
-import { createHash, randomUUID } from 'node:crypto';
-import { constants, createReadStream, type BigIntStats } from 'node:fs';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { constants, createReadStream } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -96,44 +97,255 @@ export interface SpeechDownloadManagerOptions {
 
 export type SpeechDownloadListener = (snapshot: SpeechDownloadSnapshot) => void;
 
-const LOCK_STALE_MS = 30_000;
-const LOCK_HEARTBEAT_MS = 5_000;
+const LOCK_BUSY_EXIT = 75;
+const LOCK_INVALID_PATH_EXIT = 74;
+const LOCK_COMMAND_NOT_FOUND_EXIT = 127;
+const LOCK_ACQUIRE_TIMEOUT_MS = 10_000;
+const LOCK_RELEASE_KILL_MS = 1_000;
 
-function isProcessAlive(pid: number): boolean {
-    if (!Number.isInteger(pid) || pid <= 0) return false;
+const POSIX_FLOCK_SH = "command -v flock >/dev/null 2>&1 || exit 127; flock -E 75 -x -n 3 || exit $?; printf 'LOCKED\\n'; read -r _ || true";
+const POSIX_FLOCK_PERL = 'open(my $fh, "+<&=", 3) or die $!; flock($fh, LOCK_EX|LOCK_NB) or exit 75; $|=1; print "LOCKED\\n"; <STDIN>;';
+const POSIX_FLOCK_PYTHON = [
+    'import fcntl, sys',
+    'try:',
+    '    fcntl.flock(3, fcntl.LOCK_EX | fcntl.LOCK_NB)',
+    'except BlockingIOError:',
+    '    sys.exit(75)',
+    'sys.stdout.write("LOCKED\\n")',
+    'sys.stdout.flush()',
+    'sys.stdin.read(1)',
+].join('\n');
+const WIN_LOCKFILE_PS = [
+    "$ErrorActionPreference = 'Stop'",
+    '$p = $env:QUENDERIN_LOCK_PATH',
+    'if ((Test-Path -LiteralPath $p) -and ((Get-Item -LiteralPath $p -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { exit 74 }',
+    '$fs = $null',
+    'try {',
+    '  $fs = [System.IO.File]::Open($p, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::ReadWrite)',
+    '  $fs.Lock(0, 1)',
+    '} catch [System.IO.IOException] {',
+    '  if ($fs) { $fs.Dispose() }',
+    '  $hr = $_.Exception.HResult -band 0xFFFF',
+    '  if ($hr -eq 32 -or $hr -eq 33) { exit 75 }',
+    '  throw',
+    '}',
+    'try {',
+    "  [Console]::Out.WriteLine('LOCKED')",
+    '  [Console]::Out.Flush()',
+    '  [void][Console]::In.ReadLine()',
+    '} finally {',
+    '  try { $fs.Unlock(0, 1) } catch {}',
+    '  $fs.Dispose()',
+    '}',
+].join('\n');
+
+const activeArtifactLocks = new Set<string>();
+
+type LockHelperAttempt =
+    | { readonly status: 'acquired'; readonly child: ChildProcess }
+    | { readonly status: 'busy' }
+    | { readonly status: 'unavailable' };
+
+function waitForChildExit(child: ChildProcess): Promise<void> {
+    if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+    return new Promise<void>(resolve => {
+        const done = () => {
+            child.off('exit', done);
+            child.off('close', done);
+            child.off('error', done);
+            resolve();
+        };
+        child.once('exit', done);
+        child.once('close', done);
+        child.once('error', done);
+    });
+}
+
+async function releaseLockHelper(child: ChildProcess): Promise<void> {
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    const exited = waitForChildExit(child);
+    try { child.stdin?.end(); } catch { /* ignore */ }
+    const killTimer = setTimeout(() => {
+        if (child.exitCode === null && child.signalCode === null) {
+            try { child.kill('SIGKILL'); } catch { /* ignore */ }
+        }
+    }, LOCK_RELEASE_KILL_MS);
+    killTimer.unref?.();
     try {
-        process.kill(pid, 0);
-        return true;
-    } catch (error) {
-        return (error as NodeJS.ErrnoException).code === 'EPERM';
+        await exited;
+    } finally {
+        clearTimeout(killTimer);
     }
 }
 
-async function isStaleArtifactLock(lockPath: string, staleMs: number): Promise<boolean> {
-    let before: BigIntStats;
-    try {
-        before = await fs.lstat(lockPath, { bigint: true });
-    } catch {
-        return false;
-    }
-    if (!before.isFile() || before.isSymbolicLink()) return false;
-    const ageMs = Date.now() - Number(before.mtimeNs / 1_000_000n);
-    try {
-        const raw = await fs.readFile(lockPath, 'utf8');
-        const parsed = JSON.parse(raw) as { pid?: unknown };
-        if (typeof parsed.pid === 'number' && Number.isInteger(parsed.pid) && parsed.pid > 0 && parsed.pid !== process.pid) {
-            if (!isProcessAlive(parsed.pid)) {
-                const after = await fs.lstat(lockPath, { bigint: true }).catch(() => null);
-                return !!after && after.dev === before.dev && after.ino === before.ino && after.mtimeNs === before.mtimeNs;
+function trySpawnKernelLockHelper(
+    command: string,
+    args: readonly string[],
+    options: { readonly fd?: number; readonly env?: NodeJS.ProcessEnv },
+): Promise<LockHelperAttempt> {
+    return new Promise<LockHelperAttempt>((resolve, reject) => {
+        const stdio: ('pipe' | number)[] = options.fd !== undefined
+            ? ['pipe', 'pipe', 'pipe', options.fd]
+            : ['pipe', 'pipe', 'pipe'];
+        const child = spawn(command, args, {
+            stdio,
+            shell: false,
+            windowsHide: true,
+            env: options.env,
+        });
+        let settled = false;
+        let stdoutBuf = '';
+        const finish = (fn: () => void) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            child.off('error', onError);
+            child.off('exit', onExit);
+            child.stdout?.off('data', onStdout);
+            fn();
+        };
+        const timer = setTimeout(() => {
+            finish(() => {
+                try { child.kill('SIGKILL'); } catch { /* ignore */ }
+                reject(new SpeechError('permission', 500, 'Timed out acquiring the speech model artifact lock.'));
+            });
+        }, LOCK_ACQUIRE_TIMEOUT_MS);
+        timer.unref?.();
+
+        const onError = (error: NodeJS.ErrnoException) => {
+            finish(() => {
+                if (error.code === 'ENOENT') resolve({ status: 'unavailable' });
+                else reject(error);
+            });
+        };
+        const onStdout = (chunk: Buffer | string) => {
+            stdoutBuf += chunk.toString();
+            if (stdoutBuf.includes('LOCKED\n') || stdoutBuf.includes('LOCKED\r\n')) {
+                finish(() => {
+                    // Drain any trailing output without retaining listener references.
+                    child.stdout?.resume();
+                    child.stderr?.resume();
+                    resolve({ status: 'acquired', child });
+                });
             }
-            return false;
+        };
+        const onExit = (code: number | null) => {
+            finish(() => {
+                if (code === LOCK_BUSY_EXIT) {
+                    resolve({ status: 'busy' });
+                } else if (code === LOCK_COMMAND_NOT_FOUND_EXIT) {
+                    resolve({ status: 'unavailable' });
+                } else if (code === LOCK_INVALID_PATH_EXIT) {
+                    reject(new SpeechError('permission', 409, 'The speech model lock path must be a regular file.'));
+                } else {
+                    reject(new SpeechError(
+                        'permission',
+                        500,
+                        'Could not lock the speech model artifact. Check folder permissions and try again.',
+                    ));
+                }
+            });
+        };
+
+        child.once('error', onError);
+        child.once('exit', onExit);
+        child.stdout?.on('data', onStdout);
+        child.stderr?.resume();
+    });
+}
+
+async function acquireKernelFileLock(lockPath: string): Promise<SpeechDownloadLockHandle | null> {
+    const resolvedLockPath = path.resolve(lockPath);
+    if (activeArtifactLocks.has(resolvedLockPath)) return null;
+    activeArtifactLocks.add(resolvedLockPath);
+    let heldChild: ChildProcess | null = null;
+    try {
+        await fs.mkdir(path.dirname(resolvedLockPath), { recursive: true, mode: 0o700 });
+        if (process.platform === 'win32') {
+            const existing = await fs.lstat(resolvedLockPath).catch((error: NodeJS.ErrnoException) => {
+                if (error.code === 'ENOENT') return null;
+                throw error;
+            });
+            if (existing && (existing.isSymbolicLink() || !existing.isFile())) {
+                throw new SpeechError('permission', 409, 'The speech model lock path must be a regular file.');
+            }
+            const candidates: readonly { command: string; args: readonly string[] }[] = [
+                { command: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', WIN_LOCKFILE_PS] },
+                { command: 'pwsh', args: ['-NoProfile', '-NonInteractive', '-Command', WIN_LOCKFILE_PS] },
+            ];
+            for (const candidate of candidates) {
+                const attempt = await trySpawnKernelLockHelper(candidate.command, candidate.args, {
+                    env: { ...process.env, QUENDERIN_LOCK_PATH: resolvedLockPath },
+                });
+                if (attempt.status === 'busy') return null;
+                if (attempt.status === 'acquired') {
+                    heldChild = attempt.child;
+                    break;
+                }
+            }
+        } else {
+            const handle = await fs.open(
+                resolvedLockPath,
+                constants.O_RDWR | constants.O_CREAT | (constants.O_NOFOLLOW ?? 0),
+                0o600,
+            );
+            try {
+                const info = await handle.stat();
+                if (!info.isFile()) {
+                    throw new SpeechError('permission', 409, 'The speech model lock path must be a regular file.');
+                }
+                const candidates: readonly { command: string; args: readonly string[] }[] = process.platform === 'darwin'
+                    ? [
+                        { command: '/usr/bin/perl', args: ['-MFcntl=:flock', '-e', POSIX_FLOCK_PERL] },
+                        { command: 'perl', args: ['-MFcntl=:flock', '-e', POSIX_FLOCK_PERL] },
+                        { command: 'python3', args: ['-c', POSIX_FLOCK_PYTHON] },
+                    ]
+                    : [
+                        { command: 'sh', args: ['-c', POSIX_FLOCK_SH] },
+                        { command: 'python3', args: ['-c', POSIX_FLOCK_PYTHON] },
+                        { command: 'perl', args: ['-MFcntl=:flock', '-e', POSIX_FLOCK_PERL] },
+                    ];
+                for (const candidate of candidates) {
+                    const attempt = await trySpawnKernelLockHelper(candidate.command, candidate.args, {
+                        fd: handle.fd,
+                    });
+                    if (attempt.status === 'busy') return null;
+                    if (attempt.status === 'acquired') {
+                        heldChild = attempt.child;
+                        break;
+                    }
+                }
+            } finally {
+                // Closing the parent duplicate leaves the helper holding the sole open file description
+                // and its kernel flock; the lock file stays in place so contenders never unlink live locks.
+                await handle.close();
+            }
         }
-    } catch {
-        // Fall through to age-based staleness check for truncated/corrupt lock files.
+        if (!heldChild) {
+            throw new SpeechError('permission', 500, 'No OS file locking helper is available on this system.');
+        }
+        const child = heldChild;
+        let released = false;
+        return {
+            async release() {
+                if (released) return;
+                released = true;
+                try {
+                    await releaseLockHelper(child);
+                } finally {
+                    activeArtifactLocks.delete(resolvedLockPath);
+                }
+            },
+        };
+    } catch (error) {
+        if (heldChild) await releaseLockHelper(heldChild).catch(() => {});
+        activeArtifactLocks.delete(resolvedLockPath);
+        throw error;
+    } finally {
+        if (!heldChild) {
+            activeArtifactLocks.delete(resolvedLockPath);
+        }
     }
-    if (ageMs <= staleMs) return false;
-    const after = await fs.lstat(lockPath, { bigint: true }).catch(() => null);
-    return !!after && after.dev === before.dev && after.ino === before.ino && after.mtimeNs === before.mtimeNs;
 }
 
 export const speechDownloadFs: SpeechDownloadFileSystem = {
@@ -171,50 +383,7 @@ export const speechDownloadFs: SpeechDownloadFileSystem = {
         flags: (constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)) as unknown as string,
         highWaterMark: 1024 * 1024, signal,
     }),
-    async acquireLock(lockPath) {
-        const payload = JSON.stringify({ pid: process.pid, token: randomUUID(), createdAt: Date.now() }) + '\n';
-        await fs.mkdir(path.dirname(lockPath), { recursive: true, mode: 0o700 });
-        for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-                const handle = await fs.open(
-                    lockPath,
-                    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0),
-                    0o600,
-                );
-                try {
-                    await handle.writeFile(payload, 'utf8');
-                } finally {
-                    await handle.close();
-                }
-                const stat = await fs.lstat(lockPath, { bigint: true });
-                const lockId = `${stat.dev}:${stat.ino}`;
-                const heartbeat = setInterval(() => {
-                    const now = new Date();
-                    void fs.utimes(lockPath, now, now).catch(() => {});
-                }, LOCK_HEARTBEAT_MS);
-                heartbeat.unref?.();
-                let released = false;
-                return {
-                    async release() {
-                        if (released) return;
-                        released = true;
-                        clearInterval(heartbeat);
-                        try {
-                            const current = await fs.lstat(lockPath, { bigint: true });
-                            if (`${current.dev}:${current.ino}` === lockId) {
-                                await fs.rm(lockPath, { force: true });
-                            }
-                        } catch { /* lock already removed */ }
-                    },
-                };
-            } catch (error) {
-                if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-                if (attempt > 0 || !await isStaleArtifactLock(lockPath, LOCK_STALE_MS)) return null;
-                await fs.rm(lockPath, { force: true }).catch(() => {});
-            }
-        }
-        return null;
-    },
+    acquireLock: acquireKernelFileLock,
 };
 
 export const MAX_SPEECH_REDIRECT_HOPS = 5;
@@ -644,7 +813,7 @@ export class SpeechDownloadManager {
 
     private async checkInstalled(
         model: HandySpeechModel,
-        options: { readonly allowUnlink?: boolean } = {},
+        options: { readonly allowUnlink?: boolean; readonly signal?: AbortSignal } = {},
     ): Promise<boolean> {
         const file = this.destination(model);
         const info = await this.options.fs.stat(file);
@@ -656,7 +825,7 @@ export class SpeechDownloadManager {
         if (info.size === modelFile(model).size && info.identity && this.verified.get(model.id) === info.identity) {
             return true;
         }
-        if (!await this.matchesHash(file, model, info)) {
+        if (!await this.matchesHash(file, model, info, options.signal)) {
             this.verified.delete(model.id);
             if (options.allowUnlink) {
                 await this.options.fs.unlink(file);
@@ -701,14 +870,8 @@ export class SpeechDownloadManager {
             signal.throwIfAborted();
             await this.options.fs.mkdir(this.options.modelsDir, { recursive: true });
             lock = await this.acquireArtifactLock(model);
-        } catch (error) {
-            if (signal.aborted) return;
-            const classified = this.classifyError(error);
-            this.publish(model, 'error', this.job(model).snapshot.downloadedBytes, classified);
-            return;
-        }
-        try {
-            if (await this.checkInstalled(model, { allowUnlink: true })) return;
+            signal.throwIfAborted();
+            if (await this.checkInstalled(model, { allowUnlink: true, signal })) return;
             for (let attempt = 1; attempt <= this.policy.maxAttempts; attempt++) {
                 try {
                     signal.throwIfAborted();
@@ -758,8 +921,18 @@ export class SpeechDownloadManager {
                     return;
                 }
             }
+        } catch (error) {
+            if (signal.aborted) return;
+            const classified = this.classifyError(error);
+            this.publish(model, 'error', classified.kind === 'checksum-mismatch' ? 0 : this.job(model).snapshot.downloadedBytes, classified);
         } finally {
-            await lock.release();
+            if (lock) {
+                try {
+                    await lock.release();
+                } catch {
+                    // Best-effort cleanup; never reject detached background job.work.
+                }
+            }
         }
     }
 

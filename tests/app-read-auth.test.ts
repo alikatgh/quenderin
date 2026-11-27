@@ -26,7 +26,7 @@ describe('read-route auth (Q-007)', () => {
 
     it('rejects unauthenticated GETs to user-data routes with 401', async () => {
         await withApp(async (base) => {
-            for (const path of ['/api/sessions', '/api/notes', '/api/memory/trajectories', '/diagnostics', '/api/metrics']) {
+            for (const path of ['/api/sessions', '/api/notes', '/api/memory/trajectories', '/diagnostics', '/api/metrics', '/api/models/catalog']) {
                 const res = await localRequest(`${base}${path}`);
                 expect(res.status, `${path} should require auth`).toBe(401);
             }
@@ -37,7 +37,7 @@ describe('read-route auth (Q-007)', () => {
         // bug hunt r-uc #3: HEAD was not gated, so `HEAD /api/notes` ran the GET handler
         // unauthenticated and leaked existence/size via the computed Content-Length.
         await withApp(async (base) => {
-            for (const path of ['/api/sessions', '/api/notes', '/api/metrics']) {
+            for (const path of ['/api/sessions', '/api/notes', '/api/metrics', '/api/models/catalog']) {
                 const res = await localRequest(`${base}${path}`, { method: 'HEAD' });
                 expect(res.status, `HEAD ${path} should require auth`).toBe(401);
             }
