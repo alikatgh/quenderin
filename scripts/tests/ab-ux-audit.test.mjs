@@ -82,9 +82,9 @@ function gitListTree(ref, relDir, suffix) {
 }
 
 test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphic chrome, and zero analytics', () => {
-    // 1. Documentation portal: all 30 files stay <= 650 chars per <p>, no broken bold/em wildcards, solid header
+    // 1. Documentation portal: all 31 files stay <= 650 chars per <p>, no broken bold/em wildcards, solid header
     const docFiles = readdirSync(docsDir).filter((f) => f.endsWith('.html'));
-    assert.equal(docFiles.length, 30);
+    assert.equal(docFiles.length, 31);
     let maxDocPara = 0;
     for (const file of docFiles) {
         const html = readFileSync(path.join(docsDir, file), 'utf8');
@@ -122,7 +122,7 @@ test('Variant B enforces scannable prose, brand palette tokens, zero glassmorphi
 
     // 4. All top-level marketing/legal/blog HTML pages: <=650-char <p>, theme.js, theme-toggle, unified styles cache-buster, zero analytics
     const topPages = readdirSync(websiteDir).filter((f) => f.endsWith('.html'));
-    assert.equal(topPages.length, 37);
+    assert.equal(topPages.length, 38);
     for (const file of topPages) {
         const html = readFileSync(path.join(websiteDir, file), 'utf8');
         const stats = paragraphStats(html);
