@@ -801,12 +801,25 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteHyMemoryStreaming(JNIEnv* env, 
     return make_jstring(env, out);
 }
 
-// GRAMMAR-CONSTRAINED completion (the agent decision decode): build a PER-CALL sampler whose first
-// stage is a GBNF grammar mask, so the decode CANNOT be prose — parity with the iOS LlamaEngine chain
-// (grammar → penalties → top_k → top_p → temp → dist; top_k/top_p run AFTER the grammar so they only
-// trim already-legal tokens). A grammar that fails to parse fails closed: we free the sampler and
-// throw IllegalStateException rather than silently falling back to unconstrained decoding (parity
-// with iOS `LlamaEngine`).
+// The grammar mask runs before top-k/top-p, so those stages trim only legal tokens.
+static llama_sampler* makeGrammarSampler(LlamaHandle* h, const char* grammar, float top_p, int top_k,
+                                         float temperature, float repeat_penalty, int repeat_last_n) {
+    const llama_vocab* vocab = llama_model_get_vocab(h->model);
+    llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    if (grammar && grammar[0] != '\0') {
+        llama_sampler* mask = llama_sampler_init_grammar(vocab, grammar, "root");
+        if (!mask) { llama_sampler_free(sampler); return nullptr; }
+        llama_sampler_chain_add(sampler, mask);
+    }
+    llama_sampler_chain_add(sampler, init_penalties(vocab, repeat_last_n, repeat_penalty, 0.0f, 0.0f));
+    if (top_k > 0) llama_sampler_chain_add(sampler, llama_sampler_init_top_k(top_k));
+    llama_sampler_chain_add(sampler, llama_sampler_init_top_p(top_p, 1));
+    llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
+    llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+    return sampler;
+}
+
+// Raw grammar-constrained completion for agent decisions.
 JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobject thiz,
                                                              jlong handle, jstring prompt, jint max_tokens,
@@ -821,29 +834,17 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobjec
     const char* g = grammar ? quenderin::jni::get_chars(env, grammar) : nullptr;
     if (grammar && !g) { quenderin::jni::release_chars(p); return nullptr; }
 
-    const llama_vocab* vocab = llama_model_get_vocab(h->model);
-    llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    if (g && g[0] != '\0') {
-        llama_sampler* gs = llama_sampler_init_grammar(vocab, g, "root");   // null if the GBNF won't parse
-        if (!gs) {
-            llama_sampler_free(smpl);
-            quenderin::jni::release_chars(p);
-            quenderin::jni::release_chars(g);
-            return throw_generation_failed(env, "Grammar-constrained decoding could not be initialized for the requested grammar.");
-        }
-        llama_sampler_chain_add(smpl, gs);
+    llama_sampler* smpl = makeGrammarSampler(h, g, top_p, top_k, temperature, repeat_penalty, repeat_last_n);
+    if (g) quenderin::jni::release_chars(g);
+    if (!smpl) {
+        quenderin::jni::release_chars(p);
+        return throw_generation_failed(env, "Grammar-constrained decoding could not be initialized for the requested grammar.");
     }
-    llama_sampler_chain_add(smpl, init_penalties(vocab, repeat_last_n, repeat_penalty, 0.0f, 0.0f));
-    if (top_k > 0) llama_sampler_chain_add(smpl, llama_sampler_init_top_k(top_k));
-    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(top_p, 1));
-    llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));
-    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
     bool failed = false;
     std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed, smpl);
     llama_sampler_free(smpl);                          // per-call: freed here, never touches h->sampler
     quenderin::jni::release_chars(p);
-    if (g) quenderin::jni::release_chars(g);
     if (env->ExceptionCheck()) return nullptr;
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
@@ -870,12 +871,9 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
 // joined by \x1E, system first). We apply the model's own chat template so it answers as an assistant and
 // stops at its end-of-turn token — dramatically faster + higher quality than the raw "User:/Assistant:"
 // prompt. Streams pieces to `sink`; returns the full text.
-JNIEXPORT jstring JNICALL
-Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobject thiz,
-                                                               jlong handle, jstring payload,
-                                                               jint max_tokens, jboolean disable_thinking,
-                                                               jobject sink) {
-    LlamaHandle* h = as_handle(handle);
+static jstring completeChatStreaming(JNIEnv* env, jobject thiz, LlamaHandle* h, jstring payload,
+                                     jint max_tokens, jboolean disable_thinking, jobject sink,
+                                     llama_sampler* sampler = nullptr) {
     if (!h) { LOGE("nativeCompleteChat: null handle (no model loaded)"); return make_jstring(env, ""); }
     if (h->specialist) return throw_generation_failed(env, "Hy-Memory requires its specialist workflow.");
     const char* p = quenderin::jni::get_chars(env, payload);
@@ -889,10 +887,36 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobj
     if (prompt.empty()) return make_jstring(env, "");
 
     bool failed = false;
-    std::string out = generate(h, prompt, max_tokens, env, sink, thiz, failed);
+    std::string out = generate(h, prompt, max_tokens, env, sink, thiz, failed, sampler);
     if (env->ExceptionCheck()) return nullptr;
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
+}
+
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobject thiz,
+                                                               jlong handle, jstring payload,
+                                                               jint max_tokens, jboolean disable_thinking,
+                                                               jobject sink) {
+    return completeChatStreaming(env, thiz, as_handle(handle), payload, max_tokens, disable_thinking, sink);
+}
+
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatWithGrammar(JNIEnv* env, jobject thiz,
+                                                                 jlong handle, jstring payload, jint max_tokens,
+                                                                 jstring grammar, jfloat top_p, jfloat temperature,
+                                                                 jobject sink) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h) return make_jstring(env, "");
+    if (h->muse || h->beam || h->specialist) return throw_generation_failed(env, "This model does not support JSON chat grammar.");
+    const char* g = quenderin::jni::get_chars(env, grammar);
+    if (!g) return nullptr;
+    llama_sampler* sampler = g[0] ? makeGrammarSampler(h, g, top_p, 40, temperature, 1.1f, 256) : nullptr;
+    quenderin::jni::release_chars(g);
+    if (!sampler) return throw_generation_failed(env, "Grammar-constrained decoding could not be initialized for the requested grammar.");
+    jstring result = completeChatStreaming(env, thiz, h, payload, max_tokens, JNI_TRUE, sink, sampler);
+    llama_sampler_free(sampler);
+    return result;
 }
 
 // New symbol: adding a measurement sink must never change the legacy JNI call arity.
