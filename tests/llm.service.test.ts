@@ -1,7 +1,50 @@
 import { describe, it, expect, vi } from 'vitest';
 import { LlmService } from '../src/services/llm.service.js';
+import { executeToolCalls } from '../src/services/tools/handlers.js';
 // Lifecycle fixtures never execute tools or require their unrelated embedding backend.
 vi.mock('../src/services/tools/handlers.js', () => ({ executeToolCalls: vi.fn() }));
+vi.mock('node-llama-cpp', () => ({
+    getLlama: vi.fn(),
+    LlamaModel: vi.fn(),
+    LlamaContext: vi.fn(),
+    LlamaChatSession: vi.fn(),
+    LlamaLogLevel: {},
+    defineChatSessionFunction: vi.fn(),
+    InputLookupTokenPredictor: vi.fn(),
+}));
+
+describe('LlmService plain chat', () => {
+    it('supplies no functions, dispatches no XML calls, and hides split tool markup', async () => {
+        const svc = new LlmService();
+        const chunks = [
+            'İ Before <tool_', 'call><name>read_file</name><args>{}</args></tool_call>',
+            'after.<TOOL_CALL><name>note_save</name><args>{}</args></TOOL_CALL>',
+            '<tool_call>unfinished',
+        ];
+        const prompt = vi.fn(async (_input: string, options: { onTextChunk?: (text: string) => void }) => {
+            for (const chunk of chunks) options.onTextChunk?.(chunk);
+            return chunks.join('');
+        });
+        const stub = svc as unknown as {
+            getModelAndContext: () => Promise<unknown>;
+            createChatSession: (options: { systemPrompt: string }) => unknown;
+        };
+        vi.spyOn(stub, 'getModelAndContext').mockResolvedValue({ context: { getSequence: vi.fn() } });
+        const session = vi.spyOn(stub, 'createChatSession').mockReturnValue({ prompt });
+        const visible: string[] = [];
+
+        const result = await svc.generalChat('hello', token => visible.push(token), { plainChat: true });
+
+        expect(prompt).toHaveBeenCalledTimes(1);
+        expect(prompt.mock.calls[0][0]).toBe('hello');
+        expect(prompt.mock.calls[0][1]).not.toHaveProperty('functions');
+        expect(session.mock.calls[0][0].systemPrompt).not.toContain('<tool_call>');
+        expect(executeToolCalls).not.toHaveBeenCalled();
+        expect(result.meta.toolCalls).toBe(0);
+        expect(result.text).toBe('İ Before after.');
+        expect(visible.join('')).toBe(result.text);
+    });
+});
 
 /**
  * Regression: `unloadModel()` (the "free RAM" path, also fired by the idle-timer and

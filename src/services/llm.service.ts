@@ -59,7 +59,7 @@ import { MODEL_CATALOG, modelPath, checkMemoryForModel, gpuOffloadFits, type Mod
 import { stripControlTokens, stripControlTokensWithOptions } from "../utils/stripControlTokens.js";
 import { getPresetById, type Preset } from "./presets.js";
 import { buildToolPrompt, maxToolCallsPerResponse } from "./tools/registry.js";
-import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from "./tools/toolLoop.js";
+import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults, ToolCallStreamFilter } from "./tools/toolLoop.js";
 import { executeToolCalls } from "./tools/handlers.js";
 import { buildNativeChatFunctions } from "./tools/nativeFunctions.js";
 import { getHardwareProfile } from "../utils/hardware.js";
@@ -282,7 +282,8 @@ function selectPinnedOrBestModel(
 export class LlmService extends EventEmitter implements ILlmProvider {
     private unregisterWorkload: () => void;
     private disposal: Promise<void> = Promise.resolve();
-    private parkedChatHistory: { modelId: string; presetId: string; history: any } | null = null;
+    private parkedChatHistory: { modelId: string; presetId: string; plainChat: boolean; history: any } | null = null;
+    private chatSessionPlain = false;
     private modelInstance: LlamaModel | null = null;
     private contextInstance: LlamaContext | null = null;
     private initPromise: Promise<{ model: LlamaModel, context: LlamaContext }> | null = null;
@@ -694,7 +695,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         if (this.generalChatSession?.getChatHistory) {
             const encoded = JSON.stringify(this.generalChatSession.getChatHistory());
             if (Buffer.byteLength(encoded) > 1024 * 1024) throw new Error('The current conversation cannot be suspended within its memory bound.');
-            this.parkedChatHistory = { modelId: this.loadedModelId ?? this.activeModelId, presetId: this.activePreset.id, history: JSON.parse(encoded) };
+            this.parkedChatHistory = { modelId: this.loadedModelId ?? this.activeModelId, presetId: this.activePreset.id, plainChat: this.chatSessionPlain, history: JSON.parse(encoded) };
         }
         this.unloadModel();
         await this.disposal;
@@ -1720,10 +1721,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // protocol below remains the fallback for older bindings (and stays the mobile twins'
         // wire format, pinned by the tool-format parity vectors).
         const jais = this.isJaisSelected() || this.isPublisherSelected();
-        const useNativeFunctions = !jais && !opts?.plainChat &&
+        const plainChat = opts?.plainChat === true;
+        const useNativeFunctions = !jais && !plainChat &&
             typeof _llamaBindings?.defineChatSessionFunction === 'function';
 
         const ensureSession = () => {
+            if (this.chatSessionPlain !== plainChat) this.disposeChatSession();
             // NO periodic amnesia reset. The old code disposed the session every MAX_CHAT_TURNS
             // (≈20) turns — total conversation memory loss the user could feel. node-llama-cpp's
             // built-in contextShift keeps an overflowing session alive with the SYSTEM PROMPT
@@ -1744,7 +1747,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // short directive remains: small models often IMITATE a function call as plain text
                 // instead of emitting the wrapper's real call syntax (live-caught on a 1B) — telling
                 // them not to measurably improves trigger reliability at a ~20-token cost.
-                const basePrompt = opts?.plainChat || jais
+                const basePrompt = plainChat || jais
                     ? this.activePreset.systemPrompt
                     : useNativeFunctions
                         ? `${this.activePreset.systemPrompt}\n\nWhen a calculation, conversion, file read, or lookup is needed, call the corresponding provided function. Never write an imitation of a function call as text.`
@@ -1754,8 +1757,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
                 });
+                this.chatSessionPlain = plainChat;
                 const parked = this.parkedChatHistory;
-                if (parked && parked.modelId === this.loadedModelId && parked.presetId === this.activePreset.id) {
+                if (parked && parked.plainChat === plainChat &&
+                    parked.modelId === this.loadedModelId && parked.presetId === this.activePreset.id) {
                     this.generalChatSession.setChatHistory(parked.history);
                 }
                 this.parkedChatHistory = null;
@@ -1804,6 +1809,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // allowance, the calls eat the user-visible response budget and the final answer arrives
             // truncated or empty (live-caught: a looping 1B ended with "" at maxTokens).
             const functionCallAllowance = useNativeFunctions ? 96 * maxToolCallsPerResponse() : 0;
+            let toolFilter = plainChat ? new ToolCallStreamFilter() : undefined;
             const promptOptions = {
                 maxTokens: responseMaxTokens + functionCallAllowance + (jais ? 256 : 0),
                 temperature: this.activePreset.temperature,
@@ -1815,7 +1821,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 budgets: { thoughtTokens: jais ? 256 : opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
-                    const clean = stripControlTokensWithOptions(chunk, { trim: false });
+                    const clean = stripControlTokensWithOptions(toolFilter ? toolFilter.feed(chunk) : chunk, { trim: false });
                     if (!clean) return;
 
                     if (firstTokenTime === null) firstTokenTime = performance.now();
@@ -1842,6 +1848,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     this.disposeChatSession();
                     ensureSession();
                     this.tokenBuffer = '';
+                    if (plainChat) toolFilter = new ToolCallStreamFilter();
                     firstTokenTime = null;
                     tokenCount = 0;
                     response = await this.promptWithTimeout(
@@ -1864,8 +1871,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // (use tool A's result to decide a call to tool B); the old single round stripped that
             // second call instead of running it. Bounded by MAX_TOOL_ROUNDS so a model that keeps
             // emitting tool calls can't loop forever — after the cap, any remaining markup is stripped.
-            const MAX_TOOL_ROUNDS = useNativeFunctions || jais ? 0 : 3;
-            let finalResponse = stripControlTokens(response.trim());
+            const MAX_TOOL_ROUNDS = plainChat || useNativeFunctions || jais ? 0 : 3;
+            let finalResponse = stripControlTokens(plainChat ? new ToolCallStreamFilter().feed(response) : response);
 
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {
                 const calls = parseToolCalls(finalResponse);

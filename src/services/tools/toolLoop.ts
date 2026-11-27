@@ -6,7 +6,7 @@
  * NOTE: only the parse/strip/format helpers are live — `generalChat` runs the loop inline
  * (`llm.service.ts`) and the WS layer does stream-level suppression. There is no shared loop fn.
  */
-import { ToolCall, ToolResult } from './registry.js';
+import type { ToolCall, ToolResult } from './registry.js';
 import logger from '../../utils/logger.js';
 
 /** Parse tool calls from LLM output using XML tags */
@@ -46,6 +46,35 @@ export function stripToolCalls(text: string): string {
         .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
+}
+
+/** Suppress XML tool calls before streaming plain chat, including split or unfinished tags. */
+export class ToolCallStreamFilter {
+    private pending = '';
+    private insideCall = false;
+
+    feed(chunk: string): string {
+        this.pending += chunk;
+        let visible = '';
+        while (this.pending) {
+            const marker = this.insideCall ? '</tool_call>' : '<tool_call>';
+            const index = this.pending.search(this.insideCall ? /<\/tool_call>/i : /<tool_call>/i);
+            if (index >= 0) {
+                if (!this.insideCall) visible += this.pending.slice(0, index);
+                this.pending = this.pending.slice(index + marker.length);
+                this.insideCall = !this.insideCall;
+                continue;
+            }
+
+            let held = Math.min(marker.length - 1, this.pending.length);
+            while (held > 0 && !marker.startsWith(this.pending.slice(-held).toLowerCase())) held--;
+            const end = this.pending.length - held;
+            if (!this.insideCall) visible += this.pending.slice(0, end);
+            this.pending = this.pending.slice(end);
+            break;
+        }
+        return visible;
+    }
 }
 
 /** Format tool results for injecting back into the conversation */
