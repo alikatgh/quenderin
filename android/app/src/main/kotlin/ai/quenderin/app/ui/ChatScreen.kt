@@ -172,8 +172,6 @@ fun ChatScreen(
     var pendingDocuments by remember(draftOwner) { mutableStateOf(coordinator.draft(draftOwner).documents) }
     var attachmentNotice by remember(draftOwner) { mutableStateOf<String?>(null) }
     fun stashVisibleDraft() {
-        // During the final admission hop, the visible composer may already be blank while the
-        // unsent draft is still retained by its conversation. Do not replace it with that blank.
         if (!busy || input.isNotEmpty() || pendingDocuments.isNotEmpty()) coordinator.saveDraft(draftOwner, input, pendingDocuments)
     }
     // Router suggestion for the drafted FIRST message (twin of iOS ChatView.routeSuggestion).
@@ -359,7 +357,7 @@ fun ChatScreen(
             val firstTurn = !coordinator.hasOrdinaryTurn
             val messageCountBeforeSend = chat.messages.size
             val request = ai.quenderin.core.AutomaticChatRequest(text, docs, chat.messages)
-            if (useDraft) coordinator.saveDraft(conversationID, text, docs)
+            if (useDraft) coordinator.saveDraft(conversationID, input, docs)
             val admission = chat.captureTurnAdmission {
                 captureLocalTurnIntent() == intent && coordinator.currentId == conversationID && coordinator.lifecycleRevision == lifecycleRevision
             }
@@ -372,22 +370,27 @@ fun ChatScreen(
                         }
                     } ?: throw ai.quenderin.core.EngineNotLoadedException()
                     if (!prepared.accepts() || coordinator.lifecycleRevision != lifecycleRevision) throw ai.quenderin.core.AutomaticSelectionChangedException()
-                    if (useDraft) { input = ""; pendingDocuments = emptyList(); attachmentNotice = null; routeSuggestionDismissed = false }
                     withContext(Dispatchers.IO) { chat.withSelectedModel(prepared.model.id) {
                         if (!prepared.accepts() || coordinator.lifecycleRevision != lifecycleRevision) throw ai.quenderin.core.AutomaticSelectionChangedException()
                         check(!automaticEnabled || chat.pendingChatFits(prepared.model, request)) { "This pending turn does not fit the selected model's actual context. Your draft is kept." }
                         chat.send(text, docs, prepared.model, admission = admission, isCancelled = { !myJob.isActive }, onAdmitted = {
-                            if (useDraft) coordinator.saveDraft(conversationID, "", emptyList())
+                            if (useDraft) {
+                                coordinator.saveDraft(conversationID, "", emptyList())
+                                scope.launch {
+                                    if (sendJob == myJob && coordinator.currentId == conversationID &&
+                                        coordinator.lifecycleRevision == lifecycleRevision) {
+                                        input = ""
+                                        pendingDocuments = emptyList()
+                                        attachmentNotice = null
+                                        routeSuggestionDismissed = false
+                                    }
+                                }
+                            }
                             coordinator.recordLocalAdmission(prepared.model.id, automaticEnabled, conversationID)
                         })
                     } }
                     chat.preparationError?.let { reason ->
                         if (sendJob == myJob) sendError = reason
-                        if (useDraft && chat.messages.size == messageCountBeforeSend) {
-                            input = text
-                            pendingDocuments = docs
-                            coordinator.saveDraft(conversationID, text, docs)
-                        }
                     }
                 } catch (t: Throwable) {
                     if (t is kotlinx.coroutines.CancellationException) {
@@ -396,8 +399,6 @@ fun ChatScreen(
                         }
                         throw t
                     }
-                    if (sendJob == myJob && useDraft && coordinator.currentId == conversationID && coordinator.lifecycleRevision == lifecycleRevision &&
-                        chat.messages.size == messageCountBeforeSend) { input = text; pendingDocuments = docs; coordinator.saveDraft(conversationID, text, docs) }
                     Log.e("Quenderin", "chat.send failed", t)
                     if (sendJob == myJob) sendError = t.message?.takeIf { it.isNotBlank() }
                         ?: "${t.javaClass.simpleName}: generation failed"

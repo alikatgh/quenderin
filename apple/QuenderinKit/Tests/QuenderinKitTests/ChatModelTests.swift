@@ -59,11 +59,31 @@ final class ChatModelTests: XCTestCase {
         let chat = ChatModel(engine: MockInferenceEngine())  // never loaded
         await chat.send("hello")
 
-        XCTAssertEqual(chat.messages.count, 2)
-        XCTAssertTrue(chat.messages[1].text.contains("⚠️"), "should surface a friendly error")
-        XCTAssertFalse(chat.messages[1].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        XCTAssertTrue(chat.messages[1].text.localizedCaseInsensitiveContains("choose "), chat.messages[1].text)
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertTrue(chat.preparationError?.localizedCaseInsensitiveContains("choose ") == true)
         XCTAssertFalse(chat.isGenerating)
+    }
+
+    func testExclusiveInferenceKeepsTheComposerAndDoesNotRecordATurn() async throws {
+        let engine = CoordinatedInferenceEngine(await loadedMock("reply"))
+        let chat = ChatModel(engine: engine)
+        let docs = [AttachedDocument(name: "draft.txt", text: "draft contents")]
+        chat.composer.draft = "question"
+        chat.composer.pendingDocuments = docs
+        var accepted = false
+        let lease = try await engine.acquireExclusiveInferenceLease(timeoutSeconds: 0)
+
+        await chat.send("question", documents: docs, onAccepted: { accepted = true })
+        XCTAssertFalse(accepted)
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertEqual(chat.composer.draft, "question")
+        XCTAssertEqual(chat.composer.pendingDocuments, docs)
+        XCTAssertTrue(chat.preparationError?.contains("busy") == true)
+
+        await lease.release()
+        await chat.send("question", documents: docs, onAccepted: { accepted = true })
+        XCTAssertTrue(accepted)
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "reply"])
     }
 
     func testResetClearsConversation() async {

@@ -2,6 +2,7 @@ package ai.quenderin.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -56,6 +57,27 @@ class ChatSettlementTest {
 
         assertEquals("streamed answer", result)
         assertEquals("streamed answer", chat.messages.last().text)
+    }
+
+    @Test fun specialistOwnershipRejectsTheSelectedModelBeforeTurnAdmission() {
+        val engine = CoordinatedInferenceEngine(ScriptedEngine(listOf("reply"), "reply"))
+        val chat = ChatModel(engine)
+        var admitted = false
+        val lease = engine.suspendForSpecialist()
+        try {
+            assertFailsWith<IllegalStateException> {
+                chat.withSelectedModel("scripted") {
+                    chat.send("question", onAdmitted = { admitted = true })
+                }
+            }
+            assertFalse(admitted)
+            assertTrue(chat.messages.isEmpty())
+        } finally {
+            lease.resume()
+        }
+        chat.withSelectedModel("scripted") { chat.send("question", onAdmitted = { admitted = true }) }
+        assertTrue(admitted)
+        assertEquals(listOf("question", "reply"), chat.messages.map { it.text })
     }
 
     @Test fun emptyEmissionWinsOverEngineReturn() {
