@@ -171,8 +171,11 @@ fun ChatScreen(
     // Queued attachments for the next send — extracted at pick time (twin of iOS ChatView).
     var pendingDocuments by remember(draftOwner) { mutableStateOf(coordinator.draft(draftOwner).documents) }
     var attachmentNotice by remember(draftOwner) { mutableStateOf<String?>(null) }
-    fun stashVisibleDraft() {
-        if (!busy || input.isNotEmpty() || pendingDocuments.isNotEmpty()) coordinator.saveDraft(draftOwner, input, pendingDocuments)
+    // Save edits as they happen. Navigation must never write a composer that still displays
+    // a turn the generation worker has already admitted.
+    fun editDraft(text: String) {
+        input = text
+        coordinator.saveDraft(draftOwner, text, pendingDocuments)
     }
     // Router suggestion for the drafted FIRST message (twin of iOS ChatView.routeSuggestion).
     var routeSuggestionDismissed by remember { mutableStateOf(false) }
@@ -215,7 +218,6 @@ fun ChatScreen(
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val attachmentOwner = draftOwner
-        coordinator.saveDraft(attachmentOwner, input, pendingDocuments)
         scope.launch(Dispatchers.IO) {
             val name = runCatching {
                 context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
@@ -232,9 +234,7 @@ fun ChatScreen(
             withContext(Dispatchers.Main.immediate) {
                 when (result) {
                     is DocumentTextExtractor.Extraction.Document -> {
-                        val draft = coordinator.draft(attachmentOwner)
-                        val nextDocuments = draft.documents + result.document
-                        coordinator.saveDraft(attachmentOwner, draft.text, nextDocuments)
+                        val nextDocuments = coordinator.appendDraftDocument(attachmentOwner, result.document)
                         if (attachmentOwner == coordinator.currentId) { pendingDocuments = nextDocuments; attachmentNotice = null }
                     }
                     is DocumentTextExtractor.Extraction.Rejected -> {
@@ -293,10 +293,9 @@ fun ChatScreen(
             model = model,
             conversationTitle = conversationTitle,
             hasMessages = messages.isNotEmpty(),
-            onBack = { stashVisibleDraft(); chat.invalidatePreparedTurns(); onBack() },
+            onBack = { chat.invalidatePreparedTurns(); onBack() },
             onTitleClick = { showProfile = true },
             onNew = {
-                stashVisibleDraft()
                 val previousOwner = draftOwner
                 // New chat abandons an in-flight reply before startNew persists the old transcript;
                 // it is not an explicit Stop, so a half-streamed answer is never saved as finished.
@@ -375,12 +374,13 @@ fun ChatScreen(
                         check(!automaticEnabled || chat.pendingChatFits(prepared.model, request)) { "This pending turn does not fit the selected model's actual context. Your draft is kept." }
                         chat.send(text, docs, prepared.model, admission = admission, isCancelled = { !myJob.isActive }, onAdmitted = {
                             if (useDraft) {
-                                coordinator.saveDraft(conversationID, "", emptyList())
+                                coordinator.consumeDraft(conversationID, docs)
                                 scope.launch {
                                     if (sendJob == myJob && coordinator.currentId == conversationID &&
                                         coordinator.lifecycleRevision == lifecycleRevision) {
-                                        input = ""
-                                        pendingDocuments = emptyList()
+                                        val draft = coordinator.draft(conversationID)
+                                        input = draft.text
+                                        pendingDocuments = draft.documents
                                         attachmentNotice = null
                                         routeSuggestionDismissed = false
                                     }
@@ -429,7 +429,7 @@ fun ChatScreen(
                 onStarter = { starter ->
                     // Paste-ready prompts end with ":\n\n" — fill composer. Others send now.
                     if (starter.prompt.endsWith(":\n\n") || starter.prompt.endsWith(":\n")) {
-                        input = starter.prompt
+                        editDraft(starter.prompt)
                     } else {
                         sendCurrent(starter.prompt)
                     }
@@ -495,7 +495,7 @@ fun ChatScreen(
                         // user turn via sendCurrent — chat.send always appends).
                         val lastUser = messages.lastOrNull { it.role == Role.USER }?.text
                         sendError = null
-                        if (!lastUser.isNullOrBlank()) input = lastUser
+                        if (!lastUser.isNullOrBlank()) editDraft(lastUser)
                     },
                     enabled = !busy,
                 ) {
@@ -588,8 +588,7 @@ fun ChatScreen(
                             )
                             TextButton(
                                 onClick = {
-                                    pendingDocuments = pendingDocuments.filter { it.name != doc.name }
-                                    coordinator.saveDraft(draftOwner, input, pendingDocuments)
+                                    pendingDocuments = coordinator.removeDraftDocument(draftOwner, doc.name)
                                 },
                                 modifier = Modifier.semantics { contentDescription = removeDesc },
                             ) {
@@ -609,7 +608,7 @@ fun ChatScreen(
             input = input,
             busy = busy,
             canSendWithAttachments = pendingDocuments.isNotEmpty(),
-            onInput = { input = it; coordinator.saveDraft(draftOwner, it, pendingDocuments) },
+            onInput = { editDraft(it) },
             // image/* is intentional: picker accepts photos so DocumentTextExtractor can refuse
             // with an honest vision-not-yet message (not a silent "file type not supported" from SAF).
             onAttach = {

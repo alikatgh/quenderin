@@ -22,7 +22,35 @@ class ConversationCoordinator(
     fun draft(id: String?): ConversationDraft = synchronized(drafts) { drafts[id] ?: ConversationDraft() }
     fun saveDraft(id: String?, text: String, documents: List<AttachedDocument>) {
         if (id == null) return
-        synchronized(drafts) { if (text.isEmpty() && documents.isEmpty()) drafts.remove(id) else drafts[id] = ConversationDraft(text, documents.toList()) }
+        synchronized(drafts) { storeDraft(id, ConversationDraft(text, documents.toList())) }
+    }
+    fun appendDraftDocument(id: String?, document: AttachedDocument): List<AttachedDocument> =
+        editDraftDocuments(id) { it + document }
+    fun removeDraftDocument(id: String?, name: String): List<AttachedDocument> =
+        editDraftDocuments(id) { docs -> docs.filterNot { it.name == name } }
+
+    private fun editDraftDocuments(id: String?, edit: (List<AttachedDocument>) -> List<AttachedDocument>): List<AttachedDocument> {
+        if (id == null) return emptyList()
+        return synchronized(drafts) {
+            val draft = drafts[id] ?: ConversationDraft()
+            val documents = edit(draft.documents)
+            storeDraft(id, draft.copy(documents = documents))
+            documents
+        }
+    }
+
+    /** Settle the stored composer at admission, retaining attachments added during preparation. */
+    fun consumeDraft(id: String?, admittedDocuments: List<AttachedDocument>) {
+        if (id == null) return
+        synchronized(drafts) {
+            val draft = drafts[id] ?: return
+            val remaining = draft.documents.filterNot { doc -> admittedDocuments.any { it === doc } }
+            storeDraft(id, ConversationDraft(documents = remaining))
+        }
+    }
+
+    private fun storeDraft(id: String, draft: ConversationDraft) {
+        if (draft.text.isEmpty() && draft.documents.isEmpty()) drafts.remove(id) else drafts[id] = draft
     }
     fun draftAfterCancelledAdmission(id: String?, revision: Long, messageCountBeforeSend: Int): ConversationDraft? =
         if (id == currentId && revision == lifecycleRevision && chat.messages.size == messageCountBeforeSend) draft(id) else null
