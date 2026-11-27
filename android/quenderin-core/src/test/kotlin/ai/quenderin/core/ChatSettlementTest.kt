@@ -120,21 +120,30 @@ class ChatSettlementTest {
 
     @Test fun onlyFullyReviewedThinkingIsShownAndRestored() {
         val output = "<think>some reasoning</think>answer"
-        val chat = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW))
+        val store = ConversationStore()
         RoleSeat.reset()
-        assertEquals("answer", chat.send("hello"))
-        assertNull(chat.messages.last().thinking)
-
-        RoleSeat.selectChecker("fixture")
-        var reviewedContent: String? = null
-        RoleSeat.ask = { _, content ->
-            reviewedContent = content
-            "yes"
-        }
         try {
+            // Without a checker selected, shape-clean thinking is shown and persisted with the review marker.
+            val noChecker = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW))
+            assertEquals("answer", noChecker.send("hello"))
+            assertEquals("some reasoning", noChecker.messages.last().thinking)
+            assertEquals("some reasoning", store.decode(store.encode(noChecker.completedMessages())).last().thinking)
+
+            // When a checker is selected but cannot run, the reply shows the notice and thinking stays hidden.
+            RoleSeat.selectChecker("fixture")
+            RoleSeat.ask = { _, _ -> "unloaded" }
+            val unavailable = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW))
+            assertTrue(unavailable.send("hello").contains(OnDeviceCopy.CHECKER_MISSING))
+            assertNull(unavailable.messages.last().thinking)
+
+            var reviewedContent: String? = null
+            RoleSeat.ask = { _, content ->
+                reviewedContent = content
+                "yes"
+            }
+            val chat = ChatModel(ScriptedEngine(listOf(output), output, mode = ThinkingMode.SHOW))
             chat.send("again")
             assertEquals("answer\n\nsome reasoning", reviewedContent)
-            val store = ConversationStore()
             assertEquals("some reasoning", store.decode(store.encode(chat.completedMessages())).last().thinking)
             for (text in listOf("ordinary answer", OutputCheck.CHECKER_HELD)) {
                 val restored = store.decode("ASSISTANT\t$text\t\u0000thinking\told reasoning").last()

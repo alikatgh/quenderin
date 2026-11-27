@@ -3075,9 +3075,7 @@ fun main() {
         }
         val showEngine = ThinkingTestEngine("<think>step 1</think>Final answer").apply { setThinkingMode(ThinkingMode.SHOW) }
         val showChat = ChatModel(showEngine)
-        RoleSeat.selectChecker("fixture")
-        RoleSeat.ask = { _, _ -> "yes" }
-        try { showChat.send("hi") } finally { RoleSeat.reset() }
+        showChat.send("hi")
         val showMsg = showChat.messages.last()
 
         val hideEngine = ThinkingTestEngine("<think>secret</think>Clean answer").apply { setThinkingMode(ThinkingMode.HIDE) }
@@ -3174,9 +3172,7 @@ fun main() {
         val showEngine = PreOpenedThinkingEngine("step A then step B</think>42")
             .apply { setThinkingMode(ThinkingMode.SHOW) }
         val showChat = ChatModel(showEngine)
-        RoleSeat.selectChecker("fixture")
-        RoleSeat.ask = { _, _ -> "yes" }
-        try { showChat.send("solve") } finally { RoleSeat.reset() }
+        showChat.send("solve")
         val showMsg = showChat.messages.last()
 
         val splitterFromPrompt = ThinkingSplitter.forRenderedPrompt("<|im_start|>assistant\n<think>\n")

@@ -414,7 +414,7 @@ public enum OutputCheck {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return (reply, nil) }
         let answer = await RoleSeat.shared.checkerAnswerLive(content)
         let verdict = checked(reply, answer: answer)
-        return (verdict, answer == "yes" ? thinking : nil)
+        return (verdict, !verdict.held && (answer == nil || answer == "yes") ? thinking : nil)
     }
 
     static func storedThinking(_ thinking: String?, for text: String) -> String? {

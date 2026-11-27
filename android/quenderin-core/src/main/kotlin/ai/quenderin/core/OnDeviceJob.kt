@@ -286,7 +286,7 @@ object OutputCheck {
         if (content.isBlank()) return reply to null
         val answer = RoleSeat.checkerAnswer(content)
         val verdict = checked(reply, answer)
-        return verdict to thinking.takeIf { answer == "yes" }
+        return verdict to thinking.takeIf { !verdict.held && (answer == null || answer == "yes") }
     }
 
     internal fun storedThinking(thinking: String?, text: String): String? {

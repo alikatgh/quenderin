@@ -75,10 +75,21 @@ final class ChatSettlementTests: XCTestCase {
     func testOnlyFullyReviewedThinkingIsShownAndRestored() async throws {
         defer { RoleSeat.shared.reset() }
         RoleSeat.shared.reset()
-        let unchecked = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
-        await unchecked.send("hello", thinkingMode: .show)
-        XCTAssertEqual(unchecked.messages.last?.text, "answer")
-        XCTAssertNil(unchecked.messages.last?.thinking)
+        let store = ConversationStore()
+
+        // Without a checker selected, shape-clean thinking is shown and persisted with the review marker.
+        let noChecker = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await noChecker.send("hello", thinkingMode: .show)
+        XCTAssertEqual(noChecker.messages.last?.text, "answer")
+        XCTAssertEqual(noChecker.messages.last?.thinking, "some reasoning")
+        XCTAssertEqual(try store.decode(store.encode(noChecker.completedMessages())).last?.thinking, "some reasoning")
+
+        // When a checker is selected but cannot run, the reply shows the notice and thinking stays hidden.
+        RoleSeat.shared.setChecker(modelID: "fixture") { _, _ in "unloaded" }
+        let unavailable = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await unavailable.send("hello", thinkingMode: .show)
+        XCTAssertTrue(unavailable.messages.last?.text.contains(OnDeviceCopy.checkerMissing) == true)
+        XCTAssertNil(unavailable.messages.last?.thinking)
 
         RoleSeat.shared.setChecker(modelID: "fixture") { _, content in
             XCTAssertEqual(content, "answer\n\nsome reasoning")
@@ -86,7 +97,6 @@ final class ChatSettlementTests: XCTestCase {
         }
         let chat = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
         await chat.send("hello", thinkingMode: .show)
-        let store = ConversationStore()
         XCTAssertEqual(try store.decode(store.encode(chat.completedMessages())).last?.thinking, "some reasoning")
 
         for text in ["ordinary answer", OutputCheck.checkerHeld] {
