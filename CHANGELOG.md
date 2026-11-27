@@ -2,18 +2,20 @@
 
 ## Unreleased — local voice on desktop (2026-11-27)
 
-- Desktop setup now asks you to pick a local chat model, then optionally set up
-  dictation. The picker offers 29 curated on-device speech models from Handy’s
-  MIT-licensed `@handy-computer/models` 0.2.3 catalog. The English picks are
-  Parakeet Unified English 0.6B (697 MB) and Qwen3-ASR 1.7B (2.0 GB).
-- Speech model downloads resume in the background and are checked with SHA-256
-  before installation. Push-to-talk in chat uses the existing local
-  `transcribe.cpp` runtime and puts the transcript in the composer for the chosen
-  local chat model. Change or enable dictation later in **Settings → Voice**.
-- English accuracy and speed indicators use Handy’s published FLEURS and Ryzen
-  4750U benchmarks. Quenderin ran no inference benchmarks. This is an unreleased
-  desktop source integration with live microphone and full-model inference
-  verification still pending.
+- Desktop setup pairs **Choose your local chat model** with the optional
+  **Talk to your local model by voice** step. The picker shows 29 curated Handy
+  speech models, including **Recommended** Parakeet Unified English 0.6B
+  (697 MB) and **More accurate** Qwen3-ASR 1.7B (2.0 GB). Downloads can continue
+  after setup, support pause and resume, and are checked with SHA-256 before
+  installation.
+- Push-to-talk uses the local `transcribe.cpp` runtime and puts the transcript
+  in the **Chat** or **Device Agent** draft by default. Open **Settings → Voice**
+  to enable dictation or change the speech model.
+- Quenderin adapted the picker and resumable downloads from Handy by CJ Pais
+  (MIT) and uses `@handy-computer/models` 0.2.3 (MIT). The English grades and
+  speed bars use Handy’s published FLEURS and Ryzen 4750U GPU benchmarks.
+  Release verification still needs a real microphone, full-model inference, and
+  packaged Electron testing. [Handy](https://github.com/cjpais/Handy)
 
 ## Unreleased — Kromoss diffusion & Hex native speech integrations (2026-11-22)
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Talk to your local model by voice — Quenderin blog</title>
-<meta name="description" content="Quenderin’s desktop source adds optional voice setup, 29 curated speech models from Handy, and push-to-talk dictation that runs on your computer." />
+<meta name="description" content="An unreleased desktop update adds optional push-to-talk dictation and a picker with 29 curated speech models from Handy." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <script src="theme.js"></script>
@@ -50,24 +50,25 @@
   <p class="eyebrow"><span class="qi qi-mic" aria-hidden="true"></span>Desktop &middot; source update</p>
   <h1>Talk to your local model by voice</h1>
   <p class="legal-updated"><time datetime="2026-11-27">27 November 2026</time> &middot; Quenderin</p>
-  <p>Hold the microphone button, say what you want to ask, and release. Quenderin transcribes what you said on your computer and puts the words in the chat composer. You can fix a name or finish a sentence before sending it to the local model you chose. This is an unreleased desktop source update.</p>
+  <p>Quenderin’s unreleased desktop dashboard adds push-to-talk dictation. Hold the microphone button, say what you want to ask, and release to transcribe. With the default settings, your words appear in the composer so you can fix a name or finish a sentence before sending.</p>
 
   <h2 id="setup">Two choices in desktop setup</h2>
   <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#desktop"></use></svg>
-  <p>First, choose the local chat model you want to talk to. The second step, <strong>Talk to your local model by voice</strong>, is optional. Pick a speech model there or choose <strong>Skip &mdash; I’ll type</strong>. You can set up voice later in <strong>Settings → Voice</strong>.</p>
+  <p>Start with <strong>Choose your local chat model</strong>. The next step, <strong>Talk to your local model by voice</strong>, is optional. Pick a speech model or choose <strong>Skip &mdash; I’ll type</strong>. You can set up voice later in <strong>Settings → Voice</strong>.</p>
   <ul>
-    <li><strong>Recommended.</strong> Parakeet Unified English 0.6B is a 697&nbsp;MB download and Handy’s faster English pick.</li>
+    <li><strong>Recommended.</strong> Parakeet Unified English 0.6B is a 697&nbsp;MB download and Handy’s English pick for the balance of speed and accuracy.</li>
     <li><strong>More accurate.</strong> Qwen3-ASR 1.7B is a 2.0&nbsp;GB download with lower English word error in Handy’s results.</li>
   </ul>
-  <p>Open <strong>Show all 29 models</strong> to search the curated catalog or filter by <strong>Live preview</strong> and <strong>Translates</strong>. The table shows an English accuracy grade (<strong>EN</strong>), speed bars (<strong>SPEED</strong>), and download <strong>SIZE</strong>. The download continues while you finish setup, can be resumed, and is checked against the catalog’s SHA-256 before installation.</p>
+  <p>Open <strong>Show all 29 models</strong> to search Handy’s curated catalog or use the <strong>Live preview</strong> and <strong>Translates</strong> model filters. The table shows English accuracy (<strong>EN</strong>), speed bars (<strong>SPEED</strong>), and download <strong>SIZE</strong>. You can pause or resume a download, or select <strong>Finish setup</strong> while the download continues. Quenderin checks the catalog’s SHA-256 before installing the model.</p>
 
   <h2 id="dictation">From the microphone to your draft</h2>
   <svg class="post-illustration" viewBox="0 0 560 144" width="560" height="144" aria-hidden="true" focusable="false"><use href="assets/blog/section-illustrations.svg#waveform"></use></svg>
-  <p>Once voice is enabled and the speech model is installed, hold the mic in chat or hold <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> (<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> on Mac). Quenderin asks for microphone access on first use. The existing <code>transcribe.cpp</code> runtime does the transcription locally, and the chat model receives the text when you send it.</p>
+  <p>With a speech model installed and enabled, hold the mic in <strong>Chat</strong> or <strong>Device Agent</strong>. You can also hold <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> on Windows or Linux, or <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> on macOS. If a microphone permission prompt interrupts the gesture, grant access and hold again. After you release, the local <code>transcribe.cpp</code> runtime processes the recording on your computer.</p>
+  <p>In <strong>Settings → Voice</strong>, select <strong>Use this model</strong> to switch to a different installed speech model. The same section has switches for <strong>Enable voice dictation</strong> and <strong>Automatically send transcript</strong>. The release plan limits automatic sending to <strong>Chat</strong>. The guide covers microphone permissions on Windows, Linux, and macOS Electron lab builds. <a href="docs/local-voice#allow-microphone-access">Microphone permissions</a></p>
 
   <h2 id="benchmarks">Where the grades and speed bars come from</h2>
-  <p>Handy’s results use the FLEURS test set for accuracy and the AMD Ryzen 4750U GPU with Vulkan for the speed bars. Those bars summarize the estimated wait for a 30-second recording on that hardware. Quenderin ran no inference benchmarks for this update. Real microphone capture and full-model inference verification are pending. <a href="https://models.handy.computer/" rel="noopener">See Handy’s published benchmarks</a>.</p>
-  <p>We adapted the model picker and resumable download handling from Handy by CJ Pais and use its <code>@handy-computer/models</code> 0.2.3 package for the catalog, recommendations, and grades. Both are MIT-licensed. <a href="https://github.com/cjpais/Handy" rel="noopener">Handy on GitHub</a> &middot; <a href="https://github.com/handy-computer/models" rel="noopener">Handy’s model package</a>.</p>
+  <p>The English accuracy grades use Handy’s FLEURS results. The speed bars summarize the estimated wait for a 30-second recording on Handy’s AMD Ryzen 4750U GPU benchmark with Vulkan. Quenderin ran no inference benchmarks for this update. Release verification still needs real microphone capture, full-model inference, and packaged Electron testing. <a href="https://models.handy.computer/" rel="noopener">Handy’s published benchmarks</a></p>
+  <p>We adapted the model picker and resumable download handling from Handy by CJ Pais and use its <code>@handy-computer/models</code> 0.2.3 package for the catalog, recommendations, and grades. Both are MIT-licensed. The picker lists each speech model’s license. <a href="https://github.com/cjpais/Handy" rel="noopener">Handy on GitHub</a> &middot; <a href="https://github.com/handy-computer/models" rel="noopener">Handy’s model package</a></p>
 
   <p style="margin-top:2.5rem"><a href="docs/local-voice">Read the desktop voice guide</a> &middot; <a href="changelog#2026-11-27-local-voice">Changelog</a> &middot; <a href="blog">&larr; Back to the blog</a></p>
 </main>

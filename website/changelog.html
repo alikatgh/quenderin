@@ -42,10 +42,10 @@
 
   <h2 id="2026-11-27-local-voice">27 November 2026 &middot; Local voice on desktop (unreleased)</h2>
   <ul>
-    <li><strong>Optional voice setup.</strong> Choose a local chat model first, then choose from 29 curated on-device speech models from Handy. The English picks are Parakeet Unified English 0.6B (697&nbsp;MB) and Qwen3-ASR 1.7B (2.0&nbsp;GB). Speech model downloads continue in the background, can be resumed, and are verified with SHA-256.</li>
-    <li><strong>Push-to-talk in chat.</strong> The existing <code>transcribe.cpp</code> runtime turns microphone audio into text on your computer. The transcript goes into the composer for the local chat model. Change the speech model or turn dictation on or off in <strong>Settings → Voice</strong>.</li>
+    <li><strong>Optional voice setup.</strong> After choosing a local chat model, you can choose from 29 curated Handy speech models. The English picks are <strong>Recommended</strong> Parakeet Unified English 0.6B (697&nbsp;MB) and <strong>More accurate</strong> Qwen3-ASR 1.7B (2.0&nbsp;GB). Downloads can continue after setup, support pause and resume, and are checked with SHA-256 before installation.</li>
+    <li><strong>Push-to-talk.</strong> The local <code>transcribe.cpp</code> runtime processes recordings on your computer. The transcript goes into the <strong>Chat</strong> or <strong>Device Agent</strong> draft by default. Open <strong>Settings → Voice</strong> to enable dictation or change the speech model.</li>
   </ul>
-  <p>The picker uses Handy’s published English accuracy and speed benchmarks. Quenderin ran no inference benchmarks. Live microphone and full-model inference verification are pending. <a href="blog-local-voice">Read the desktop update</a> &middot; <a href="docs/local-voice">Voice setup guide</a>.</p>
+  <p>Quenderin adapted the picker and resumable downloads from Handy by CJ Pais (MIT). Grades and speed bars use Handy’s published benchmarks. Release verification still needs a real microphone, full-model inference, and packaged Electron testing. <a href="https://github.com/cjpais/Handy" rel="noopener">Handy on GitHub</a> &middot; <a href="blog-local-voice">Read the desktop update</a> &middot; <a href="docs/local-voice">Voice setup guide</a></p>
 
   <h2 id="2026-11-22-integrations">22 November 2026 &middot; Native Kromoss diffusion &amp; Hex speech source integrations</h2>
   <ul>
