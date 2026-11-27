@@ -37,7 +37,7 @@ val securityPinnedClasspath = arrayOf(
     "org.jdom:jdom2:2.0.6.1",
     "com.google.protobuf:protobuf-java:3.25.5",
     "com.google.protobuf:protobuf-java-util:3.25.5",
-    "com.google.protobuf:protobuf-kotlin:3.25.5",
+    "com.google.protobuf:protobuf-kotlin:4.36.2",
 )
 
 gradle.beforeProject {
