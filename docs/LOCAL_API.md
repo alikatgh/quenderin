@@ -212,6 +212,11 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **Clamped sampling parameters:** `max_tokens` / `max_completion_tokens` defaults to
   `512` (clamped `1`–`4096`), `temperature` is clamped `0`–`2`, `top_p` is clamped
   `0`–`1`. `stop` accepts a string or an array of strings.
+- **Completion limits and failures:** Reaching the requested token cap or filling the model's
+  context during generation produces `finish_reason: "length"`. A native decode failure after
+  partial output returns HTTP 500 (`decode_failed`) for buffered requests. If SSE headers are
+  already committed, the server sends a `data:` frame containing an `error` object and closes
+  the stream without a finish reason or `[DONE]`.
 - **No tools yet:** Requests containing `tools` or `tool_choice` (including explicit `null`)
   are rejected with `400` (`tools are not supported yet`) rather than silently ignored.
 - **No images yet:** Content arrays with `{"type": "text", "text": "..."}` parts are

@@ -561,6 +561,16 @@ public struct LocalAPIUsage: Sendable, Equatable {
 public enum LocalAPIFinishReason: String, Sendable, Equatable {
     case stop = "stop"
     case length = "length"
+
+    static func completion(for status: ChatCapStatus) throws -> Self {
+        switch status {
+        case .hit, .contextExhausted: return .length
+        case .notHit, .unknown: return .stop
+        case .decodeFailed:
+            throw LocalAPIError(statusCode: 500, message: "Native decoding failed after generating partial output.",
+                                type: "server_error", code: "decode_failed")
+        }
+    }
 }
 
 /// Pure OpenAI-compatible JSON + SSE codec for `/v1/models` and `/v1/chat/completions`.
@@ -881,6 +891,14 @@ public enum LocalAPICodec {
 
     /// Encodes the terminal SSE sentinel `data: [DONE]\n\n`.
     public static let streamDoneFrame: Data = Data("data: [DONE]\n\n".utf8)
+
+    /// Terminates a failed stream whose HTTP headers have already been sent.
+    static func encodeStreamError(_ error: LocalAPIError) -> Data {
+        var frame = Data("data: ".utf8)
+        frame.append(encodeError(error))
+        frame.append(Data("\n\n".utf8))
+        return frame
+    }
 
     /// Encodes an OpenAI-shaped error object `{"error":{"message":...,"type":...,"code":...}}`.
     public static func encodeError(_ error: LocalAPIError) -> Data {

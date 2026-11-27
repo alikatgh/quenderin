@@ -629,7 +629,7 @@ public final class LocalAPIServer: ObservableObject {
                 }
             }
 
-            let cap = await lease.chatCapStatus()
+            let finishReason = try LocalAPIFinishReason.completion(for: await lease.chatCapStatus())
             // Release the exclusive engine lease and API gate immediately now that native
             // generation has finished; slow socket draining below can never starve in-app chat.
             await releaseLease()
@@ -650,7 +650,6 @@ public final class LocalAPIServer: ObservableObject {
                 }
             }
 
-            let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
             tailData.append(LocalAPICodec.encodeStreamChunk(
                 id: id, created: created, model: model, finishReason: finishReason
             ))
@@ -688,12 +687,14 @@ public final class LocalAPIServer: ObservableObject {
             lease.requestCancel()
             await releaseLease()
             await releaseGate()
-            sseBuffer.abort()
-            writerTask?.cancel()
-            if !headersStarted && !connection.isDisconnected {
-                connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
+            let apiError = error as? LocalAPIError ?? .internalError("Generation failed: \(error.localizedDescription)")
+            if headersStarted && !connection.isDisconnected {
+                sseBuffer.finish(finalData: LocalAPICodec.encodeStreamError(apiError))
+                await writerTask?.value
             } else {
-                connection.cancel()
+                sseBuffer.abort()
+                writerTask?.cancel()
+                if !connection.isDisconnected { connection.sendAndClose(LocalHTTPResponse.error(apiError)) }
             }
         }
     }
@@ -742,12 +743,11 @@ public final class LocalAPIServer: ObservableObject {
                 await releaseGate()
                 return
             }
-            let cap = await lease.chatCapStatus()
+            let finishReason = try LocalAPIFinishReason.completion(for: await lease.chatCapStatus())
             // Release the exclusive engine lease and API gate before flushing the HTTP response.
             await releaseLease()
             await releaseGate()
 
-            let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
             let body = LocalAPICodec.encodeChatCompletion(
                 id: id,
                 created: created,
@@ -780,7 +780,8 @@ public final class LocalAPIServer: ObservableObject {
             await releaseLease()
             await releaseGate()
             if !connection.isDisconnected {
-                connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
+                let apiError = error as? LocalAPIError ?? .internalError("Generation failed: \(error.localizedDescription)")
+                connection.sendAndClose(LocalHTTPResponse.error(apiError))
             }
         }
     }

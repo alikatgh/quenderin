@@ -89,13 +89,13 @@ public enum InferenceError: Error, Sendable, Equatable {
     case timedOut(seconds: Int)
 }
 
-/// Why the most recent generation ended, for the "Continue" affordance.
+/// Why the most recent generation ended, for Chat and the Local API.
 ///
 /// `.hit` = positively observed token-budget stop. `.notHit` = positively observed non-budget
-/// completion (EOG, context exhaustion, stop sequence/filter). `.unknown` = no trustworthy
-/// observation: unsupported engine, no run yet, explicit cancellation, error, unloaded/stale.
-/// Twin of Kotlin `ChatCapStatus`; never infer it from a streamed piece count.
-public enum ChatCapStatus: Sendable, Equatable { case hit, notHit, unknown }
+/// completion (EOG, stop sequence/filter). Context exhaustion and partial decode failures have
+/// their own reasons. `.unknown` means no trustworthy observation. Never infer the reason from a
+/// streamed piece count.
+public enum ChatCapStatus: Sendable, Equatable { case hit, notHit, contextExhausted, decodeFailed, unknown }
 
 /// Runtime-agnostic contract for on-device LLM inference.
 ///

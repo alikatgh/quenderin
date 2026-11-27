@@ -510,6 +510,23 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(usage["total_tokens"] as? Int, 20)
     }
 
+    func testNativeTerminationMapsToLengthOrProtocolError() throws {
+        XCTAssertEqual(try LocalAPIFinishReason.completion(for: .hit), .length)
+        XCTAssertEqual(try LocalAPIFinishReason.completion(for: .contextExhausted), .length)
+        XCTAssertEqual(try LocalAPIFinishReason.completion(for: .notHit), .stop)
+        XCTAssertThrowsError(try LocalAPIFinishReason.completion(for: .decodeFailed)) { error in
+            guard let apiError = error as? LocalAPIError else { return XCTFail("Expected an API error") }
+            XCTAssertEqual(apiError.statusCode, 500)
+            XCTAssertEqual(apiError.code, "decode_failed")
+            let frame = String(decoding: LocalAPICodec.encodeStreamError(apiError), as: UTF8.self)
+            XCTAssertTrue(frame.hasPrefix("data: {\"error\":"))
+            XCTAssertTrue(frame.hasSuffix("\n\n"))
+            XCTAssertTrue(frame.contains("decode_failed"))
+            XCTAssertFalse(frame.contains("finish_reason"))
+            XCTAssertFalse(frame.contains("[DONE]"))
+        }
+    }
+
     func testEncodeStreamSSEFraming() throws {
         let id = "chatcmpl-test123"
         let roleFrame = LocalAPICodec.encodeStreamChunk(id: id, created: 100, model: "qwen3-4b", role: "assistant")

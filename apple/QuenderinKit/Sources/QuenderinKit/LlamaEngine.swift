@@ -98,14 +98,15 @@ public actor LlamaEngine: InferenceEngine {
     }
     private let capState = OSAllocatedUnfairLock(initialState: CapSnapshot())
 
-    /// The honest reasons the pinned loop can distinguish. EOG and context exhaustion are both
-    /// non-budget completions (NOT_HIT); cancellation/unavailability are UNKNOWN.
-    enum CapReason: Sendable { case budget, eog, contextExhausted, cancelled, unavailable }
+    /// The termination reasons the pinned loop can distinguish.
+    enum CapReason: Sendable { case budget, eog, contextExhausted, decodeFailed, cancelled, unavailable }
 
     static func capStatus(for reason: CapReason) -> ChatCapStatus {
         switch reason {
         case .budget: return .hit
-        case .eog, .contextExhausted: return .notHit
+        case .eog: return .notHit
+        case .contextExhausted: return .contextExhausted
+        case .decodeFailed: return .decodeFailed
         case .cancelled, .unavailable: return .unknown
         }
     }
@@ -1000,7 +1001,7 @@ public actor LlamaEngine: InferenceEngine {
         let capReason: CapReason
         if hy { capReason = .unavailable }
         else if cancelled() { capReason = .cancelled }
-        else if fatalDecode { capReason = .unavailable }
+        else if fatalDecode { capReason = .decodeFailed }
         else if let endedByCapReason { capReason = endedByCapReason }
         else { capReason = produced >= options.maxTokens ? .budget : .eog }
         capState.withLock {
