@@ -51,6 +51,7 @@ final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        LocalAPIServer.shared.stopImmediately()
         UserDefaults.standard.synchronize()
         _exit(0)
     }
@@ -134,15 +135,18 @@ struct QuenderinApp: App {
         // most recent conversation on launch, and persists each turn to Application Support.
         let chat = ChatModel(engine: engine, admitTurn: { try onboardingModel.requireReadyForChat() }, prepareFirstTurn: { prompt, current, preparation in
             guard AutomaticModelPreferences.shared.enabled else { return (current, nil) }
-            let selected = try await automatic.prepare(prompt: prompt, current: current, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
+            let selected = try await automatic.prepare(prompt: prompt, current: current, history: preparation.history, options: preparation.options, resolveOptionsForModel: preparation.resolveOptionsForModel, resolveRequestForModel: preparation.resolveRequestForModel, isCurrent: preparation.isCurrent)
             return (selected, automatic.status)
         })
         let conversationCoordinator = ConversationCoordinator(chat: chat, persistence: FileConversationPersistence(),
             restoreSelectedModel: { id, preparation in
-                try await onboardingModel.restoreConversationModel(id, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
+                try await onboardingModel.restoreConversationModel(id, history: preparation.history, options: preparation.options, resolveOptionsForModel: preparation.resolveOptionsForModel, resolveRequestForModel: preparation.resolveRequestForModel, isCurrent: preparation.isCurrent)
             })
         _conversations = StateObject(wrappedValue: conversationCoordinator)
         onboardingModel.onManualSelectionCommitted = { model in conversationCoordinator.chooseModelManually(model.id) }
+        #if os(macOS)
+        LocalAPIServer.shared.configure(engine: engine, onboarding: onboardingModel)
+        #endif
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
         // Tools come from the ONE toolkit the Settings pane also reads; capabilities execute
         // through the runner — consent from UserDefaults (the pane's toggles), every action

@@ -2571,6 +2571,659 @@ fun main() {
         check("turnstone adaptations: ${error.message}", false)
     }
 
+    // --- Part 1: ThinkingMode + ThinkingSplitter (twin of Swift ThinkingModeTests) ---
+    check("ThinkingMode defaults, raw values, and allowsThinking",
+        ThinkingMode.DEFAULT == ThinkingMode.OFF &&
+            ThinkingMode.OFF.rawValue == "off" &&
+            ThinkingMode.SHOW.rawValue == "show" &&
+            ThinkingMode.HIDE.rawValue == "hide" &&
+            !ThinkingMode.OFF.allowsThinking &&
+            ThinkingMode.SHOW.allowsThinking &&
+            ThinkingMode.HIDE.allowsThinking &&
+            ThinkingMode.fromRawValue("show") == ThinkingMode.SHOW)
+    check("ThinkingMode.supports detects enable_thinking and <think>",
+        ThinkingMode.supports("{% if enable_thinking %}<think>{% endif %}") &&
+            ThinkingMode.supports("assistant\n<think>\n") &&
+            ThinkingMode.supports("flag enable_thinking here") &&
+            !ThinkingMode.supports("<|im_start|>assistant\n") &&
+            !ThinkingMode.supports(""))
+    check("ThinkingSplitter single chunk splits thinking and answer", run {
+        val s = ThinkingSplitter()
+        val initial = !s.isThinking
+        val c = s.feed("<think>step 1\nstep 2</think>Final answer.")
+        val tail = s.finish()
+        initial && c.thinking == "step 1\nstep 2" && c.answer == "Final answer." &&
+            !s.isThinking && tail.thinking.isEmpty() && tail.answer.isEmpty()
+    })
+    check("ThinkingSplitter tags split one char at a time", run {
+        val stream = "  \n<think>reason one</think>42 is the answer"
+        val s = ThinkingSplitter()
+        val t = StringBuilder()
+        val a = StringBuilder()
+        var sawThinking = false
+        for (ch in stream) {
+            val d = s.feed(ch.toString())
+            t.append(d.thinking); a.append(d.answer)
+            if (s.isThinking) sawThinking = true
+        }
+        val tail = s.finish()
+        t.append(tail.thinking); a.append(tail.answer)
+        sawThinking && !s.isThinking && t.toString() == "reason one" && a.toString() == "42 is the answer"
+    })
+    check("ThinkingSplitter startsInsideThinking handles pre-opened template", run {
+        val s = ThinkingSplitter(startsInsideThinking = true)
+        val initThink = s.isThinking
+        val a = s.feed("checking math </thi")
+        val stillThink = s.isThinking
+        val b = s.feed("nk>The result is 4.")
+        val tail = s.finish()
+        initThink && stillThink && !s.isThinking &&
+            a.thinking == "checking math " && a.answer.isEmpty() &&
+            b.thinking.isEmpty() && b.answer == "The result is 4." &&
+            tail.thinking.isEmpty() && tail.answer.isEmpty()
+    })
+    check("ThinkingSplitter no tags passes everything to answer", run {
+        val s = ThinkingSplitter()
+        val a = s.feed("Hello ")
+        val b = s.feed("world!")
+        val tail = s.finish()
+        (a.thinking + b.thinking + tail.thinking).isEmpty() &&
+            (a.answer + b.answer + tail.answer) == "Hello world!" && !s.isThinking
+    })
+    check("ThinkingSplitter leading whitespace dropped before <think> and kept without <think>", run {
+        val s1 = ThinkingSplitter()
+        val r1 = s1.feed(" \t\r\n ")
+        val r2 = s1.feed("<think>ok</think>yes")
+        val r3 = s1.finish()
+        val s2 = ThinkingSplitter()
+        val n1 = s2.feed("   ")
+        val n2 = s2.feed("plain reply")
+        val n3 = s2.finish()
+        val s3 = ThinkingSplitter()
+        val sc0 = s3.feed("\r").answer.isEmpty() && s3.feed("\n").answer.isEmpty()
+        val sc1 = s3.feed("<think>split</think>ok")
+        val sc2 = s3.finish()
+        val s4 = ThinkingSplitter()
+        val sp0 = s4.feed("\r").answer.isEmpty() && s4.feed("\n").answer.isEmpty()
+        val sp1 = s4.feed("hello")
+        val sp2 = s4.finish()
+        r1.answer.isEmpty() && (r2.thinking + r3.thinking) == "ok" && (r2.answer + r3.answer) == "yes" &&
+            n1.answer.isEmpty() && (n1.thinking + n2.thinking + n3.thinking).isEmpty() &&
+            (n1.answer + n2.answer + n3.answer) == "   plain reply" &&
+            sc0 && (sc1.thinking + sc2.thinking) == "split" && (sc1.answer + sc2.answer) == "ok" &&
+            sp0 && (sp1.thinking + sp2.thinking).isEmpty() && (sp1.answer + sp2.answer) == "\r\nhello"
+    })
+    check("ThinkingSplitter unclosed thinking at finish routes all to thinking", run {
+        val s = ThinkingSplitter()
+        val a = s.feed("<think>still thinking</thi")
+        val mid = s.isThinking
+        val tail = s.finish()
+        mid && !s.isThinking && (a.thinking + tail.thinking) == "still thinking</thi" &&
+            (a.answer + tail.answer).isEmpty()
+    })
+    check("ThinkingSplitter unclosed pre-opened thinking at finish", run {
+        val s = ThinkingSplitter(startsInsideThinking = true)
+        val a = s.feed("deep thought")
+        val tail = s.finish()
+        (a.thinking + tail.thinking) == "deep thought" && (a.answer + tail.answer).isEmpty()
+    })
+    check("ThinkingSplitter false-alarm partial tags stay intact", run {
+        val s1 = ThinkingSplitter()
+        val o1 = s1.feed(" <thi")
+        val o2 = s1.feed("s> is text")
+        val o3 = s1.finish()
+        val s2 = ThinkingSplitter()
+        val t1 = s2.feed("<think>a </thi")
+        val t2 = s2.feed("s> b</think>done")
+        val t3 = s2.finish()
+        o1.answer.isEmpty() && (o1.thinking + o2.thinking + o3.thinking).isEmpty() &&
+            (o1.answer + o2.answer + o3.answer) == " <this> is text" &&
+            (t1.thinking + t2.thinking + t3.thinking) == "a </this> b" &&
+            (t1.answer + t2.answer + t3.answer) == "done"
+    })
+    check("ThinkingSplitter empty think block and multi-chunk answer", run {
+        val s = ThinkingSplitter()
+        val p1 = s.feed("<think></think>")
+        val p2 = s.feed("first ")
+        val p3 = s.feed("second")
+        val tail = s.finish()
+        p1.thinking.isEmpty() && p1.answer.isEmpty() && !s.isThinking &&
+            (p2.answer + p3.answer + tail.answer) == "first second"
+    })
+    check("ThinkingSplitter whitespace-only and incomplete open at finish flush to answer", run {
+        val s1 = ThinkingSplitter()
+        s1.feed("   ")
+        val t1 = s1.finish()
+        val s2 = ThinkingSplitter()
+        s2.feed("<thi")
+        val t2 = s2.finish()
+        t1.thinking.isEmpty() && t1.answer == "   " && t2.thinking.isEmpty() && t2.answer == "<thi"
+    })
+    check("ThinkingSplitter preamble and multiple think blocks across any split", run {
+        val single = ThinkingSplitter()
+        val s1 = single.feed("Intro <think>reason</think>Done")
+        val s2 = single.finish()
+        val full = "  Intro <think>r1</think> mid <think>r2</think>Done"
+        val byChar = ThinkingSplitter()
+        val ct = StringBuilder()
+        val ca = StringBuilder()
+        for (ch in full) {
+            val d = byChar.feed(ch.toString())
+            ct.append(d.thinking); ca.append(d.answer)
+        }
+        val cTail = byChar.finish()
+        ct.append(cTail.thinking); ca.append(cTail.answer)
+        val allSplitsOk = (0..full.length).all { split ->
+            val sp = ThinkingSplitter()
+            val d1 = sp.feed(full.substring(0, split))
+            val d2 = sp.feed(full.substring(split))
+            val d3 = sp.finish()
+            (d1.thinking + d2.thinking + d3.thinking) == "r1r2" &&
+                (d1.answer + d2.answer + d3.answer) == "  Intro  mid Done"
+        }
+        val unclosed = ThinkingSplitter()
+        val u1 = unclosed.feed("Intro <think>r1</think>mid<think>unclosed</thi")
+        val uMid = unclosed.isThinking
+        val u2 = unclosed.finish()
+        val preMulti = ThinkingSplitter(startsInsideThinking = true)
+        val m1 = preMulti.feed("first</think>mid<think>second</think>end")
+        val m2 = preMulti.finish()
+        val trailing = ThinkingSplitter()
+        val tp1 = trailing.feed("Intro <thi")
+        val tp2 = trailing.finish()
+        (s1.thinking + s2.thinking) == "reason" && (s1.answer + s2.answer) == "Intro Done" && !single.isThinking &&
+            ct.toString() == "r1r2" && ca.toString() == "  Intro  mid Done" && allSplitsOk &&
+            uMid && !unclosed.isThinking && (u1.thinking + u2.thinking) == "r1unclosed</thi" &&
+            (u1.answer + u2.answer) == "Intro mid" &&
+            (m1.thinking + m2.thinking) == "firstsecond" && (m1.answer + m2.answer) == "midend" &&
+            tp1.answer == "Intro " && (tp1.answer + tp2.answer) == "Intro <thi" && (tp1.thinking + tp2.thinking).isEmpty()
+    })
+    check("ThinkingSplitter combining mark after tags is chunk-boundary independent", run {
+        val whole = ThinkingSplitter()
+        val w1 = whole.feed("<think>\u0301x</think>A")
+        val w2 = whole.finish()
+        val split = ThinkingSplitter()
+        val a = split.feed("<think>")
+        val b = split.feed("\u0301x</think>A")
+        val c = split.finish()
+        val cw = ThinkingSplitter()
+        val cw1 = cw.feed("<think>a</think>\u0301B")
+        val cw2 = cw.finish()
+        val cs = ThinkingSplitter()
+        val cs1 = cs.feed("<think>a</think>")
+        val cs2 = cs.feed("\u0301B")
+        val cs3 = cs.finish()
+        (w1.thinking + w2.thinking) == "\u0301x" && (w1.answer + w2.answer) == "A" &&
+            (a.thinking + b.thinking + c.thinking) == "\u0301x" && (a.answer + b.answer + c.answer) == "A" &&
+            (cw1.thinking + cw2.thinking) == "a" && (cw1.answer + cw2.answer) == "\u0301B" &&
+            (cs1.thinking + cs2.thinking + cs3.thinking) == "a" && (cs1.answer + cs2.answer + cs3.answer) == "\u0301B"
+    })
+
+    // --- Part 1: JSONOutputGrammar (twin of Swift JSONOutputGrammarTests) ---
+    check("JSONOutputGrammar.ANY_JSON_OBJECT SHA-256 matches Swift pin", run {
+        val pin = "a69e04400de6b8bb61a14d093bddfd43e3efb1940c5e6d8603afbedfd887047c"
+        ModelIntegrity.sha256Hex(JSONOutputGrammar.ANY_JSON_OBJECT.toByteArray(Charsets.UTF_8)) == pin &&
+            JSONOutputGrammar.ANY_JSON_OBJECT.startsWith("root ::= object\n")
+    })
+    check("JSONOutputGrammar 3-property schema matches exact pinned GBNF and declared order", run {
+        val schema = mapOf(
+            "type" to "object",
+            "properties" to listOf(
+                "title" to mapOf("type" to "string"),
+                "count" to mapOf("type" to "integer"),
+                "verified" to mapOf("type" to "boolean"),
+            ),
+            "required" to listOf("title", "count"),
+            "additionalProperties" to false,
+        )
+        val expected = listOf(
+            "root ::= \"{\" ws \"\\\"title\\\"\" ws \":\" ws string \",\" ws \"\\\"count\\\"\" ws \":\" ws integer ( \",\" ws \"\\\"verified\\\"\" ws \":\" ws boolean )? \"}\" ws",
+            "string ::= \"\\\"\" char* \"\\\"\" ws",
+            "char ::= [^\"\\\\\\x00-\\x1F] | \"\\\\\" escape",
+            "escape ::= [\"\\\\/bfnrt] | \"u\" hex hex hex hex",
+            "hex ::= [0-9a-fA-F]",
+            "integer ::= \"-\"? int ws",
+            "int ::= \"0\" | [1-9] [0-9]*",
+            "boolean ::= (\"true\" | \"false\") ws",
+            "ws ::= ([ \\t\\n\\r] ([ \\t\\n\\r] ([ \\t\\n\\r] [ \\t\\n\\r]?)?)?)?",
+        ).joinToString("\n")
+        val g1 = JSONOutputGrammar.grammar(schema).gbnfOrNull
+        val g2 = JSONOutputGrammar.grammarFromJson(
+            """{"type":"object","properties":{"title":{"type":"string"},"count":{"type":"integer"},"verified":{"type":"boolean"}},"required":["title","count"],"additionalProperties":false}"""
+        ).gbnfOrNull
+        g1 == expected && g2 == expected
+    })
+    check("JSONOutputGrammar enum, array, and nested object", run {
+        val schema = mapOf(
+            "type" to "object",
+            "properties" to listOf(
+                "status" to mapOf("type" to "string", "enum" to listOf("open", "closed")),
+                "tags" to mapOf("type" to "array", "items" to mapOf("type" to "string")),
+                "meta" to mapOf(
+                    "type" to "object",
+                    "properties" to listOf(
+                        "score" to mapOf("type" to "number"),
+                        "empty" to mapOf("type" to "null"),
+                    ),
+                    "required" to listOf("score"),
+                ),
+            ),
+            "required" to listOf("status", "tags"),
+        )
+        val g = JSONOutputGrammar.grammar(schema).gbnfOrNull ?: ""
+        g.startsWith("root ::= \"{\" ws \"\\\"status\\\"\" ws \":\" ws node-1 \",\" ws \"\\\"tags\\\"\" ws \":\" ws node-2 ( \",\" ws \"\\\"meta\\\"\" ws \":\" ws node-3 )? \"}\" ws") &&
+            g.contains("node-1 ::= ( \"\\\"open\\\"\" | \"\\\"closed\\\"\" ) ws") &&
+            g.contains("node-2 ::= \"[\" ws ( string ( \",\" ws string )* )? \"]\" ws") &&
+            g.contains("node-3 ::= \"{\" ws \"\\\"score\\\"\" ws \":\" ws number ( \",\" ws \"\\\"empty\\\"\" ws \":\" ws null )? \"}\" ws")
+    })
+    check("JSONOutputGrammar all-optional properties produce valid comma chain", run {
+        val schema = mapOf(
+            "type" to "object",
+            "properties" to listOf(
+                "z" to mapOf("type" to "string"),
+                "a" to mapOf("type" to "integer"),
+            ),
+        )
+        val g = JSONOutputGrammar.grammar(schema).gbnfOrNull ?: ""
+        g.startsWith("root ::= \"{\" ws ( \"\\\"z\\\"\" ws \":\" ws string ( \",\" ws \"\\\"a\\\"\" ws \":\" ws integer )? | \"\\\"a\\\"\" ws \":\" ws integer )? \"}\" ws")
+    })
+    check("JSONOutputGrammar unsupported keywords fail cleanly with reason", run {
+        val unsupported = listOf(
+            "anyOf" to mapOf("type" to "object", "anyOf" to listOf(mapOf("type" to "string"))),
+            "oneOf" to mapOf("oneOf" to listOf(mapOf("type" to "string"), mapOf("type" to "integer"))),
+            "\$ref" to mapOf("type" to "object", "\$ref" to "#/\$defs/Item"),
+            "pattern" to mapOf("type" to "string", "pattern" to "^[a-z]+$"),
+            "minimum" to mapOf("type" to "integer", "minimum" to 0),
+        )
+        unsupported.all { (kw, schema) ->
+            val res = JSONOutputGrammar.grammar(schema)
+            res is JSONOutputGrammar.GrammarResult.Failure && res.reason.contains(kw)
+        }
+    })
+    check("JSONOutputGrammar.validate accepts valid JSON objects and lone surrogates, rejects non-objects/invalid JSON",
+        JSONOutputGrammar.validate("{}") &&
+            JSONOutputGrammar.validate(""" { "a": 1, "b": -3.14e+2, "c": [true, false, null, "hi\n\"\\u00e9"] } """) &&
+            JSONOutputGrammar.validate("""{"emoji":"\uD83D\uDE00","nested":{"ok":true}}""") &&
+            JSONOutputGrammar.validate("""{"loneHigh":"\uD800"}""") &&
+            JSONOutputGrammar.validate("""{"loneLow":"\uDFFF"}""") &&
+            JSONOutputGrammar.validate("""{"highThenAscii":"\uD800\u0041"}""") &&
+            JSONOutputGrammar.validate("""{"twoHigh":"\uD800\uD800"}""") &&
+            JSONOutputGrammar.validate("""{"highThenPair":"\uD800\uD83D\uDE00"}""") &&
+            !JSONOutputGrammar.validate("""{"badAfterHigh":"\uD800\uZZZZ"}""") &&
+            !JSONOutputGrammar.validate("") &&
+            !JSONOutputGrammar.validate("[1, 2, 3]") &&
+            !JSONOutputGrammar.validate("\"just a string\"") &&
+            !JSONOutputGrammar.validate("42") &&
+            !JSONOutputGrammar.validate("true") &&
+            !JSONOutputGrammar.validate("null") &&
+            !JSONOutputGrammar.validate("""{"a": 1,}""") &&
+            !JSONOutputGrammar.validate("""{"a": 1} extra""") &&
+            !JSONOutputGrammar.validate("""{"a": 01}""") &&
+            !JSONOutputGrammar.validate("{unquoted: 1}") &&
+            !JSONOutputGrammar.validate("{\"bad\":\"\n\"}"))
+    check("JSONOutputGrammar combining mark escaping in enum and property names matches Swift bytes", run {
+        val acute = "\u0301"
+        val quotedAcute = "\"\u0301"
+        val schema = mapOf(
+            "type" to "object",
+            "properties" to listOf(
+                acute to mapOf("type" to "string", "enum" to listOf(acute)),
+                quotedAcute to mapOf("type" to "string", "enum" to listOf(quotedAcute)),
+            ),
+            "required" to listOf(acute, quotedAcute),
+        )
+        val g = JSONOutputGrammar.grammar(schema).gbnfOrNull ?: ""
+        val expected = listOf(
+            "root ::= \"{\" ws \"\\\"" + acute + "\\\"\" ws \":\" ws node-1 \",\" ws \"\\\"\\\\\\\"" + acute + "\\\"\" ws \":\" ws node-2 \"}\" ws",
+            "node-1 ::= \"\\\"" + acute + "\\\"\" ws",
+            "node-2 ::= \"\\\"\\\\\\\"" + acute + "\\\"\" ws",
+            "ws ::= ([ \\t\\n\\r] ([ \\t\\n\\r] ([ \\t\\n\\r] [ \\t\\n\\r]?)?)?)?",
+        ).joinToString("\n")
+        g.toByteArray(Charsets.UTF_8).contentEquals(expected.toByteArray(Charsets.UTF_8))
+    })
+    check("JSONOutputGrammar required set uses exact scalar sequence (NFC vs NFD)", run {
+        val nfc = "\u00e9"
+        val nfd = "e\u0301"
+        val jsonSchema = """{"type":"object","properties":{"$nfc":{"type":"string"},"$nfd":{"type":"integer"}},"required":["$nfc"]}"""
+        val g = JSONOutputGrammar.grammarFromJson(jsonSchema).gbnfOrNull ?: ""
+        val expectedRoot = "root ::= \"{\" ws \"\\\"" + nfc + "\\\"\" ws \":\" ws string ( \",\" ws \"\\\"" + nfd + "\\\"\" ws \":\" ws integer )? \"}\" ws"
+        val missing = JSONOutputGrammar.grammarFromJson("""{"type":"object","properties":{"$nfd":{"type":"integer"}},"required":["$nfc"]}""")
+        g.startsWith(expectedRoot) &&
+            missing is JSONOutputGrammar.GrammarResult.Failure &&
+            missing.reason.contains("not found in properties")
+    })
+    check("JSONOutputGrammar native map sorts keys by UTF-8 bytes and accepts empty required list", run {
+        val acuteE = "\u00e9"
+        val mapSchema = mapOf(
+            "type" to "object",
+            "properties" to linkedMapOf(
+                "z" to mapOf("type" to "string"),
+                acuteE to mapOf("type" to "boolean"),
+                "a" to mapOf("type" to "integer"),
+                "B" to mapOf("type" to "number"),
+            ),
+            "required" to listOf("z", acuteE, "a", "B"),
+        )
+        val gMap = JSONOutputGrammar.grammar(mapSchema).gbnfOrNull ?: ""
+        val expectedUtf8Root = "root ::= \"{\" ws \"\\\"B\\\"\" ws \":\" ws number \",\" ws \"\\\"a\\\"\" ws \":\" ws integer \",\" ws \"\\\"z\\\"\" ws \":\" ws string \",\" ws \"\\\"" + acuteE + "\\\"\" ws \":\" ws boolean \"}\" ws"
+        val jsonSchema = """{"type":"object","properties":{"z":{"type":"string"},"$acuteE":{"type":"boolean"},"a":{"type":"integer"},"B":{"type":"number"}},"required":["z","$acuteE","a","B"]}"""
+        val gJson = JSONOutputGrammar.grammarFromJson(jsonSchema).gbnfOrNull ?: ""
+        val expectedDeclaredRoot = "root ::= \"{\" ws \"\\\"z\\\"\" ws \":\" ws string \",\" ws \"\\\"" + acuteE + "\\\"\" ws \":\" ws boolean \",\" ws \"\\\"a\\\"\" ws \":\" ws integer \",\" ws \"\\\"B\\\"\" ws \":\" ws number \"}\" ws"
+        val emptyReq = JSONOutputGrammar.grammar(mapOf(
+            "type" to "object",
+            "properties" to mapOf("name" to mapOf("type" to "string")),
+            "required" to emptyList<String>(),
+        )).gbnfOrNull ?: ""
+        val emptyReqNoProps = JSONOutputGrammar.grammar(mapOf(
+            "type" to "object",
+            "required" to emptyList<String>(),
+        )).gbnfOrNull ?: ""
+        gMap.startsWith(expectedUtf8Root) &&
+            gJson.startsWith(expectedDeclaredRoot) &&
+            emptyReq.startsWith("root ::= \"{\" ws ( \"\\\"name\\\"\" ws \":\" ws string )? \"}\" ws") &&
+            emptyReqNoProps.startsWith("root ::= object\n")
+    })
+    check("JSONOutputGrammar fails cleanly when a single object has >16 optional properties", run {
+        val props16 = (1..16).associate { String.format("p%02d", it) to mapOf("type" to "string") }
+        val ok16 = JSONOutputGrammar.grammar(mapOf("type" to "object", "properties" to props16))
+        val props17 = props16 + ("p17" to mapOf("type" to "string"))
+        val fail17 = JSONOutputGrammar.grammar(mapOf("type" to "object", "properties" to props17))
+        val props1Req17Opt = props17 + ("req" to mapOf("type" to "integer"))
+        val failMixed = JSONOutputGrammar.grammar(mapOf(
+            "type" to "object",
+            "properties" to props1Req17Opt,
+            "required" to listOf("req"),
+        ))
+        val expectedReason = "too many optional properties; using generic JSON grammar"
+        ok16 is JSONOutputGrammar.GrammarResult.Success &&
+            fail17 is JSONOutputGrammar.GrammarResult.Failure && fail17.reason == expectedReason &&
+            failMixed is JSONOutputGrammar.GrammarResult.Failure && failMixed.reason == expectedReason
+    })
+
+    // --- Part 1: ContextLengthChoice (twin of Swift ContextLengthChoiceTests) ---
+    check("ContextLengthChoice raw values and default",
+        ContextLengthChoice.DEFAULT == ContextLengthChoice.AUTO &&
+            ContextLengthChoice.AUTO.rawValue == "auto" &&
+            ContextLengthChoice.K2.rawValue == "2048" &&
+            ContextLengthChoice.K4.rawValue == "4096" &&
+            ContextLengthChoice.K8.rawValue == "8192" &&
+            ContextLengthChoice.fromRawValue("4096") == ContextLengthChoice.K4)
+    check("ContextWindow.resolve AUTO matches 3-arg recommend with no warning", run {
+        val cases = listOf(
+            Triple(2.0, 1.5, KVCacheType.F16),
+            Triple(2.0, 1.5, KVCacheType.Q8_0),
+            Triple(4.0, 2.0, KVCacheType.F16),
+            Triple(4.0, 2.0, KVCacheType.Q8_0),
+            Triple(12.0, 4.0, KVCacheType.F16),
+            Triple(12.0, 4.0, KVCacheType.Q8_0),
+        )
+        cases.all { (budget, weights, kv) ->
+            val expected = ContextWindow.recommend(budget, weights, kv)
+            val resolved = ContextWindow.resolve(ContextLengthChoice.AUTO, budget, weights, kv)
+            resolved.tokens == expected && resolved.warning == null && resolved.warningText == null
+        }
+    })
+    check("ContextWindow.resolve manual at or below auto checks memory estimate", run {
+        val below = ContextWindow.resolve(ContextLengthChoice.K2, 6.0, 2.0, KVCacheType.F16)
+        val equalFits = ContextWindow.resolve(ContextLengthChoice.K4, 6.0, 2.0, KVCacheType.F16)
+        val equalExceeds = ContextWindow.resolve(ContextLengthChoice.K4, 4.0, 2.0, KVCacheType.F16)
+        below.tokens == 2048 && below.warning == null && below.warningText == null &&
+            equalFits.tokens == 4096 && equalFits.warning == null && equalFits.warningText == null &&
+            equalExceeds.tokens == 2048 && equalExceeds.warning == ContextWarning.EXCEEDS_BUDGET &&
+            equalExceeds.warningText == "Not enough memory on this device for this length; using 2048 tokens."
+    })
+    check("ContextWindow.resolve manual above auto that fits returns MORE_MEMORY", run {
+        val res = ContextWindow.resolve(ContextLengthChoice.K8, 12.0, 4.0, KVCacheType.F16)
+        res.tokens == 8192 && res.warning == ContextWarning.MORE_MEMORY &&
+            res.warningText == "Uses more memory. Long chats may be slower."
+    })
+    check("ContextWindow.resolve manual exceeding headroom clamps to largest fitting tier (min 2048)", run {
+        val c4 = ContextWindow.resolve(ContextLengthChoice.K8, 6.0, 2.0, KVCacheType.F16)
+        val c2 = ContextWindow.resolve(ContextLengthChoice.K8, 4.0, 2.0, KVCacheType.F16)
+        val cFloor = ContextWindow.resolve(ContextLengthChoice.K2, 2.0, 1.5, KVCacheType.F16)
+        c4.tokens == 4096 && c4.warning == ContextWarning.EXCEEDS_BUDGET &&
+            c4.warningText == "Not enough memory on this device for this length; using 4096 tokens." &&
+            c2.tokens == 2048 && c2.warning == ContextWarning.EXCEEDS_BUDGET &&
+            c2.warningText == "Not enough memory on this device for this length; using 2048 tokens." &&
+            cFloor.tokens == 2048 && cFloor.warning == ContextWarning.EXCEEDS_BUDGET &&
+            cFloor.warningText == "Not enough memory on this device for this length; using 2048 tokens."
+    })
+    check("ContextWindow.resolve q8_0 unlocks longer manual context than f16", run {
+        val f16 = ContextWindow.resolve(ContextLengthChoice.K4, 3.4, 2.0, KVCacheType.F16)
+        val q8 = ContextWindow.resolve(ContextLengthChoice.K4, 3.4, 2.0, KVCacheType.Q8_0)
+        f16.tokens == 2048 && f16.warning == ContextWarning.EXCEEDS_BUDGET &&
+            q8.tokens == 4096 && q8.warning == ContextWarning.MORE_MEMORY
+    })
+
+    // --- Part 2: Engine + ChatModel + ConversationStore wiring checks ---
+    check("ThinkingMode.shouldCloseThinkBlock closes only on OFF + thinking template", run {
+        val qwenTmpl = "{% if enable_thinking %}<think>{% endif %}"
+        val r1Tmpl = "assistant\n<think>\n"
+        val plainTmpl = "<|im_start|>assistant\n"
+        ThinkingMode.shouldCloseThinkBlock(ThinkingMode.OFF, qwenTmpl) &&
+            ThinkingMode.shouldCloseThinkBlock(ThinkingMode.OFF, r1Tmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.SHOW, qwenTmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.HIDE, qwenTmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.SHOW, r1Tmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.HIDE, r1Tmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.OFF, plainTmpl) &&
+            !ThinkingMode.shouldCloseThinkBlock(ThinkingMode.SHOW, plainTmpl)
+    })
+    check("LlamaEngine.shouldDisableThinking forces OFF whenever grammar is set", run {
+        LlamaEngine.shouldDisableThinking(ThinkingMode.OFF, hasGrammar = false) &&
+            !LlamaEngine.shouldDisableThinking(ThinkingMode.SHOW, hasGrammar = false) &&
+            !LlamaEngine.shouldDisableThinking(ThinkingMode.HIDE, hasGrammar = false) &&
+            LlamaEngine.shouldDisableThinking(ThinkingMode.SHOW, hasGrammar = true) &&
+            LlamaEngine.shouldDisableThinking(ThinkingMode.HIDE, hasGrammar = true)
+    })
+    check("ContextWindow.resolveForLoad matches recommend on AUTO and respects model caps", run {
+        val auto = ContextWindow.resolveForLoad(ContextLengthChoice.AUTO, 12.0, 4.0, KVCacheType.F16)
+        val k8 = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 12.0, 4.0, KVCacheType.F16)
+        val capped = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 12.0, 4.0, KVCacheType.F16, maxContextTokens = 4096)
+        val mid = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 6.0, 2.0, KVCacheType.F16, maxContextTokens = 8192)
+        val tight = ContextWindow.resolveForLoad(ContextLengthChoice.K8, 4.0, 2.0, KVCacheType.F16, maxContextTokens = 8192)
+        auto == ContextWindow.recommend(12.0, 4.0, KVCacheType.F16) &&
+            k8 == 8192 && capped == 4096 && mid == 4096 && tight == 2048
+    })
+    check("LlamaEngine.plannedContext uses ContextWindow.resolveForLoad and defaults to AUTO", run {
+        val ordinary = ModelCatalog.smallest // ~1 GB
+        val roomy = LlamaEngine(deviceBudgetGb = 12.0)
+        val defaultCtx = roomy.plannedContext(ordinary)
+        val expectedAuto = ContextWindow.recommend(12.0, ordinary.ramGB, KVCachePolicy.recommend(12.0, ordinary.ramGB))
+        roomy.setContextLengthChoice(ContextLengthChoice.K8)
+        val expanded = roomy.plannedContext(ordinary)
+        roomy.setContextLengthChoice(ContextLengthChoice.K2)
+        val shrunk = roomy.plannedContext(ordinary)
+        val tight = LlamaEngine(deviceBudgetGb = 2.0).apply { setContextLengthChoice(ContextLengthChoice.K8) }
+        val tightExpected = ContextWindow.resolve(
+            ContextLengthChoice.K8,
+            2.0,
+            ordinary.ramGB,
+            KVCachePolicy.recommend(2.0, ordinary.ramGB),
+        ).tokens
+        defaultCtx == expectedAuto && expanded == 8192 && shrunk == 2048 && tight.plannedContext(ordinary) == tightExpected
+    })
+    check("CoordinatedInferenceEngine forwards thinkingMode, contextLengthChoice, and chatGrammar", run {
+        val raw = LlamaEngine(deviceBudgetGb = 12.0)
+        val coord = CoordinatedInferenceEngine(raw)
+        coord.setThinkingMode(ThinkingMode.HIDE)
+        coord.setContextLengthChoice(ContextLengthChoice.K8)
+        coord.setChatGrammar(JSONOutputGrammar.ANY_JSON_OBJECT)
+        coord.thinkingMode() == ThinkingMode.HIDE &&
+            coord.thinkingEnabled() &&
+            raw.thinkingMode() == ThinkingMode.HIDE &&
+            coord.contextLengthChoice() == ContextLengthChoice.K8 &&
+            raw.contextLengthChoice() == ContextLengthChoice.K8 &&
+            coord.chatGrammar() == JSONOutputGrammar.ANY_JSON_OBJECT &&
+            raw.chatGrammar() == JSONOutputGrammar.ANY_JSON_OBJECT
+    })
+    check("ChatModel splits <think>...</think> on SHOW, drops thinking on HIDE, keeps raw on OFF", run {
+        class ThinkingTestEngine(private val scripted: String) : InferenceEngine {
+            override var loadedModelId: String? = "test"
+            private var mode: ThinkingMode = ThinkingMode.OFF
+            override fun thinkingEnabled(): Boolean = mode.allowsThinking
+            override fun setThinkingEnabled(enabled: Boolean) { mode = if (enabled) ThinkingMode.SHOW else ThinkingMode.OFF }
+            override fun thinkingMode(): ThinkingMode = mode
+            override fun setThinkingMode(mode: ThinkingMode) { this.mode = mode }
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = scripted
+            override fun complete(prompt: String, onToken: (String) -> Unit): String {
+                scripted.chunked(3).forEach(onToken)
+                return scripted
+            }
+        }
+        val showEngine = ThinkingTestEngine("<think>step 1</think>Final answer").apply { setThinkingMode(ThinkingMode.SHOW) }
+        val showChat = ChatModel(showEngine)
+        showChat.send("hi")
+        val showMsg = showChat.messages.last()
+
+        val hideEngine = ThinkingTestEngine("<think>secret</think>Clean answer").apply { setThinkingMode(ThinkingMode.HIDE) }
+        val hideChat = ChatModel(hideEngine)
+        hideChat.send("hi")
+        val hideMsg = hideChat.messages.last()
+
+        val offEngine = ThinkingTestEngine("Plain answer")
+        val offChat = ChatModel(offEngine)
+        offChat.send("hi")
+        val offMsg = offChat.messages.last()
+
+        val ok = showMsg.thinking == "step 1" && showMsg.text == "Final answer" &&
+            hideMsg.thinking == null && hideMsg.text == "Clean answer" &&
+            offMsg.thinking == null && offMsg.text == "Plain answer"
+        if (!ok) {
+            println("    DEBUG show=(${showMsg.thinking}|${showMsg.text}) hide=(${hideMsg.thinking}|${hideMsg.text}) off=(${offMsg.thinking}|${offMsg.text}) checker=${RoleSeat.checkerModelId}")
+        }
+        ok
+    })
+    check("ThinkingMode.promptEndsInsideThinking detects unclosed trailing <think> only", run {
+        ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n") &&
+            ThinkingMode.promptEndsInsideThinking("<｜Assistant｜><think>") &&
+            ThinkingMode.promptEndsInsideThinking("assistant:<think>  \r\n\t") &&
+            !ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n\n</think>\n\n") &&
+            !ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant:\n") &&
+            !ThinkingMode.promptEndsInsideThinking("")
+    })
+    check("ThinkingMode.promptEndsInsideThinking handles non-empty pre-opened assistant prefixes and ignores earlier user tags", run {
+        val customBase = "USER: explain <think> and BOT: <think>\n"
+        val nonEmptyOpened = ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\nReasoning: ") &&
+            ThinkingMode.promptEndsInsideThinking("<｜Assistant｜><think>\nStep 1: ") &&
+            ThinkingMode.promptEndsInsideThinking("<start_of_turn>model\n<think>\nNotes: ") &&
+            ThinkingMode.promptEndsInsideThinking("User: explain <think>\nAssistant: <think>\nReasoning: ") &&
+            ThinkingMode.promptEndsInsideThinking("  <think>\nReasoning: ")
+        val closedOrUserOnly = !ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\nReasoning: </think>\nAnswer: ") &&
+            !ThinkingMode.promptEndsInsideThinking("<|im_start|>user\nexplain <think><|im_end|>\n<|im_start|>assistant\n") &&
+            !ThinkingMode.promptEndsInsideThinking("<|start_header_id|>user<|end_header_id|>\n\nWhat is <think>?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n") &&
+            !ThinkingMode.promptEndsInsideThinking("<start_of_turn>user\nexplain <think><end_of_turn>\n<start_of_turn>model\n") &&
+            !ThinkingMode.promptEndsInsideThinking("[INST] explain <think> [/INST]") &&
+            !ThinkingMode.promptEndsInsideThinking("<｜User｜>explain <think><｜Assistant｜>") &&
+            !ThinkingMode.promptEndsInsideThinking("<|im_start|>user\nShow <|im_start|>assistant\n<think> example<|im_end|>\n<|im_start|>assistant\n") &&
+            !ThinkingMode.promptEndsInsideThinking("User: explain <think>")
+        val twoArgExact = !ThinkingMode.promptEndsInsideThinking(customBase + "BOT: ", withoutAssistantPrefix = customBase) &&
+            ThinkingMode.promptEndsInsideThinking(customBase + "BOT: <think>\nReasoning: ", withoutAssistantPrefix = customBase) &&
+            !ThinkingMode.promptEndsInsideThinking(customBase + "BOT: <think>\n\n</think>\n\n", withoutAssistantPrefix = customBase)
+        val splitter = ThinkingSplitter.forRenderedPrompt("<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\nReasoning: ")
+        val d1 = splitter.feed("private thoughts</think>Visible answer")
+        val d2 = splitter.finish()
+        nonEmptyOpened && closedOrUserOnly && twoArgExact &&
+            d1.thinking + d2.thinking == "private thoughts" &&
+            d1.answer + d2.answer == "Visible answer"
+    })
+    check("ThinkingMode.promptEndsInsideThinking falls back on equal template renders (unconditional prefill)", run {
+        val equalChatML = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>"
+        val equalChatMLText = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\nReasoning: "
+        val equalDeepSeek = "<｜User｜>hi<｜Assistant｜><think>"
+        val closedOff = equalChatML + "\n</think>\n\n"
+        val equalClosed = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+        val equalUserOnly = "<|im_start|>user\nexplain <think><|im_end|>\n"
+        val equalFlatUser = "User: explain <think>"
+        ThinkingMode.promptEndsInsideThinking(equalChatML, withoutAssistantPrefix = equalChatML) &&
+            ThinkingMode.promptEndsInsideThinking(equalChatMLText, withoutAssistantPrefix = equalChatMLText) &&
+            ThinkingMode.promptEndsInsideThinking(equalDeepSeek, withoutAssistantPrefix = equalDeepSeek) &&
+            !ThinkingMode.promptEndsInsideThinking(closedOff, withoutAssistantPrefix = equalChatML) &&
+            !ThinkingMode.promptEndsInsideThinking(equalClosed, withoutAssistantPrefix = equalClosed) &&
+            !ThinkingMode.promptEndsInsideThinking(equalUserOnly, withoutAssistantPrefix = equalUserOnly) &&
+            !ThinkingMode.promptEndsInsideThinking(equalFlatUser, withoutAssistantPrefix = equalFlatUser)
+    })
+    check("ChatModel Hide/Show strips reasoning when template pre-opened <think> in prompt", run {
+        class PreOpenedThinkingEngine(private val scripted: String) : InferenceEngine {
+            override var loadedModelId: String? = "test-r1"
+            private var mode: ThinkingMode = ThinkingMode.OFF
+            override fun thinkingEnabled(): Boolean = mode.allowsThinking
+            override fun setThinkingEnabled(enabled: Boolean) { mode = if (enabled) ThinkingMode.SHOW else ThinkingMode.OFF }
+            override fun thinkingMode(): ThinkingMode = mode
+            override fun setThinkingMode(mode: ThinkingMode) { this.mode = mode }
+            override fun chatPromptStartsInsideThinking(systemPrompt: String, history: List<ChatMessage>): Boolean =
+                mode.allowsThinking && ThinkingMode.promptEndsInsideThinking("<|im_start|>assistant\n<think>\n")
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = scripted
+            override fun complete(prompt: String, onToken: (String) -> Unit): String {
+                scripted.chunked(4).forEach(onToken)
+                return scripted
+            }
+        }
+        val hideEngine = PreOpenedThinkingEngine("secret chain of thought</think>Clean visible answer")
+            .apply { setThinkingMode(ThinkingMode.HIDE) }
+        val hideChat = ChatModel(hideEngine)
+        hideChat.send("solve")
+        val hideMsg = hideChat.messages.last()
+
+        val showEngine = PreOpenedThinkingEngine("step A then step B</think>42")
+            .apply { setThinkingMode(ThinkingMode.SHOW) }
+        val showChat = ChatModel(showEngine)
+        showChat.send("solve")
+        val showMsg = showChat.messages.last()
+
+        val splitterFromPrompt = ThinkingSplitter.forRenderedPrompt("<|im_start|>assistant\n<think>\n")
+        val d1 = splitterFromPrompt.feed("hidden</think>ok")
+        val d2 = splitterFromPrompt.finish()
+
+        hideMsg.thinking == null && hideMsg.text == "Clean visible answer" &&
+            !hideMsg.text.contains("secret") &&
+            showMsg.thinking == "step A then step B" && showMsg.text == "42" &&
+            d1.thinking + d2.thinking == "hidden" && d1.answer + d2.answer == "ok"
+    })
+    check("ConversationStore round-trips thinking and decodes legacy transcripts cleanly", run {
+        val store = ConversationStore()
+        val legacy = store.decode("USER\thi\nASSISTANT\thello")
+        val msgs = listOf(
+            ChatMessage(Role.USER, "2+2?"),
+            ChatMessage(Role.ASSISTANT, "4", thinking = "two plus two"),
+        )
+        val encoded = store.encode(msgs)
+        val decoded = store.decode(encoded)
+        val exported = ConversationExporter.markdown(decoded)
+        legacy.size == 2 && legacy[1].thinking == null &&
+            decoded.size == 2 && decoded[1].text == "4" && decoded[1].thinking == "two plus two" &&
+            decoded[1].documents.isEmpty() &&
+            exported.contains("4") && !exported.contains("two plus two")
+    })
+
+    // --- FeatureFlags (vision-in-chat, shipped OFF until physical-device verification) ---
+    check("FeatureFlags.visionInChat ships disabled by default",
+        !FeatureFlags.visionInChat &&
+            !FeatureFlags.visionInChatAvailable(runtimeAvailable = true, modelInstalled = true))
+    check("FeatureFlags.visionInChatAvailable matches full 8-row truth table", run {
+        val cases = listOf(
+            Triple(false, false, false) to false,
+            Triple(false, false, true) to false,
+            Triple(false, true, false) to false,
+            Triple(false, true, true) to false,
+            Triple(true, false, false) to false,
+            Triple(true, false, true) to false,
+            Triple(true, true, false) to false,
+            Triple(true, true, true) to true,
+        )
+        cases.all { (inputs, expected) ->
+            FeatureFlags.visionInChatAvailable(
+                flag = inputs.first,
+                runtimeAvailable = inputs.second,
+                modelInstalled = inputs.third,
+            ) == expected
+        }
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

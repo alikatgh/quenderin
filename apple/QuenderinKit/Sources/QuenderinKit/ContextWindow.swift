@@ -40,4 +40,126 @@ public enum ContextWindow {
         let rounded = Int((scaled / 256.0).rounded()) * 256
         return min(8192, max(256, rounded))
     }
+
+    /// Conservative f16 KV-cache footprint per cached token (0.5 MiB/token).
+    /// Covers typical ≤8B–14B GQA models (~0.15 MiB/token) with margin plus MHA 7B models
+    /// (~0.5 MiB/token) so a manual context choice never silently oversubscribes jetsam headroom.
+    /// Scaled by `KVCacheType.relativeCostPerToken` (e.g. `0.53` for `q8_0`).
+    public static let baseF16KVMBPerToken: Double = 0.5
+
+    /// Estimated KV-cache memory in GiB for `tokens` at the given `kvCacheType`.
+    public static func estimatedKVGB(tokens: Int, kvCacheType: KVCacheType) -> Double {
+        guard tokens > 0 else { return 0.0 }
+        return (Double(tokens) * baseF16KVMBPerToken * kvCacheType.relativeCostPerToken) / 1024.0
+    }
+
+    /// Resolves a user's `ContextLengthChoice` against the device's app-memory headroom.
+    /// - `.auto`: exact 3-arg `recommend(...)` result, `warning == nil`.
+    /// - Manual (`k2`/`k4`/`k8`): ALWAYS checked against the estimated KV headroom:
+    ///   - If `estimatedKVGB(requested) <= headroomGB`: returns `requested`, with `.moreMemory`
+    ///     when `requested > autoTokens` or `nil` when `requested <= autoTokens`.
+    ///   - Otherwise clamps to the largest of `8192 / 4096 / 2048` that fits (never below `2048`;
+    ///     if even `2048` does not fit, returns `2048`) with `.exceedsBudget`.
+    public static func resolve(
+        choice: ContextLengthChoice,
+        appBudgetGB: Double,
+        modelWeightsGB: Double,
+        kvCacheType: KVCacheType
+    ) -> ContextResolution {
+        let autoTokens = recommend(
+            appBudgetGB: appBudgetGB,
+            modelWeightsGB: modelWeightsGB,
+            kvCacheType: kvCacheType
+        )
+        guard let requested = choice.requestedTokens else {
+            return ContextResolution(tokens: autoTokens, warning: nil)
+        }
+        let headroomGB = appBudgetGB - modelWeightsGB * 1.15
+        func fits(_ tokens: Int) -> Bool {
+            headroomGB > 0 && estimatedKVGB(tokens: tokens, kvCacheType: kvCacheType) <= headroomGB
+        }
+        if fits(requested) {
+            let warning: ContextWarning? = requested > autoTokens ? .moreMemory : nil
+            return ContextResolution(tokens: requested, warning: warning)
+        }
+        let clamped = [8192, 4096, 2048].first(where: fits) ?? 2048
+        return ContextResolution(tokens: clamped, warning: .exceedsBudget)
+    }
+
+    /// Engine load-time sizing: resolves `choice` via `resolve(...)` and applies an optional
+    /// model- or specialist-specific context ceiling (`maxContextTokens`). For `.auto`, produces
+    /// the exact same token count as `recommend(...)` clamped to `maxContextTokens`.
+    /// Twin of Android `ContextWindow.resolveForLoad`.
+    public static func resolveForLoad(
+        choice: ContextLengthChoice,
+        appBudgetGB: Double,
+        modelWeightsGB: Double,
+        kvCacheType: KVCacheType,
+        maxContextTokens: Int? = nil
+    ) -> Int {
+        let resolved = resolve(
+            choice: choice,
+            appBudgetGB: appBudgetGB,
+            modelWeightsGB: modelWeightsGB,
+            kvCacheType: kvCacheType
+        ).tokens
+        if let cap = maxContextTokens {
+            return min(resolved, cap)
+        }
+        return resolved
+    }
+}
+
+/// User-selectable context length preference. Default is `.auto` (matches existing behaviour).
+/// Twin of Android `ContextLengthChoice`.
+public enum ContextLengthChoice: String, Sendable, Equatable, Codable, CaseIterable {
+    case auto = "auto"
+    case k2 = "2048"
+    case k4 = "4096"
+    case k8 = "8192"
+
+    public static let defaultChoice: ContextLengthChoice = .auto
+
+    /// Requested token count for manual choices, or `nil` for `.auto`.
+    public var requestedTokens: Int? {
+        switch self {
+        case .auto: return nil
+        case .k2: return 2048
+        case .k4: return 4096
+        case .k8: return 8192
+        }
+    }
+}
+
+/// Memory advisory produced when resolving a manual `ContextLengthChoice`.
+/// Twin of Android `ContextWarning`.
+public enum ContextWarning: String, Sendable, Equatable, Codable {
+    /// Requested length is above Auto but still fits the estimated KV headroom.
+    case moreMemory
+    /// Requested length exceeds estimated KV headroom and was clamped down to Auto.
+    case exceedsBudget
+}
+
+/// Result of resolving a `ContextLengthChoice` for a device and model.
+/// Twin of Android `ContextResolution`.
+public struct ContextResolution: Sendable, Equatable {
+    public let tokens: Int
+    public let warning: ContextWarning?
+
+    public init(tokens: Int, warning: ContextWarning?) {
+        self.tokens = tokens
+        self.warning = warning
+    }
+
+    /// Short English advisory text for the UI, or `nil` when there is no warning.
+    public var warningText: String? {
+        switch warning {
+        case nil:
+            return nil
+        case .moreMemory:
+            return "Uses more memory. Long chats may be slower."
+        case .exceedsBudget:
+            return "Not enough memory on this device for this length; using \(tokens) tokens."
+        }
+    }
 }

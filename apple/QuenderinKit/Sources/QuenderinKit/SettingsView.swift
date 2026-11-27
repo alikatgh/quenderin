@@ -150,7 +150,9 @@ public struct SettingsView: View {
                 case .model:
                     speedSection
                     modelSection
+                    modelBehaviourSection
                     routingSection
+                    localAPISection
                 case .appearance:
                     appearancePreviewSection
                     appearanceSection
@@ -185,6 +187,7 @@ public struct SettingsView: View {
         List {
             speedSection
             modelSection
+            modelBehaviourSection
             routingSection
             appearancePreviewSection
             appearanceSection
@@ -209,6 +212,11 @@ public struct SettingsView: View {
 
     @ObservedObject private var appSettings = AppSettings.shared
     @ObservedObject private var automatic = AutomaticModelPreferences.shared
+    #if os(macOS)
+    @ObservedObject private var localAPI = LocalAPIServer.shared
+    @State private var localAPIPortDraft = String(AppSettings.shared.localAPIPort)
+    @State private var copiedLocalAPIURL = false
+    #endif
     /// "Deeper reasoning" — the opt-in agent think-pass. UserDefaults-backed so AgentLoop reads it live.
     @AppStorage(AgentDeliberation.defaultsKey) private var deliberationOn = false
     /// "Plan novel goals" — the opt-in dynamic-planning pass. UserDefaults-backed so AgentLoop reads it live.
@@ -245,6 +253,92 @@ public struct SettingsView: View {
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
+
+    #if os(macOS)
+    private var localAPISection: some View {
+        Section("Local API (for developers)") {
+            Toggle("Serve an OpenAI-compatible API on this Mac", isOn: $appSettings.localAPIEnabled)
+                .accessibilityIdentifier("local-api-enabled")
+
+            HStack {
+                Text("Port")
+                Spacer()
+                TextField("11435", text: $localAPIPortDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 96)
+                    .onAppear {
+                        localAPIPortDraft = String(appSettings.localAPIPort)
+                    }
+                    .onSubmit {
+                        commitLocalAPIPort()
+                    }
+                    .onChange(of: localAPIPortDraft) { newValue in
+                        let digits = newValue.filter(\.isNumber)
+                        if digits != newValue {
+                            localAPIPortDraft = digits
+                            return
+                        }
+                        if let parsed = Int(digits), parsed >= Int(LocalAPIGuard.minPort), parsed <= Int(LocalAPIGuard.maxPort) {
+                            if appSettings.localAPIPort != parsed {
+                                appSettings.localAPIPort = parsed
+                            }
+                        }
+                    }
+            }
+
+            HStack {
+                Text("API key (optional)")
+                Spacer()
+                SecureField("Leave blank to accept any key", text: $appSettings.localAPIKey)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 240)
+            }
+
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localAPI.statusLine)
+                        .font(.callout.monospaced())
+                        .foregroundStyle(localAPIStatusColor)
+                    if localAPI.requestsServed > 0 {
+                        Text("\(localAPI.requestsServed) \(localAPI.requestsServed == 1 ? "request" : "requests") served this session")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button(copiedLocalAPIURL ? "Copied" : "Copy URL") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(localAPI.baseURLString, forType: .string)
+                    copiedLocalAPIURL = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        copiedLocalAPIURL = false
+                    }
+                }
+                .accessibilityLabel("Copy local API base URL")
+            }
+
+            Text("Only apps on this Mac can connect. Nothing is sent to the internet.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var localAPIStatusColor: Color {
+        switch localAPI.status {
+        case .listening: return .primary
+        case .error: return .orange
+        case .off, .starting: return .secondary
+        }
+    }
+
+    private func commitLocalAPIPort() {
+        let parsed = Int(localAPIPortDraft) ?? Int(LocalAPIGuard.defaultPort)
+        let clamped = Int(LocalAPIGuard.clampPort(parsed))
+        appSettings.localAPIPort = clamped
+        localAPIPortDraft = String(clamped)
+    }
+    #endif
 
     /// A live two-bubble transcript that re-renders as the user moves any appearance control —
     /// see the result the moment you change it, not after hunting for a chat window (owner:
@@ -505,6 +599,43 @@ public struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
         } header: {
             Text("Model")
+        }
+    }
+
+    private var modelBehaviourSection: some View {
+        let budgetGB = HardwareProbe.appMemoryBudgetGB()
+        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: budgetGB, modelWeightsGB: model.ramGB)
+        let contextResolution = ContextWindow.resolve(
+            choice: appSettings.contextLength,
+            appBudgetGB: budgetGB,
+            modelWeightsGB: model.ramGB,
+            kvCacheType: kvCacheType
+        )
+        return Section("Model behaviour") {
+            Picker("Thinking", selection: $appSettings.thinkingMode) {
+                Text("Off").tag(ThinkingMode.off)
+                Text("Show thinking").tag(ThinkingMode.show)
+                Text("Hide thinking").tag(ThinkingMode.hide)
+            }
+            Text("Only for models that can think (for example Qwen3, DeepSeek-R1). Thinking takes longer and uses more battery.")
+                .font(.footnote).foregroundStyle(.secondary)
+
+            Picker("Context length", selection: $appSettings.contextLength) {
+                Text("Auto (recommended)").tag(ContextLengthChoice.auto)
+                Text("2K").tag(ContextLengthChoice.k2)
+                Text("4K").tag(ContextLengthChoice.k4)
+                Text("8K").tag(ContextLengthChoice.k8)
+            }
+            if let warning = contextResolution.warningText {
+                Text(warning)
+                    .font(.footnote).foregroundStyle(.orange)
+            }
+            Text("Applies the next time the model loads.")
+                .font(.footnote).foregroundStyle(.secondary)
+
+            Toggle("Reply as JSON", isOn: $appSettings.replyAsJSON)
+            Text("Constrains replies to valid JSON. Useful for apps and scripts.")
+                .font(.footnote).foregroundStyle(.secondary)
         }
     }
 

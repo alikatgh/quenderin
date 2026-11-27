@@ -18,6 +18,7 @@ public struct MacRootView: View {
     @State private var confirmBulkDelete = false
     @State private var showProfile = false
     @State private var rail: RailSection = .chats
+    @State private var visionEngine = NativeVisionEngine()
     @ObservedObject private var library = ModelLibraryController.shared
     @Environment(\.colorScheme) private var scheme
 
@@ -218,7 +219,14 @@ public struct MacRootView: View {
                 onCancel: { selection = conversations.currentID.map { [$0] } ?? [] }
             )
         } else if selection.count == 1 {
-            ChatView(model: chat, activeModel: model, onSwitchModel: { onboarding.beginInstall($0) }, conversationID: conversations.currentID)
+            ChatView(
+                model: chat,
+                activeModel: model,
+                onSwitchModel: { onboarding.beginInstall($0) },
+                conversationID: conversations.currentID,
+                visionEngine: visionEngine,
+                suspendForSpecialist: { try await onboarding.suspendForSpecialist() }
+            )
                 // Re-identify the view per conversation: switching chats resets scroll state and
                 // refires onAppear, which puts the caret in the composer (see ChatView).
                 .id(conversations.currentID)

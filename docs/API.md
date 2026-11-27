@@ -4,6 +4,8 @@ Quenderin exposes a **REST API** (request/response, under `/api/*`) and a
 **WebSocket protocol** (streaming, for chat and the agent loop). All of it is
 local — served from `localhost`, no external calls.
 
+For the native macOS app's opt-in loopback OpenAI-compatible endpoint (`http://127.0.0.1:11435/v1`), see [LOCAL_API.md](LOCAL_API.md).
+
 ## REST endpoints
 
 Base: `http://localhost:3000` (the dashboard server).

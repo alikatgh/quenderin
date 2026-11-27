@@ -41,6 +41,18 @@ interface InferenceEngine {
     fun setChatTokenBudget(tokens: Int) {}
     fun thinkingEnabled(): Boolean = false
     fun setThinkingEnabled(enabled: Boolean) {}
+    fun thinkingMode(): ThinkingMode = if (thinkingEnabled()) ThinkingMode.SHOW else ThinkingMode.OFF
+    fun setThinkingMode(mode: ThinkingMode) { setThinkingEnabled(mode.allowsThinking) }
+    fun contextLengthChoice(): ContextLengthChoice = ContextLengthChoice.AUTO
+    fun setContextLengthChoice(choice: ContextLengthChoice) {}
+    fun chatGrammar(): String? = null
+    fun setChatGrammar(grammar: String?) {}
+    /**
+     * True when the rendered chat prompt for this request leaves an unclosed trailing `<think>`,
+     * meaning streamed tokens start already inside a thinking block. Twin of Swift
+     * `InferenceEngine.chatPromptStartsInsideThinking`.
+     */
+    fun chatPromptStartsInsideThinking(systemPrompt: String, history: List<ChatMessage>): Boolean = false
     val loadedModelId: String?
 
     /**

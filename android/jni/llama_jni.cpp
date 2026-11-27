@@ -347,12 +347,78 @@ std::vector<std::string> splitOn(const std::string& s, char sep) {
 
 // Turn the structured conversation into the prompt string the model was actually TRAINED on, using its
 // OWN chat template embedded in the GGUF (llama_model_chat_template) via llama_chat_apply_template — e.g.
+bool hasUnclosedThinkTag(const std::string& text) {
+    size_t lastOpen = text.rfind("<think>");
+    if (lastOpen == std::string::npos) return false;
+    size_t lastClose = text.rfind("</think>");
+    return lastClose == std::string::npos || lastClose < lastOpen;
+}
+
+bool promptEndsInsideThinking(const std::string& prompt, const std::string& withoutAssistant) {
+    if (!withoutAssistant.empty() && prompt.size() > withoutAssistant.size() &&
+        prompt.compare(0, withoutAssistant.size(), withoutAssistant) == 0) {
+        return hasUnclosedThinkTag(prompt.substr(withoutAssistant.size()));
+    }
+    if (prompt.empty()) return false;
+    static const char* const kTurnMarkers[] = {
+        "<|im_start|>assistant",
+        "<|im_end|>",
+        "<|start_header_id|>assistant<|end_header_id|>",
+        "<|eot_id|>",
+        "<start_of_turn>model",
+        "<start_of_turn>assistant",
+        "<end_of_turn>",
+        "<｜Assistant｜>",
+        "<|Assistant|>",
+        "<|assistant|>",
+        "<|end|>",
+        "[/INST]",
+        "</s>",
+        "\nAssistant:",
+        "\nassistant:",
+        "\rAssistant:",
+        "\rassistant:",
+    };
+    size_t boundaryEnd = std::string::npos;
+    for (const char* marker : kTurnMarkers) {
+        size_t len = std::strlen(marker);
+        size_t idx = prompt.rfind(marker);
+        if (idx != std::string::npos) {
+            size_t end = idx + len;
+            if (boundaryEnd == std::string::npos || end > boundaryEnd) boundaryEnd = end;
+        }
+    }
+    static const char* const kLeadingMarkers[] = {"Assistant:", "assistant:"};
+    for (const char* marker : kLeadingMarkers) {
+        size_t len = std::strlen(marker);
+        if (prompt.size() >= len && prompt.compare(0, len, marker) == 0) {
+            if (boundaryEnd == std::string::npos || len > boundaryEnd) boundaryEnd = len;
+        }
+    }
+    if (boundaryEnd != std::string::npos) {
+        return hasUnclosedThinkTag(prompt.substr(boundaryEnd));
+    }
+    size_t start = 0;
+    while (start < prompt.size() && (prompt[start] == ' ' || prompt[start] == '\t' ||
+                                     prompt[start] == '\n' || prompt[start] == '\r')) {
+        ++start;
+    }
+    const char* openTag = "<think>";
+    constexpr size_t openTagLen = 7;
+    if (prompt.size() - start < openTagLen || prompt.compare(start, openTagLen, openTag) != 0) {
+        return false;
+    }
+    return hasUnclosedThinkTag(prompt.substr(start));
+}
+
 // Qwen's `<|im_start|>…<|im_end|>`, Llama-3's `<|start_header_id|>…<|eot_id|>`. This is what makes the model
 // answer as an assistant AND emit its end-of-turn token, so generation STOPS after a short reply instead
 // of running to max_tokens (the multi-second-per-reply slowness). `payload` is role\x1Ftext records joined
 // by \x1E (system first). Falls back to a plain "User:/Assistant:" prompt if the model has no template.
-std::string buildChatPrompt(llama_model* model, const std::string& payload, bool& templated, bool disableThinking) {
+std::string buildChatPrompt(llama_model* model, const std::string& payload, bool& templated, bool disableThinking,
+                            bool* startsInsideThinkingOut = nullptr) {
     templated = false;
+    if (startsInsideThinkingOut) *startsInsideThinkingOut = false;
     std::vector<std::pair<std::string, std::string>> msgs;
     for (const auto& rec : splitOn(payload, '\x1E')) {
         if (rec.empty()) continue;
@@ -380,28 +446,33 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
         for (const auto& m : msgs) cm.push_back({m.first.c_str(), m.second.c_str()});
         size_t est = 512;
         for (const auto& m : msgs) est += m.first.size() + m.second.size();
-        std::vector<char> buf(est * 2);
-        int32_t n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), true, buf.data(), (int32_t) buf.size());
-        if (n > (int32_t) buf.size()) {              // buffer too small — grow once and retry
-            buf.resize(n);
-            n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), true, buf.data(), n);
-        }
-        if (n > 0) {
-            std::string result(buf.data(), (size_t) n);
+        auto applyTmpl = [&](bool addAss) -> std::string {
+            std::vector<char> buf(est * 2);
+            int32_t n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), addAss, buf.data(), (int32_t) buf.size());
+            if (n > (int32_t) buf.size()) {
+                buf.resize(n);
+                n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), addAss, buf.data(), n);
+            }
+            return n > 0 ? std::string(buf.data(), (size_t) n) : std::string();
+        };
+        std::string withoutAssistant = applyTmpl(false);
+        std::string result = applyTmpl(true);
+        if (!result.empty()) {
             // Turn OFF extended reasoning for "thinking" models (Qwen3, DeepSeek-R1). By default they emit
             // a long <think>…</think> chain BEFORE the answer — on a phone that's tens of seconds per reply
             // AND the user reads raw reasoning instead of the response. Closing an EMPTY think block right
             // after the assistant turn makes the model answer directly (Qwen3's `enable_thinking=false`
             // behaviour). Detected by the model's template gating <think>/enable_thinking; other models are
-            // untouched. Normalize whether or not the applied template already opened a <think>.
+            // untouched. Normalize whether or not the applied template already opened a <think> (including
+            // non-empty pre-opened assistant prefixes) while ignoring literal tags in earlier user messages.
             std::string t(tmpl);
             if (disableThinking &&
                 (t.find("enable_thinking") != std::string::npos || t.find("<think>") != std::string::npos)) {
-                size_t lastOpen = result.rfind("<think>");
-                size_t lastClose = result.rfind("</think>");
-                bool openUnclosed = lastOpen != std::string::npos &&
-                                    (lastClose == std::string::npos || lastClose < lastOpen);
+                bool openUnclosed = promptEndsInsideThinking(result, withoutAssistant);
                 result += openUnclosed ? "\n</think>\n\n" : "<think>\n\n</think>\n\n";
+            }
+            if (startsInsideThinkingOut) {
+                *startsInsideThinkingOut = promptEndsInsideThinking(result, withoutAssistant);
             }
             templated = true;
             return result;
@@ -722,8 +793,9 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteHyMemoryStreaming(JNIEnv* env, 
 // GRAMMAR-CONSTRAINED completion (the agent decision decode): build a PER-CALL sampler whose first
 // stage is a GBNF grammar mask, so the decode CANNOT be prose — parity with the iOS LlamaEngine chain
 // (grammar → penalties → top_k → top_p → temp → dist; top_k/top_p run AFTER the grammar so they only
-// trim already-legal tokens). A grammar that fails to parse returns null → we skip it and decode with
-// the remaining (unconstrained) chain, mirroring iOS's null-grammar fallback rather than crashing.
+// trim already-legal tokens). A grammar that fails to parse fails closed: we free the sampler and
+// throw IllegalStateException rather than silently falling back to unconstrained decoding (parity
+// with iOS `LlamaEngine`).
 JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobject thiz,
                                                              jlong handle, jstring prompt, jint max_tokens,
@@ -742,7 +814,13 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobjec
     llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
     if (g && g[0] != '\0') {
         llama_sampler* gs = llama_sampler_init_grammar(vocab, g, "root");   // null if the GBNF won't parse
-        if (gs) llama_sampler_chain_add(smpl, gs);
+        if (!gs) {
+            llama_sampler_free(smpl);
+            quenderin::jni::release_chars(p);
+            quenderin::jni::release_chars(g);
+            return throw_generation_failed(env, "Grammar-constrained decoding could not be initialized for the requested grammar.");
+        }
+        llama_sampler_chain_add(smpl, gs);
     }
     llama_sampler_chain_add(smpl, init_penalties(vocab, repeat_last_n, repeat_penalty, 0.0f, 0.0f));
     if (top_k > 0) llama_sampler_chain_add(smpl, llama_sampler_init_top_k(top_k));
@@ -879,6 +957,40 @@ JNIEXPORT jint JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoadedKVCache(JNIEnv*, jobject, jlong handle) {
     LlamaHandle* h = as_handle(handle);
     return h ? h->kvCacheNativeId : 0;
+}
+
+// Render the model's formatted chat prompt (read-only) so ChatModel can detect a pre-opened
+// trailing `<think>` before streaming begins.
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeBuildChatPrompt(JNIEnv* env, jobject, jlong handle,
+                                                         jstring payload, jboolean disable_thinking) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h || !h->model) return make_jstring(env, "");
+    const char* p = quenderin::jni::get_chars(env, payload);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");
+    std::string source(p);
+    quenderin::jni::release_chars(p);
+    bool templated = false;
+    const auto prompt = buildChatPrompt(h->model, source, templated, disable_thinking == JNI_TRUE);
+    return make_jstring(env, prompt);
+}
+
+// Inspects the exact assistant generation prefix (diff between add_ass=false and add_ass=true)
+// so Hide/Show mode accurately detects pre-opened `<think>` prefixes without being fooled by
+// literal tags in earlier user messages.
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeChatPromptStartsInsideThinking(JNIEnv* env, jobject, jlong handle,
+                                                                        jstring payload) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h || !h->model) return JNI_FALSE;
+    const char* p = quenderin::jni::get_chars(env, payload);
+    if (!p) return JNI_FALSE;
+    std::string source(p);
+    quenderin::jni::release_chars(p);
+    bool templated = false;
+    bool startsInside = false;
+    (void) buildChatPrompt(h->model, source, templated, false, &startsInside);
+    return startsInside ? JNI_TRUE : JNI_FALSE;
 }
 
 // Read-only query under the Kotlin coordinator's idle lease. Never changes/rebuilds the KV.

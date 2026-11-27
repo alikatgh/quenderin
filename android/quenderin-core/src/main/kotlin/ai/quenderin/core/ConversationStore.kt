@@ -15,8 +15,11 @@ class ConversationStore {
     fun encode(messages: List<ChatMessage>): String =
         messages.joinToString("\n") { m ->
             val base = "${m.role.name}\t${escape(m.text)}"
-            if (m.documents.isEmpty()) base
+            val withDocs = if (m.documents.isEmpty()) base
             else base + m.documents.joinToString("") { "\t${escape(it.name)}\t${escape(it.text)}" }
+            val thinking = m.thinking
+            if (thinking.isNullOrEmpty()) withDocs
+            else "$withDocs\t$THINKING_SENTINEL\t${escape(thinking)}"
         }
 
     /** Decode a transcript; blank input is an empty conversation, not an error. */
@@ -29,11 +32,21 @@ class ConversationStore {
                 ?: return@mapNotNull null
             // Fields beyond the text come in (name, text) pairs; a dangling odd field means a torn
             // row — keep the message, drop the incomplete doc (same spirit as the ledger's torn tail).
-            val docs = fields.drop(2).chunked(2)
-                .filter { it.size == 2 }
-                .map { AttachedDocument(unescape(it[0]), unescape(it[1])) }
-            ChatMessage(role, unescape(fields[1]), docs)
+            val docs = mutableListOf<AttachedDocument>()
+            var thinking: String? = null
+            fields.drop(2).chunked(2).filter { it.size == 2 }.forEach { pair ->
+                if (pair[0] == THINKING_SENTINEL) {
+                    thinking = unescape(pair[1]).ifEmpty { null }
+                } else {
+                    docs += AttachedDocument(unescape(pair[0]), unescape(pair[1]))
+                }
+            }
+            ChatMessage(role, unescape(fields[1]), docs, thinking = thinking)
         }
+    }
+
+    private companion object {
+        const val THINKING_SENTINEL = "\u0000thinking"
     }
 
     private fun escape(s: String): String =

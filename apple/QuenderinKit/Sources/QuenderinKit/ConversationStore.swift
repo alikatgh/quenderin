@@ -32,15 +32,19 @@ public struct ConversationStore: Sendable {
         let role: String
         let text: String
         let documents: [AttachedDocument]?
+        let thinking: String?
 
         init(_ message: ChatMessage) {
             role = message.role.rawValue
             text = message.text
             documents = message.documents.isEmpty ? nil : message.documents
+            thinking = message.thinking?.isEmpty == false ? message.thinking : nil
         }
 
         var chatMessage: ChatMessage? {
-            ChatMessage.Role(rawValue: role).map { ChatMessage(role: $0, text: text, documents: documents ?? []) }
+            ChatMessage.Role(rawValue: role).map {
+                ChatMessage(role: $0, text: text, documents: documents ?? [], thinking: thinking)
+            }
         }
     }
 }

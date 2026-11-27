@@ -120,6 +120,8 @@ npm link
 quenderin models
 quenderin download llama32-1b
 quenderin chat
+quenderin run llama32-1b
+quenderin run llama32-1b "Why is the sky blue?"
 git diff | quenderin chat -p "Review this change"
 ```
 

@@ -7,7 +7,12 @@ import ai.quenderin.app.R
 import ai.quenderin.app.probeDeviceProfile
 import ai.quenderin.app.BuiltinToolPrefs
 import ai.quenderin.core.AndroidModelSelector
+import ai.quenderin.core.AndroidSoc
+import ai.quenderin.core.ContextLengthChoice
+import ai.quenderin.core.ContextWindow
+import ai.quenderin.core.KVCachePolicy
 import ai.quenderin.core.LocalPace
+import ai.quenderin.core.ThinkingMode
 import ai.quenderin.app.HyMemoryController
 import ai.quenderin.app.Step5Controller
 import ai.quenderin.app.VisionController
@@ -83,6 +88,12 @@ fun SettingsScreen(
     onOpenComputer: () -> Unit = {},
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
+    thinkingMode: ThinkingMode = if (deepThinking) ThinkingMode.SHOW else ThinkingMode.OFF,
+    onThinkingModeChange: (ThinkingMode) -> Unit = { onDeepThinkingChange(it.allowsThinking) },
+    contextLength: ContextLengthChoice = ContextLengthChoice.AUTO,
+    onContextLengthChange: (ContextLengthChoice) -> Unit = {},
+    replyAsJson: Boolean = false,
+    onReplyAsJsonChange: (Boolean) -> Unit = {},
     active: Boolean = true,
     automaticEnabled: Boolean = false,
     onAutomaticChange: (Boolean) -> Unit = {},
@@ -257,6 +268,58 @@ fun SettingsScreen(
                     )
                 }
                 Switch(checked = deepThinking, onCheckedChange = null)
+            }
+        }
+
+        if (page == SettingsPage.RESPONSES) SettingsGroup("Model behaviour") {
+            Text("Thinking", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                PresetChip("Off", thinkingMode == ThinkingMode.OFF, Modifier.fillMaxWidth()) {
+                    onThinkingModeChange(ThinkingMode.OFF)
+                }
+                PresetChip("Show thinking", thinkingMode == ThinkingMode.SHOW, Modifier.fillMaxWidth()) {
+                    onThinkingModeChange(ThinkingMode.SHOW)
+                }
+                PresetChip("Hide thinking", thinkingMode == ThinkingMode.HIDE, Modifier.fillMaxWidth()) {
+                    onThinkingModeChange(ThinkingMode.HIDE)
+                }
+            }
+            Caption("Only for models that can think (for example Qwen3, DeepSeek-R1). Thinking takes longer and uses more battery.")
+
+            val profile = remember { context.probeDeviceProfile() }
+            val budgetGb = remember(profile) { AndroidSoc.nativeMemoryBudgetGB(profile.totalRamGb) }
+            val kv = remember(budgetGb, model.ramGB) { KVCachePolicy.recommend(budgetGb, model.ramGB) }
+            val contextResolution = remember(contextLength, budgetGb, model.ramGB, kv) {
+                ContextWindow.resolve(contextLength, budgetGb, model.ramGB, kv)
+            }
+            Text("Context length", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                PresetChip("Auto (recommended)", contextLength == ContextLengthChoice.AUTO, Modifier.fillMaxWidth()) {
+                    onContextLengthChange(ContextLengthChoice.AUTO)
+                }
+                PresetChip("2K", contextLength == ContextLengthChoice.K2, Modifier.fillMaxWidth()) {
+                    onContextLengthChange(ContextLengthChoice.K2)
+                }
+                PresetChip("4K", contextLength == ContextLengthChoice.K4, Modifier.fillMaxWidth()) {
+                    onContextLengthChange(ContextLengthChoice.K4)
+                }
+                PresetChip("8K", contextLength == ContextLengthChoice.K8, Modifier.fillMaxWidth()) {
+                    onContextLengthChange(ContextLengthChoice.K8)
+                }
+            }
+            contextResolution.warningText?.let { warning ->
+                Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+            Caption("Applies the next time the model loads.")
+
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = replyAsJson, role = Role.Switch, onValueChange = onReplyAsJsonChange),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Reply as JSON", color = MaterialTheme.colorScheme.onSurface)
+                    Caption("Constrains replies to valid JSON. Useful for apps and scripts.")
+                }
+                Switch(checked = replyAsJson, onCheckedChange = null)
             }
         }
 

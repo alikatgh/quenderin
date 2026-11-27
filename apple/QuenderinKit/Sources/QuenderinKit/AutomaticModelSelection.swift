@@ -44,6 +44,7 @@ public final class AutomaticModelSelection {
     private let runtimeAvailable: @MainActor (ModelEntry) -> Bool
     private let nowMs: @MainActor () -> Int64
     private let thermalNominal: @MainActor () -> Bool
+    private let contextLengthChoice: (@MainActor () -> ContextLengthChoice)?
     private var failures: [String: Int64] = [:]
     public private(set) var status = "Estimated · no comparable local observations"
     public init(onboarding: OnboardingModel, store: InferencePerformanceStore,
@@ -51,22 +52,46 @@ public final class AutomaticModelSelection {
                 resourceBudget: @escaping @MainActor () -> ImageResourceBudget = { .current() },
                 runtimeAvailable: @escaping @MainActor (ModelEntry) -> Bool = { DefaultInferenceEngine.isReal && ModelRuntimeSupport.supports($0) },
                 nowMs: @escaping @MainActor () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
-                thermalNominal: @escaping @MainActor () -> Bool = { ThermalMonitor.currentLevel() == .nominal }) {
+                thermalNominal: @escaping @MainActor () -> Bool = { ThermalMonitor.currentLevel() == .nominal },
+                contextLengthChoice: (@MainActor () -> ContextLengthChoice)? = nil) {
         self.onboarding = onboarding; self.store = store; self.preferences = preferences; self.deviceBudgetGB = deviceBudgetGB
         self.resourceBudget = resourceBudget; self.runtimeAvailable = runtimeAvailable; self.nowMs = nowMs; self.thermalNominal = thermalNominal
+        self.contextLengthChoice = contextLengthChoice
     }
     public func prepare(prompt: String, current: ModelEntry?, history: [ChatMessage]? = nil, options: GenerationOptions? = nil,
+                        resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
+                        resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)? = nil,
                         isCurrent: @escaping @MainActor @Sendable () -> Bool = { true }) async throws -> ModelEntry? {
         guard preferences.enabled else { return current }
         let revision = preferences.revision
         let now = nowMs()
         failures = failures.filter { now - $0.value < 600_000 }
         let records = await store.samples(nowMs: now)
-        let tier = ChatTier.of(model: current)
-        let request = (system: tier.systemPrompt, history: history ?? [ChatMessage(role: .user, text: prompt)], options: options ?? tier.chatOptions)
+        let userContextChoice: ContextLengthChoice
+        if let contextLengthChoice {
+            userContextChoice = contextLengthChoice()
+        } else {
+            #if canImport(SwiftUI)
+            userContextChoice = AppSettings.shared.contextLength
+            #else
+            userContextChoice = await onboarding.engineContextLengthChoice()
+            #endif
+        }
         let loadedID = await onboarding.loadedAutomaticModelID()
-        let actual = await onboarding.executionProfile(system: request.system, history: request.history, options: request.options)
         let actualCapacity = await onboarding.loadedAutomaticContextTokens()
+        let tier = ChatTier.of(model: current)
+        let request: ChatPreparedRequest
+        if let resolveRequestForModel {
+            request = resolveRequestForModel(current, actualCapacity)
+        } else {
+            let currentOptions = resolveOptionsForModel?(current) ?? options ?? tier.chatOptions
+            request = ChatPreparedRequest(
+                system: tier.systemPrompt,
+                history: history ?? [ChatMessage(role: .user, text: prompt)],
+                options: currentOptions
+            )
+        }
+        let actual = await onboarding.executionProfile(system: request.system, history: request.history, options: request.options)
         let known = await onboarding.knownExecutionProfiles()
         guard preferences.enabled, preferences.revision == revision, isCurrent(), !Task.isCancelled else { throw CancellationError() }
         let available = resourceBudget()
@@ -85,14 +110,29 @@ public final class AutomaticModelSelection {
         let plans: [Plan] = installed.compactMap { model in
             guard failures[model.id] == nil, let artifact = InferencePerformanceIdentity.artifact(model) else { return nil }
             let isLoaded = currentLoaded && model.id == current?.id
-            let receipt = (isLoaded ? actual : nil) ?? known.last {
-                $0.modelID == model.id && $0.artifactSHA256 == artifact && $0.runtimeID == InferencePerformanceRuntime.id
-                    && $0.backendID == InferencePerformanceIdentity.backendID
+            // A fresh process can reconstruct only the load plans the current engine supports under
+            // `userContextChoice`. An unloaded candidate's cached execution profile is usable only
+            // when it matches the active `userContextChoice` (or an exact supported configuration),
+            // never overriding a newly selected context choice with a stale receipt.
+            let supported = Self.supportedConfigurations(model: model, budget: budget, contextLengthChoice: userContextChoice)
+            let receipt: InferenceExecutionProfile?
+            if isLoaded {
+                receipt = actual
+            } else {
+                receipt = known.last { profile in
+                    guard profile.modelID == model.id
+                            && profile.artifactSHA256 == artifact
+                            && profile.runtimeID == InferencePerformanceRuntime.id
+                            && profile.backendID == InferencePerformanceIdentity.backendID else {
+                        return false
+                    }
+                    if let cachedChoice = profile.contextLengthChoice {
+                        return cachedChoice == userContextChoice
+                    }
+                    return userContextChoice == .auto
+                        || supported.contains { $0.context == profile.contextTokens && $0.environment == profile.environmentID }
+                }
             }
-            // A fresh process can reconstruct only the two load plans the current engine supports.
-            // Historical numbers are usable solely after an exact artifact/runtime/backend/device
-            // configuration identity match; no arbitrary historical environment is trusted.
-            let supported = Self.supportedConfigurations(model: model, budget: budget)
             let historical = supported.first { config in records.contains {
                 $0.modelID == model.id && $0.artifactSHA256 == artifact && $0.runtimeID == InferencePerformanceRuntime.id
                     && $0.backendID == InferencePerformanceIdentity.backendID && $0.environmentID == config.environment
@@ -105,9 +145,14 @@ public final class AutomaticModelSelection {
         // Determine the preferred family only after resource, runtime, context and quality gates.
         // A larger but ineligible coder must not exclude a viable current general text model.
         let resourceEligible = plans.filter { plan in
-            runtimeAvailable(plan.model) && ModelRuntimeSupport.supports(plan.model)
+            let candidateMaxTokens = (resolveRequestForModel?(plan.model, plan.config.context).options
+                ?? resolveOptionsForModel?(plan.model)
+                ?? options
+                ?? ChatTier.of(model: plan.model).chatOptions).maxTokens
+            let candidateRequiredContext = promptTokens + candidateMaxTokens
+            return runtimeAvailable(plan.model) && ModelRuntimeSupport.supports(plan.model)
                 && (plan.isLoaded || MemoryFitness.check(model: plan.model, totalGB: budget, freeGB: replacementFreeGB).canLoad)
-                && requiredContext <= plan.config.context && available.freeDiskBytes >= 67_108_864
+                && candidateRequiredContext <= plan.config.context && available.freeDiskBytes >= 67_108_864
                 && ChatTier.of(model: plan.model) == requiredTier && !ModelRuntimeSupport.isMuse(plan.model)
         }
         let preferred = ModelRouter.preferredFamilies(for: task).first { prefix in resourceEligible.contains { $0.model.id.hasPrefix(prefix) } }
@@ -158,9 +203,34 @@ public final class AutomaticModelSelection {
         guard decision.modelID != current?.id else { return current }
         do {
             let targetTier = ChatTier.of(model: selected)
-            let targetRequest = (system: targetTier.systemPrompt, history: request.history, options: options ?? targetTier.chatOptions)
+            var targetOptions = resolveOptionsForModel?(selected) ?? options ?? targetTier.chatOptions
+            if ModelRuntimeSupport.isBeam(selected) || ModelRuntimeSupport.isJais(selected) || ModelRuntimeSupport.isMuse(selected) {
+                targetOptions.gbnfGrammar = nil
+            }
+            if targetOptions.gbnfGrammar != nil {
+                targetOptions.thinkingMode = .off
+            }
+            let targetRequest = (system: targetTier.systemPrompt, history: request.history, options: targetOptions)
+            let resolveTargetRequest: (@MainActor @Sendable (Int?) -> ChatPreparedRequest)?
+            if let resolver = resolveRequestForModel {
+                resolveTargetRequest = { @MainActor @Sendable capacity in
+                    let resolved = resolver(selected, capacity)
+                    var effectiveOptions = resolved.options
+                    if ModelRuntimeSupport.isBeam(selected) || ModelRuntimeSupport.isJais(selected) || ModelRuntimeSupport.isMuse(selected) {
+                        effectiveOptions.gbnfGrammar = nil
+                    }
+                    if effectiveOptions.gbnfGrammar != nil {
+                        effectiveOptions.thinkingMode = .off
+                    }
+                    return ChatPreparedRequest(system: resolved.system, history: resolved.history, options: effectiveOptions)
+                }
+            } else {
+                resolveTargetRequest = nil
+            }
+            let targetMaxTokens = resolveRequestForModel?(selected, nil).options.maxTokens ?? targetRequest.options.maxTokens
             let activated = try await onboarding.activateInstalledForAutomatic(selected, request: targetRequest,
-                requiredContextTokens: promptTokens + targetRequest.options.maxTokens, expectedConfiguration: decision.observed ? admitted.first(where: { $0.modelID == selected.id }) : nil) {
+                resolveRequest: resolveTargetRequest,
+                requiredContextTokens: promptTokens + targetMaxTokens, expectedConfiguration: decision.observed ? admitted.first(where: { $0.modelID == selected.id }) : nil) {
                 self.preferences.enabled && self.preferences.revision == revision && isCurrent()
             }
             guard activated else { throw CancellationError() }
@@ -174,18 +244,25 @@ public final class AutomaticModelSelection {
             return selected
         } catch { failures[selected.id] = now; throw error }
     }
-    static func supportedConfigurations(model: ModelEntry, budget: Double) -> [(context: Int, environment: String)] {
-        let preferred = configuration(model: model, budget: budget)
+    static func supportedConfigurations(model: ModelEntry, budget: Double, contextLengthChoice: ContextLengthChoice = .auto) -> [(context: Int, environment: String)] {
+        let preferred = configuration(model: model, budget: budget, contextLengthChoice: contextLengthChoice)
         guard KVCachePolicy.recommend(appBudgetGB: budget, modelWeightsGB: model.ramGB) == .q8_0 else { return [preferred] }
-        let fallback = configuration(model: model, budget: budget, cacheType: .f16)
+        let fallback = configuration(model: model, budget: budget, cacheType: .f16, contextLengthChoice: contextLengthChoice)
         return preferred == fallback ? [preferred] : [preferred, fallback]
     }
-    static func configuration(model: ModelEntry, budget: Double, cacheType: KVCacheType? = nil) -> (context: Int, environment: String) {
+    static func configuration(model: ModelEntry, budget: Double, cacheType: KVCacheType? = nil, contextLengthChoice: ContextLengthChoice = .auto) -> (context: Int, environment: String) {
         let cache = cacheType ?? KVCachePolicy.recommend(appBudgetGB: budget, modelWeightsGB: model.ramGB)
-        var context = ContextWindow.recommend(appBudgetGB: budget, modelWeightsGB: model.ramGB, kvCacheType: cache)
-        if ModelRuntimeSupport.isBonsai(model) { context = min(context, ModelRuntimeSupport.bonsaiMaxContextTokens) }
-        if ModelRuntimeSupport.isMuse(model) { context = min(context, ModelRuntimeSupport.museMaxContextTokens) }
-        if ModelRuntimeSupport.isBeam(model) { context = min(context, 4096) }
+        var contextCap: Int? = nil
+        if ModelRuntimeSupport.isBonsai(model) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+        if ModelRuntimeSupport.isMuse(model) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
+        if ModelRuntimeSupport.isBeam(model) { contextCap = min(contextCap ?? Int.max, 4096) }
+        let context = ContextWindow.resolveForLoad(
+            choice: contextLengthChoice,
+            appBudgetGB: budget,
+            modelWeightsGB: model.ramGB,
+            kvCacheType: cache,
+            maxContextTokens: contextCap
+        )
         let plan = GpuOffloadPolicy.plan(fileSizeGB: Double(model.downloadBytes ?? Int64(model.ramGB * 1_000_000_000)) / 1_000_000_000,
             deviceBudgetGB: budget, isMoE: MoEShape.detect(model.filename) != nil,
             expertOffloadEnabled: ProcessInfo.processInfo.environment["QUENDERIN_MOE_EXPERT_CPU"] == "1")

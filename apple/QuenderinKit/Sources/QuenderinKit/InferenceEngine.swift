@@ -24,6 +24,9 @@ public struct GenerationOptions: Sendable, Equatable {
     /// parse becomes unsampleable, the decoder-level fix for "the small model emitted prose
     /// instead of the JSON contract". Engines without grammar support ignore the field.
     public var gbnfGrammar: String?
+    /// Controls `<think>…</think>` handling for chat templates that support thinking.
+    /// Default `.off` preserves direct replies; agent/grammar/specialist paths always use `.off`.
+    public var thinkingMode: ThinkingMode
 
     /// Defaults match `shared/sampling-profiles.json` → `chat` (CI: `check:sampling-parity`).
     public init(
@@ -35,7 +38,8 @@ public struct GenerationOptions: Sendable, Equatable {
         repeatLastN: Int = 256,
         stopSequences: [String] = [],
         gbnfGrammar: String? = nil,
-        collectPerformance: Bool = false
+        collectPerformance: Bool = false,
+        thinkingMode: ThinkingMode = .off
     ) {
         self.collectPerformance = collectPerformance
         self.maxTokens = maxTokens
@@ -46,6 +50,7 @@ public struct GenerationOptions: Sendable, Equatable {
         self.repeatLastN = repeatLastN
         self.stopSequences = stopSequences
         self.gbnfGrammar = gbnfGrammar
+        self.thinkingMode = thinkingMode
     }
 }
 
@@ -59,15 +64,19 @@ public struct InferenceExecutionProfile: Sendable, Equatable {
     public let contextTokens: Int
     public let cacheMode: String
     public let promptTokens: Int?
+    public let contextLengthChoice: ContextLengthChoice?
     public init(modelID: String, artifactSHA256: String, runtimeID: String, backendID: String,
-                environmentID: String, contextTokens: Int, cacheMode: String = "cold", promptTokens: Int? = nil) {
+                environmentID: String, contextTokens: Int, cacheMode: String = "cold", promptTokens: Int? = nil,
+                contextLengthChoice: ContextLengthChoice? = nil) {
         self.modelID = modelID; self.artifactSHA256 = artifactSHA256; self.runtimeID = runtimeID
         self.backendID = backendID; self.environmentID = environmentID; self.contextTokens = contextTokens
         self.cacheMode = cacheMode; self.promptTokens = promptTokens
+        self.contextLengthChoice = contextLengthChoice
     }
     func nextRequest(cacheMode: String, promptTokens: Int?) -> InferenceExecutionProfile {
         .init(modelID: modelID, artifactSHA256: artifactSHA256, runtimeID: runtimeID, backendID: backendID,
-            environmentID: environmentID, contextTokens: contextTokens, cacheMode: cacheMode, promptTokens: promptTokens)
+            environmentID: environmentID, contextTokens: contextTokens, cacheMode: cacheMode, promptTokens: promptTokens,
+            contextLengthChoice: contextLengthChoice)
     }
 }
 
@@ -140,10 +149,141 @@ public protocol InferenceEngine: Sendable {
     /// Why the most recent generation ended. Default `.unknown`: an engine that has not positively
     /// observed its completion reason must not turn "no cap signal" into a NOT_HIT claim.
     func chatCapStatus() async -> ChatCapStatus
+
+    /// Preferred context-window choice applied on the next model load. Default `.auto`.
+    func contextLengthChoice() async -> ContextLengthChoice
+    func setContextLengthChoice(_ choice: ContextLengthChoice) async
+
+    /// True while a generation, model load/switch, or specialist workflow currently holds the engine.
+    func hasActiveInference() async -> Bool
+
+    /// True when the rendered chat prompt for this request leaves an unclosed trailing `<think>`
+    /// so streamed tokens begin already inside a thinking block. Default `false`.
+    func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool
+
+    /// Acquires exclusive inference ownership (waiting up to `timeoutSeconds` if busy).
+    /// Used by the macOS opt-in local API so chat and API requests never run the model concurrently.
+    func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease
+
+    /// Reserves exclusive ownership for a manual in-app model switch before cancelling ordinary
+    /// chat or changing loading state. Waits up to `timeoutSeconds` if an active exclusive API
+    /// turn or a running agent reservation currently owns the engine without cancelling it.
+    func acquireManualModelSwitchLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease
+}
+
+/// File-scoped synchronous lock holder for the default `InferenceEngine` exclusive lease so
+/// `acquireExclusiveInferenceLease` never nests a type inside a generic protocol-extension method
+/// and never invokes `NSLock.lock()`/`unlock()` directly from an `async` context under Swift 6.
+private final class DefaultExclusiveLeaseGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var active = true
+
+    func cancelIfActive(_ action: () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard active else { return }
+        action()
+    }
+
+    func release() {
+        lock.lock()
+        active = false
+        lock.unlock()
+    }
+}
+
+/// Exclusive inference access granted by `InferenceEngine.acquireExclusiveInferenceLease(timeoutSeconds:)`.
+public struct ExclusiveInferenceLease: Sendable {
+    private let _loadedModelID: @Sendable () async -> String?
+    private let _loadedExecutionProfile: @Sendable (String, [ChatMessage], GenerationOptions) async -> InferenceExecutionProfile?
+    private let _load: @Sendable (ModelEntry, URL) async throws -> Void
+    private let _setContextLengthChoice: @Sendable (ContextLengthChoice) async -> Void
+    private let _chatPromptStartsInsideThinking: @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool
+    private let _generateChat: @Sendable (String, [ChatMessage], GenerationOptions) async throws -> AsyncThrowingStream<String, Error>
+    private let _chatCapStatus: @Sendable () async -> ChatCapStatus
+    private let _requestCancel: @Sendable () -> Void
+    private let _release: @Sendable () async -> Void
+
+    public init(
+        loadedModelID: @escaping @Sendable () async -> String?,
+        loadedExecutionProfile: @escaping @Sendable (String, [ChatMessage], GenerationOptions) async -> InferenceExecutionProfile?,
+        generateChat: @escaping @Sendable (String, [ChatMessage], GenerationOptions) async throws -> AsyncThrowingStream<String, Error>,
+        chatCapStatus: @escaping @Sendable () async -> ChatCapStatus,
+        requestCancel: @escaping @Sendable () -> Void,
+        release: @escaping @Sendable () async -> Void,
+        load: @escaping @Sendable (ModelEntry, URL) async throws -> Void = { _, _ in throw SpecialistCoordinationError.unavailable },
+        setContextLengthChoice: @escaping @Sendable (ContextLengthChoice) async -> Void = { _ in },
+        chatPromptStartsInsideThinking: @escaping @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool = { _, _, _ in false }
+    ) {
+        self._loadedModelID = loadedModelID
+        self._loadedExecutionProfile = loadedExecutionProfile
+        self._load = load
+        self._setContextLengthChoice = setContextLengthChoice
+        self._chatPromptStartsInsideThinking = chatPromptStartsInsideThinking
+        self._generateChat = generateChat
+        self._chatCapStatus = chatCapStatus
+        self._requestCancel = requestCancel
+        self._release = release
+    }
+
+    public func loadedModelID() async -> String? { await _loadedModelID() }
+    public func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
+        await _loadedExecutionProfile(system, history, options)
+    }
+    public func load(model: ModelEntry, at fileURL: URL) async throws {
+        try await _load(model, fileURL)
+    }
+    public func setContextLengthChoice(_ choice: ContextLengthChoice) async {
+        await _setContextLengthChoice(choice)
+    }
+    public func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool {
+        await _chatPromptStartsInsideThinking(system, history, options)
+    }
+    public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        try await _generateChat(system, history, options)
+    }
+    public func chatCapStatus() async -> ChatCapStatus { await _chatCapStatus() }
+    public func requestCancel() { _requestCancel() }
+    public func release() async { await _release() }
 }
 
 public extension InferenceEngine {
     func chatCapStatus() async -> ChatCapStatus { .unknown }
+    func contextLengthChoice() async -> ContextLengthChoice { .auto }
+    func setContextLengthChoice(_ choice: ContextLengthChoice) async {}
+    func hasActiveInference() async -> Bool { false }
+    func chatPromptStartsInsideThinking(system: String, history: [ChatMessage], options: GenerationOptions) async -> Bool { false }
+    func acquireExclusiveInferenceLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
+        let gate = DefaultExclusiveLeaseGate()
+        return ExclusiveInferenceLease(
+            loadedModelID: { await self.loadedModelID() },
+            loadedExecutionProfile: { system, history, options in
+                await self.loadedExecutionProfile(system: system, history: history, options: options)
+            },
+            generateChat: { system, history, options in
+                try await self.generateChat(system: system, history: history, options: options)
+            },
+            chatCapStatus: { await self.chatCapStatus() },
+            requestCancel: {
+                gate.cancelIfActive { self.requestCancel() }
+            },
+            release: {
+                gate.release()
+            },
+            load: { model, url in
+                try await self.load(model: model, at: url)
+            },
+            setContextLengthChoice: { choice in
+                await self.setContextLengthChoice(choice)
+            },
+            chatPromptStartsInsideThinking: { system, history, options in
+                await self.chatPromptStartsInsideThinking(system: system, history: history, options: options)
+            }
+        )
+    }
+    func acquireManualModelSwitchLease(timeoutSeconds: Double) async throws -> ExclusiveInferenceLease {
+        try await acquireExclusiveInferenceLease(timeoutSeconds: timeoutSeconds)
+    }
 }
 
 /// The flat "User:/Assistant:" transcript prompt — the template-less fallback shared by the

@@ -31,6 +31,9 @@ data class ChatMessage(
      *  row correctly. Not persisted; only needs to be stable within a UI session. Twin of iOS
      *  `ChatMessage.id`, which the streaming loop already looks messages up by. */
     val id: Long = nextId(),
+    /** Optional reasoning chain extracted from `<think>…</think>` when Thinking is set to [ThinkingMode.SHOW].
+     *  Null for user messages, OFF, HIDE, and older saved transcripts. Twin of Swift `ChatMessage.thinking`. */
+    val thinking: String? = null,
 ) {
     /** The text the ENGINE sees: labeled documents first, then the typed message. Composed into
      *  every windowed history pass so follow-ups keep the document in context. Twin of iOS. */
@@ -320,6 +323,13 @@ class ChatModel(
         try {
             onAdmitted?.invoke() // May persist index metadata; lifecycle/reset never waits on this I/O.
             val sb = StringBuilder()
+            val thinkingSb = StringBuilder()
+            val activeThinkingMode = if (engine.chatGrammar() != null) ThinkingMode.OFF else engine.thinkingMode()
+            val startsInsideThinking = activeThinkingMode.allowsThinking &&
+                engine.chatPromptStartsInsideThinking(systemPrompt, history)
+            val splitter = if (activeThinkingMode.allowsThinking) {
+                ThinkingSplitter(startsInsideThinking = startsInsideThinking)
+            } else null
             var tokenCount = 0
             var hitDegeneration = false
             // Whether the engine invoked onToken AT ALL. The return value is the fallback only for a
@@ -343,7 +353,7 @@ class ChatModel(
                 var beganWriting = false
                 var cancelDegeneration = false
                 var cancelExternal = false
-                val textToFlush = synchronized(lock) {
+                val toFlush = synchronized(lock) {
                     // The Stop decision and buffer acceptance share one lock: every accepted piece
                     // belongs before Stop, including pieces not yet flushed to the visible transcript.
                     if (myGen != activeGeneration || stopRequested || hitDegeneration) return@synchronized null
@@ -355,17 +365,33 @@ class ChatModel(
                     tokenCount += 1
                     beganWriting = tokenCount == 1
                     // Check BEFORE appending: exclude the piece crossing the degeneration checkpoint.
-                    if (tokenCount % 32 == 0 && DegenerationGuard.looksDegenerate(sb.toString())) {
-                        hitDegeneration = true
-                        cancelDegeneration = true
-                        return@synchronized null
+                    if (tokenCount % 32 == 0) {
+                        val degenSample = if (sb.isEmpty()) thinkingSb.toString() else sb.toString()
+                        if (DegenerationGuard.looksDegenerate(degenSample)) {
+                            hitDegeneration = true
+                            cancelDegeneration = true
+                            return@synchronized null
+                        }
                     }
-                    sb.append(piece)
-                    if (flushGate.shouldFlush()) sb.toString() else null
+                    if (splitter != null) {
+                        val delta = splitter.feed(piece)
+                        if (delta.thinking.isNotEmpty()) thinkingSb.append(delta.thinking)
+                        if (delta.answer.isNotEmpty()) sb.append(delta.answer)
+                    } else {
+                        sb.append(piece)
+                    }
+                    if (flushGate.shouldFlush()) {
+                        val visibleThinking = if (activeThinkingMode == ThinkingMode.SHOW && thinkingSb.isNotEmpty()) {
+                            thinkingSb.toString()
+                        } else null
+                        sb.toString() to visibleThinking
+                    } else null
                 }
                 if (beganWriting) publishPhase(myGen, GenerationPhase.WRITING)
                 if (cancelDegeneration || cancelExternal) engine.requestCancel()
-                if (RoleSeat.checkerModelId == null) textToFlush?.let { writeAssistant(myGen, placeholderIndex, it) }
+                if (RoleSeat.checkerModelId == null) toFlush?.let { (textVal, thinkVal) ->
+                    writeAssistant(myGen, placeholderIndex, textVal, thinkVal)
+                }
             }
             } catch (t: Exception) {
                 if (!isRevisionCurrent(myGen)) {
@@ -380,10 +406,25 @@ class ChatModel(
             // only the NON-STREAMING fallback for an unstopped turn, never a replacement
             // for an empty/blank emission (emitted A + return B settles A, as iOS does by
             // construction). Duplicate-paragraph runs are collapsed here either way.
-            val streamed = sb.toString()
-            val settled = DegenerationGuard.collapseRepeatedParagraphs(
-                if (sawEmission) streamed else reply,
-            )
+            val (rawAnswer, settledThinking) = if (splitter != null) {
+                if (sawEmission) {
+                    val tail = splitter.finish()
+                    if (tail.thinking.isNotEmpty()) thinkingSb.append(tail.thinking)
+                    if (tail.answer.isNotEmpty()) sb.append(tail.answer)
+                } else {
+                    val d1 = splitter.feed(reply)
+                    val d2 = splitter.finish()
+                    thinkingSb.append(d1.thinking).append(d2.thinking)
+                    sb.append(d1.answer).append(d2.answer)
+                }
+                val visibleThinking = if (activeThinkingMode == ThinkingMode.SHOW && thinkingSb.isNotEmpty()) {
+                    thinkingSb.toString()
+                } else null
+                sb.toString() to visibleThinking
+            } else {
+                (if (sawEmission) sb.toString() else reply) to null
+            }
+            val settled = DegenerationGuard.collapseRepeatedParagraphs(rawAnswer)
             // Q-588: never leave a silently EMPTY assistant bubble — an engine that produced zero tokens gets
             // an honest notice, mirroring iOS ChatModel. An explicit Stop retains ownership only to
             // settle the accepted buffer; it must not create a notice.
@@ -430,9 +471,10 @@ class ChatModel(
                     return@synchronized "" to null
                 }
                 val acceptedText = if (stopped && !sawEmission) "" else settled
+                val acceptedThinking = if (stopped && !sawEmission) null else settledThinking
                 val checkedText = if (acceptedText.isBlank()) acceptedText
                 else OutputCheck.finish(acceptedText, OutputKind.REPLY).text
-                val text = if (checkedText.isBlank() && current && !stopped) {
+                val text = if (checkedText.isBlank() && acceptedThinking == null && current && !stopped) {
                     // Locale-aware notice (ru/ko/ja/zh); default EN for tests / unknown locales.
                     ChatUserFacing.emptyReply(java.util.Locale.getDefault().language)
                 } else checkedText
@@ -440,8 +482,8 @@ class ChatModel(
                 if (current) {
                     lastHitTokenCap = capStatus == ChatCapStatus.HIT && !hitDegeneration && !stopped
                     val assistant = _messages.getOrNull(placeholderIndex)
-                    if (assistant != null && assistant.text != text) {
-                        _messages[placeholderIndex] = assistant.copy(text = text)
+                    if (assistant != null && (assistant.text != text || assistant.thinking != acceptedThinking)) {
+                        _messages[placeholderIndex] = assistant.copy(text = text, thinking = acceptedThinking)
                         transcriptRevision++
                         snapshot = _messages.toList()
                     }
@@ -480,14 +522,14 @@ class ChatModel(
     /** Write the assistant placeholder iff this generation is still the active one and the slot is still
      *  in range — under [lock] so a concurrent [reset]/[restore] can't shrink the list between the check
      *  and the write. A superseded generation (or a cleared slot) drops the write silently. */
-    private fun writeAssistant(gen: Long, index: Int, textValue: String) {
+    private fun writeAssistant(gen: Long, index: Int, textValue: String, thinkingValue: String? = null) {
         val snapshot = synchronized(lock) {
             if (gen != activeGeneration || index >= _messages.size) return@synchronized null
             // copy() (not a fresh ChatMessage) so the row keeps its stable [ChatMessage.id] across
             // every streamed token — the UI list key stays put instead of churning per token.
             val current = _messages[index]
-            if (current.text == textValue) return@synchronized null   // no content change → no dirtying
-            _messages[index] = current.copy(text = textValue)
+            if (current.text == textValue && current.thinking == thinkingValue) return@synchronized null   // no content change → no dirtying
+            _messages[index] = current.copy(text = textValue, thinking = thinkingValue)
             transcriptRevision++
             _messages.toList()
         }

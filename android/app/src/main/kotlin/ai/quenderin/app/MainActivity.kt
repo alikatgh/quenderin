@@ -86,6 +86,16 @@ class MainActivity : ComponentActivity() {
             } else {
                 MockInferenceEngine()
             })
+        // Restore persisted Model behaviour preferences before onboarding restores/loads the model.
+        val appPrefs = getSharedPreferences("quenderin", Context.MODE_PRIVATE)
+        val savedThinking = ai.quenderin.core.ThinkingMode.fromRawValue(appPrefs.getString("thinkingMode", null) ?: "")
+            ?: ai.quenderin.core.ThinkingMode.OFF
+        val savedContext = ai.quenderin.core.ContextLengthChoice.fromRawValue(appPrefs.getString("contextLength", null) ?: "")
+            ?: ai.quenderin.core.ContextLengthChoice.AUTO
+        val savedJson = appPrefs.getBoolean("replyAsJSON", false)
+        engine.setThinkingMode(savedThinking)
+        engine.setContextLengthChoice(savedContext)
+        engine.setChatGrammar(if (savedJson) ai.quenderin.core.JSONOutputGrammar.ANY_JSON_OBJECT else null)
         val modelsDir = File(filesDir, "models")
         ai.quenderin.core.RoleSeat.ask = { id, text ->
             ai.quenderin.core.CheckerRun.ask(id, text, engine) {

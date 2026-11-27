@@ -89,11 +89,36 @@ fun MainTabs(
             tab = next
         }
     }
-    // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
-    // the generation path reads it; a no-op for the mock/scripted engines.
-    var deepThinking by remember { mutableStateOf(engine.thinkingEnabled()) }
-    LaunchedEffect(deepThinking) { engine.setThinkingEnabled(deepThinking) }
-    val modelsDir = java.io.File(androidx.compose.ui.platform.LocalContext.current.filesDir, "models")
+    // Persisted Model behaviour preferences — defaults match today's behaviour (OFF / AUTO / false).
+    val appContext = androidx.compose.ui.platform.LocalContext.current
+    val behaviourPrefs = remember { appContext.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
+    var thinkingMode by remember {
+        mutableStateOf(
+            ai.quenderin.core.ThinkingMode.fromRawValue(behaviourPrefs.getString("thinkingMode", null) ?: "")
+                ?: engine.thinkingMode()
+        )
+    }
+    var contextLength by remember {
+        mutableStateOf(
+            ai.quenderin.core.ContextLengthChoice.fromRawValue(behaviourPrefs.getString("contextLength", null) ?: "")
+                ?: engine.contextLengthChoice()
+        )
+    }
+    var replyAsJson by remember { mutableStateOf(behaviourPrefs.getBoolean("replyAsJSON", false)) }
+    LaunchedEffect(thinkingMode) {
+        engine.setThinkingMode(thinkingMode)
+        behaviourPrefs.edit().putString("thinkingMode", thinkingMode.rawValue).apply()
+    }
+    LaunchedEffect(contextLength) {
+        engine.setContextLengthChoice(contextLength)
+        behaviourPrefs.edit().putString("contextLength", contextLength.rawValue).apply()
+    }
+    LaunchedEffect(replyAsJson) {
+        engine.setChatGrammar(if (replyAsJson) ai.quenderin.core.JSONOutputGrammar.ANY_JSON_OBJECT else null)
+        behaviourPrefs.edit().putBoolean("replyAsJSON", replyAsJson).apply()
+    }
+    val deepThinking = thinkingMode.allowsThinking
+    val modelsDir = java.io.File(appContext.filesDir, "models")
     LaunchedEffect(engine) {
         ai.quenderin.core.RoleSeat.ask = { id, text ->
             ai.quenderin.core.CheckerRun.ask(id, text, engine) { ai.quenderin.core.CheckerRun.installed(modelsDir, it) }
@@ -150,7 +175,7 @@ fun MainTabs(
                             persistence = conversations,
                             onSelectModel = onSelectModel,
                             deepThinking = deepThinking,
-                            onDeepThinkingChange = { deepThinking = it },
+                            onDeepThinkingChange = { on -> thinkingMode = if (on) ai.quenderin.core.ThinkingMode.SHOW else ai.quenderin.core.ThinkingMode.OFF },
                             onOpenAgent = { selectTab(1) },
                             automaticEnabled = automaticEnabled,
                             automaticDescription = automaticDescription,
@@ -176,7 +201,13 @@ fun MainTabs(
                             persistence = conversations,
                             onSelectModel = onSelectModel,
                             deepThinking = deepThinking,
-                            onDeepThinkingChange = { deepThinking = it },
+                            onDeepThinkingChange = { on -> thinkingMode = if (on) ai.quenderin.core.ThinkingMode.SHOW else ai.quenderin.core.ThinkingMode.OFF },
+                            thinkingMode = thinkingMode,
+                            onThinkingModeChange = { thinkingMode = it },
+                            contextLength = contextLength,
+                            onContextLengthChange = { contextLength = it },
+                            replyAsJson = replyAsJson,
+                            onReplyAsJsonChange = { replyAsJson = it },
                             automaticEnabled = automaticEnabled,
                             onAutomaticChange = onAutomaticChange,
                             automaticDescription = automaticDescription,

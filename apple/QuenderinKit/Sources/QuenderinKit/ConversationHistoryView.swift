@@ -9,15 +9,25 @@ public struct ChatHomeView: View {
     @ObservedObject private var chat: ChatModel
     private let model: ModelEntry
     private let onSelectModel: (ModelEntry) -> Void
+    private let suspendForSpecialist: @Sendable () async throws -> SpecialistInferenceLease
+    @State private var visionEngine = NativeVisionEngine()
     @State private var showConversation = false
     @State private var showProfile = false
     @Environment(\.colorScheme) private var scheme
 
-    public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void) {
+    public init(
+        coordinator: ConversationCoordinator,
+        model: ModelEntry,
+        onSelectModel: @escaping (ModelEntry) -> Void,
+        suspendForSpecialist: @escaping @Sendable () async throws -> SpecialistInferenceLease = {
+            throw VisionWorkflowError.invalid("The app has not supplied exclusive specialist engine coordination.")
+        }
+    ) {
         self.coordinator = coordinator
         self.chat = coordinator.chat
         self.model = model
         self.onSelectModel = onSelectModel
+        self.suspendForSpecialist = suspendForSpecialist
     }
 
     public var body: some View {
@@ -49,7 +59,14 @@ public struct ChatHomeView: View {
     @ViewBuilder
     private var conversationDetail: some View {
         let p = QuenderinPalette.of(scheme)
-        ChatView(model: chat, activeModel: model, onSwitchModel: { onSelectModel($0) }, conversationID: coordinator.currentID)
+        ChatView(
+            model: chat,
+            activeModel: model,
+            onSwitchModel: { onSelectModel($0) },
+            conversationID: coordinator.currentID,
+            visionEngine: visionEngine,
+            suspendForSpecialist: suspendForSpecialist
+        )
             .inlineNavTitle()
             .toolbar {
                 // Tappable model name (twin of Android's tappable chat header) → the model profile.

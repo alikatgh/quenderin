@@ -23,12 +23,16 @@ public struct ChatMessage: Sendable, Identifiable, Equatable {
     /// Documents attached to this (user) message. The transcript shows chips + the typed text;
     /// `engineText` is what the model gets.
     public var documents: [AttachedDocument]
+    /// Optional reasoning chain extracted from `<think>…</think>` when Thinking is set to `.show`.
+    /// Nil for user messages, `.off`, `.hide`, and older saved transcripts.
+    public var thinking: String?
 
-    public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = []) {
+    public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = [], thinking: String? = nil) {
         self.id = id
         self.role = role
         self.text = text
         self.documents = documents
+        self.thinking = thinking
     }
 
     /// The text the ENGINE sees: attached documents first (clearly labeled), then the typed
@@ -91,13 +95,46 @@ public final class ChatComposerState: ObservableObject {
     }
 }
 
+/// Resolved chat request (system prompt with active named guidance, budget-windowed history, and
+/// effective generation options) shared between preparation and generation so both evaluate the
+/// exact same request for any candidate model and context window.
+public struct ChatPreparedRequest: Sendable, Equatable {
+    public let system: String
+    public let history: [ChatMessage]
+    public let options: GenerationOptions
+
+    public init(system: String, history: [ChatMessage], options: GenerationOptions) {
+        self.system = system
+        self.history = history
+        self.options = options
+    }
+}
+
 /// A generation-independent guard and ephemeral pending history. No content enters performance storage.
 public struct ChatPreparationContext: Sendable {
     public let history: [ChatMessage]
     public let options: GenerationOptions?
+    public let resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)?
+    public let resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)?
     public let isCurrent: @MainActor @Sendable () -> Bool
-    public init(history: [ChatMessage] = [], options: GenerationOptions? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) {
-        self.history = history; self.options = options; self.isCurrent = isCurrent
+    public init(
+        history: [ChatMessage] = [],
+        options: GenerationOptions? = nil,
+        resolveOptionsForModel: (@Sendable (ModelEntry?) -> GenerationOptions)? = nil,
+        resolveRequestForModel: (@MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest)? = nil,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) {
+        self.history = history
+        self.options = options
+        self.resolveOptionsForModel = resolveOptionsForModel
+        self.resolveRequestForModel = resolveRequestForModel
+        self.isCurrent = isCurrent
+    }
+
+    /// Resolves effective generation options (thinking mode, JSON grammar, tier budget) for `model`,
+    /// guaranteeing preparation evaluates the same configuration that generation will execute.
+    public func options(for model: ModelEntry?) -> GenerationOptions? {
+        resolveOptionsForModel?(model) ?? options
     }
 }
 
@@ -190,9 +227,20 @@ public final class ChatModel: ObservableObject {
     ///   `send()` so the continuation uses the SAME tier (system prompt + token budget) as the
     ///   turn it's extending, instead of `send()`'s `model: nil` default (which resolves to
     ///   `.small` regardless of what actually generated the original reply).
-    public func continueLast(options: GenerationOptions = .init(), model: ModelEntry? = nil) async {
+    public func continueLast(
+        options: GenerationOptions = .init(),
+        model: ModelEntry? = nil,
+        thinkingMode: ThinkingMode? = nil,
+        replyAsJSON: Bool = false
+    ) async {
         guard lastHitTokenCap, !isGenerating else { return }
-        await send(ChatUserFacing.continueCue(), options: options, model: model)
+        await send(
+            ChatUserFacing.continueCue(),
+            options: options,
+            model: model,
+            thinkingMode: thinkingMode,
+            replyAsJSON: replyAsJSON
+        )
     }
 
     @Published public private(set) var automaticSelectionStatus: String?
@@ -242,6 +290,8 @@ public final class ChatModel: ObservableObject {
         documents: [AttachedDocument] = [],
         options: GenerationOptions? = nil,
         model: ModelEntry? = nil,
+        thinkingMode: ThinkingMode? = nil,
+        replyAsJSON: Bool = false,
         onAccepted: (() -> Void)? = nil
     ) async {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -281,7 +331,36 @@ public final class ChatModel: ObservableObject {
             guard !message.documents.isEmpty else { return message }
             return ChatMessage(id: message.id, role: message.role, text: message.engineText)
         }
-        let preparation = ChatPreparationContext(history: pendingHistory, options: options) { self.conversationRevision == turnRevision && !self.stopRequested }
+        let resolveForModel: @Sendable (ModelEntry?) -> GenerationOptions = { candidate in
+            Self.resolveGenerationOptions(
+                base: options,
+                model: candidate,
+                thinkingMode: thinkingMode,
+                replyAsJSON: replyAsJSON
+            )
+        }
+        let resolveRequestForModel: @MainActor @Sendable (ModelEntry?, Int?) -> ChatPreparedRequest = { [guidance, context] candidate, contextTokensOverride in
+            let tier = ChatTier.of(model: candidate)
+            let resolvedOptions = resolveForModel(candidate)
+            let systemPrompt = NamedGuidance.append(
+                tier.systemPrompt,
+                rendered: guidance.render(modelLabel: candidate?.label ?? "")
+            )
+            let budgetContext = ConversationContext(
+                systemPrompt: systemPrompt,
+                contextTokens: context.contextTokens,
+                reservedForResponse: context.reservedForResponse
+            )
+            let windowed = budgetContext.windowedHistory(pendingHistory, contextTokensOverride: contextTokensOverride)
+            return ChatPreparedRequest(system: systemPrompt, history: windowed, options: resolvedOptions)
+        }
+        let preparedOptions = resolveForModel(selectedModel)
+        let preparation = ChatPreparationContext(
+            history: pendingHistory,
+            options: preparedOptions,
+            resolveOptionsForModel: resolveForModel,
+            resolveRequestForModel: resolveRequestForModel
+        ) { self.conversationRevision == turnRevision && !self.stopRequested }
         var automaticSelected = false
         do {
             try admitTurn?()
@@ -303,13 +382,6 @@ public final class ChatModel: ObservableObject {
                 : "The selected model is unavailable. Your message and attachments are kept. " + OnboardingModel.describe(error)
             return
         }
-        let tier = ChatTier.of(model: selectedModel)
-        var resolvedOptions = options ?? tier.chatOptions
-        resolvedOptions.collectPerformance = true
-        let systemPrompt = NamedGuidance.append(
-            tier.systemPrompt,
-            rendered: guidance.render(modelLabel: selectedModel?.label ?? "")
-        )
 
         // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
         // matches the actual native window instead of the configured 4096 (Q-167 — Android had this,
@@ -324,28 +396,16 @@ public final class ChatModel: ObservableObject {
             preparationError = "The local model is still being prepared. Your message and attachments are kept. " + OnboardingModel.describe(error)
             return
         }
+        let finalRequest = resolveRequestForModel(selectedModel, realContextTokens)
+        var resolvedOptions = finalRequest.options
+        resolvedOptions.collectPerformance = true
+        let systemPrompt = finalRequest.system
+        let windowed = finalRequest.history
         lastHitTokenCap = false
         hasOrdinaryInference = true
         didAcceptModel?(selectedModel, automaticSelected)
         onAccepted?()
         messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
-        // Chat-structured generation: pass the budget-windowed history so the engine formats it
-        // with the model's OWN chat template (answers as an assistant, stops at end-of-turn).
-        // Template-less engines fall back to the flat transcript; the assistant remembers prior
-        // turns either way. Attached documents are composed in (engineText) BEFORE windowing so
-        // the token budget counts them.
-        let budgetContext = ConversationContext(
-            systemPrompt: systemPrompt,
-            contextTokens: context.contextTokens,
-            reservedForResponse: context.reservedForResponse
-        )
-        let windowed = budgetContext.windowedHistory(messages.map { message in
-            guard !message.documents.isEmpty else { return message }
-            var composed = message
-            composed.text = message.engineText
-            composed.documents = []
-            return composed
-        }, contextTokensOverride: realContextTokens)
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
@@ -353,6 +413,18 @@ public final class ChatModel: ObservableObject {
 
         var tokenCount = 0
         var hitDegeneration = false
+        var heldByShape = false
+        let activeThinkingMode = resolvedOptions.thinkingMode
+        var splitter: ThinkingSplitter? = nil
+        var thinkingBuffer = ""
+        func flushSplitterTail() {
+            guard !heldByShape, var activeSplitter = splitter else { return }
+            let tail = activeSplitter.finish()
+            splitter = activeSplitter
+            if !tail.thinking.isEmpty { thinkingBuffer += tail.thinking }
+            if !tail.answer.isEmpty { assistant.text += tail.answer }
+            assistant.thinking = (activeThinkingMode == .show && !thinkingBuffer.isEmpty) ? thinkingBuffer : nil
+        }
         // Pace transcript writes to display frames (~30 Hz): every write is a full list diff plus a
         // Markdown re-parse of the reply, and at 80 tok/s that — not the engine — is the stall users
         // see. The first piece always lands; the settle write below always lands (StreamFlushGate).
@@ -365,6 +437,23 @@ public final class ChatModel: ObservableObject {
             }
         }
         do {
+            if activeThinkingMode.allowsThinking {
+                let startsInsideThinking = await engine.chatPromptStartsInsideThinking(
+                    system: systemPrompt,
+                    history: windowed,
+                    options: resolvedOptions
+                )
+                guard inFlightAssistantID == assistantID else { return }
+                if stopRequested {
+                    inFlightAssistantID = nil
+                    return
+                }
+                if Task.isCancelled {
+                    discardCancelledAssistant()
+                    return
+                }
+                splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
+            }
             let stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
             for try await token in stream {
                 // Dropping the iterator on break terminates the stream (the engine's
@@ -374,11 +463,22 @@ public final class ChatModel: ObservableObject {
                 // repetition penalty, stop paying for tokens — the collapse below cleans up.
                 tokenCount += 1
                 if tokenCount == 1 { generationPhase = .writing }
-                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(assistant.text) {
-                    hitDegeneration = true
-                    break
+                if tokenCount % 32 == 0 {
+                    let degenSample = assistant.text.isEmpty ? thinkingBuffer : assistant.text
+                    if DegenerationGuard.looksDegenerate(degenSample) {
+                        hitDegeneration = true
+                        break
+                    }
                 }
-                assistant.text += token
+                if var activeSplitter = splitter {
+                    let delta = activeSplitter.feed(token)
+                    splitter = activeSplitter
+                    if !delta.thinking.isEmpty { thinkingBuffer += delta.thinking }
+                    if !delta.answer.isEmpty { assistant.text += delta.answer }
+                    assistant.thinking = (activeThinkingMode == .show && !thinkingBuffer.isEmpty) ? thinkingBuffer : nil
+                } else {
+                    assistant.text += token
+                }
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
                 // message up by id each token: a captured index would crash (out of range) or write
@@ -388,10 +488,13 @@ public final class ChatModel: ObservableObject {
                 // or a short burst spills across frames and the transcript writes once per token.
                 guard flushGate.shouldFlush() else { continue }
                 let shaped = OutputCheck.shape(assistant.text, kind: .reply)
-                if shaped.held { assistant.text = shaped.text }
+                if shaped.held {
+                    assistant.text = shaped.text
+                    heldByShape = true
+                }
                 let checkerSelected = RoleSeat.shared.hasChecker
                 if checkerSelected, !shaped.held { continue }
-                if messages[i].text != assistant.text {
+                if messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
@@ -403,12 +506,13 @@ public final class ChatModel: ObservableObject {
             if stopRequested {
                 // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
                 // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
+                flushSplitterTail()
                 assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
                 if !assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
                 }
                 if let i = messages.firstIndex(where: { $0.id == assistantID }),
-                   messages[i].text != assistant.text {
+                   messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                     messages[i] = assistant
                     transcriptRevision &+= 1
                 }
@@ -448,23 +552,48 @@ public final class ChatModel: ObservableObject {
             discardCancelledAssistant()
             return
         }
-        // Settle: collapse any exact-duplicate paragraph runs that slipped through (covers
-        // the guard's between-checkpoints window and the Stop path alike), and never leave a
-        // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
+        // Settle: flush any held-back thinking/tag suffix, collapse exact-duplicate paragraph runs,
+        // and never leave a silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
+        flushSplitterTail()
         assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
         if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if !stopRequested { assistant.text = ChatUserFacing.emptyReply() }
+            if !stopRequested && (assistant.thinking?.isEmpty ?? true) { assistant.text = ChatUserFacing.emptyReply() }
         } else {
             assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
         }
         lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {
-            if messages[i].text != assistant.text {
+            if messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                 messages[i] = assistant
                 transcriptRevision &+= 1
             }
             inFlightAssistantID = nil   // normal settle: this turn is a finished answer
         }
+    }
+
+    private nonisolated static func resolveGenerationOptions(
+        base: GenerationOptions?,
+        model: ModelEntry?,
+        thinkingMode: ThinkingMode?,
+        replyAsJSON: Bool
+    ) -> GenerationOptions {
+        let tier = ChatTier.of(model: model)
+        var resolved = base ?? tier.chatOptions
+        if let thinkingMode {
+            resolved.thinkingMode = thinkingMode
+        }
+        let grammarSupported = model.map {
+            !ModelRuntimeSupport.isBeam($0) && !ModelRuntimeSupport.isJais($0) && !ModelRuntimeSupport.isMuse($0)
+        } ?? true
+        if !grammarSupported {
+            resolved.gbnfGrammar = nil
+        } else if replyAsJSON, resolved.gbnfGrammar == nil {
+            resolved.gbnfGrammar = JSONOutputGrammar.anyJSONObject
+        }
+        if resolved.gbnfGrammar != nil {
+            resolved.thinkingMode = .off
+        }
+        return resolved
     }
 
     func invalidatePendingPreparation() { conversationRevision &+= 1 }
