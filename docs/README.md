@@ -23,6 +23,7 @@ on-device AI agent.
 | [LOCAL_API.md](LOCAL_API.md) | Opt-in macOS loopback OpenAI-compatible API (`127.0.0.1:11435/v1`) |
 | [FRONTEND.md](FRONTEND.md) | The React/Vite UI — components, state, the agent socket hook, theming |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, scripts, build, test, lint, project layout |
+| [EXPORT_COMPLIANCE.md](EXPORT_COMPLIANCE.md) | Apple encryption inventory, France status, and pending owner decisions |
 | [AGENT_AUTONOMY_PLAN.md](AGENT_AUTONOMY_PLAN.md) | **The plan for the mission** — local autonomous computer usage: the Shortcuts-shaped capability ladder, the consent/safety spine, and Milestone 0 (`fs.read`) |
 | [ADDING_A_CAPABILITY.md](ADDING_A_CAPABILITY.md) | **Contributor guide** — how to add a governed capability: the tier model, the seam+fake pattern, safety rules, wiring, and tests |
 | [ICON_EXTRACTION.md](ICON_EXTRACTION.md) | How the app icon is cut perfectly from the artwork — sharpness detection, the 5.8% inset math, per-platform derivation (written for future agent sessions) |
@@ -38,6 +39,7 @@ The iOS/Android rebuild has its own docs under `apple/`:
 | [../apple/ROADMAP.md](../apple/ROADMAP.md) | Milestones M1–M4 and what's left |
 | [../apple/QuenderinKit/README.md](../apple/QuenderinKit/README.md) | The Swift package module catalog |
 | [../apple/QuenderinKit/INTEGRATION.md](../apple/QuenderinKit/INTEGRATION.md) | How to link llama.cpp on a device |
+| [ANDROID_PLAY_UPDATE_CHECKLIST.md](ANDROID_PLAY_UPDATE_CHECKLIST.md) | Android release bundle preparation and Play Console owner steps |
 | [max-mobile-integration.md](max-mobile-integration.md) | Mobile MAX/Bonsai status — portable adapter boundary, blocked vendor runtime, deferred phone validation |
 | [max-android-binding.md](max-android-binding.md) | Android JNI/Kotlin binding — unavailable without a runner, hosted synthetic fixture |
 | [max-apple-binding.md](max-apple-binding.md) | Apple C/Swift binding — byte-staged C target, hosted Swift fixture |

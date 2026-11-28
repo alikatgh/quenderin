@@ -12,20 +12,28 @@ final class DownloadPolicySettingTests: XCTestCase {
         return d
     }
 
+    private func settings(defaults: UserDefaults) -> AppSettings {
+        #if os(macOS)
+        AppSettings(defaults: defaults, localAPIKeyStore: InMemoryLocalAPIKeyStore())
+        #else
+        AppSettings(defaults: defaults)
+        #endif
+    }
+
     func testDefaultsToWifiOnly() {
-        let s = AppSettings(defaults: freshDefaults())
+        let s = settings(defaults: freshDefaults())
         XCTAssertFalse(s.allowCellularDownloads)
         XCTAssertEqual(s.downloadPolicy, .wifiOnly)
     }
 
     func testTogglingOnAllowsCellularAndPersists() {
         let defaults = freshDefaults()
-        let s = AppSettings(defaults: defaults)
+        let s = settings(defaults: defaults)
         s.allowCellularDownloads = true
         XCTAssertEqual(s.downloadPolicy, .wifiOrCellular)
 
         // Persisted: a fresh store over the same defaults reads the opt-in back.
-        let reopened = AppSettings(defaults: defaults)
+        let reopened = settings(defaults: defaults)
         XCTAssertTrue(reopened.allowCellularDownloads)
         XCTAssertEqual(reopened.downloadPolicy, .wifiOrCellular)
     }

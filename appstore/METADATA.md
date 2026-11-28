@@ -1,8 +1,8 @@
-# App Store listing — Quenderin (v0.2.0, build 2) — iOS + macOS universal
+# App Store listing — Quenderin (iOS and macOS)
 
-Paste-ready. Universal purchase: ONE app record, bundle `ai.quenderin.Quenderin`, both platforms.
-Team 9M2B2P4KSA. Signed artifacts: `apple/QuenderinApp/build/export-ios/Quenderin.ipa` + `export-mac/Quenderin.pkg`.
-Category: **Productivity**. Free. Privacy label: **Data Not Collected**.
+Draft copy for the existing app record, bundle `ai.quenderin.Quenderin`, on both
+platforms. Verify the copy and form answers against the selected builds.
+Use **Productivity** as the category and set the price to free.
 
 ## Name & subtitle (30 chars max)
 
@@ -18,17 +18,18 @@ English (localized to Russian, Korean, Japanese, Simplified Chinese in-app).
 ## Description (en)
 
 ```
-Quenderin is an AI that runs entirely on your device — no account, no cloud, no
-tracking. After a one-time model download, every token is generated locally via
-llama.cpp; nothing you type ever leaves your iPhone or Mac.
+With Quenderin, you can chat with a local AI model on your iPhone or Mac. After
+you download a model, local chat works offline and needs no account. Your local
+conversations stay on your device.
 
 • Chat with an on-device language model — pick from a curated catalog (0.4–13 GB)
   sized to your device, or bring any GGUF from Hugging Face
 • A private, governed computer-use agent: give it a goal, it plans and uses
   on-device tools — every action that changes something asks you first
-• Works fully offline after the download — on a plane, off the grid, anywhere
 • Interface in English, Russian, Korean, Japanese, and Chinese
-• No sign-in, no ads, no telemetry — conversations stay on the device
+
+Optional online connections such as DeepSeek, My computer and Step 5 send
+separate conversations or tasks to the destination you select.
 
 Quenderin is honest about the trade-offs: small on-device models can be wrong or
 outdated, and the app says so plainly. It is a private alternative to cloud AI,
@@ -38,18 +39,19 @@ not a replacement for a qualified professional.
 ## Description (ru)
 
 ```
-Quenderin — это ИИ, который работает целиком на вашем устройстве: без аккаунта,
-без облака, без слежки. После однократной загрузки модели каждый токен
-генерируется локально через llama.cpp — ничто из введённого не покидает ваш
-iPhone или Mac.
+В Quenderin можно общаться с локальной моделью ИИ на iPhone или Mac. После
+загрузки модели локальный чат работает без интернета и учётной записи.
+История локального чата хранится на устройстве.
 
 • Чат с локальной языковой моделью — выберите из подобранного каталога
   (0,4–13 ГБ) под ваше устройство или загрузите любой GGUF с Hugging Face
 • Приватный управляемый агент: поставьте задачу — он строит план и использует
   локальные инструменты, а каждое изменяющее действие сначала спрашивает вас
-• Полностью работает офлайн после загрузки — в самолёте, вне сети, где угодно
 • Интерфейс на английском, русском, корейском, японском и китайском
-• Без входа, рекламы и телеметрии — беседы остаются на устройстве
+
+При использовании дополнительных сетевых подключений, таких как DeepSeek,
+My computer и Step 5, отдельные беседы или задачи отправляются на выбранный
+сервис или компьютер.
 
 Quenderin честен о компромиссах: небольшие локальные модели могут ошибаться или
 устаревать, и приложение об этом прямо предупреждает.
@@ -57,7 +59,7 @@ Quenderin честен о компромиссах: небольшие лока�
 
 ## Keywords (100 chars, en)
 ```
-ai,chat,llm,offline,private,on-device,assistant,local,llama,gguf,no cloud,agent,privacy
+ai,chat,llm,offline,private,on-device,assistant,local,llama,gguf,agent,privacy
 ```
 
 ## URLs (all verified 200)
@@ -73,15 +75,19 @@ ai,chat,llm,offline,private,on-device,assistant,local,llama,gguf,no cloud,agent,
 - Have the review note (below) ready — it explains the on-device disclaimer.
 
 ## App Privacy (nutrition label)
-- **Data Not Collected** — matches PrivacyInfo.xcprivacy (no tracking, no collected
-  types; only required-reason DiskSpace/FileTimestamp for the model-fit checks).
+
+Review the Apple privacy manifest and the optional connections in the selected
+builds before completing the privacy label. [Store submission checklist](../docs/STORE_SUBMISSION.md#3-privacy-label-recommendations-and-unresolved-answers)
 
 ## App Review notes (paste for the reviewer)
 
 ```
-Fully on-device AI. After a one-time model download (in-app, from Hugging Face)
-there is no server component and no network use — all inference is local via
-llama.cpp. No account or sign-in.
+Local chat runs on-device via llama.cpp and works offline without an account
+after an in-app model download from Hugging Face.
+
+My computer is a separate, optional online connection. It uses an existing
+account on a configured Remote Harness server to connect to a trusted computer.
+DeepSeek and Step 5 are separate optional online connections.
 
 To review: launch → accept the "Use with judgement" disclaimer → on the model
 screen tap "Llama 3.2 1B Ultra-Light" (0.4 GB, fastest to download on Wi-Fi) →
@@ -94,16 +100,23 @@ legal, or financial advice. Interface language follows the system (Settings →
 per-app language on iOS 16+/Android 13+).
 ```
 
+## Export compliance
+
+Offline local chat uses a separate path. The optional **My computer** connection
+protects remote session payloads with bundled Snow and Noise IK (X25519,
+ChaCha20-Poly1305 and SHA-256) outside Apple's OS crypto. The final App Store
+Connect encryption declaration and France filing or exemption determination
+remain pending with Albert for the selected builds.
+[Export compliance checklist](../docs/EXPORT_COMPLIANCE.md) · [Issue #217](https://github.com/alikatgh/quenderin/issues/217)
+
 ## Screenshots
 - iPhone 6.5" (1284×2778 JPEG) + 6.9" (1320×2868): `appstore/screenshots/iphone-{en,ru}-*`
   (chat / models / agent / settings, en + ru)
 - iPad: N/A (iPhone-only this release; TARGETED_DEVICE_FAMILY=1)
 - **Mac**: still to capture (needs the app-control grant, or capture in Screenshot.app)
 
-## Remaining steps (once you're ready — submission is currently HELD)
-1. App Store Connect → My Apps → **+** → New App → iOS **and** macOS platforms,
-   name "Quenderin", bundle `ai.quenderin.Quenderin`, SKU `quenderin`.
-2. Tell me → I upload both builds (`ExportOptions.plist` destination=upload) and
-   fill the whole listing in your browser.
-3. Capture Mac screenshots (re-grant app control, or you do it), answer age +
-   privacy questionnaires, select builds, Submit for Review.
+## Submission checklist
+
+Use the existing App Store Connect record. Match the screenshots, listing,
+review notes, age rating and privacy answers to the selected builds.
+[Store submission checklist](../docs/STORE_SUBMISSION.md)

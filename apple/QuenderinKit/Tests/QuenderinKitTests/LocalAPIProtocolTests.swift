@@ -132,6 +132,21 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(LocalAPIGuard.check(missing, port: port)?.statusCode, 415)
         XCTAssertEqual(LocalAPIGuard.check(plain, port: port)?.statusCode, 415)
         XCTAssertEqual(LocalAPIGuard.check(tricky, port: port)?.statusCode, 415)
+
+        for value in ["application/json garbage", "application/json; charset",
+                      "application/json; charset=", "application/json; charset=utf-8, text/plain",
+                      #"application/json; charset="utf-8"#] {
+            let request = LocalHTTPRequest(method: "POST", path: "/v1/chat/completions",
+                                           headers: ["Host": "localhost:11435", "Content-Type": value])
+            XCTAssertEqual(LocalAPIGuard.check(request, port: port)?.statusCode, 415, value)
+        }
+        let quoted = LocalHTTPRequest(method: "POST", path: "/v1/chat/completions", headers: [
+            "Host": "localhost:11435", "Content-Type": #"application/json; profile="a, b\"c"; charset=utf-8"#,
+        ])
+        XCTAssertNil(LocalAPIGuard.check(quoted, port: port))
+
+        let duplicate = Data("POST /v1/chat/completions HTTP/1.1\r\nHost: localhost:11435\r\nContent-Type: application/json; charset=utf-8\r\ncontent-type: text/plain\r\n\r\n".utf8)
+        XCTAssertEqual(LocalHTTPRequest.parse(duplicate), .error(.duplicateHeader("content-type")))
     }
 
     func testGuardBearerKeyOptionalAndConstantTime() {
@@ -213,6 +228,75 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(split.turns.count, 3)
     }
 
+    func testHeaderValidationRejectsBeforeAnIncompleteBodyArrives() {
+        let port: UInt16 = 11435
+        let header = "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost:11435\r\n"
+            + "Content-Type: application/json\r\nContent-Length: 2\r\n"
+        let incomplete = Data((header + "\r\n{").utf8)
+        let check: (LocalHTTPRequest) -> LocalAPIError? = {
+            LocalAPIGuard.check($0, port: port, requiredAPIKey: "fixture")
+        }
+        XCTAssertEqual(LocalHTTPRequest.parse(Data(header.utf8), validateHeaders: check), .needMore)
+        guard case .rejected(let error) = LocalHTTPRequest.parse(incomplete, validateHeaders: check) else {
+            return XCTFail("Expected the header check to reject before reading the body")
+        }
+        XCTAssertEqual(error.statusCode, 401)
+        let authorized = Data((header + "Authorization: Bearer fixture\r\n\r\n{").utf8)
+        XCTAssertEqual(LocalHTTPRequest.parse(authorized, validateHeaders: check), .needMore)
+        guard case .complete(let request, _) = LocalHTTPRequest.parse(authorized + Data("}".utf8), validateHeaders: check) else {
+            return XCTFail("Expected the authorized body to finish parsing")
+        }
+        XCTAssertEqual(request.body, Data("{}".utf8))
+    }
+
+    #if os(macOS)
+    @MainActor
+    func testHeaderValidationUsesKeyConfiguredAfterConnectionSetup() async throws {
+        let suite = "LocalAPIKeyRotation-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults, localAPIKeyStore: InMemoryLocalAPIKeyStore())
+        settings.localAPIKey = "old-fixture"
+        let validate: @Sendable (LocalHTTPRequest) -> LocalAPIError? = {
+            settings.validateLocalAPIHeaders($0, port: 11435)
+        }
+        func parse(_ key: String) -> LocalHTTPRequest.ParseResult {
+            let head = "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost:11435\r\n"
+                + "Content-Type: application/json\r\nContent-Length: 2\r\nAuthorization: Bearer \(key)\r\n\r\n"
+            return LocalHTTPRequest.parse(Data(head.utf8), validateHeaders: validate)
+        }
+        XCTAssertEqual(parse("old-fixture"), .needMore)
+        settings.localAPIKey = "new-fixture"
+        XCTAssertEqual(parse("new-fixture"), .needMore)
+        guard case .rejected(let error) = parse("old-fixture") else {
+            return XCTFail("The old key should be rejected before reading the body")
+        }
+        XCTAssertEqual(error.statusCode, 401)
+    }
+    #endif
+
+    func testDecodeRejectsStopsThatCanCutJSONShortInEitherResponseMode() throws {
+        for responseFormat in [
+            #"{"type":"json_object"}"#,
+            #"{"type":"json_schema","json_schema":{"strict":true,"schema":{"type":"object","additionalProperties":false}}}"#,
+        ] {
+            for stream in [false, true] {
+                let body = #"{"messages":[{"role":"user","content":"Return an empty object."}],"stream":\#(stream),"response_format":\#(responseFormat),"stop":"}"}"#
+                let result = LocalAPICodec.decodeChatRequest(Data(body.utf8), availableModelIDs: ["m"], activeModelID: "m")
+                guard case .failure(let error) = result else {
+                    return XCTFail("A stop sequence could remove the required closing brace")
+                }
+                XCTAssertEqual(error.statusCode, 400)
+                XCTAssertEqual(error.code, "unsupported_response_format")
+
+                let emptyStop = body.replacingOccurrences(of: #""stop":"}""#, with: #""stop":[""]"#)
+                let request = try LocalAPICodec.decodeChatRequest(Data(emptyStop.utf8), availableModelIDs: ["m"], activeModelID: "m").get()
+                XCTAssertTrue(request.stop.isEmpty)
+                XCTAssertNotNil(request.responseFormat.gbnfGrammar)
+            }
+        }
+    }
+
     func testDecodeDefaultsMaxCompletionTokensAndSingleStop() throws {
         let json = #"""
         {
@@ -240,6 +324,25 @@ final class LocalAPIProtocolTests: XCTestCase {
         let minimal = Data(#"{"messages":[{"role":"user","content":"hi"}]}"#.utf8)
         let minReq = try LocalAPICodec.decodeChatRequest(minimal, availableModelIDs: ["m1"], activeModelID: "m1").get()
         XCTAssertEqual(minReq.maxTokens, 512)
+    }
+
+    func testStopSequencesAreDeduplicatedAndBoundedByUTF8Bytes() throws {
+        func decode(_ stop: Any) throws -> Result<LocalAPIChatRequest, LocalAPIError> {
+            let body = try JSONSerialization.data(withJSONObject: [
+                "messages": [["role": "user", "content": "hello"]],
+                "stop": stop,
+            ])
+            return LocalAPICodec.decodeChatRequest(body, availableModelIDs: ["m1"], activeModelID: "m1")
+        }
+        let longest = String(repeating: "🙂", count: 64)
+        let decoded = try decode(["", "first", "first", longest, "third", "fourth", ""]).get()
+        XCTAssertEqual(decoded.stop, ["first", longest, "third", "fourth"])
+        XCTAssertThrowsError(try decode(longest + "a").get()) { error in
+            XCTAssertEqual((error as? LocalAPIError)?.statusCode, 400)
+        }
+        XCTAssertThrowsError(try decode(["1", "2", "3", "4", "5"]).get()) { error in
+            XCTAssertEqual((error as? LocalAPIError)?.statusCode, 400)
+        }
     }
 
     func testDecodeRejectionsModelImagesAndTools() {
@@ -441,6 +544,25 @@ final class LocalAPIProtocolTests: XCTestCase {
 
     // MARK: - OpenAI Response & SSE Encoding
 
+    func testConnectionLimitResponseHasDistinctCodeAndRetryHeader() throws {
+        let wire = String(decoding: LocalHTTPResponse.connectionLimit(), as: UTF8.self)
+        let parts = wire.components(separatedBy: "\r\n\r\n")
+        guard parts.count == 2 else { return XCTFail("Expected an HTTP header and JSON body") }
+        let headers = parts[0].components(separatedBy: "\r\n")
+        let body = Data(parts[1].utf8)
+        XCTAssertEqual(headers.first, "HTTP/1.1 503 Service Unavailable")
+        XCTAssertTrue(headers.contains("Retry-After: 5"))
+        XCTAssertTrue(headers.contains("Connection: close"))
+        XCTAssertTrue(headers.contains("Content-Length: \(body.count)"))
+        let envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+        XCTAssertEqual(error["code"] as? String, "connection_limit")
+        XCTAssertEqual(error["type"] as? String, "server_error")
+        let busy = String(decoding: LocalHTTPResponse.error(.serverBusy()), as: UTF8.self)
+        XCTAssertFalse(busy.contains("Retry-After:"))
+        XCTAssertTrue(busy.contains("server_busy"))
+    }
+
     func testEncodeModelsListAndErrors() throws {
         let modelsData = LocalAPICodec.encodeModelsList([
             LocalAPIModelInfo(id: "qwen3-4b", created: 1_700_000_001),
@@ -508,6 +630,70 @@ final class LocalAPIProtocolTests: XCTestCase {
         XCTAssertEqual(usage["prompt_tokens"] as? Int, 12)
         XCTAssertEqual(usage["completion_tokens"] as? Int, 8)
         XCTAssertEqual(usage["total_tokens"] as? Int, 20)
+    }
+
+    func testStrictJSONSchemaRejectsUnsupportedConstraintsAndInvalidSchemas() throws {
+        func decode(_ schema: String, strict: String) -> Result<LocalAPIChatRequest, LocalAPIError> {
+            let body = Data(#"""
+            {"messages":[{"role":"user","content":"hello"}],"response_format":{"type":"json_schema",
+            "json_schema":{"strict":\#(strict),"schema":\#(schema)}}}
+            """#.utf8)
+            return LocalAPICodec.decodeChatRequest(body, availableModelIDs: ["m1"], activeModelID: "m1")
+        }
+        for schema in [
+            #"{"type":"object","anyOf":[{"type":"object"}]}"#,
+            #"{"type":"array","items":{"type":"string","pattern":"^a"}}"#,
+            #"{"type":"object","additionalProperties":{"type":"integer"}}"#,
+        ] {
+            XCTAssertThrowsError(try decode(schema, strict: "true").get()) { error in
+                XCTAssertEqual((error as? LocalAPIError)?.code, "unsupported_response_format")
+            }
+        }
+        for schema in [
+            #"{"type":"object","required":"field"}"#,
+            #"{"type":"object","additionalProperties":0}"#,
+            #"{"type":"object","required":[7],"additionalProperties":{}}"#,
+            #"{"type":"object","required":[],"additionalProperties":[],"anyOf":[{}]}"#,
+            #"{"type":"string","properties":[]}"#,
+            #"{"type":"object","properties":[],"anyOf":[{"type":"object"}]}"#,
+            #"{"type":false}"#,
+            #"{"type":"object","properties":{"name":{"type":"bogus"}}}"#,
+        ] {
+            for strict in ["true", "false", "null"] {
+                XCTAssertThrowsError(try decode(schema, strict: strict).get()) { error in
+                    XCTAssertEqual((error as? LocalAPIError)?.statusCode, 400)
+                    XCTAssertEqual((error as? LocalAPIError)?.code, "invalid_response_schema")
+                }
+            }
+        }
+        let closed = #"{"type":"object","additionalProperties":false}"#
+        XCTAssertThrowsError(try decode(closed, strict: "1").get())
+        let nullStrict = try decode(#"{"type":"object","anyOf":[{"type":"object"}]}"#, strict: "null").get()
+        XCTAssertEqual(nullStrict.responseFormat, .jsonSchema(grammar: JSONOutputGrammar.anyJSONObject, fellBackToGeneric: true))
+        let unsupportedAdditional = try decode(#"{"type":"object","required":[],"additionalProperties":{}}"#, strict: "false").get()
+        XCTAssertEqual(unsupportedAdditional.responseFormat, .jsonSchema(grammar: JSONOutputGrammar.anyJSONObject, fellBackToGeneric: true))
+        let request = try decode(closed, strict: "true").get()
+        XCTAssertEqual(request.responseFormat, .jsonSchema(
+            grammar: try JSONOutputGrammar.grammar(forSchemaJSON: closed, strict: true).get(),
+            fellBackToGeneric: false
+        ))
+    }
+
+    func testNativeTerminationMapsToLengthOrProtocolError() throws {
+        XCTAssertEqual(try LocalAPIFinishReason.completion(for: .hit), .length)
+        XCTAssertEqual(try LocalAPIFinishReason.completion(for: .contextExhausted), .length)
+        XCTAssertEqual(try LocalAPIFinishReason.completion(for: .notHit), .stop)
+        XCTAssertThrowsError(try LocalAPIFinishReason.completion(for: .decodeFailed)) { error in
+            guard let apiError = error as? LocalAPIError else { return XCTFail("Expected an API error") }
+            XCTAssertEqual(apiError.statusCode, 500)
+            XCTAssertEqual(apiError.code, "decode_failed")
+            let frame = String(decoding: LocalAPICodec.encodeStreamError(apiError), as: UTF8.self)
+            XCTAssertTrue(frame.hasPrefix("data: {\"error\":"))
+            XCTAssertTrue(frame.hasSuffix("\n\n"))
+            XCTAssertTrue(frame.contains("decode_failed"))
+            XCTAssertFalse(frame.contains("finish_reason"))
+            XCTAssertFalse(frame.contains("[DONE]"))
+        }
     }
 
     func testEncodeStreamSSEFraming() throws {
@@ -588,6 +774,36 @@ final class LocalAPIProtocolTests: XCTestCase {
         }
         XCTAssertTrue(containsBytes(nfcBytes, in: grammarBytes))
         XCTAssertTrue(containsBytes(nfdBytes, in: grammarBytes))
+    }
+
+    func testSSEWriterReportsSuccessOnlyWhenTransportAcceptsTerminalFrame() async {
+        let first = Data("data: first\n\n".utf8)
+        let done = LocalAPICodec.streamDoneFrame
+        for acceptsFinal in [false, true] {
+            let buffer = LocalSSEStreamBuffer()
+            buffer.append(first)
+            let served = await buffer.writeFrames { bytes, final in
+                if final {
+                    XCTAssertEqual(bytes, done)
+                    return acceptsFinal
+                }
+                XCTAssertEqual(bytes, first)
+                buffer.finish(finalData: done)
+                return true
+            }
+            XCTAssertEqual(served, acceptsFinal)
+            XCTAssertEqual(buffer.isAborted, !acceptsFinal)
+        }
+
+        let disconnected = LocalSSEStreamBuffer()
+        disconnected.append(first)
+        disconnected.abort()
+        disconnected.finish(finalData: done)
+        let served = await disconnected.writeFrames { _, _ in
+            XCTFail("An aborted stream must not write its terminal frame")
+            return true
+        }
+        XCTAssertFalse(served)
     }
 
     func testLocalSSEStreamBufferCoalescesAndFinishesWithoutBlockingProducer() async {

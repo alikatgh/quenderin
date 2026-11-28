@@ -165,15 +165,17 @@ class LlamaEngine(
     private fun currentThermal(): ThermalLevel = thermalSnapshot?.invoke() ?: thermalLevel
 
     /** Same load configuration used by candidate admission; requested offload is never called actual GPU. */
-    fun plannedContext(model: ModelEntry): Int {
-        val kv = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
+    fun plannedContext(model: ModelEntry): Int =
+        plannedContext(model, contextLengthChoiceValue, KVCachePolicy.recommend(deviceBudgetGb, model.ramGB))
+
+    private fun plannedContext(model: ModelEntry, choice: ContextLengthChoice, kv: KVCacheType): Int {
         val cap = when {
             ModelRuntimeSupport.isBeam(model) -> 4096
             ModelRuntimeSupport.isMuse(model) -> ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS
             ModelRuntimeSupport.isBonsai(model) -> ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS
             else -> null
         }
-        return ContextWindow.resolveForLoad(contextLengthChoiceValue, deviceBudgetGb, model.ramGB, kv, cap)
+        return ContextWindow.resolveForLoad(choice, deviceBudgetGb, model.ramGB, kv, cap)
     }
     fun candidateEnvironment(model: ModelEntry, contextTokens: Int = plannedContext(model)): String {
         val base = if (threads > 0) threads else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
@@ -253,16 +255,9 @@ class LlamaEngine(
         synchronized(lock) {
             if (!NATIVE_AVAILABLE || handle == 0L || loadedBeam || loadedMuse || loadedSpecialist) return false
             val activeGrammar = if (loadedJais) null else chatGrammarValue
-            val disableThinking = shouldDisableThinking(thinkingMode(), activeGrammar != null)
-            if (disableThinking) return false
-            fun clean(s: String) = s.replace('\u001E', ' ').replace('\u001F', ' ')
-            val payload = buildString {
-                if (systemPrompt.isNotEmpty()) append("system").append('\u001F').append(clean(systemPrompt)).append('\u001E')
-                history.forEach { m ->
-                    append(if (m.role == Role.USER) "user" else "assistant")
-                        .append('\u001F').append(clean(m.text)).append('\u001E')
-                }
-            }
+            val input = prepareChatStream(systemPrompt, history, thinkingMode(), activeGrammar)
+            if (input.disableThinking) return false
+            val payload = input.payload
             runCatching { nativeChatPromptStartsInsideThinking(handle, payload) }.getOrElse {
                 val rendered = runCatching { nativeBuildChatPrompt(handle, payload, false) }.getOrNull() ?: return false
                 ThinkingMode.promptEndsInsideThinking(rendered)
@@ -291,6 +286,10 @@ class LlamaEngine(
         }
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         ModelRuntimeSupport.metadataUnavailableReason(filePath, model)?.let { throw IllegalStateException(it) }
+        val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
+        val contextChoice = contextLengthChoiceValue
+        val nctx = plannedContext(model, contextChoice, kvCacheType)
+        check(nctx > 0) { "Not enough memory for a context window at this setting." }
         cancelRequested = false
         // Unknown publisher hashes remain usable manually but can never become measured evidence.
         val artifactIdentity = InferencePerformanceIdentity.artifact(model)
@@ -306,18 +305,20 @@ class LlamaEngine(
         // If the device is already thermally throttling, start with fewer threads (heat is the
         // sustained-load ceiling on a phone, not memory).
         val t = ThermalThrottle.recommendedThreads(currentThermal(), base)
-        // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
-        // per-token memory, near-lossless), which the cache-aware n_ctx turns into ~2× context.
-        val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
-        // n_ctx from the real app-memory budget, this model's footprint, the cache dtype, and the
-        // user's context-length preference (AUTO matches exact recommend(...) behaviour).
-        val nctx = plannedContext(model)
         if (ModelRuntimeSupport.isBeam(model)) {
             val free = minOf(deviceBudgetGb, NativeModelResources.availableMemoryBytes().toDouble() / (1024.0 * 1024 * 1024))
             check(MemoryFitness.check(model, deviceBudgetGb, free).canLoad) { ModelRuntimeSupport.BEAM_UNAVAILABLE_MESSAGE }
         }
-        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers,
-            nativeLibDir, verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model), verifiedBeam = ModelRuntimeSupport.isVerifiedBeamManifest(model), verifiedHy = false, verifiedGranite = false)
+        val verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model)
+        val verifiedBeam = ModelRuntimeSupport.isVerifiedBeamManifest(model)
+        handle = if (contextChoice != ContextLengthChoice.AUTO && kvCacheType == KVCacheType.Q8_0) {
+            val f16RetryContext = plannedContext(model, contextChoice, KVCacheType.F16)
+            nativeLoadWithF16Retry(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(),
+                gpuLayers, nativeLibDir, verifiedMuse, verifiedBeam, false, false, f16RetryContext)
+        } else {
+            nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(),
+                gpuLayers, nativeLibDir, verifiedMuse, verifiedBeam, false, false)
+        }
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         if (receipt != null && artifactReceipts.current(model, filePath) != receipt) {
             nativeFree(handle); handle = 0L; throw IllegalStateException("Model artifact changed during loading.")
@@ -370,13 +371,26 @@ class LlamaEngine(
     override fun completeWithGrammar(
         prompt: String, grammar: String, maxTokens: Int,
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+    ): String = grammarCompletion(prompt, grammar, maxTokens, topP, topK, temperature, repeatPenalty, repeatLastN)
+
+    override fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String =
+        grammarCompletion(prompt, grammar, maxTokens, 0.8f, 20, 0.7f, 1.1f, 256, requiresFullPrompt = true)
+
+    private fun grammarCompletion(
+        prompt: String, grammar: String, maxTokens: Int,
+        topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+        requiresFullPrompt: Boolean = false,
     ): String = synchronized(lock) {
         capRun++
         lastCapStatus = ChatCapStatus.UNKNOWN
         ensureReady()
         check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
-        nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+        if (requiresFullPrompt) {
+            nativeCompleteWithFullPromptGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+        } else {
+            nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+        }
     }
 
     /** The deliberation reasoning decode — unconstrained (the load-time sampler), hard-capped so the
@@ -423,14 +437,9 @@ class LlamaEngine(
             if (!isCurrent()) return ""
             cancelRequested = false
             if (!isCurrent()) { cancelRequested = true; return "" }
-            fun clean(s: String) = s.replace('\u001E', ' ').replace('\u001F', ' ')
-            val payload = buildString {
-                if (systemPrompt.isNotEmpty()) append("system").append('\u001F').append(clean(systemPrompt)).append('\u001E')
-                history.forEach { m ->
-                    append(if (m.role == Role.USER) "user" else "assistant")
-                        .append('\u001F').append(clean(m.text)).append('\u001E')
-                }
-            }
+            val activeGrammar = if (loadedBeam || loadedMuse || loadedJais) null else chatGrammarValue
+            val input = prepareChatStream(systemPrompt, history, thinkingMode(), activeGrammar)
+            val payload = input.payload
             val cap = chatMaxTokensOverride ?: maxTokens
             // Capture all identities at generation start while the same native-owner lock is held.
             val modelID = loadedModelId
@@ -442,6 +451,9 @@ class LlamaEngine(
             var report: InferencePerformanceSample? = null
             var measuredStatus: Int? = null
             fun generate(disableThinking: Boolean, sink: TokenSink): String {
+                input.grammar?.let { grammar ->
+                    return nativeCompleteChatWithGrammar(handle, payload, cap, grammar, topP.toFloat(), temperature.toFloat(), sink)
+                }
                 if (onPerformance == null || !supportsPerformance || artifact == null || modelID == null || context == null || env == null || backend == null) {
                     return nativeCompleteChatStreaming(handle, payload, cap, disableThinking, sink)
                 }
@@ -454,8 +466,7 @@ class LlamaEngine(
                             if (cache == 0) "cold" else "prefix", generationThermalLevel.name.lowercase(), System.currentTimeMillis())
                     })
             }
-            val activeGrammar = if (loadedBeam || loadedMuse || loadedJais) null else chatGrammarValue
-            val disableThinking = shouldDisableThinking(thinkingMode(), activeGrammar != null)
+            val disableThinking = input.disableThinking
             val result =
             if (loadedBeam) {
                 val filter = BeamOutputFilter(onToken)
@@ -479,20 +490,6 @@ class LlamaEngine(
                 val final = JaisOutputFilter.finalText(wire)
                 check(final.isNotEmpty() || cancelRequested) { "Jais reached its generation limit before producing a final answer. Try a shorter question or a larger token budget." }
                 final
-            } else if (activeGrammar != null) {
-                val flat = buildString {
-                    if (systemPrompt.isNotEmpty()) { append(systemPrompt); append("\n\n") }
-                    history.forEach {
-                        append(if (it.role == Role.USER) "User: " else "Assistant: ").append(it.text).append("\n")
-                    }
-                    append("Assistant:")
-                }
-                val out = nativeCompleteWithGrammar(
-                    handle, flat, cap, activeGrammar,
-                    topP.toFloat(), 40, temperature.toFloat(), 1.1f, 256,
-                )
-                if (out.isNotEmpty()) onToken(out)
-                out
             } else {
                 generate(disableThinking, TokenSink { onToken(it) })
             }
@@ -572,11 +569,14 @@ class LlamaEngine(
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
     private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean, verifiedBeam: Boolean, verifiedHy: Boolean, verifiedGranite: Boolean): Long
+    private external fun nativeLoadWithF16Retry(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean, verifiedBeam: Boolean, verifiedHy: Boolean, verifiedGranite: Boolean, f16RetryContext: Int): Long
     private external fun nativeCompleteHyMemoryStreaming(handle: Long, prompt: String, sink: TokenSink): String
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
+    private external fun nativeCompleteWithFullPromptGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
+    private external fun nativeCompleteChatWithGrammar(handle: Long, payload: String, maxTokens: Int, grammar: String, topP: Float, temperature: Float, sink: TokenSink): String
     private external fun nativeCompleteChatMeasured(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink, performance: PerformanceSink): String
     private external fun nativeBuildChatPrompt(handle: Long, payload: String, disableThinking: Boolean): String
     private external fun nativeChatPromptStartsInsideThinking(handle: Long, payload: String): Boolean
@@ -599,6 +599,20 @@ class LlamaEngine(
     }
 
     companion object {
+        internal data class ChatStreamInput(val payload: String, val grammar: String?, val disableThinking: Boolean)
+
+        internal fun prepareChatStream(systemPrompt: String, history: List<ChatMessage>, mode: ThinkingMode, grammar: String?): ChatStreamInput {
+            fun clean(text: String) = text.replace('\u001E', ' ').replace('\u001F', ' ')
+            val payload = buildString {
+                if (systemPrompt.isNotEmpty()) append("system").append('\u001F').append(clean(systemPrompt)).append('\u001E')
+                history.forEach { message ->
+                    append(if (message.role == Role.USER) "user" else "assistant")
+                        .append('\u001F').append(clean(message.text)).append('\u001E')
+                }
+            }
+            return ChatStreamInput(payload, grammar, shouldDisableThinking(mode, grammar != null))
+        }
+
         /**
          * Engine-side decision: whether chat prompt building must close an empty `<think>` block.
          * Grammar-constrained paths always disable thinking; otherwise delegates to [ThinkingMode.allowsThinking].

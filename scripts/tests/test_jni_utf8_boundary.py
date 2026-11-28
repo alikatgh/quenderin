@@ -7,9 +7,9 @@ import subprocess
 import tempfile
 import unittest
 try:
-    from .test_jni_exception_boundary import source_wrapper
+    from .test_jni_exception_boundary import source_chat_helper, source_wrapper
 except ImportError:  # unittest discover -s scripts/tests
-    from test_jni_exception_boundary import source_wrapper
+    from test_jni_exception_boundary import source_chat_helper, source_wrapper
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -34,6 +34,7 @@ class JNIUTF8BoundaryTests(unittest.TestCase):
 #define LOGE(...) ((void)0)
 #define LOGI(...) ((void)0)
 struct Control { bool cancelled() { return false; } };
+struct llama_sampler;
 struct LlamaHandle { bool beam = false; void* model = nullptr; Control* specialist = nullptr; };
 static Control control;
 static LlamaHandle normal, specialist{false, nullptr, &control};
@@ -43,10 +44,10 @@ static jstring throw_oom(JNIEnv* env, const char* text) { quenderin::jni::fail(e
 static jstring throw_generation_failed(JNIEnv* env, const char* text) { quenderin::jni::fail(env, "java/lang/IllegalStateException", text); return nullptr; }
 static const std::string expected = "BMP \xE6\xA8\xA1 \xF0\x9F\x98\x80 \xF0\xA0\x80\x80";
 static std::string tokenize(const std::string& text) { if (text != expected) throw std::runtime_error("Tokenizer received modified UTF-8"); return text; }
-static std::string generate(LlamaHandle*, const std::string& prompt, int, JNIEnv*, jobject, jobject, bool& failed) { failed = false; return tokenize(prompt); }
+static std::string generate(LlamaHandle*, const std::string& prompt, int, JNIEnv*, jobject, jobject, bool& failed, llama_sampler* = nullptr) { failed = false; return tokenize(prompt); }
 static std::string buildChatPrompt(void*, const std::string& payload, bool& templated, bool) { templated = true; return tokenize(payload); }
-extern "C" {
 '''
+        fixture += source_chat_helper() + '\nextern "C" {\n'
         for name in ('nativeCompleteHyMemoryStreaming', 'nativeComplete', 'nativeCompleteChatStreaming'):
             fixture += source_wrapper(name) + '\n'
         fixture += r'''

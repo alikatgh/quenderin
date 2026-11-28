@@ -115,6 +115,7 @@ public final class AutomaticModelSelection {
             // when it matches the active `userContextChoice` (or an exact supported configuration),
             // never overriding a newly selected context choice with a stale receipt.
             let supported = Self.supportedConfigurations(model: model, budget: budget, contextLengthChoice: userContextChoice)
+            guard isLoaded || !supported.isEmpty else { return nil }
             let receipt: InferenceExecutionProfile?
             if isLoaded {
                 receipt = actual
@@ -138,8 +139,8 @@ public final class AutomaticModelSelection {
                     && $0.backendID == InferencePerformanceIdentity.backendID && $0.environmentID == config.environment
                     && $0.contextTokens == config.context
             } }
-            let config = receipt.map { (context: $0.contextTokens, environment: $0.environmentID) }
-                ?? historical ?? supported[0]
+            guard let config = receipt.map({ (context: $0.contextTokens, environment: $0.environmentID) })
+                ?? historical ?? supported.first else { return nil }
             return Plan(model: model, artifact: artifact, config: config, profile: receipt, isLoaded: isLoaded)
         }
         // Determine the preferred family only after resource, runtime, context and quality gates.
@@ -246,9 +247,10 @@ public final class AutomaticModelSelection {
     }
     static func supportedConfigurations(model: ModelEntry, budget: Double, contextLengthChoice: ContextLengthChoice = .auto) -> [(context: Int, environment: String)] {
         let preferred = configuration(model: model, budget: budget, contextLengthChoice: contextLengthChoice)
+        guard preferred.context > 0 else { return [] }
         guard KVCachePolicy.recommend(appBudgetGB: budget, modelWeightsGB: model.ramGB) == .q8_0 else { return [preferred] }
         let fallback = configuration(model: model, budget: budget, cacheType: .f16, contextLengthChoice: contextLengthChoice)
-        return preferred == fallback ? [preferred] : [preferred, fallback]
+        return fallback.context == 0 || preferred == fallback ? [preferred] : [preferred, fallback]
     }
     static func configuration(model: ModelEntry, budget: Double, cacheType: KVCacheType? = nil, contextLengthChoice: ContextLengthChoice = .auto) -> (context: Int, environment: String) {
         let cache = cacheType ?? KVCachePolicy.recommend(appBudgetGB: budget, modelWeightsGB: model.ramGB)

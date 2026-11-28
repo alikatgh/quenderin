@@ -137,7 +137,10 @@ Quenderin enforces JSON output at the llama.cpp GBNF grammar level for standard 
 Models that do not support grammar-constrained decoding (**Beam**, **Jais**, and **Muse**) reject
 `response_format` JSON/schema requests with `400` (`unsupported_response_format`). If native
 grammar-sampler initialization fails for any model, the request also fails with `400`
-(`unsupported_response_format`) rather than continuing unconstrained:
+(`unsupported_response_format`).
+
+Combining a JSON response format with a nonempty `stop` sequence returns `400`
+(`unsupported_response_format`) before generation in both buffered and streaming modes.
 
 ### Any valid JSON object (`json_object`)
 
@@ -161,13 +164,15 @@ curl http://127.0.0.1:11435/v1/chat/completions \
       "type": "json_schema",
       "json_schema": {
         "name": "sentiment",
+        "strict": true,
         "schema": {
           "type": "object",
           "properties": {
             "label": {"type": "string", "enum": ["positive", "neutral", "negative"]},
             "confidence": {"type": "number"}
           },
-          "required": ["label", "confidence"]
+          "required": ["label", "confidence"],
+          "additionalProperties": false
         }
       }
     }
@@ -176,8 +181,13 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 
 Supported JSON Schema keywords compile directly to a deterministic GBNF grammar
 (`object`, `properties`, `required`, `string`, string `enum`, `number`, `integer`,
-`boolean`, `null`, `array`, `items`). Schemas that use unsupported keywords (such as
-`anyOf` or `$ref`) automatically fall back to the generic JSON object grammar.
+`boolean`, `null`, `array`, `items`). Strict schemas support boolean
+`additionalProperties`, including a closed object with no declared properties.
+Invalid schemas, including malformed `required` entries and `additionalProperties` values,
+return `400` (`invalid_response_schema`) in both modes. Set `json_schema.strict`
+to `true` to receive `400` (`unsupported_response_format`) for unsupported constraints
+such as `anyOf`, `$ref`, or schema-valued `additionalProperties`. With `strict` omitted
+or set to `false`, unsupported schemas can fall back to the generic JSON object grammar.
 
 ## Reasoning (`think` extension)
 
@@ -200,6 +210,12 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **One request at a time:** The API shares the app's exclusive on-device engine lease
   with the Quenderin Chat window. If another chat turn or API call is in flight, a new
   request waits up to 30 seconds and then returns `503` (`server_busy`).
+- **Connection limits:** The listener tracks up to 16 connections, with at most eight waiting
+  for their headers to pass validation. Clients have five seconds to send headers and up to
+  30 seconds to send the body after validation. When the header budget is full, the listener
+  can use one spare connection slot to send `503` (`connection_limit`) with `Retry-After: 5`
+  and `Connection: close`. If all 16 slots are occupied or a rejection is already being sent,
+  the listener closes the excess connection without an HTTP response.
 - **Disconnect cancels generation:** Transport aborts/resets and socket errors cancel
   in-flight generation immediately, while valid TCP write-half-closed clients
   (`shutdown(SHUT_WR)`) still receive their full reply. For streaming (`"stream": true`)
@@ -211,20 +227,37 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   cancels or releases the turn—on a transport error/reset or the first response write.
 - **Clamped sampling parameters:** `max_tokens` / `max_completion_tokens` defaults to
   `512` (clamped `1`–`4096`), `temperature` is clamped `0`–`2`, `top_p` is clamped
-  `0`–`1`. `stop` accepts a string or an array of strings.
+  `0`–`1`. `stop` accepts a string or an array of up to four distinct nonempty strings,
+  each at most 256 UTF-8 bytes. Empty strings and duplicates are discarded. Exceeding either
+  limit returns `400`. Stop sequences match the exact UTF-8 text.
+- **Completion limits and failures:** Reaching the requested token cap or filling the model's
+  context during generation produces `finish_reason: "length"`. A native decode failure after
+  partial output returns HTTP 500 (`decode_failed`) for buffered requests. If SSE headers are
+  already committed, the server sends a `data:` frame containing an `error` object and closes
+  the stream without a finish reason or `[DONE]`. The server counts an SSE completion once the
+  transport accepts its terminal frame.
+- **Context sizing:** If a manual context setting exceeds the model's estimated memory budget,
+  Quenderin loads a smaller window that fits. A model switch returns `503` when no manual
+  window fits. A 256-token context leaves up to 192 tokens for the rendered prompt and
+  reserves the remaining 64 for generation.
 - **No tools yet:** Requests containing `tools` or `tool_choice` (including explicit `null`)
   are rejected with `400` (`tools are not supported yet`) rather than silently ignored.
 - **No images yet:** Content arrays with `{"type": "text", "text": "..."}` parts are
   supported; image parts are rejected with `400` (`images are not supported by this
   endpoint yet`).
 - **Installed models only (no automatic downloads or deletions):** The API only uses models
-  already loaded in Quenderin or already installed on disk. When switching to another installed
+  already loaded in Quenderin or already installed on disk. Discovery includes registered sideloads
+  and multipart models whose shards are present together at their expected sizes. Listed files
+  are verified when selected, including on the first request after launch. When switching to another installed
   model, Quenderin verifies its SHA-256 digest whenever one is pinned (catalog/manifest models
   and sideloaded models with a known digest) and always checks the GGUF header; community
   models without a pinned digest are checked by GGUF header only, and a model already loaded in
   the engine is reused directly. Passing an uninstalled or integrity-failed `model` returns
   `404` (`model_not_found`) without deleting files or starting a download. If no model is
   installed at all, requests return `503`.
+- **Model-switch cancellation:** If the request ends before its model switch commits, Quenderin
+  keeps the app's selection. While still holding the inference lease it restores the previous
+  loaded model if its installed files can still be verified and loaded.
 - **No chunked request bodies:** Send a standard `Content-Length` header (max headers
   `16 KiB`, max body `4 MiB`).
 - **Privacy:** Prompts and replies are never logged. Only an in-memory count of requests
@@ -240,9 +273,17 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **Browser isolation (`Origin` check & no CORS):** Any request carrying an `Origin`
   header is rejected with `403`, and the server never emits `Access-Control-Allow-*`
   headers. Random web pages in your browser cannot probe or drive the local API.
-- **Strict `Content-Type` on `POST`:** `POST` requests must send
-  `Content-Type: application/json` (case-insensitive prefix), else `415`.
+- **Strict `Content-Type` on `POST`:** Send one `Content-Type` header with the case-insensitive
+  media type `application/json` and any valid parameters. A missing or malformed value returns
+  `415`. Repeating the header returns `400`.
 - **Optional Bearer authentication:** When you leave the API key blank, any or no
   `Authorization` header is accepted (matching Ollama's dummy-key convention). When you
   set a key, every request must send `Authorization: Bearer <key>` (checked in constant
-  time), else `401`.
+  time), else `401`. Header validation uses the current key even if the client opened
+  the connection before a key change.
+- **Key storage:** The macOS app stores the Bearer key in the device-local Keychain.
+  Clearing the field removes the stored key. During migration, the app deletes the legacy
+  preference after writing and reading back its key in Keychain. If migration fails, the app
+  still enforces the legacy key for the session and retries migration at next launch. When the
+  app cannot read Keychain at startup and has no legacy key, otherwise valid requests receive
+  `503` (`api_key_unavailable`).

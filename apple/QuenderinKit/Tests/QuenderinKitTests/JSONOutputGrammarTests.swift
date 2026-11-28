@@ -97,6 +97,17 @@ final class JSONOutputGrammarTests: XCTestCase {
         XCTAssertTrue(g.hasPrefix(#"root ::= "{" ws ( "\"z\"" ws ":" ws string ( "," ws "\"a\"" ws ":" ws integer )? | "\"a\"" ws ":" ws integer )? "}" ws"#))
     }
 
+    func testStrictClosedObjectsNeverUseTheGenericObjectRule() throws {
+        for schema in [
+            #"{"type":"object","additionalProperties":false}"#,
+            #"{"type":"object","properties":{},"required":[],"additionalProperties":false}"#,
+        ] {
+            let grammar = try JSONOutputGrammar.grammar(forSchemaJSON: schema, strict: true).get()
+            XCTAssertTrue(grammar.hasPrefix(#"root ::= "{" ws "}" ws"#))
+            XCTAssertFalse(grammar.contains("pair ::="))
+        }
+    }
+
     func testUnsupportedKeywordsReturnClearFailureForFallback() {
         let cases: [(String, [String: Any])] = [
             ("anyOf", ["type": "object", "anyOf": [["type": "string"]]]),
@@ -242,7 +253,7 @@ final class JSONOutputGrammarTests: XCTestCase {
         case .success:
             XCTFail("Expected failure for 17 optional properties")
         case .failure(let err):
-            XCTAssertEqual(err.reason, "too many optional properties; using generic JSON grammar")
+            XCTAssertEqual(err.reason, "too many optional properties")
         }
 
         // 1 required + 17 optional also exceeds the cap of 16 optional properties.
@@ -256,7 +267,7 @@ final class JSONOutputGrammarTests: XCTestCase {
         case .success:
             XCTFail("Expected failure for 1 required + 17 optional properties")
         case .failure(let err):
-            XCTAssertEqual(err.reason, "too many optional properties; using generic JSON grammar")
+            XCTAssertEqual(err.reason, "too many optional properties")
         }
     }
 

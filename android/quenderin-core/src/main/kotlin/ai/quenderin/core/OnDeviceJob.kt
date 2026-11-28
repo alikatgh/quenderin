@@ -113,8 +113,7 @@ object CheckerPrompt {
         Reply with yes if it may be shown.
         Reply with no if it should be held.
         Text:
-        $text
-    """.trimIndent()
+    """.trimIndent() + "\n" + text
 
     fun verdict(raw: String): String {
         val word = raw.trim().lowercase().takeWhile { it.isLetter() }
@@ -163,9 +162,9 @@ object CheckerRun {
                 engine.load(target.model, target.path)
                 loadedTarget = true
             }
-            CheckerPrompt.verdict(engine.completeWithGrammar(CheckerPrompt.of(text), CheckerPrompt.GRAMMAR, maxTokens = 8))
+            CheckerPrompt.verdict(engine.completeWithFullPromptGrammar(CheckerPrompt.of(text), CheckerPrompt.GRAMMAR, maxTokens = 8))
         } catch (_: Throwable) {
-            if (loadedTarget) "failed" else "load-failed"
+            if (switched && !loadedTarget) "load-failed" else "failed"
         } finally {
             if (switched && previous != null && engine.loadedModelId != previous.model.id) {
                 try { engine.load(previous.model, previous.path) } catch (_: Throwable) {}
@@ -276,6 +275,28 @@ object OutputCheck {
         val shaped = shape(text, kind, expectsJson)
         if (shaped.held) return shaped
         return checked(shaped, RoleSeat.checkerAnswer(text))
+    }
+
+    /** Check the answer and reasoning together, with one checker invocation. */
+    internal fun finishChatReply(text: String, thinking: String?): Pair<OutputVerdict, String?> {
+        val content = if (thinking == null) text else "$text\n\n$thinking"
+        val shaped = shape(content, OutputKind.REPLY)
+        if (shaped.held) return shaped to null
+        val reply = OutputVerdict(text, held = false, askedChecker = false)
+        if (content.isBlank()) return reply to null
+        val answer = RoleSeat.checkerAnswer(content)
+        val verdict = checked(reply, answer)
+        return verdict to thinking.takeIf { !verdict.held && (answer == null || answer == "yes") }
+    }
+
+    internal fun storedThinking(thinking: String?, text: String): String? {
+        if (thinking.isNullOrEmpty()) return null
+        val withheld = setOf(LocalPace.HELD_REPLY, HIDDEN, TOO_LONG, INJECTION, CHECKER_HELD, CHECKER_FAILED)
+        val unchecked = listOf(OnDeviceCopy.CHECKER_MISSING, OnDeviceCopy.CHECKER_UNREADABLE,
+            OnDeviceCopy.CHECKER_LOAD_FAILED, OnDeviceCopy.CHECKER_UNRESTORABLE)
+        if (text in withheld || unchecked.any { text.endsWith(it) } ||
+            shape("$text\n\n$thinking", OutputKind.REPLY).held) return null
+        return thinking
     }
 
     /** System lines the loop already decided, such as a tool that was switched off. */
@@ -1170,10 +1191,15 @@ private class RecordingCheckerEngine(var reply: String) : InferenceEngine {
     override fun completeWithGrammar(
         prompt: String, grammar: String, maxTokens: Int,
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
-    ): String {
+    ): String = recordCompletion(prompt, "grammar")
+
+    override fun completeWithFullPromptGrammar(prompt: String, grammar: String, maxTokens: Int): String =
+        recordCompletion(prompt, "full-prompt grammar")
+
+    private fun recordCompletion(prompt: String, event: String): String {
         lastPrompt = prompt
-        events += "grammar"
-        if (fail) throw IllegalStateException("checker stopped")
+        events += event
+        if (fail) throw IllegalStateException("fixture completion stopped")
         return reply
     }
 }
@@ -1191,12 +1217,16 @@ private fun verifyCheckerRuns() {
     require(CheckerRun.ask("absent", "hello", engine) { files[it] } == "unloaded")
     require(engine.events.isEmpty())
     require(CheckerRun.ask("check", "hello", engine) { files[it] } == "no")
-    require(engine.events == listOf("load:/models/check.gguf", "grammar", "load:/models/chat.gguf"))
+    require(engine.events == listOf("load:/models/check.gguf", "full-prompt grammar", "load:/models/chat.gguf")) {
+        "Expected to load the checker, decode with full-prompt grammar, and restore chat. Recorded ${engine.events}."
+    }
     require(engine.loadedModelId == "chat")
     engine.reply = "Yes, show it"
     engine.events.clear()
     require(CheckerRun.ask("chat", "hello", engine) { files[it] } == "yes")
-    require(engine.events == listOf("grammar"))
+    require(engine.events == listOf("full-prompt grammar")) {
+        "Expected full-prompt grammar decoding on the already loaded checker. Recorded ${engine.events}."
+    }
     engine.fail = true
     engine.reply = "no"
     require(CheckerRun.ask("check", "hello", engine) { files[it] } == "failed")
@@ -1232,7 +1262,9 @@ private fun verifyPerceptionRuns() {
     engine.load(chat, files.getValue("chat").path)
     engine.events.clear()
     require(PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] } == OnDeviceCopy.PERCEPTION_USED)
-    require(engine.events == listOf("load:/models/vision.gguf", "grammar", "load:/models/chat.gguf"))
+    require(engine.events == listOf("load:/models/vision.gguf", "grammar", "load:/models/chat.gguf")) {
+        "Expected to load the vision model, decode with grammar, and restore chat. Recorded ${engine.events}."
+    }
     require(engine.loadedModelId == "chat")
     require(engine.lastPrompt.contains("photo") && engine.lastPrompt.contains("sample"))
     require(!OnDeviceCopy.PERCEPTION_USED.contains("http"))
@@ -1243,10 +1275,15 @@ private fun verifyPerceptionRuns() {
     engine.loadedModelId = "vision"
     engine.events.clear()
     require(PerceptionRun.sample("vision", "speech", "clip", engine) { files[it] } == OnDeviceCopy.PERCEPTION_USED)
-    require(engine.events == listOf("grammar") && engine.loadedModelId == "vision")
+    require(engine.events == listOf("grammar") && engine.loadedModelId == "vision") {
+        "Expected grammar decoding on the already loaded vision model. Recorded ${engine.events}, loaded ${engine.loadedModelId}."
+    }
     engine.fail = true
     engine.loadedModelId = "chat"
-    require(PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] } == OnDeviceCopy.PERCEPTION_FAILED)
+    val failed = PerceptionRun.sample("vision", "photo", "sample", engine) { files[it] }
+    require(failed == OnDeviceCopy.PERCEPTION_FAILED) {
+        "Expected perception to report a failed grammar decode. Got $failed."
+    }
     require(engine.loadedModelId == "chat")
     val checkup = deviceCheckup(DeviceFacts(
         chatModelId = "chat", chatLabel = "Chat", chatOnDevice = true,

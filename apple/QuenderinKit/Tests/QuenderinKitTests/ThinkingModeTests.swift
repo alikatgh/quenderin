@@ -50,10 +50,12 @@ final class ThinkingModeTests: XCTestCase {
         XCTAssertEqual(legacy.count, 2)
         XCTAssertNil(legacy[1].thinking)
 
-        // New message with `thinking` round-trips cleanly and exporter ignores thinking without crashing.
+        // Reviewed thinking round-trips and stays out of the export.
+        var reviewed = ChatMessage(role: .assistant, text: "4", thinking: "adding two and two")
+        reviewed.thinkingReviewed = true
         let withThinking = [
             ChatMessage(role: .user, text: "2+2?"),
-            ChatMessage(role: .assistant, text: "4", thinking: "adding two and two"),
+            reviewed,
         ]
         let roundTripped = try store.decode(try store.encode(withThinking))
         XCTAssertEqual(roundTripped.count, 2)

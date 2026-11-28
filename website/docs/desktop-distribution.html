@@ -71,7 +71,7 @@
 
   <main class="docs-main" id="main">
     <article class="docs-article">
-      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Platforms &amp; Releases</span></div><div class="docs-kicker"><span class="qi qi-monitor" aria-hidden="true"></span>Platforms · Desktop</div><h1>Desktop Platforms &amp; Store Channels</h1><p class="docs-lead">Windows &amp; Linux desktop strategy, Mac App Store packaging, and Microsoft Store MSIX submission workflow.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>12 min read (2,787 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>3 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
+      <div class="docs-breadcrumbs"><a href="../">Quenderin</a><span class="qi qi-chevron-right" aria-hidden="true"></span><a href="./">Docs</a><span class="qi qi-chevron-right" aria-hidden="true"></span><span>Platforms &amp; Releases</span></div><div class="docs-kicker"><span class="qi qi-monitor" aria-hidden="true"></span>Platforms · Desktop</div><h1>Desktop Platforms &amp; Store Channels</h1><p class="docs-lead">Windows &amp; Linux desktop strategy, Mac App Store packaging, and Microsoft Store MSIX submission workflow.</p><div class="docs-meta-bar"><span class="docs-meta-chip"><span class="qi qi-clock" aria-hidden="true"></span>12 min read (2,837 words)</span><span class="docs-meta-chip"><span class="qi qi-file-text" aria-hidden="true"></span>3 source docs</span><span class="docs-meta-chip"><span class="qi qi-shield-check" aria-hidden="true"></span>Self-hosted &middot; zero third-party requests</span></div>
       <details class="docs-sources"><summary><span class="docs-sources-title"><span class="qi qi-folder-open" aria-hidden="true"></span><span>Compiled from 3 canonical source files</span></span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary><div class="docs-sources-list"><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/WINDOWS_LINUX_STRATEGY.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/WINDOWS_LINUX_STRATEGY.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/MAC_APP_STORE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/MAC_APP_STORE.md</a><a class="docs-source-pill" href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener" target="_blank"><span class="qi qi-file-text" aria-hidden="true"></span>docs/MICROSOFT_STORE.md</a></div></details>
       <details class="docs-mobile-toc">
         <summary><span><span class="qi qi-list" aria-hidden="true"></span> On this page</span><span class="qi qi-chevron-down" aria-hidden="true"></span></summary>
@@ -167,7 +167,7 @@ open Quenderin.xcodeproj</code></pre></div>
 <li><strong>Privacy Policy URL:</strong> <code>https://quenderin.org/privacy</code>.</li>
 <li><strong>Category:</strong> Productivity (matches <code>LSApplicationCategoryType</code>).</li>
 <li><strong>Age rating:</strong> <strong>17+</strong> — unrestricted local LLM output (same as iOS guidance).</li>
-<li><strong>Encryption:</strong> ITSAppUsesNonExemptEncryption = false already in Info plists (standard HTTPS + CryptoKit only) — answer the export compliance questionnaire accordingly.</li>
+<li><strong>Encryption</strong> — Local chat works offline after model setup. The optional <strong>My computer</strong> connection uses a separate path and protects remote session payloads with bundled Snow and Noise IK (X25519, ChaCha20-Poly1305 and SHA-256) outside Apple's OS crypto. The final App Store Connect encryption declaration and France filing or exemption determination remain pending with Albert for the selected build. <a href="https://github.com/alikatgh/quenderin/blob/main/docs/EXPORT_COMPLIANCE.md" rel="noopener" target="_blank">Export compliance checklist<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a> · <a href="https://github.com/alikatgh/quenderin/issues/217" rel="noopener" target="_blank">Issue #217<span class="qi qi-arrow-up-right" aria-hidden="true" style="font-size:0.8em;margin-left:0.15rem"></span></a></li>
 </ol>
 <hr />
 <h4 id="5-archive-and-upload">5. Archive and upload<a class="docs-heading-anchor" href="#5-archive-and-upload" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
@@ -188,26 +188,29 @@ xcodebuild -exportArchive -archivePath build/QuenderinMac.xcarchive \
 # xcrun altool / notarytool / App Store Connect API key</code></pre></div>
 <hr />
 <h4 id="6-listing-copy-accuracy">6. Listing copy (accuracy)<a class="docs-heading-anchor" href="#6-listing-copy-accuracy" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
-<p>Mac App Store users get the <strong>native offline assistant</strong> — chat, models, local agent capabilities that <strong>compile into the sandboxed Mac app</strong>. Do <strong>not</strong> paste Electron desktop “drive any app / BlueStacks” claims if those capabilities are not in the MAS sandbox build.</p>
+<p>The <strong>native Mac app</strong> provides offline local chat after model setup, local agent capabilities that compile into the sandboxed Mac app, and optional online connections. Do <strong>not</strong> paste Electron desktop “drive any app / BlueStacks” claims if those capabilities are not in the MAS sandbox build.</p>
 <p>Use <a href="release-store#src-docs-store-listing-md">STORE_LISTING.md</a> as the base; strip any desktop-only automation claims that require full-disk Accessibility outside the sandbox.</p>
 <p>Screenshots: Mac window of chat + model library, dark UI preferred for brand consistency.</p>
 <hr />
 <h4 id="7-review-notes-paste-into-asc">7. Review notes (paste into ASC)<a class="docs-heading-anchor" href="#7-review-notes-paste-into-asc" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <p>Suggested notes for App Review:</p>
-<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>Quenderin is a free, offline AI chat app. On first launch the user downloads an open GGUF
-model (0.4–9 GB) over HTTPS (Hugging Face). Please use Wi-Fi.
+<div class="docs-codeblock"><div class="docs-codeblock-bar"><span class="docs-code-lang"><span class="qi qi-terminal" aria-hidden="true"></span>text</span><button class="docs-copy-btn" type="button"><span class="qi qi-copy" aria-hidden="true"></span><span>Copy</span></button></div><pre><code>To review local chat, download a small open GGUF model from Hugging Face over Wi-Fi.
+Once the model is installed, local chat works offline without an account.
 
-No account is required. No user content is uploaded to our servers for inference.
+My computer is an optional online connection to a trusted computer through a configured
+Remote Harness server. It uses an existing server account and keeps remote sessions
+separate from local chat. DeepSeek and Step 5 are separate optional online connections.
 
 Generative AI disclosure: responses are produced by an on-device model and may be wrong.
 In-app disclaimer + Report affordance are included.
 
-Sandbox: network client only (model download). No tracking SDKs.</code></pre></div>
+The sandbox allows outbound connections for model downloads and optional online features.
+No tracking SDKs.</code></pre></div>
 <hr />
 <h4 id="8-submit-for-review">8. Submit for Review<a class="docs-heading-anchor" href="#8-submit-for-review" aria-label="Link to section"><span class="qi qi-link" aria-hidden="true"></span></a></h4>
 <ol>
 <li>Select the uploaded build.</li>
-<li>Complete <strong>App Privacy</strong> (“Data Not Collected” if still accurate).</li>
+<li>Complete <strong>App Privacy</strong> using the selected build's data flows. <a href="release-store#3-privacy-label-recommendations-and-unresolved-answers">Store submission checklist</a></li>
 <li><strong>Add for Review</strong> → <strong>Submit</strong>.</li>
 </ol>
 <p>After approval, the Mac app is available <strong>only</strong> via the App Store — do not publish a competing notarized DMG of the same product on the website.</p>

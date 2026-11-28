@@ -68,11 +68,20 @@ final class ContextLengthChoiceTests: XCTestCase {
         XCTAssertEqual(clamped2k.warning, .exceedsBudget)
         XCTAssertEqual(clamped2k.warningText, "Not enough memory on this device for this length; using 2048 tokens.")
 
-        // Very tight device: headroom = 2.0 - 1.725 = 0.275 GiB; even 2048 doesn't fit -> never below 2048.
+        // 0.275 GiB of headroom fits 512 f16 tokens (0.25 GiB).
         let clampedFloor = ContextWindow.resolve(choice: .k2, appBudgetGB: 2.0, modelWeightsGB: 1.5, kvCacheType: .f16)
-        XCTAssertEqual(clampedFloor.tokens, 2048)
+        XCTAssertEqual(clampedFloor.tokens, 512)
         XCTAssertEqual(clampedFloor.warning, .exceedsBudget)
-        XCTAssertEqual(clampedFloor.warningText, "Not enough memory on this device for this length; using 2048 tokens.")
+        XCTAssertEqual(clampedFloor.warningText, "Not enough memory on this device for this length; using 512 tokens.")
+    }
+
+    func testF16RetryCannotAllocateWhenOnlyQuantizedMinimumFits() {
+        let q8 = ContextWindow.resolve(choice: .k2, appBudgetGB: 1.82, modelWeightsGB: 1.5, kvCacheType: .q8_0)
+        XCTAssertEqual(q8.tokens, 256)
+        let f16 = ContextWindow.resolve(choice: .k2, appBudgetGB: 1.82, modelWeightsGB: 1.5, kvCacheType: .f16)
+        XCTAssertEqual(f16.tokens, 0)
+        XCTAssertEqual(f16.warningText, "Not enough memory for a context window at this setting.")
+        XCTAssertEqual(ContextWindow.resolveForLoad(choice: .k2, appBudgetGB: 1.82, modelWeightsGB: 1.5, kvCacheType: .f16), 0)
     }
 
     func testQuantizedKVCacheUnlocksLongerManualContext() {

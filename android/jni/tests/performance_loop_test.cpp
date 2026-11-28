@@ -34,6 +34,36 @@ void llama_set_n_threads(llama_context*, int, int) {}
 int main() {
     llama_vocab vocab;
     {
+        llama_context ctx;
+        ctx.n_ctx = 256;
+        const std::vector<llama_token> shortPrompt(128, 7);
+        std::vector<llama_token> longPrompt(256);
+        for (size_t i = 0; i < longPrompt.size(); ++i) longPrompt[i] = (llama_token)i;
+        for (int cap : {8, 256, 4096}) {
+            assert(quenderin::clampToContext(shortPrompt, &ctx, cap) == shortPrompt);
+            const auto clamped = quenderin::clampToContext(longPrompt, &ctx, cap);
+            assert(clamped.size() == 192);
+            assert(clamped[95] == 95 && clamped[96] == 160 && clamped.back() == 255);
+        }
+    }
+    {
+        llama_context ctx;
+        ctx.n_ctx = 256;
+        llama_sampler sampler;
+        std::vector<llama_token> cached{7};
+        bool failed = false;
+        auto output = quenderin::generateWithKVReuse(&ctx, &vocab, &sampler, std::vector<llama_token>(193, 7), 8,
+            cached, [](const std::string&) { return true; }, [] { return false; }, &failed,
+            [] { return 0; }, nullptr, nullptr, true);
+        assert(failed && output.empty() && ctx.decode_calls == 0 && sampler.sampled == 0);
+        assert(cached == std::vector<llama_token>{7});
+        sampler.goal = 2;
+        output = quenderin::generateWithKVReuse(&ctx, &vocab, &sampler, std::vector<llama_token>(192, 7), 8,
+            cached, [](const std::string&) { return true; }, [] { return false; }, &failed,
+            [] { return 0; }, nullptr, nullptr, true);
+        assert(!failed && !output.empty() && cached.size() == 194);
+    }
+    {
         llama_context ctx; llama_sampler sampler; std::vector<llama_token> cached;
         quenderin::GenerationPerformance report; bool failed = true, cap = true; int pieces = 0;
         auto output = quenderin::generateWithKVReuse(&ctx, &vocab, &sampler, std::vector<llama_token>(128, 7), 64,

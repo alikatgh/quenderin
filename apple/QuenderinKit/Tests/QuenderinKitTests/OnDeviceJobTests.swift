@@ -8,6 +8,7 @@ private final class CheckerEngine: InferenceEngine, @unchecked Sendable {
     var fail = false
     var lastPrompt = ""
     var failLoad = false
+    var promptLimit: Int?
     func loadedModelID() async -> String? { loaded.isEmpty ? nil : loaded }
     func load(model: ModelEntry, at fileURL: URL) async throws {
         events.append("load:\(fileURL.path)")
@@ -21,6 +22,10 @@ private final class CheckerEngine: InferenceEngine, @unchecked Sendable {
     func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         lastPrompt = prompt
         events.append("generate")
+        if let promptLimit {
+            _ = try LlamaEngine.promptTokens(Array(repeating: 1, count: prompt.utf8.count), limit: promptLimit,
+                                             requiresFullPrompt: options.requiresFullPrompt)
+        }
         let text = self.reply
         let shouldFail = self.fail
         return AsyncThrowingStream { continuation in
@@ -308,6 +313,21 @@ final class OnDeviceJobTests: XCTestCase {
         XCTAssertFalse(tool.held)
         XCTAssertTrue(tool.text.contains("4"))
         XCTAssertTrue(namesNextStep(tool.text), tool.text)
+    }
+
+    func testCheckerThatCannotFitTheFullPromptNeverReleasesThinking() async {
+        let engine = CheckerEngine()
+        engine.reply = "yes"
+        engine.promptLimit = 192
+        let files = checkerFiles()
+        RoleSeat.shared.selectChecker(modelID: "check")
+        RoleSeat.shared.setAskLive { modelID, text in
+            await CheckerRun.ask(modelID: modelID, text: text, engine: engine) { files[$0] }
+        }
+        let result = await OutputCheck.finishChatReply("answer", thinking: String(repeating: "word ", count: 80))
+        XCTAssertEqual(result.verdict.text, OutputCheck.checkerFailed)
+        XCTAssertNil(result.thinking)
+        XCTAssertEqual(engine.loaded, "chat")
     }
 
     func testCheckerLoadFailureShowsTheReplyAndANextStep() async {

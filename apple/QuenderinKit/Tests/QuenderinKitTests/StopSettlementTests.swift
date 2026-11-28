@@ -418,10 +418,11 @@ final class StopSettlementTests: XCTestCase {
         let engine = ContinuationEngine()
         let chat = ChatModel(engine: engine)
         let finished = XCTestExpectation(description: "zero-token cancelled send settled")
-        let task = Task { await chat.send("question"); finished.fulfill() }
+        let accepted = XCTestExpectation(description: "turn admitted")
+        let task = Task { await chat.send("question", onAccepted: { accepted.fulfill() }); finished.fulfill() }
         defer { task.cancel(); engine.finish() }
 
-        guard await waitFor([engine.started]) else { return }
+        guard await waitFor([accepted]) else { return }
         XCTAssertEqual(chat.messages.map(\.text), ["question", ""])
         task.cancel()
         guard await waitFor([engine.cancelled, finished]) else { return }

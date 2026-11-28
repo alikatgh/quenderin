@@ -87,8 +87,12 @@ For CLI export, copy `ExportOptions.plist` and set `teamID` to your 10-character
 5. **Privacy Policy URL:** `https://quenderin.org/privacy`.
 6. **Category:** Productivity (matches `LSApplicationCategoryType`).
 7. **Age rating:** **17+** — unrestricted local LLM output (same as iOS guidance).
-8. **Encryption:** ITSAppUsesNonExemptEncryption = false already in Info plists (standard
-   HTTPS + CryptoKit only) — answer the export compliance questionnaire accordingly.
+8. **Encryption** — Local chat works offline after model setup. The optional **My computer**
+   connection uses a separate path and protects remote session payloads with bundled Snow
+   and Noise IK (X25519, ChaCha20-Poly1305 and SHA-256) outside Apple's OS crypto. The final
+   App Store Connect encryption declaration and France filing or exemption determination
+   remain pending with Albert for the selected build.
+   [Export compliance checklist](EXPORT_COMPLIANCE.md) · [Issue #217](https://github.com/alikatgh/quenderin/issues/217)
 
 ---
 
@@ -117,9 +121,10 @@ xcodebuild -exportArchive -archivePath build/QuenderinMac.xcarchive \
 
 ## 6. Listing copy (accuracy)
 
-Mac App Store users get the **native offline assistant** — chat, models, local agent
-capabilities that **compile into the sandboxed Mac app**. Do **not** paste Electron desktop
-“drive any app / BlueStacks” claims if those capabilities are not in the MAS sandbox build.
+The **native Mac app** provides offline local chat after model setup, local agent
+capabilities that compile into the sandboxed Mac app, and optional online connections.
+Do **not** paste Electron desktop “drive any app / BlueStacks” claims if those
+capabilities are not in the MAS sandbox build.
 
 Use [STORE_LISTING.md](STORE_LISTING.md) as the base; strip any desktop-only automation
 claims that require full-disk Accessibility outside the sandbox.
@@ -133,15 +138,18 @@ Screenshots: Mac window of chat + model library, dark UI preferred for brand con
 Suggested notes for App Review:
 
 ```
-Quenderin is a free, offline AI chat app. On first launch the user downloads an open GGUF
-model (0.4–9 GB) over HTTPS (Hugging Face). Please use Wi-Fi.
+To review local chat, download a small open GGUF model from Hugging Face over Wi-Fi.
+Once the model is installed, local chat works offline without an account.
 
-No account is required. No user content is uploaded to our servers for inference.
+My computer is an optional online connection to a trusted computer through a configured
+Remote Harness server. It uses an existing server account and keeps remote sessions
+separate from local chat. DeepSeek and Step 5 are separate optional online connections.
 
 Generative AI disclosure: responses are produced by an on-device model and may be wrong.
 In-app disclaimer + Report affordance are included.
 
-Sandbox: network client only (model download). No tracking SDKs.
+The sandbox allows outbound connections for model downloads and optional online features.
+No tracking SDKs.
 ```
 
 ---
@@ -149,7 +157,8 @@ Sandbox: network client only (model download). No tracking SDKs.
 ## 8. Submit for Review
 
 1. Select the uploaded build.
-2. Complete **App Privacy** (“Data Not Collected” if still accurate).
+2. Complete **App Privacy** using the selected build's data flows.
+   [Store submission checklist](STORE_SUBMISSION.md#3-privacy-label-recommendations-and-unresolved-answers)
 3. **Add for Review** → **Submit**.
 
 After approval, the Mac app is available **only** via the App Store — do not publish a

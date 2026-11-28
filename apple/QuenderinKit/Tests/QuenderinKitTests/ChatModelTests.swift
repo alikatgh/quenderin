@@ -59,11 +59,51 @@ final class ChatModelTests: XCTestCase {
         let chat = ChatModel(engine: MockInferenceEngine())  // never loaded
         await chat.send("hello")
 
-        XCTAssertEqual(chat.messages.count, 2)
-        XCTAssertTrue(chat.messages[1].text.contains("⚠️"), "should surface a friendly error")
-        XCTAssertFalse(chat.messages[1].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        XCTAssertTrue(chat.messages[1].text.localizedCaseInsensitiveContains("choose "), chat.messages[1].text)
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertTrue(chat.preparationError?.localizedCaseInsensitiveContains("choose ") == true)
         XCTAssertFalse(chat.isGenerating)
+    }
+
+    func testExclusiveInferenceKeepsTheComposerAndDoesNotRecordATurn() async throws {
+        let engine = CoordinatedInferenceEngine(await loadedMock("reply"))
+        let chat = ChatModel(engine: engine)
+        let docs = [AttachedDocument(name: "draft.txt", text: "draft contents")]
+        chat.composer.draft = "question"
+        chat.composer.pendingDocuments = docs
+        var accepted = false
+        let lease = try await engine.acquireExclusiveInferenceLease(timeoutSeconds: 0)
+
+        await chat.send("question", documents: docs, onAccepted: { accepted = true })
+        XCTAssertFalse(accepted)
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertEqual(chat.composer.draft, "question")
+        XCTAssertEqual(chat.composer.pendingDocuments, docs)
+        XCTAssertTrue(chat.preparationError?.contains("busy") == true)
+
+        await lease.release()
+        await chat.send("question", documents: docs, onAccepted: { accepted = true })
+        XCTAssertTrue(accepted)
+        XCTAssertEqual(chat.messages.map(\.text), ["question", "reply"])
+    }
+
+    func testInvalidatedPreparationAfterGenerateStartCancelsAndReleasesEngine() async throws {
+        let raw = BlockingStartEngine()
+        let engine = CoordinatedInferenceEngine(raw)
+        let chat = ChatModel(engine: engine)
+        var accepted = false
+        let sendTask = Task {
+            await chat.send("question", onAccepted: { accepted = true })
+        }
+
+        await raw.waitForStart()
+        chat.invalidatePendingPreparation()
+        await raw.releaseStart()
+        await sendTask.value
+
+        XCTAssertFalse(accepted)
+        XCTAssertTrue(chat.messages.isEmpty)
+        let lease = try await engine.acquireExclusiveInferenceLease(timeoutSeconds: 1)
+        await lease.release()
     }
 
     func testResetClearsConversation() async {
@@ -151,6 +191,40 @@ private actor CapturingEngine: InferenceEngine {
         return AsyncThrowingStream { continuation in
             continuation.yield(reply)
             continuation.finish()
+        }
+    }
+}
+
+private actor BlockingStartEngine: InferenceEngine {
+    private var startWaiter: CheckedContinuation<Void, Never>?
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+    private var started = false
+    private var released = false
+
+    func loadedModelID() async -> String? { "blocking" }
+    func load(model: ModelEntry, at fileURL: URL) async throws {}
+    func unload() async {}
+
+    func waitForStart() async {
+        if started { return }
+        await withCheckedContinuation { startWaiter = $0 }
+    }
+
+    func releaseStart() {
+        released = true
+        releaseWaiter?.resume()
+        releaseWaiter = nil
+    }
+
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        started = true
+        startWaiter?.resume()
+        startWaiter = nil
+        if !released {
+            await withCheckedContinuation { releaseWaiter = $0 }
+        }
+        return AsyncThrowingStream { continuation in
+            continuation.onTermination = { _ in }
         }
     }
 }

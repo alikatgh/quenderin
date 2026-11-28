@@ -2977,7 +2977,7 @@ fun main() {
         res.tokens == 8192 && res.warning == ContextWarning.MORE_MEMORY &&
             res.warningText == "Uses more memory. Long chats may be slower."
     })
-    check("ContextWindow.resolve manual exceeding headroom clamps to largest fitting tier (min 2048)", run {
+    check("ContextWindow.resolve manual exceeding headroom clamps to a fitting tier", run {
         val c4 = ContextWindow.resolve(ContextLengthChoice.K8, 6.0, 2.0, KVCacheType.F16)
         val c2 = ContextWindow.resolve(ContextLengthChoice.K8, 4.0, 2.0, KVCacheType.F16)
         val cFloor = ContextWindow.resolve(ContextLengthChoice.K2, 2.0, 1.5, KVCacheType.F16)
@@ -2985,8 +2985,8 @@ fun main() {
             c4.warningText == "Not enough memory on this device for this length; using 4096 tokens." &&
             c2.tokens == 2048 && c2.warning == ContextWarning.EXCEEDS_BUDGET &&
             c2.warningText == "Not enough memory on this device for this length; using 2048 tokens." &&
-            cFloor.tokens == 2048 && cFloor.warning == ContextWarning.EXCEEDS_BUDGET &&
-            cFloor.warningText == "Not enough memory on this device for this length; using 2048 tokens."
+            cFloor.tokens == 512 && cFloor.warning == ContextWarning.EXCEEDS_BUDGET &&
+            cFloor.warningText == "Not enough memory on this device for this length; using 512 tokens."
     })
     check("ContextWindow.resolve q8_0 unlocks longer manual context than f16", run {
         val f16 = ContextWindow.resolve(ContextLengthChoice.K4, 3.4, 2.0, KVCacheType.F16)
@@ -3189,7 +3189,7 @@ fun main() {
         val legacy = store.decode("USER\thi\nASSISTANT\thello")
         val msgs = listOf(
             ChatMessage(Role.USER, "2+2?"),
-            ChatMessage(Role.ASSISTANT, "4", thinking = "two plus two"),
+            ChatMessage(Role.ASSISTANT, "4", thinking = "two plus two", thinkingReviewed = true),
         )
         val encoded = store.encode(msgs)
         val decoded = store.decode(encoded)

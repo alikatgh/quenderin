@@ -102,11 +102,17 @@ public struct LocalHTTPRequest: Sendable, Equatable {
         case complete(LocalHTTPRequest, consumedBytes: Int)
         case needMore
         case error(ParseError)
+        case rejected(LocalAPIError)
     }
 
     /// Incrementally parses a single HTTP/1.1 request from raw bytes.
     /// Rejects headers > 16 KiB, bodies > 4 MiB, and Transfer-Encoding (chunked) bodies.
     public static func parse(_ buffer: Data) -> ParseResult {
+        parse(buffer, validateHeaders: { _ in nil })
+    }
+
+    /// Runs the security gate once headers are available, even if the body is incomplete.
+    static func parse(_ buffer: Data, validateHeaders: (LocalHTTPRequest) -> LocalAPIError?) -> ParseResult {
         guard !buffer.isEmpty else { return .needMore }
 
         let separator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
@@ -191,7 +197,7 @@ public struct LocalHTTPRequest: Sendable, Equatable {
                 continue
             }
 
-            if lowerName == "host" || lowerName == "authorization" || lowerName == "origin" {
+            if lowerName == "host" || lowerName == "authorization" || lowerName == "origin" || lowerName == "content-type" {
                 if headers[lowerName] != nil {
                     return .error(.duplicateHeader(rawName))
                 }
@@ -219,14 +225,6 @@ public struct LocalHTTPRequest: Sendable, Equatable {
             return .error(.bodyTooLarge)
         }
 
-        let bodyStart = headerBlockEnd
-        let availableBodyBytes = buffer.endIndex - bodyStart
-        if availableBodyBytes < contentLength {
-            return .needMore
-        }
-
-        let bodyEnd = buffer.index(bodyStart, offsetBy: contentLength)
-        let body = contentLength == 0 ? Data() : Data(buffer[bodyStart..<bodyEnd])
         let path: String
         if let qIdx = rawTarget.firstIndex(of: "?") {
             path = String(rawTarget[..<qIdx])
@@ -234,6 +232,13 @@ public struct LocalHTTPRequest: Sendable, Equatable {
             path = rawTarget
         }
 
+        let head = LocalHTTPRequest(method: method, path: path, rawTarget: rawTarget,
+                                    httpVersion: version, headers: headers)
+        if let rejection = validateHeaders(head) { return .rejected(rejection) }
+        let bodyStart = headerBlockEnd
+        guard buffer.endIndex - bodyStart >= contentLength else { return .needMore }
+        let bodyEnd = buffer.index(bodyStart, offsetBy: contentLength)
+        let body = contentLength == 0 ? Data() : Data(buffer[bodyStart..<bodyEnd])
         let request = LocalHTTPRequest(
             method: method,
             path: path,
@@ -320,6 +325,10 @@ public struct LocalAPIError: Error, Sendable, Equatable {
         LocalAPIError(statusCode: 503, message: message, type: "server_error", code: "server_busy")
     }
 
+    static func connectionLimit() -> LocalAPIError {
+        serviceUnavailable("Too many Local API connections. Try again shortly.", code: "connection_limit")
+    }
+
     public static func serviceUnavailable(_ message: String, code: String? = "model_unavailable") -> LocalAPIError {
         LocalAPIError(statusCode: 503, message: message, type: "server_error", code: code)
     }
@@ -359,7 +368,7 @@ public enum LocalAPIGuard {
     /// 2. Any `Origin` header present -> 403 (blocks browser pages; no CORS headers are ever sent).
     /// 3. Optional bearer key: when `requiredAPIKey` is non-empty, requires `Authorization: Bearer <key>`
     ///    using constant-time byte comparison -> 401. When empty/nil, any/no Authorization is accepted.
-    /// 4. `POST` requests require `Content-Type: application/json` (prefix match, case-insensitive) -> 415.
+    /// 4. `POST` requests require `Content-Type: application/json` with valid optional parameters -> 415.
     public static func check(
         _ request: LocalHTTPRequest,
         port: UInt16,
@@ -427,13 +436,17 @@ public enum LocalAPIGuard {
         return token.isEmpty ? nil : token
     }
 
+    private static let jsonContentType = {
+        // HTTP parameter = token "=" ( token / quoted-string ). Commas are valid inside quotes.
+        let token = #"[!#$%&'*+\-.^_\x60|~0-9A-Za-z]+"#
+        let quoted = #""(?:[\t\x20\x21\x23-\x5B\x5D-\x7E\x{80}-\x{10FFFF}]|\\[\t\x20-\x7E\x{80}-\x{10FFFF}])*""#
+        return try! NSRegularExpression(
+            pattern: #"\A[ \t]*(?i:application/json)(?:[ \t]*;[ \t]*\#(token)=(?:\#(token)|\#(quoted)))*[ \t]*\z"#
+        )
+    }()
+
     private static func isJSONContentType(_ raw: String) -> Bool {
-        let lowered = raw.trimmingCharacters(in: CharacterSet(charactersIn: " \t")).lowercased()
-        let media = "application/json"
-        guard lowered.hasPrefix(media) else { return false }
-        if lowered.count == media.count { return true }
-        let next = lowered[lowered.index(lowered.startIndex, offsetBy: media.count)]
-        return next == ";" || next == " " || next == "\t"
+        jsonContentType.firstMatch(in: raw, range: NSRange(raw.startIndex..., in: raw)) != nil
     }
 }
 
@@ -561,10 +574,23 @@ public struct LocalAPIUsage: Sendable, Equatable {
 public enum LocalAPIFinishReason: String, Sendable, Equatable {
     case stop = "stop"
     case length = "length"
+
+    static func completion(for status: ChatCapStatus) throws -> Self {
+        switch status {
+        case .hit, .contextExhausted: return .length
+        case .notHit, .unknown: return .stop
+        case .decodeFailed:
+            throw LocalAPIError(statusCode: 500, message: "Native decoding failed after generating partial output.",
+                                type: "server_error", code: "decode_failed")
+        }
+    }
 }
 
 /// Pure OpenAI-compatible JSON + SSE codec for `/v1/models` and `/v1/chat/completions`.
 public enum LocalAPICodec {
+    static let maxStopSequences = 4
+    static let maxStopSequenceBytes = 256
+
     /// Generates an OpenAI-style completion ID (`chatcmpl-<hex>`).
     public static func makeCompletionID() -> String {
         let hex = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
@@ -747,18 +773,28 @@ public enum LocalAPICodec {
         // stop (string or array of strings)
         var stop: [String] = []
         if let rawStop = root.exactValue(forKey: "stop"), !rawStop.isNull {
+            let entries: [WireJSONValue]
             switch rawStop {
-            case .string(let s):
-                if !s.isEmpty { stop = [s] }
-            case .array(let arr):
-                for item in arr {
-                    guard case .string(let s) = item else {
-                        return .failure(.badRequest("'stop' array entries must be strings."))
-                    }
-                    if !s.isEmpty { stop.append(s) }
-                }
+            case .string: entries = [rawStop]
+            case .array(let arr): entries = arr
             default:
                 return .failure(.badRequest("'stop' must be a string or an array of strings."))
+            }
+            var seen = Set<Data>()
+            for item in entries {
+                guard case .string(let sequence) = item else {
+                    return .failure(.badRequest("'stop' array entries must be strings."))
+                }
+                guard !sequence.isEmpty else { continue }
+                guard sequence.utf8.count <= maxStopSequenceBytes else {
+                    return .failure(.badRequest("Each 'stop' sequence may contain up to \(maxStopSequenceBytes) UTF-8 bytes."))
+                }
+                if seen.insert(Data(sequence.utf8)).inserted {
+                    guard stop.count < maxStopSequences else {
+                        return .failure(.badRequest("'stop' accepts up to \(maxStopSequences) distinct nonempty sequences."))
+                    }
+                    stop.append(sequence)
+                }
             }
         }
 
@@ -779,10 +815,23 @@ public enum LocalAPICodec {
                       let schemaVal = jsObj.exactValue(forKey: "schema"), !schemaVal.isNull else {
                     return .failure(.badRequest("'response_format.json_schema.schema' is required for type 'json_schema'."))
                 }
-                switch JSONOutputGrammar.grammar(forSchema: schemaVal.toOrderedFoundationAny()) {
+                let strict: Bool
+                if let value = jsObj.exactValue(forKey: "strict"), !value.isNull {
+                    guard case .bool(let enabled) = value else {
+                        return .failure(.badRequest("'response_format.json_schema.strict' must be a boolean."))
+                    }
+                    strict = enabled
+                } else {
+                    strict = false
+                }
+                switch JSONOutputGrammar.grammar(forSchema: schemaVal.toOrderedFoundationAny(), strict: strict) {
                 case .success(let grammar):
                     responseFormat = .jsonSchema(grammar: grammar, fellBackToGeneric: false)
-                case .failure:
+                case .failure(.invalid(let reason)):
+                    return .failure(.badRequest(reason, code: "invalid_response_schema"))
+                case .failure(.unsupported(let reason)) where strict:
+                    return .failure(.badRequest(reason, code: "unsupported_response_format"))
+                case .failure(.unsupported):
                     responseFormat = .jsonSchema(grammar: JSONOutputGrammar.anyJSONObject, fellBackToGeneric: true)
                 }
             default:
@@ -790,6 +839,11 @@ public enum LocalAPICodec {
             }
         } else {
             responseFormat = .text
+        }
+
+        if !stop.isEmpty, responseFormat.gbnfGrammar != nil {
+            return .failure(.badRequest("Nonempty 'stop' sequences cannot be used with JSON response formats.",
+                                        code: "unsupported_response_format"))
         }
 
         return .success(LocalAPIChatRequest(
@@ -881,6 +935,14 @@ public enum LocalAPICodec {
 
     /// Encodes the terminal SSE sentinel `data: [DONE]\n\n`.
     public static let streamDoneFrame: Data = Data("data: [DONE]\n\n".utf8)
+
+    /// Terminates a failed stream whose HTTP headers have already been sent.
+    static func encodeStreamError(_ error: LocalAPIError) -> Data {
+        var frame = Data("data: ".utf8)
+        frame.append(encodeError(error))
+        frame.append(Data("\n\n".utf8))
+        return frame
+    }
 
     /// Encodes an OpenAI-shaped error object `{"error":{"message":...,"type":...,"code":...}}`.
     public static func encodeError(_ error: LocalAPIError) -> Data {
@@ -1215,11 +1277,17 @@ public enum LocalHTTPResponse {
 
     /// Builds a complete HTTP/1.1 JSON response. Never emits CORS headers.
     public static func json(statusCode: Int, body: Data) -> Data {
+        json(statusCode: statusCode, body: body, retryAfterSeconds: nil)
+    }
+
+    private static func json(statusCode: Int, body: Data, retryAfterSeconds: Int?) -> Data {
+        let retryAfter = retryAfterSeconds.map { "Retry-After: \($0)\r\n" } ?? ""
         let header = "HTTP/1.1 \(statusCode) \(reasonPhrase(for: statusCode))\r\n"
             + "Content-Type: application/json; charset=utf-8\r\n"
             + "Content-Length: \(body.count)\r\n"
             + "Cache-Control: no-store\r\n"
             + "Connection: close\r\n"
+            + retryAfter
             + "\r\n"
         var out = Data(header.utf8)
         out.append(body)
@@ -1229,6 +1297,11 @@ public enum LocalHTTPResponse {
     /// Builds a complete HTTP/1.1 OpenAI-shaped error response. Never emits CORS headers.
     public static func error(_ apiError: LocalAPIError) -> Data {
         json(statusCode: apiError.statusCode, body: LocalAPICodec.encodeError(apiError))
+    }
+
+    static func connectionLimit() -> Data {
+        let error = LocalAPIError.connectionLimit()
+        return json(statusCode: error.statusCode, body: LocalAPICodec.encodeError(error), retryAfterSeconds: 5)
     }
 
     /// Builds HTTP/1.1 response headers for `text/event-stream` SSE streaming. Never emits CORS headers.
@@ -1387,6 +1460,19 @@ public final class LocalSSEStreamBuffer: @unchecked Sendable {
         waiter = nil
         lock.unlock()
         resumeWaiter?.resume(returning: Batch(data: Data(), isFinished: true, isAborted: true))
+    }
+
+    /// Drains ordered batches and reports whether the transport accepted the terminal bytes.
+    func writeFrames(send: @Sendable (Data, Bool) async -> Bool) async -> Bool {
+        while true {
+            let batch = await nextBatch()
+            guard !Task.isCancelled, !batch.isAborted, !batch.data.isEmpty else { return false }
+            guard await send(batch.data, batch.isFinished) else {
+                abort()
+                return false
+            }
+            if batch.isFinished { return true }
+        }
     }
 
     /// Awaits the next coalesced batch of bytes for the socket writer.

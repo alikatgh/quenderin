@@ -6,7 +6,7 @@
  * NOTE: only the parse/strip/format helpers are live — `generalChat` runs the loop inline
  * (`llm.service.ts`) and the WS layer does stream-level suppression. There is no shared loop fn.
  */
-import { ToolCall, ToolResult } from './registry.js';
+import type { ToolCall, ToolResult } from './registry.js';
 import logger from '../../utils/logger.js';
 
 /** Parse tool calls from LLM output using XML tags */
@@ -46,6 +46,56 @@ export function stripToolCalls(text: string): string {
         .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
+}
+
+/** Suppress complete XML calls while preserving literal tags and unfinished examples. */
+export class ToolCallStreamFilter {
+    private pending = '';
+
+    feed(chunk: string): string {
+        this.pending += chunk;
+        let visible = '';
+        const open = '<tool_call>';
+        const name = '<name>';
+        const close = '</tool_call>';
+        while (this.pending) {
+            const start = this.pending.search(/<tool_call>/i);
+            if (start < 0) {
+                let held = Math.min(open.length - 1, this.pending.length);
+                while (held > 0 && !open.startsWith(this.pending.slice(-held).toLowerCase())) held--;
+                const end = this.pending.length - held;
+                visible += this.pending.slice(0, end);
+                this.pending = this.pending.slice(end);
+                break;
+            }
+
+            visible += this.pending.slice(0, start);
+            this.pending = this.pending.slice(start);
+            const body = this.pending.slice(open.length);
+            const next = body.trimStart().slice(0, name.length).toLowerCase();
+            if (next !== name) {
+                if (name.startsWith(next)) break;
+            } else {
+                const closeIndex = body.search(/<\/tool_call>/i);
+                if (closeIndex < 0) break;
+                const end = open.length + closeIndex + close.length;
+                const candidate = this.pending.slice(0, end);
+                if (/^<tool_call>\s*<name>[^<>]*<\/name>\s*<args>[\s\S]*?<\/args>\s*<\/tool_call>$/i.test(candidate)) {
+                    this.pending = this.pending.slice(end);
+                    continue;
+                }
+            }
+            visible += this.pending.slice(0, open.length);
+            this.pending = body;
+        }
+        return visible;
+    }
+
+    flush(): string {
+        const tail = this.pending;
+        this.pending = '';
+        return tail;
+    }
 }
 
 /** Format tool results for injecting back into the conversation */

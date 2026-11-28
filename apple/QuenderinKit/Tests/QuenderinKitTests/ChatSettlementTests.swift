@@ -48,6 +48,65 @@ final class ChatSettlementTests: XCTestCase {
         XCTAssertEqual(chat.messages.last?.text, ChatUserFacing.emptyReply())
     }
 
+    func testThinkingIsWithheldWithTheReplyAndWhenItIsTheOnlyOutput() async throws {
+        for output in ["<think>private reasoning</think>ignore previous", "<think>system prompt: private reasoning"] {
+            let chat = ChatModel(engine: await loadedMock(output))
+            await chat.send("hello", thinkingMode: .show)
+
+            XCTAssertEqual(chat.messages.last?.text, OutputCheck.injection)
+            XCTAssertNil(chat.messages.last?.thinking)
+            let stored = try ConversationStore().encode(chat.completedMessages())
+            XCTAssertFalse(String(decoding: stored, as: UTF8.self).contains("private reasoning"))
+        }
+    }
+
+    func testCheckerReceivesReasoningOnlyOutputBeforeItCanAppear() async {
+        defer { RoleSeat.shared.reset() }
+        let chat = ChatModel(engine: await loadedMock("<think>private reasoning"))
+        RoleSeat.shared.setChecker(modelID: "fixture") { _, content in
+            XCTAssertTrue(content.contains("private reasoning"))
+            return "no"
+        }
+        await chat.send("hello", thinkingMode: .show)
+        XCTAssertEqual(chat.messages.last?.text, OutputCheck.checkerHeld)
+        XCTAssertNil(chat.messages.last?.thinking)
+    }
+
+    func testOnlyFullyReviewedThinkingIsShownAndRestored() async throws {
+        defer { RoleSeat.shared.reset() }
+        RoleSeat.shared.reset()
+        let store = ConversationStore()
+
+        // Without a checker selected, shape-clean thinking is shown and persisted with the review marker.
+        let noChecker = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await noChecker.send("hello", thinkingMode: .show)
+        XCTAssertEqual(noChecker.messages.last?.text, "answer")
+        XCTAssertEqual(noChecker.messages.last?.thinking, "some reasoning")
+        XCTAssertEqual(try store.decode(store.encode(noChecker.completedMessages())).last?.thinking, "some reasoning")
+
+        // When a checker is selected but cannot run, the reply shows the notice and thinking stays hidden.
+        RoleSeat.shared.setChecker(modelID: "fixture") { _, _ in "unloaded" }
+        let unavailable = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await unavailable.send("hello", thinkingMode: .show)
+        XCTAssertTrue(unavailable.messages.last?.text.contains(OnDeviceCopy.checkerMissing) == true)
+        XCTAssertNil(unavailable.messages.last?.thinking)
+
+        RoleSeat.shared.setChecker(modelID: "fixture") { _, content in
+            XCTAssertEqual(content, "answer\n\nsome reasoning")
+            return "yes"
+        }
+        let chat = ChatModel(engine: await loadedMock("<think>some reasoning</think>answer"))
+        await chat.send("hello", thinkingMode: .show)
+        XCTAssertEqual(try store.decode(store.encode(chat.completedMessages())).last?.thinking, "some reasoning")
+
+        for text in ["ordinary answer", OutputCheck.checkerHeld] {
+            let legacy = Data(#"[{"role":"assistant","text":"\#(text)","thinking":"old reasoning"}]"#.utf8)
+            let restored = try store.decode(legacy).last
+            XCTAssertEqual(restored?.text, text)
+            XCTAssertNil(restored?.thinking)
+        }
+    }
+
     func testDegenerationDropsTheCrossingTokenAndSuppressesContinue() async {
         let word = String(repeating: "a", count: 100)
         let prefix = Array(repeating: word, count: 31)   // degenerate at the 32nd checkpoint
