@@ -30,7 +30,8 @@ the highest uploaded code across tracks. See the
 | `quenderin-core` (Kotlin brain) | Portable source and fixture tests | `kotlinc` verification and `:quenderin-core:test` |
 | Prism/Muse source identity | Build-time gate | `prepare_prism_runtime.py verify` and CMake's provenance check |
 | Image runtime and package identity | Build and final-package gates | `build_android_diffusion.sh` seals the private runtime; `verify_diffusion_android_package.py` checks APK/AAB bytes, dependency closure and 16 KiB alignment |
-| `jni/llama_jni.cpp` and Compose app | Hosted compilation gate | CI builds `assembleDebug` and `bundleRelease` with prepared Prism and image runtimes |
+| Noise/JNA SDK and package identity | Hosted build and final-package gates | `native_sdk.py build --platform android` runs in hosted Linux x86_64 GitHub Actions; `native_sdk.py verify-package` checks Noise/JNA bytes, `arm64-v8a`, 16 KiB ELF alignment for every `.so`, and stored APK ZIP alignment |
+| `jni/llama_jni.cpp` and Compose app | Hosted compilation gate | CI builds `assembleDebug` and `bundleRelease` with prepared Prism, image, and Noise/JNA runtimes |
 | Signed Google Play update | Separate release step | Requires the package's registered upload key and Play Console acceptance |
 | Android 16 behavior and real inference | Device validation still required | No current physical-device evidence is implied by compilation or fixtures |
 
@@ -68,22 +69,28 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
    files. It refuses to replace a mismatched existing checkout. Choose a separate
    destination if `android/jni/llama.cpp` already contains other work and pass that
    absolute path below. The example checkout is gitignored.
-2. Build the isolated image runtime and the verified Noise/JNA SDK in new
-   absolute work directories. Replace the example NDK and output paths with
-   your own paths.
+2. Build the isolated image runtime and, in hosted Linux x86_64 GitHub Actions CI,
+   the verified Noise/JNA SDK in new absolute work directories. Replace the example
+   NDK and output paths with your own paths.
    ```sh
    export ANDROID_NDK_HOME="/absolute/path/to/Android/sdk/ndk/26.3.11579264"
    quenderin_diffusion_work="/absolute/new/android-diffusion"
    quenderin_remote_sdk="/absolute/new/remote-android-sdk"
    bash scripts/build_android_diffusion.sh "$quenderin_diffusion_work"
+   # Hosted Linux x86_64 GitHub Actions only (requires GITHUB_ACTIONS=true, CI=true,
+   # and the NDK linux-x86_64 prebuilt toolchain):
    rustup toolchain install 1.90.0 --profile minimal
    rustup target add --toolchain 1.90.0 aarch64-linux-android
    python3 -B native/remote-crypto/tools/native_sdk.py build \
      --platform android --sdk "$quenderin_remote_sdk"
    ```
    The image builder fetches pinned source, statically links its private C++
-   runtime, and verifies both sealed image DSOs. The SDK builder generates
-   Kotlin bindings, compiles arm64 API 28 Noise, and verifies the Android JNA AAR.
+   runtime, and verifies both sealed image DSOs. The SDK builder enforces hosted
+   Linux x86_64 GitHub Actions execution (`GITHUB_ACTIONS=true` and `CI=true`),
+   generates Kotlin bindings, compiles arm64 API 28 Noise, and verifies the
+   Android JNA AAR; it refuses local workstation runs (use the hosted Android CI
+   or candidate workflow to produce a Prism release bundle, or pass a verified
+   SDK directory checked with `native_sdk.py verify --platform android`).
 3. Build the app with all three runtime paths and run the JVM unit tests.
    ```sh
    cd "$quenderin_root/android"
@@ -174,7 +181,7 @@ Android 16 job quotas also apply to long-running foreground WorkManager jobs;
 large background downloads can pause when quota is exhausted. Physical-device
 checks must still establish download stop/resume behavior, keyboard and system
 bar layout, predictive back, and lifecycle recovery. These checks were not run
-for the build-only 0.4.0 preparation.
+for the current build-only candidate preparation.
 
 ## Measure on a physical phone before promotion
 
