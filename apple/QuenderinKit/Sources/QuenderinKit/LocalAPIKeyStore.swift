@@ -12,7 +12,20 @@ protocol LocalAPIKeyStore {
 }
 
 struct LocalAPIKeychainStore: LocalAPIKeyStore {
-    private enum StorageError: Error { case unavailable }
+    enum StorageError: Error {
+        case unavailable
+        #if canImport(Security)
+        case keychain(OSStatus)
+        #endif
+    }
+
+    private let service: String
+    private let account: String
+
+    init(service: String = "org.quenderin.local-api", account: String = "bearer-key") {
+        self.service = service
+        self.account = account
+    }
 
     #if canImport(Security)
     // Match DeepSeekKeychainStore/RemoteHarnessClientKeychainStorage: QuenderinMac has no
@@ -20,8 +33,8 @@ struct LocalAPIKeychainStore: LocalAPIKeyStore {
     // where kSecUseDataProtectionKeychain fails with errSecMissingEntitlement (-34018).
     private var identity: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: "org.quenderin.local-api",
-         kSecAttrAccount as String: "bearer-key",
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account,
          kSecAttrSynchronizable as String: false]
     }
 
@@ -32,7 +45,8 @@ struct LocalAPIKeychainStore: LocalAPIKeyStore {
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = result as? Data,
+        guard status == errSecSuccess else { throw StorageError.keychain(status) }
+        guard let data = result as? Data,
               let key = String(data: data, encoding: .utf8) else { throw StorageError.unavailable }
         return key
     }
@@ -45,19 +59,19 @@ struct LocalAPIKeychainStore: LocalAPIKeyStore {
         ]
         let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if status == errSecSuccess { return }
-        guard status == errSecItemNotFound else { throw StorageError.unavailable }
+        guard status == errSecItemNotFound else { throw StorageError.keychain(status) }
         var item = query
         attributes.forEach { item[$0.key] = $0.value }
         let added = SecItemAdd(item as CFDictionary, nil)
-        guard added == errSecSuccess || (added == errSecDuplicateItem &&
-                SecItemUpdate(query as CFDictionary, attributes as CFDictionary) == errSecSuccess) else {
-            throw StorageError.unavailable
-        }
+        let saved = added == errSecDuplicateItem
+            ? SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+            : added
+        guard saved == errSecSuccess else { throw StorageError.keychain(saved) }
     }
 
     func remove() throws {
         let status = SecItemDelete(identity as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw StorageError.unavailable }
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw StorageError.keychain(status) }
     }
     #else
     func load() throws -> String? { throw StorageError.unavailable }

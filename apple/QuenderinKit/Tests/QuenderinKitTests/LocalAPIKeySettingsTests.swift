@@ -9,6 +9,7 @@ final class InMemoryLocalAPIKeyStore: LocalAPIKeyStore {
     private var key: String?
     var failLoads = false
     var failSaves = false
+    var failRemovals = false
     var discardSaves = false
 
     func load() throws -> String? {
@@ -22,6 +23,7 @@ final class InMemoryLocalAPIKeyStore: LocalAPIKeyStore {
     }
 
     func remove() throws {
+        if failRemovals { throw StorageError.unavailable }
         key = nil
     }
 }
@@ -93,6 +95,34 @@ final class LocalAPIKeySettingsTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: legacyPreference))
         XCTAssertNil(try store.load())
         let reopened = AppSettings(defaults: defaults, localAPIKeyStore: store)
+        XCTAssertNil(reopened.validateLocalAPIHeaders(request(), port: port))
+    }
+
+    @MainActor
+    func testFailedRemovalRetainsLegacyPreferenceForRetry() async throws {
+        let defaults = try makeDefaults()
+        defaults.set("legacy-fixture", forKey: legacyPreference)
+        let store = InMemoryLocalAPIKeyStore()
+        try store.save("stored-fixture")
+        store.failSaves = true
+        store.failRemovals = true
+        let settings = AppSettings(defaults: defaults, localAPIKeyStore: store)
+        XCTAssertEqual(settings.validateLocalAPIHeaders(request(), port: port)?.statusCode, 401)
+
+        settings.localAPIKey = ""
+        XCTAssertEqual(defaults.string(forKey: legacyPreference), "legacy-fixture")
+        XCTAssertEqual(try store.load(), "stored-fixture")
+        XCTAssertNil(settings.validateLocalAPIHeaders(request(), port: port))
+
+        let reopened = AppSettings(defaults: defaults, localAPIKeyStore: store)
+        XCTAssertNil(reopened.validateLocalAPIHeaders(request(key: "legacy-fixture"), port: port))
+        XCTAssertEqual(reopened.validateLocalAPIHeaders(request(key: "stored-fixture"), port: port)?.statusCode, 401)
+        XCTAssertEqual(reopened.validateLocalAPIHeaders(request(), port: port)?.statusCode, 401)
+
+        store.failRemovals = false
+        reopened.localAPIKey = ""
+        XCTAssertNil(try store.load())
+        XCTAssertNil(defaults.object(forKey: legacyPreference))
         XCTAssertNil(reopened.validateLocalAPIHeaders(request(), port: port))
     }
 
