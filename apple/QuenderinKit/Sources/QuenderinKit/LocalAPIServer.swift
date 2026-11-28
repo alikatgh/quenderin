@@ -54,7 +54,7 @@ public final class LocalAPIServer: ObservableObject {
 
     private static let busyTimeoutSeconds: Double = 30.0
     private static let writeTimeoutSeconds: Double = 15.0
-    private static let maxConcurrentConnections: Int = 16
+    private static let rejectionWriteTimeoutSeconds: Double = 1.0
 
     private let queue = DispatchQueue(label: "ai.quenderin.local-api")
     private let requestGate = LocalAPIRequestGate()
@@ -62,6 +62,7 @@ public final class LocalAPIServer: ObservableObject {
     private var listenerGeneration: UInt64 = 0
     private var activePort: UInt16 = LocalAPIGuard.defaultPort
     private var connections: [ObjectIdentifier: LocalAPIConnection] = [:]
+    private var admission = LocalAPIAdmission<ObjectIdentifier>()
     private var cancellables: Set<AnyCancellable> = []
     private var configured = false
 
@@ -135,6 +136,7 @@ public final class LocalAPIServer: ObservableObject {
         listener = nil
         let active = Array(connections.values)
         connections.removeAll()
+        admission = LocalAPIAdmission()
         for conn in active {
             conn.cancel()
         }
@@ -214,23 +216,37 @@ public final class LocalAPIServer: ObservableObject {
             nwConnection.cancel()
             return
         }
-        guard connections.count < Self.maxConcurrentConnections else {
+        let id = ObjectIdentifier(nwConnection)
+        let decision = admission.admit(id)
+        guard decision != .cancel else {
             nwConnection.cancel()
             return
         }
 
         let settings = AppSettings.shared
+        let rejecting = decision == .sendRejection
         let conn = LocalAPIConnection(
             connection: nwConnection,
             queue: queue,
-            writeTimeoutSeconds: Self.writeTimeoutSeconds,
+            writeTimeoutSeconds: rejecting ? Self.rejectionWriteTimeoutSeconds : Self.writeTimeoutSeconds,
             validateHeaders: { settings.validateLocalAPIHeaders($0, port: port) }
         )
-        let id = ObjectIdentifier(conn)
         connections[id] = conn
         conn.onFinished = { @Sendable [weak self] in
             Task { @MainActor [weak self] in
-                self?.connections.removeValue(forKey: id)
+                guard let self, self.listenerGeneration == generation else { return }
+                self.connections.removeValue(forKey: id)
+                self.admission.release(id)
+            }
+        }
+        if rejecting {
+            conn.start(rejecting: LocalHTTPResponse.connectionLimit())
+            return
+        }
+        conn.onHeadersAccepted = { @Sendable [weak self, weak conn] in
+            Task { @MainActor [weak self, weak conn] in
+                guard let self, let conn, self.connections[id] === conn else { return }
+                self.admission.promote(id)
             }
         }
         conn.onRequest = { @Sendable [weak self, weak conn] request in
@@ -964,6 +980,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
     private var finalWriteTimeoutItem: DispatchWorkItem?
     private var pendingWrite: (continuation: CheckedContinuation<Bool, Never>, timeout: DispatchWorkItem)?
 
+    var onHeadersAccepted: (@Sendable () -> Void)?
     var onRequest: (@Sendable (LocalHTTPRequest) -> Void)?
     var onFinished: (@Sendable () -> Void)?
 
@@ -1009,7 +1026,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
         }
     }
 
-    func start() {
+    func start(rejecting response: Data? = nil) {
         connection.stateUpdateHandler = { @Sendable [weak self] state in
             guard let self else { return }
             switch state {
@@ -1018,6 +1035,11 @@ private final class LocalAPIConnection: @unchecked Sendable {
             default:
                 break
             }
+        }
+        if let response {
+            connection.start(queue: queue)
+            sendAndClose(response)
+            return
         }
         scheduleReadTimeout(seconds: 5, message: "Timed out waiting for HTTP headers.")
         connection.start(queue: queue)
@@ -1060,6 +1082,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 guard !self.headersAccepted else { return nil }
                 if let rejection = self.validateHeaders(head) { return rejection }
                 self.headersAccepted = true
+                self.onHeadersAccepted?()
                 self.scheduleReadTimeout(seconds: 30, message: "Timed out waiting for HTTP body.")
                 return nil
             }

@@ -544,6 +544,25 @@ final class LocalAPIProtocolTests: XCTestCase {
 
     // MARK: - OpenAI Response & SSE Encoding
 
+    func testConnectionLimitResponseHasDistinctCodeAndRetryHeader() throws {
+        let wire = String(decoding: LocalHTTPResponse.connectionLimit(), as: UTF8.self)
+        let parts = wire.components(separatedBy: "\r\n\r\n")
+        guard parts.count == 2 else { return XCTFail("Expected an HTTP header and JSON body") }
+        let headers = parts[0].components(separatedBy: "\r\n")
+        let body = Data(parts[1].utf8)
+        XCTAssertEqual(headers.first, "HTTP/1.1 503 Service Unavailable")
+        XCTAssertTrue(headers.contains("Retry-After: 5"))
+        XCTAssertTrue(headers.contains("Connection: close"))
+        XCTAssertTrue(headers.contains("Content-Length: \(body.count)"))
+        let envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+        XCTAssertEqual(error["code"] as? String, "connection_limit")
+        XCTAssertEqual(error["type"] as? String, "server_error")
+        let busy = String(decoding: LocalHTTPResponse.error(.serverBusy()), as: UTF8.self)
+        XCTAssertFalse(busy.contains("Retry-After:"))
+        XCTAssertTrue(busy.contains("server_busy"))
+    }
+
     func testEncodeModelsListAndErrors() throws {
         let modelsData = LocalAPICodec.encodeModelsList([
             LocalAPIModelInfo(id: "qwen3-4b", created: 1_700_000_001),

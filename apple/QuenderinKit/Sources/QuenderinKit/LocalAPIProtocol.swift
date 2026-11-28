@@ -325,6 +325,10 @@ public struct LocalAPIError: Error, Sendable, Equatable {
         LocalAPIError(statusCode: 503, message: message, type: "server_error", code: "server_busy")
     }
 
+    static func connectionLimit() -> LocalAPIError {
+        serviceUnavailable("Too many Local API connections. Try again shortly.", code: "connection_limit")
+    }
+
     public static func serviceUnavailable(_ message: String, code: String? = "model_unavailable") -> LocalAPIError {
         LocalAPIError(statusCode: 503, message: message, type: "server_error", code: code)
     }
@@ -1273,11 +1277,17 @@ public enum LocalHTTPResponse {
 
     /// Builds a complete HTTP/1.1 JSON response. Never emits CORS headers.
     public static func json(statusCode: Int, body: Data) -> Data {
+        json(statusCode: statusCode, body: body, retryAfterSeconds: nil)
+    }
+
+    private static func json(statusCode: Int, body: Data, retryAfterSeconds: Int?) -> Data {
+        let retryAfter = retryAfterSeconds.map { "Retry-After: \($0)\r\n" } ?? ""
         let header = "HTTP/1.1 \(statusCode) \(reasonPhrase(for: statusCode))\r\n"
             + "Content-Type: application/json; charset=utf-8\r\n"
             + "Content-Length: \(body.count)\r\n"
             + "Cache-Control: no-store\r\n"
             + "Connection: close\r\n"
+            + retryAfter
             + "\r\n"
         var out = Data(header.utf8)
         out.append(body)
@@ -1287,6 +1297,11 @@ public enum LocalHTTPResponse {
     /// Builds a complete HTTP/1.1 OpenAI-shaped error response. Never emits CORS headers.
     public static func error(_ apiError: LocalAPIError) -> Data {
         json(statusCode: apiError.statusCode, body: LocalAPICodec.encodeError(apiError))
+    }
+
+    static func connectionLimit() -> Data {
+        let error = LocalAPIError.connectionLimit()
+        return json(statusCode: error.statusCode, body: LocalAPICodec.encodeError(error), retryAfterSeconds: 5)
     }
 
     /// Builds HTTP/1.1 response headers for `text/event-stream` SSE streaming. Never emits CORS headers.
