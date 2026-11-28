@@ -255,7 +255,7 @@ final class LocalAPIProtocolTests: XCTestCase {
         let suite = "LocalAPIKeyRotation-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let settings = AppSettings(defaults: defaults)
+        let settings = AppSettings(defaults: defaults, localAPIKeyStore: InMemoryLocalAPIKeyStore())
         settings.localAPIKey = "old-fixture"
         let validate: @Sendable (LocalHTTPRequest) -> LocalAPIError? = {
             settings.validateLocalAPIHeaders($0, port: 11435)

@@ -4,9 +4,7 @@ import SwiftUI
 import os
 #endif
 
-/// User preferences that change how the app LOOKS and BEHAVES — one observable store,
-/// UserDefaults-backed, every default matching the app's behavior before the setting existed
-/// (a fresh install is byte-for-byte the old app until the user moves something).
+/// Observable settings backed by UserDefaults for preferences and Keychain for credentials.
 ///
 /// Rule from the bug journal ("advertised-but-unimplemented surface"): a setting ships only
 /// when something actually reads it. Twin of Android's settings DataStore (parity chip).
@@ -137,14 +135,39 @@ public final class AppSettings: ObservableObject {
         didSet {
             let key = localAPIKey
             localAPIKeySnapshot.withLock { $0 = key }
-            save(key, "localAPIKey")
+            Self.persistLocalAPIKey(key, in: localAPIKeyStore, defaults: defaults)
         }
     }
-    private nonisolated let localAPIKeySnapshot: OSAllocatedUnfairLock<String>
+    private let localAPIKeyStore: any LocalAPIKeyStore
+    // nil means the stored key could not be read. An empty string explicitly disables auth.
+    private nonisolated let localAPIKeySnapshot: OSAllocatedUnfairLock<String?>
 
     nonisolated func validateLocalAPIHeaders(_ request: LocalHTTPRequest, port: UInt16) -> LocalAPIError? {
         let key = localAPIKeySnapshot.withLock { $0 }
-        return LocalAPIGuard.check(request, port: port, requiredAPIKey: key)
+        if let rejection = LocalAPIGuard.check(request, port: port, requiredAPIKey: key) {
+            return rejection
+        }
+        if key == nil {
+            return .serviceUnavailable("The Local API key could not be read from Keychain.", code: "api_key_unavailable")
+        }
+        return nil
+    }
+
+    private static func persistLocalAPIKey(_ key: String, in store: any LocalAPIKeyStore, defaults: UserDefaults) {
+        do {
+            if key.isEmpty {
+                try store.remove()
+            } else {
+                try store.save(key)
+            }
+            let preference = Self.key("localAPIKey")
+            guard defaults.object(forKey: preference) != nil else { return }
+            let stored = try store.load()
+            let verified = key.isEmpty ? stored == nil : stored?.utf8.elementsEqual(key.utf8) == true
+            if verified { defaults.removeObject(forKey: preference) }
+        } catch {
+            // Keep the effective key in memory and leave any legacy value for a retry.
+        }
     }
     #endif
 
@@ -162,7 +185,11 @@ public final class AppSettings: ObservableObject {
     private static func key(_ name: String) -> String { "quenderin.settings.\(name)" }
     private func save(_ value: String, _ name: String) { defaults.set(value, forKey: Self.key(name)) }
 
-    public init(defaults: UserDefaults = .standard) {
+    public convenience init(defaults: UserDefaults = .standard) {
+        self.init(defaults: defaults, localAPIKeyStore: LocalAPIKeychainStore())
+    }
+
+    init(defaults: UserDefaults, localAPIKeyStore: any LocalAPIKeyStore) {
         self.defaults = defaults
         theme = Theme(rawValue: defaults.string(forKey: Self.key("theme")) ?? "") ?? .system
         bubbleAccent = BubbleAccent(rawValue: defaults.string(forKey: Self.key("bubbleAccent")) ?? "") ?? .teal
@@ -178,9 +205,16 @@ public final class AppSettings: ObservableObject {
         localAPIEnabled = defaults.object(forKey: Self.key("localAPIEnabled")) as? Bool ?? false
         let storedPort = defaults.object(forKey: Self.key("localAPIPort")) as? Int ?? Int(LocalAPIGuard.defaultPort)
         localAPIPort = Int(LocalAPIGuard.clampPort(storedPort))
-        let key = defaults.string(forKey: Self.key("localAPIKey")) ?? ""
+        self.localAPIKeyStore = localAPIKeyStore
+        let key: String?
+        if let legacyKey = defaults.string(forKey: Self.key("localAPIKey")), !legacyKey.isEmpty {
+            key = legacyKey
+            Self.persistLocalAPIKey(legacyKey, in: localAPIKeyStore, defaults: defaults)
+        } else {
+            key = try? (localAPIKeyStore.load() ?? "")
+        }
         localAPIKeySnapshot = OSAllocatedUnfairLock(initialState: key)
-        localAPIKey = key
+        localAPIKey = key ?? ""
         #endif
     }
 }
