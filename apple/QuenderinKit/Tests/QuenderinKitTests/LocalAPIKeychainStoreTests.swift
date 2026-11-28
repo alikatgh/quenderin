@@ -17,7 +17,7 @@ final class LocalAPIKeychainStoreTests: XCTestCase {
             }
             try store.save("initial-fixture")
         } catch LocalAPIKeychainStore.StorageError.keychain(let status) where [
-            errSecMissingEntitlement, errSecNotAvailable, errSecNoSuchKeychain,
+            errSecNotAvailable, errSecNoSuchKeychain,
             errSecNoDefaultKeychain, errSecInteractionNotAllowed, errSecReadOnly,
         ].contains(status) {
             throw XCTSkip("The test host has no writable Keychain (OSStatus \(status))")
