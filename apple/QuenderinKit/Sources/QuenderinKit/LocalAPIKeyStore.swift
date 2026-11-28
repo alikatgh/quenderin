@@ -15,13 +15,14 @@ struct LocalAPIKeychainStore: LocalAPIKeyStore {
     private enum StorageError: Error { case unavailable }
 
     #if canImport(Security)
+    // Match DeepSeekKeychainStore/RemoteHarnessClientKeychainStorage: QuenderinMac has no
+    // keychain-access-groups entitlement or provisioning profile in local/Debug/DMG builds,
+    // where kSecUseDataProtectionKeychain fails with errSecMissingEntitlement (-34018).
     private var identity: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: "org.quenderin.local-api",
          kSecAttrAccount as String: "bearer-key",
-         kSecAttrSynchronizable as String: false,
-         // macOS applies the accessibility attribute in the data protection keychain.
-         kSecUseDataProtectionKeychain as String: true]
+         kSecAttrSynchronizable as String: false]
     }
 
     func load() throws -> String? {
