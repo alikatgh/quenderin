@@ -48,7 +48,7 @@ public final class LocalAPIServer: ObservableObject {
 
     /// Configured base URL for copy/display.
     public var baseURLString: String {
-        let port = LocalAPIGuard.clampPort(AppSettings.shared.localAPIPort)
+        let port = LocalAPIGuard.clampPort(settings.localAPIPort)
         return "http://127.0.0.1:\(port)/v1"
     }
 
@@ -56,20 +56,27 @@ public final class LocalAPIServer: ObservableObject {
     private static let writeTimeoutSeconds: Double = 15.0
     private static let rejectionWriteTimeoutSeconds: Double = 1.0
 
+    private let settingsOverride: AppSettings?
+    private let headerReadTimeoutSeconds: Double
+    private var settings: AppSettings { settingsOverride ?? .shared }
+
     private let queue = DispatchQueue(label: "ai.quenderin.local-api")
     private let requestGate = LocalAPIRequestGate()
     private var listener: NWListener?
     private var listenerGeneration: UInt64 = 0
     private var activePort: UInt16 = LocalAPIGuard.defaultPort
     private var connections: [ObjectIdentifier: LocalAPIConnection] = [:]
-    private var admission = LocalAPIAdmission<ObjectIdentifier>()
+    private(set) var admission = LocalAPIAdmission<ObjectIdentifier>()
     private var cancellables: Set<AnyCancellable> = []
     private var configured = false
 
     private weak var onboarding: OnboardingModel?
     private var engine: InferenceEngine?
 
-    private init() {}
+    init(settings: AppSettings? = nil, headerReadTimeoutSeconds: Double = 5) {
+        self.settingsOverride = settings
+        self.headerReadTimeoutSeconds = headerReadTimeoutSeconds
+    }
 
     /// Binds the server to the app's shared `InferenceEngine` and `OnboardingModel`, then
     /// observes `AppSettings.shared` so toggling the switch or changing the port starts,
@@ -83,7 +90,7 @@ public final class LocalAPIServer: ObservableObject {
         }
         configured = true
 
-        let settings = AppSettings.shared
+        let settings = self.settings
         settings.$localAPIEnabled
             .dropFirst()
             .sink { [weak self] _ in
@@ -96,7 +103,7 @@ public final class LocalAPIServer: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
-                    guard let self, AppSettings.shared.localAPIEnabled else { return }
+                    guard let self, self.settings.localAPIEnabled else { return }
                     self.restart()
                 }
             }
@@ -107,7 +114,6 @@ public final class LocalAPIServer: ObservableObject {
 
     /// Reconciles live listener state with `AppSettings.shared`.
     public func applySettings() {
-        let settings = AppSettings.shared
         if settings.localAPIEnabled {
             let desiredPort = LocalAPIGuard.clampPort(settings.localAPIPort)
             if listener != nil, activePort == desiredPort {
@@ -122,8 +128,8 @@ public final class LocalAPIServer: ObservableObject {
     /// Restarts the listener on the currently configured port if enabled.
     public func restart() {
         stop()
-        if AppSettings.shared.localAPIEnabled {
-            start(port: LocalAPIGuard.clampPort(AppSettings.shared.localAPIPort))
+        if settings.localAPIEnabled {
+            start(port: LocalAPIGuard.clampPort(settings.localAPIPort))
         }
     }
 
@@ -148,13 +154,14 @@ public final class LocalAPIServer: ObservableObject {
         stop()
     }
 
-    private func start(port: UInt16) {
+    /// Port zero lets the OS assign an available loopback port.
+    func start(port: UInt16) {
         stop()
         let generation = listenerGeneration
         activePort = port
         status = .starting(port: port)
 
-        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+        guard let nwPort = port == 0 ? NWEndpoint.Port.any : NWEndpoint.Port(rawValue: port) else {
             status = .error("Invalid port \(port). Choose a port between 1024 and 65535.")
             return
         }
@@ -170,7 +177,8 @@ public final class LocalAPIServer: ObservableObject {
                     guard let self, self.listener === newListener, self.listenerGeneration == generation else { return }
                     switch state {
                     case .ready:
-                        self.status = .listening(port: port)
+                        let boundPort = port == 0 ? (newListener.port?.rawValue ?? port) : port
+                        self.status = .listening(port: boundPort)
                     case .failed(let error):
                         self.listener?.cancel()
                         self.listener = nil
@@ -194,7 +202,8 @@ public final class LocalAPIServer: ObservableObject {
                         nwConnection.cancel()
                         return
                     }
-                    self.accept(nwConnection, port: port, from: newListener, generation: generation)
+                    let boundPort = port == 0 ? (newListener.port?.rawValue ?? port) : port
+                    self.accept(nwConnection, port: boundPort, from: newListener, generation: generation)
                 }
             }
             listener = newListener
@@ -210,7 +219,7 @@ public final class LocalAPIServer: ObservableObject {
         from originatingListener: NWListener,
         generation: UInt64
     ) {
-        guard AppSettings.shared.localAPIEnabled,
+        guard settings.localAPIEnabled,
               listener === originatingListener,
               listenerGeneration == generation else {
             nwConnection.cancel()
@@ -223,7 +232,7 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        let settings = AppSettings.shared
+        let settings = self.settings
         let rejecting = decision == .sendRejection
         let conn = LocalAPIConnection(
             connection: nwConnection,
@@ -240,7 +249,10 @@ public final class LocalAPIServer: ObservableObject {
             }
         }
         if rejecting {
-            conn.start(rejecting: LocalHTTPResponse.connectionLimit())
+            conn.start(
+                headerReadTimeoutSeconds: headerReadTimeoutSeconds,
+                rejecting: LocalHTTPResponse.connectionLimit()
+            )
             return
         }
         conn.onHeadersAccepted = { @Sendable [weak self, weak conn] in
@@ -256,13 +268,13 @@ public final class LocalAPIServer: ObservableObject {
             }
             conn?.attachWorkTask(task)
         }
-        conn.start()
+        conn.start(headerReadTimeoutSeconds: headerReadTimeoutSeconds)
     }
 
     // MARK: - Request Handling (privacy: never log prompts or replies)
 
     private func isListenerActive(generation: UInt64) -> Bool {
-        AppSettings.shared.localAPIEnabled && listener != nil && listenerGeneration == generation
+        settings.localAPIEnabled && listener != nil && listenerGeneration == generation
     }
 
     private func handleRequest(
@@ -276,7 +288,7 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        if let rejection = AppSettings.shared.validateLocalAPIHeaders(request, port: port) {
+        if let rejection = settings.validateLocalAPIHeaders(request, port: port) {
             connection.sendAndClose(LocalHTTPResponse.error(rejection))
             return
         }
@@ -913,7 +925,7 @@ public final class LocalAPIServer: ObservableObject {
 
         if Task.isCancelled { return nil }
 
-        await lease.setContextLengthChoice(AppSettings.shared.contextLength)
+        await lease.setContextLengthChoice(settings.contextLength)
         do {
             try await lease.loadForRequest(model: entry, at: fileURL) { @MainActor in
                 // Model selection commits on the main actor before this request releases its lease.
@@ -1026,7 +1038,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
         }
     }
 
-    func start(rejecting response: Data? = nil) {
+    func start(headerReadTimeoutSeconds: Double, rejecting response: Data? = nil) {
         connection.stateUpdateHandler = { @Sendable [weak self] state in
             guard let self else { return }
             switch state {
@@ -1041,7 +1053,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
             sendAndClose(response)
             return
         }
-        scheduleReadTimeout(seconds: 5, message: "Timed out waiting for HTTP headers.")
+        scheduleReadTimeout(seconds: headerReadTimeoutSeconds, message: "Timed out waiting for HTTP headers.")
         connection.start(queue: queue)
         receiveNext()
     }
