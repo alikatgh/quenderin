@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — macOS Local API
+
+- Limit connections awaiting header validation to eight of 16 total. When a spare slot is
+  available, excess clients can receive `503 connection_limit` with `Retry-After: 5`.
+- Store the optional Bearer key in the device-local macOS Keychain. Remove the legacy
+  preference after verifying the migration and keep enforcing the key if migration fails.
+
 ## Unreleased — Kromoss diffusion & Hex native speech integrations (2026-11-22)
 
 - **Native Kromoss image generation (`lodestones/Kromoss`, Apache-2.0):**
