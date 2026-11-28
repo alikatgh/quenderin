@@ -78,7 +78,7 @@ jobs:
           printf 'GRADLE_USER_HOME=%s/quenderin-gradle\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           python3 ../export-tools/scripts/android_beta_candidate.py preflight --source "$GITHUB_WORKSPACE/source"
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
