@@ -82,9 +82,14 @@ separates OS-only encryption from industry-standard algorithms implemented outsi
 the OS. For the latter it specifies a French declaration when distributing in
 France. Its separate proprietary-algorithm row additionally specifies CCATS;
 this annex does not infer that row merely from Noise or application wrappers.
-France is enabled according to the dated release record. No applicable exemption
-or existing filing reference has been established; open-source licensing alone
-is not proof of exemption. Use the exact artifact and territories in Apple's
+
+On 1 November 2026, App Store Connect showed France as
+“Processing to Not Available” after the exclusion was saved. Removal from the
+French storefront remains unverified. [Issue #217](https://github.com/alikatgh/quenderin/issues/217)
+
+No applicable exemption or existing filing reference has been established;
+open-source licensing alone is not proof of exemption. Use the exact artifact
+and territories in Apple's
 [assessment/document-upload workflow](https://developer.apple.com/help/app-store-connect/manage-app-information/determine-and-upload-app-encryption-documentation/).
 
 ANSSI's current [forms page](https://cyber.gouv.fr/reglementation/reglementation-identite-confiance-numerique/controles-reglementaires-cryptographie/controle-moyen-de-cryptologie/controle-reglementaire-cryptographie-formulaires/)
