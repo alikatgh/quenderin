@@ -39,6 +39,7 @@ The iOS/Android rebuild has its own docs under `apple/`:
 | [../apple/ROADMAP.md](../apple/ROADMAP.md) | Milestones M1–M4 and what's left |
 | [../apple/QuenderinKit/README.md](../apple/QuenderinKit/README.md) | The Swift package module catalog |
 | [../apple/QuenderinKit/INTEGRATION.md](../apple/QuenderinKit/INTEGRATION.md) | How to link llama.cpp on a device |
+| [ANDROID_PLAY_UPDATE_CHECKLIST.md](ANDROID_PLAY_UPDATE_CHECKLIST.md) | Android release bundle preparation and Play Console owner steps |
 | [max-mobile-integration.md](max-mobile-integration.md) | Mobile MAX/Bonsai status — portable adapter boundary, blocked vendor runtime, deferred phone validation |
 | [max-android-binding.md](max-android-binding.md) | Android JNI/Kotlin binding — unavailable without a runner, hosted synthetic fixture |
 | [max-apple-binding.md](max-apple-binding.md) | Apple C/Swift binding — byte-staged C target, hosted Swift fixture |

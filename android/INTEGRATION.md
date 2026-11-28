@@ -1,6 +1,6 @@
-# Android integration — native 0.5.0 model update
+# Android integration — native 0.6.3
 
-This is the Android twin of `apple/QuenderinKit/INTEGRATION.md`. The native 0.5.0
+This is the Android twin of `apple/QuenderinKit/INTEGRATION.md`. The native 0.6.3
 candidate uses the locked Prism runtime, verified Muse source patch and isolated
 image runtime. A stock llama.cpp checkout does not provide these capabilities.
 
@@ -13,13 +13,15 @@ these workflows; availability depends on each model's artifacts and device capac
 See `docs/bonsai-2.md` for exact sources and limits. Source integration and hosted
 compilation do not establish full-weight inference or image quality.
 
-The source declares `versionCode = 5`, `versionName = "0.5.0"`, and compile/target
-API 36. Build with AGP 8.10.1, Kotlin/Compose compiler 2.2.21, and the checked-in
-Gradle 8.11.1 wrapper. The SDK
-packages used by the build are `platforms;android-36`, `build-tools;35.0.0`,
-`ndk;26.3.11579264`, and `cmake;3.22.1`; Java source/bytecode targets remain 17.
+The source declares `versionCode = 8`, `versionName = "0.6.3"`, and compile/target
+API 36. The candidate workflow uses JDK 21, AGP 8.10.1, Kotlin/Compose compiler
+2.4.21, and the checked-in Gradle 8.11.1 wrapper. It installs `platform-tools`,
+`platforms;android-36`, `build-tools;35.0.0`, `ndk;26.3.11579264`, and
+`cmake;3.22.1`. Java source and bytecode targets remain 17.
 The wrapper verifies its distribution against Gradle's published SHA-256.
-Code 5 is provisional until the highest uploaded Play version code is refreshed.
+Use code 8 for a Play update only after confirming that it is unused and above
+the highest uploaded code across tracks. See the
+[Play update checklist](../docs/ANDROID_PLAY_UPDATE_CHECKLIST.md).
 
 ## Verification boundaries
 
@@ -33,10 +35,9 @@ Code 5 is provisional until the highest uploaded Play version code is refreshed.
 | Android 16 behavior and real inference | Device validation still required | No current physical-device evidence is implied by compilation or fixtures |
 
 The historical 2026-06-14 smoke test used NDK r26d and an arm64 emulator with an
-older runtime, reporting coherent output and about 102 tok/s. It does not verify
-0.4.0, 0.5.0, Bonsai, Muse, Android 16, or physical-phone performance. The legacy
-`verify-llama-link.sh` path is a device smoke-test helper, not the current source
-preparation or release-build procedure.
+older runtime, reporting coherent output and about 102 tok/s. Verification of the
+current candidate, Bonsai, Muse, Android 16, and physical-phone performance requires
+separate evidence. The legacy `verify-llama-link.sh` is for device smoke tests.
 
 The app **boots on `MockInferenceEngine`** when `jni/llama.cpp` is absent so onboarding → chat
 runs in Android Studio without NDK. `MainActivity` switches to real `LlamaEngine` automatically
@@ -67,29 +68,37 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
    files. It refuses to replace a mismatched existing checkout. Choose a separate
    destination if `android/jni/llama.cpp` already contains other work and pass that
    absolute path below. The example checkout is gitignored.
-2. Build the isolated image runtime in a **new absolute work directory**, using
-   the established NDK. Replace the example SDK/work paths with your own:
+2. Build the isolated image runtime and the verified Noise/JNA SDK in new
+   absolute work directories. Replace the example NDK and output paths with
+   your own paths.
    ```sh
+   export ANDROID_NDK_HOME="/absolute/path/to/Android/sdk/ndk/26.3.11579264"
    quenderin_diffusion_work="/absolute/new/android-diffusion"
-   ANDROID_NDK_HOME="/absolute/path/to/Android/sdk/ndk/26.3.11579264" \
-     bash scripts/build_android_diffusion.sh "$quenderin_diffusion_work"
+   quenderin_remote_sdk="/absolute/new/remote-android-sdk"
+   bash scripts/build_android_diffusion.sh "$quenderin_diffusion_work"
+   rustup toolchain install 1.90.0 --profile minimal
+   rustup target add --toolchain 1.90.0 aarch64-linux-android
+   python3 -B native/remote-crypto/tools/native_sdk.py build \
+     --platform android --sdk "$quenderin_remote_sdk"
    ```
-   The builder refuses an existing work path. It fetches pinned source, statically
-   links its private C++ runtime, strips and seals both image DSOs, and verifies
-   their identity, dependencies and 16 KiB alignment. It downloads no model weights.
-3. Build the app and run the JVM unit tests with both explicit runtime paths:
+   The image builder fetches pinned source, statically links its private C++
+   runtime, and verifies both sealed image DSOs. The SDK builder generates
+   Kotlin bindings, compiles arm64 API 28 Noise, and verifies the Android JNA AAR.
+3. Build the app with all three runtime paths and run the JVM unit tests.
    ```sh
    cd "$quenderin_root/android"
-   ./gradlew :app:assembleDebug :app:bundleRelease :quenderin-core:test \
+   ./gradlew :app:assembleDebug :app:bundleRelease \
      --no-daemon --console=plain \
      -Pquenderin.runtime=prism \
      -Pquenderin.llamaDir="$quenderin_root/android/jni/llama.cpp" \
-     -Pquenderin.diffusionLibDir="$quenderin_diffusion_work/jniLibs"
+     -Pquenderin.diffusionLibDir="$quenderin_diffusion_work/jniLibs" \
+     -Pquenderin.remoteCryptoDir="$quenderin_remote_sdk"
+   ./gradlew :quenderin-core:test --no-daemon --console=plain
    ```
    Gradle enables CMake/NDK automatically and builds arm64-v8a JNI plus the CPU
-   backend variants. CMake rejects missing or altered Prism/Muse provenance.
-   No model weights are downloaded by these build tasks.
-4. Verify the actual packaged libraries in **both** outputs:
+   backend variants. Prism release builds require both the verified image
+   runtime and Noise/JNA SDK. These build tasks require no model weights.
+4. Verify the actual packaged libraries in **both** outputs.
    ```sh
    cd "$quenderin_root"
    python3 scripts/verify_diffusion_android_package.py \
@@ -98,10 +107,14 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
    python3 scripts/verify_diffusion_android_package.py \
      --libraries "$quenderin_diffusion_work/jniLibs" \
      --package android/app/build/outputs/bundle/release/app-release.aab
+   python3 -B native/remote-crypto/tools/native_sdk.py verify-package \
+     --sdk "$quenderin_remote_sdk" --package android/app/build/outputs/apk/debug/app-debug.apk
+   python3 -B native/remote-crypto/tools/native_sdk.py verify-package \
+     --sdk "$quenderin_remote_sdk" --package android/app/build/outputs/bundle/release/app-release.aab
    ```
-   This verifies sealed image-library bytes, dependency closure and 16 KiB ELF
-   alignment after AGP packaging. Gradle also rejects a Prism release without the
-   verified image-runtime directory.
+   These commands check the packaged image and Noise/JNA bytes, image dependency
+   closure, ABI, and 16 KiB ELF alignment. The Noise/JNA verifier also checks ZIP
+   alignment for stored native libraries in the APK it receives.
 5. The bundle is `android/app/build/outputs/bundle/release/app-release.aab`. Without
    `android/keystore.properties` it is **unsigned**. Reuse the registered upload
    key for a signed Google Play update; do not create a replacement key as a
