@@ -210,7 +210,7 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 - **One request at a time:** The API shares the app's exclusive on-device engine lease
   with the Quenderin Chat window. If another chat turn or API call is in flight, a new
   request waits up to 30 seconds and then returns `503` (`server_busy`).
-- **Connection limits.** The listener tracks up to 16 connections, with at most eight waiting
+- **Connection limits:** The listener tracks up to 16 connections, with at most eight waiting
   for their headers to pass validation. Clients have five seconds to send headers and up to
   30 seconds to send the body after validation. When the header budget is full, the listener
   can use one spare connection slot to send `503` (`connection_limit`) with `Retry-After: 5`
@@ -281,7 +281,7 @@ curl http://127.0.0.1:11435/v1/chat/completions \
   set a key, every request must send `Authorization: Bearer <key>` (checked in constant
   time), else `401`. Header validation uses the current key even if the client opened
   the connection before a key change.
-- **Key storage.** The macOS app stores the Bearer key in the device-local Keychain.
+- **Key storage:** The macOS app stores the Bearer key in the device-local Keychain.
   Clearing the field removes the stored key. During migration, the app deletes the legacy
   preference after writing and reading back its key in Keychain. If migration fails, the app
   still enforces the legacy key for the session and retries migration at next launch. When the
