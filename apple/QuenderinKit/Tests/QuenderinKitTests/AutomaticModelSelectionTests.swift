@@ -190,6 +190,27 @@ final class AutomaticModelSelectionTests: XCTestCase {
         XCTAssertEqual(loads, [previous.id, target.id, previous.id])
         XCTAssertEqual(loaded, previous.id)
     }
+
+    func testRejectedExclusiveRequestLoadRestoresPreviousBeforeReleasingTheLease() async throws {
+        let dir = try directory(), previous = try model("previous", directory: dir), target = try model("target", directory: dir)
+        let raw = SelectionFixtureEngine(), engine = CoordinatedInferenceEngine(raw)
+        try await engine.load(model: previous, at: dir.appendingPathComponent(previous.filename))
+        let lease = try await engine.acquireExclusiveInferenceLease(timeoutSeconds: 0)
+        do {
+            try await lease.loadForRequest(model: target, at: dir.appendingPathComponent(target.filename)) {
+                let candidate = await raw.loadedModelID()
+                XCTAssertEqual(candidate, target.id)
+                return false
+            }
+            XCTFail("Expected the rejected request to throw CancellationError")
+        } catch is CancellationError { }
+        let loads = await raw.loads
+        let loaded = await lease.loadedModelID()
+        await lease.release()
+        XCTAssertEqual(loads, [previous.id, target.id, previous.id])
+        XCTAssertEqual(loaded, previous.id)
+    }
+
     func testManualChoiceInvalidatesInFlightAutomaticLoadAndWins() async throws {
         let dir = try directory(), previous = try model("previous", directory: dir), target = try model("target", directory: dir)
         let prefs = preferences(); prefs.enabled = true

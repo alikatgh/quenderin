@@ -200,7 +200,7 @@ public struct ExclusiveInferenceLease: Sendable {
     private let _loadedModelID: @Sendable () async -> String?
     private let _loadedExecutionProfile: @Sendable (String, [ChatMessage], GenerationOptions) async -> InferenceExecutionProfile?
     private let _load: @Sendable (ModelEntry, URL) async throws -> Void
-    private let _loadForRequest: @Sendable (ModelEntry, URL, @Sendable () async -> Bool) async throws -> Void
+    private let _loadForRequest: @Sendable (ModelEntry, URL, @escaping @Sendable () async -> Bool) async throws -> Void
     private let _setContextLengthChoice: @Sendable (ContextLengthChoice) async -> Void
     private let _chatPromptStartsInsideThinking: @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool
     private let _generateChat: @Sendable (String, [ChatMessage], GenerationOptions) async throws -> AsyncThrowingStream<String, Error>
@@ -218,7 +218,7 @@ public struct ExclusiveInferenceLease: Sendable {
         load: @escaping @Sendable (ModelEntry, URL) async throws -> Void = { _, _ in throw SpecialistCoordinationError.unavailable },
         setContextLengthChoice: @escaping @Sendable (ContextLengthChoice) async -> Void = { _ in },
         chatPromptStartsInsideThinking: @escaping @Sendable (String, [ChatMessage], GenerationOptions) async -> Bool = { _, _, _ in false },
-        loadForRequest: @escaping @Sendable (ModelEntry, URL, @Sendable () async -> Bool) async throws -> Void = {
+        loadForRequest: @escaping @Sendable (ModelEntry, URL, @escaping @Sendable () async -> Bool) async throws -> Void = {
             _, _, _ in throw SpecialistCoordinationError.unavailable
         }
     ) {
