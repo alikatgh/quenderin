@@ -1,4 +1,5 @@
 # Weekly version updates retain their existing grouping; major updates remain individual.
+# The React family group is the exception for major version updates.
 # Security updates use separate groups, including fixes that require a major version.
 # Alerts and security-update PR generation are enabled separately in repository settings.
 version: 2
@@ -11,6 +12,10 @@ updates:
       # prepare_prism_node_runtime.py enforces exact pinned node-llama-cpp 3.19.1.
       - dependency-name: "node-llama-cpp"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
@@ -26,7 +31,11 @@ updates:
       # @testing-library/jest-dom 8+ requires Vitest >=5, while /ui uses Vitest 4.x.
       - dependency-name: "@testing-library/jest-dom"
         versions: [">= 8.0.0"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
+      react-family:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
       minor-and-patch:
         update-types: ["minor", "patch"]
       security-updates:
@@ -38,6 +47,8 @@ updates:
     schedule:
       interval: weekly
     groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
       security-updates:
         applies-to: security-updates
         patterns: ["*"]
@@ -46,6 +57,11 @@ updates:
     directory: "/android"
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "com.android.application"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
