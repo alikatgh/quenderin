@@ -65,8 +65,7 @@ object ContextWindow {
      * - Manual (`K2`/`K4`/`K8`): ALWAYS checked against the estimated KV headroom:
      *   - If `estimatedKvGb(requested) <= headroomGb`, returns `requested`, with
      *     [ContextWarning.MORE_MEMORY] when `requested > autoTokens` or `null` otherwise.
-     *   - Otherwise clamps to the largest of `8192 / 4096 / 2048` that fits (never below `2048`;
-     *     if even `2048` does not fit, returns `2048`) with [ContextWarning.EXCEEDS_BUDGET].
+     *   - Otherwise clamps to a fitting tier down to 256 tokens. Zero means no tier fits.
      */
     fun resolve(
         choice: ContextLengthChoice,
@@ -82,17 +81,17 @@ object ContextWindow {
             val warning = if (requested > autoTokens) ContextWarning.MORE_MEMORY else null
             return ContextResolution(requested, warning)
         }
-        val clamped = MANUAL_TIERS_DESC.firstOrNull(::fits) ?: 2048
+        val clamped = SMALLER_TIERS_DESC.firstOrNull { it < requested && fits(it) } ?: 0
         return ContextResolution(clamped, ContextWarning.EXCEEDS_BUDGET)
     }
 
-    private val MANUAL_TIERS_DESC = intArrayOf(8192, 4096, 2048)
+    private val SMALLER_TIERS_DESC = intArrayOf(4096, 2048, 1024, 512, 256)
 
     /**
      * Engine load-time sizing: resolves [choice] via [resolve] and applies an optional model- or
      * specialist-specific context ceiling ([maxContextTokens]). For [ContextLengthChoice.AUTO],
      * produces the exact same token count as [recommend] clamped to [maxContextTokens].
-     * Twin of Swift `ContextWindow.resolveForLoad`.
+     * Returns zero when no manual window fits. Twin of Swift `ContextWindow.resolveForLoad`.
      */
     fun resolveForLoad(
         choice: ContextLengthChoice,
@@ -131,7 +130,7 @@ enum class ContextLengthChoice(val rawValue: String, val requestedTokens: Int?) 
 enum class ContextWarning {
     /** Requested length is above Auto but still fits the estimated KV headroom. */
     MORE_MEMORY,
-    /** Requested length exceeds estimated KV headroom and was clamped down to Auto. */
+    /** Requested length exceeds estimated KV headroom. */
     EXCEEDS_BUDGET,
 }
 
@@ -148,6 +147,8 @@ data class ContextResolution(
         get() = when (warning) {
             null -> null
             ContextWarning.MORE_MEMORY -> "Uses more memory. Long chats may be slower."
-            ContextWarning.EXCEEDS_BUDGET -> "Not enough memory on this device for this length; using $tokens tokens."
+            ContextWarning.EXCEEDS_BUDGET -> if (tokens == 0) {
+                "Not enough memory for a context window at this setting."
+            } else "Not enough memory on this device for this length; using $tokens tokens."
         }
 }

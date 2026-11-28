@@ -66,6 +66,22 @@ struct GenerationCancelLedger: Sendable, Equatable {
 /// > Important: targets the llama.cpp C API circa late-2024/2025. Pin a commit and adjust
 /// > signatures if the API has drifted.
 public actor LlamaEngine: InferenceEngine {
+    /// Keep at least three quarters of small contexts available for the prompt.
+    /// Mirrors the native Android prompt clamp.
+    static func promptTokenLimit(contextTokens: Int, maxTokens: Int) -> Int {
+        let reserve = min(contextTokens / 4, max(256, maxTokens))
+        return contextTokens - reserve
+    }
+
+    static func promptTokens(_ tokens: [Int32], limit: Int, requiresFullPrompt: Bool) throws -> [Int32] {
+        guard tokens.count > limit else { return tokens }
+        if requiresFullPrompt {
+            throw InferenceError.generationFailed(reason: "The full prompt exceeds the available context.")
+        }
+        let head = limit / 2
+        return Array(tokens.prefix(head)) + Array(tokens.suffix(limit - head))
+    }
+
 
     /// Perf line per generation (prefill / decode / worst inter-token gap) — docs/INFERENCE_SLO.md.
     /// Read it with `log stream --predicate 'subsystem == "org.quenderin" && category == "inference"'`.
@@ -98,14 +114,15 @@ public actor LlamaEngine: InferenceEngine {
     }
     private let capState = OSAllocatedUnfairLock(initialState: CapSnapshot())
 
-    /// The honest reasons the pinned loop can distinguish. EOG and context exhaustion are both
-    /// non-budget completions (NOT_HIT); cancellation/unavailability are UNKNOWN.
-    enum CapReason: Sendable { case budget, eog, contextExhausted, cancelled, unavailable }
+    /// The termination reasons the pinned loop can distinguish.
+    enum CapReason: Sendable { case budget, eog, contextExhausted, decodeFailed, cancelled, unavailable }
 
     static func capStatus(for reason: CapReason) -> ChatCapStatus {
         switch reason {
         case .budget: return .hit
-        case .eog, .contextExhausted: return .notHit
+        case .eog: return .notHit
+        case .contextExhausted: return .contextExhausted
+        case .decodeFailed: return .decodeFailed
         case .cancelled, .unavailable: return .unknown
         }
     }
@@ -212,7 +229,42 @@ public actor LlamaEngine: InferenceEngine {
     }
     #endif
 
+    nonisolated private func plannedContextTokens(
+        for entry: ModelEntry,
+        specialist: Bool,
+        contextLengthChoice: ContextLengthChoice,
+        cacheType: KVCacheType
+    ) -> Int {
+        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
+        var contextCap: Int? = nil
+        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
+        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
+        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
+        return ContextWindow.resolveForLoad(
+            choice: effectiveChoice,
+            appBudgetGB: deviceBudgetGB,
+            modelWeightsGB: entry.ramGB,
+            kvCacheType: cacheType,
+            maxContextTokens: contextCap
+        )
+    }
+
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
+        try await load(model: entry, at: fileURL, cancellation: nil)
+    }
+
+    public func loadCancellable(model entry: ModelEntry, at fileURL: URL) async throws {
+        let cancelled = OSAllocatedUnfairLock(initialState: false)
+        try await withTaskCancellationHandler {
+            try await load(model: entry, at: fileURL, cancellation: { cancelled.withLock { $0 } })
+        } onCancel: {
+            cancelled.withLock { $0 = true }
+        }
+    }
+
+    private func load(model entry: ModelEntry, at fileURL: URL, cancellation: (@Sendable () -> Bool)?) async throws {
+        if cancellation?() == true { throw CancellationError() }
         resetCapStatus()
         // Before file IO, cancellation, or releasing the current working model.
         guard ModelRuntimeSupport.supports(entry) else {
@@ -233,6 +285,12 @@ public actor LlamaEngine: InferenceEngine {
         #endif
         // llama.cpp loads a split model through its first shard; verify every sibling first.
         try await ModelArtifactSet.inBackground { try InferencePerformanceIdentity.verifyInstalled(entry, firstFile: fileURL) }
+        if cancellation?() == true { throw CancellationError() }
+        let ctxChoice = preferredContextLength
+        let plannedKV = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        guard plannedContextTokens(for: entry, specialist: false, contextLengthChoice: ctxChoice, cacheType: plannedKV) > 0 else {
+            throw InferenceError.loadFailed(reason: "Not enough memory for a context window at this setting.")
+        }
         #if canImport(llama)
         cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
         loadedPerformance = nil
@@ -245,8 +303,7 @@ public actor LlamaEngine: InferenceEngine {
             }
         }
         let loadStarted = ContinuousClock.now
-        let ctxChoice = preferredContextLength
-        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path, contextLengthChoice: ctxChoice)
+        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path, contextLengthChoice: ctxChoice, cancellation: cancellation)
         loaded = entry.id
         if let artifact = InferencePerformanceIdentity.verifiedArtifact(entry, firstFile: fileURL) {
             loadedPerformance = (entry, artifact, Self.ms(ContinuousClock.now - loadStarted), loadedEnvironmentID)
@@ -486,6 +543,13 @@ public actor LlamaEngine: InferenceEngine {
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
+        // Size the context before freeing the previous model or allocating weights.
+        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        var nctx = plannedContextTokens(for: entry, specialist: specialist, contextLengthChoice: contextLengthChoice, cacheType: kvCacheType)
+        guard nctx > 0 else {
+            throw InferenceError.loadFailed(reason: "Not enough memory for a context window at this setting.")
+        }
+
         if let c = context { llama_free(c) }
         contextCancellation?.release(); contextCancellation = nil
         if let m = model { llama_model_free(m) }
@@ -556,11 +620,16 @@ public actor LlamaEngine: InferenceEngine {
         #endif
 
         guard let m = llama_model_load_from_file(path, modelParams) else {
+            if cancellation?() == true { throw CancellationError() }
             throw InferenceError.loadFailed(reason: "llama_model_load_from_file returned null for \(entry.filename)")
+        }
+        if cancellation?() == true {
+            llama_model_free(m)
+            throw CancellationError()
         }
 
         var ctxParams = llama_context_default_params()
-        if let box = loadCancellation {
+        if specialist, let box = loadCancellation {
             ctxParams.abort_callback = { data in
                 guard let data else { return true }
                 return Unmanaged<NativeLoadCancellation>.fromOpaque(data).takeUnretainedValue().cancelled()
@@ -574,24 +643,6 @@ public actor LlamaEngine: InferenceEngine {
         // llama.cpp — pin the behavior instead of trusting a default that has changed before.
         // (LlamaFlashAttentionTests pins the enum contract against framework bumps.)
         ctxParams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO
-        // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
-        // per-token memory, near-lossless), which the cache-aware n_ctx then turns into ~2× context.
-        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
-        // n_ctx from the real app-memory budget, this model's footprint, the cache dtype, and the
-        // user's context-length preference (`.auto` produces exact `recommend(...)` behaviour).
-        let effectiveChoice: ContextLengthChoice = specialist ? .auto : contextLengthChoice
-        var contextCap: Int? = nil
-        if ModelRuntimeSupport.isBonsai(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.bonsaiMaxContextTokens) }
-        if ModelRuntimeSupport.isMuse(entry) { contextCap = min(contextCap ?? Int.max, ModelRuntimeSupport.museMaxContextTokens) }
-        if ModelRuntimeSupport.isBeam(entry) { contextCap = min(contextCap ?? Int.max, 4096) }
-        if specialist { contextCap = min(contextCap ?? Int.max, 4096) }
-        var nctx = ContextWindow.resolveForLoad(
-            choice: effectiveChoice,
-            appBudgetGB: deviceBudgetGB,
-            modelWeightsGB: entry.ramGB,
-            kvCacheType: kvCacheType,
-            maxContextTokens: contextCap
-        )
         ctxParams.n_ctx = UInt32(nctx)
         // Bound the logical and physical prefill batches, as on Android. Native calls
         // can then return to the Stop check every 512 tokens, instead of 2048.
@@ -618,7 +669,7 @@ public actor LlamaEngine: InferenceEngine {
         ctxParams.n_threads_batch = threads
 
         var ctxOrNil = llama_init_from_model(m, ctxParams)
-        if ctxOrNil == nil && kvCacheType == .q8_0 {
+        if ctxOrNil == nil && kvCacheType == .q8_0 && cancellation?() != true {
             // A quantized V-cache needs Flash Attention; on a model where AUTO resolved to
             // disabled, init fails. Retry with f16 KV (more memory, always valid) rather than
             // failing the whole load on exactly the memory-tight devices that picked q8_0.
@@ -628,13 +679,11 @@ public actor LlamaEngine: InferenceEngine {
             // nativeLoadedNCtx).
             ctxParams.type_k = GGML_TYPE_F16
             ctxParams.type_v = GGML_TYPE_F16
-            nctx = ContextWindow.resolveForLoad(
-                choice: effectiveChoice,
-                appBudgetGB: deviceBudgetGB,
-                modelWeightsGB: entry.ramGB,
-                kvCacheType: .f16,
-                maxContextTokens: contextCap
-            )
+            nctx = plannedContextTokens(for: entry, specialist: specialist, contextLengthChoice: contextLengthChoice, cacheType: .f16)
+            guard nctx > 0 else {
+                llama_model_free(m)
+                throw InferenceError.loadFailed(reason: "Not enough memory for an f16 context window at this setting.")
+            }
             ctxParams.n_ctx = UInt32(nctx)
             ctxParams.n_batch = min(ctxParams.n_batch, UInt32(nctx))
             ctxParams.n_ubatch = ctxParams.n_batch
@@ -642,19 +691,26 @@ public actor LlamaEngine: InferenceEngine {
         }
         guard let ctx = ctxOrNil else {
             llama_model_free(m)
+            if cancellation?() == true { throw CancellationError() }
             throw InferenceError.loadFailed(reason: "llama_init_from_model returned null")
         }
 
+        let newVocab = llama_model_get_vocab(m)
+        if !specialist && cancellation?() != true { warmUpLocked(context: ctx, vocab: newVocab) }
+        if cancellation?() == true {
+            llama_free(ctx)
+            llama_model_free(m)
+            throw CancellationError()
+        }
         loadedEnvironmentID = InferencePerformanceIdentity.environment(context: nctx,
             cacheType: ctxParams.type_k == GGML_TYPE_Q8_0 ? "q8_0" : "f16", threads: baseThreads,
             gpuLayers: modelParams.n_gpu_layers, cpuExperts: !specialist && isMoE && plan.experts == .cpu,
             batch: Int(ctxParams.n_batch))
         model = m
         context = ctx
-        if let box = loadCancellation { contextCancellation = box.retain() }
-        vocab = llama_model_get_vocab(m)
+        if specialist, let box = loadCancellation { contextCancellation = box.retain() }
+        vocab = newVocab
         cachedTokens = []   // fresh context ⇒ empty KV cache
-        if !specialist { warmUpLocked(context: ctx, vocab: llama_model_get_vocab(m)) }
         return nctx
     }
 
@@ -735,8 +791,7 @@ public actor LlamaEngine: InferenceEngine {
         // user's actual question (the prompt ends with it); the dropped middle is what a context
         // this size could never hold anyway. Reserve headroom so the reply has room to decode.
         let nCtx = Int(llama_n_ctx(context))
-        let reserve = max(256, min(options.maxTokens, nCtx / 4))
-        let promptLimit = max(16, nCtx - reserve)
+        let promptLimit = Self.promptTokenLimit(contextTokens: nCtx, maxTokens: options.maxTokens)
         let newTokens: [llama_token]
         if hy && rawTokens.count + options.maxTokens > nCtx {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "Selected conversation exceeds the specialist context budget."))
@@ -746,11 +801,11 @@ public actor LlamaEngine: InferenceEngine {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "Beam conversation exceeds the available context; start a shorter chat."))
             return
         }
-        if rawTokens.count > promptLimit {
-            let head = promptLimit / 2
-            newTokens = Array(rawTokens.prefix(head)) + Array(rawTokens.suffix(promptLimit - head))
-        } else {
-            newTokens = rawTokens
+        do {
+            newTokens = try Self.promptTokens(rawTokens, limit: promptLimit, requiresFullPrompt: options.requiresFullPrompt)
+        } catch {
+            continuation.finish(throwing: error)
+            return
         }
 
         // 2) Sampler chain from the request options (penalties → top-p → temperature → dist).
@@ -1000,7 +1055,7 @@ public actor LlamaEngine: InferenceEngine {
         let capReason: CapReason
         if hy { capReason = .unavailable }
         else if cancelled() { capReason = .cancelled }
-        else if fatalDecode { capReason = .unavailable }
+        else if fatalDecode { capReason = .decodeFailed }
         else if let endedByCapReason { capReason = endedByCapReason }
         else { capReason = produced >= options.maxTokens ? .budget : .eog }
         capState.withLock {

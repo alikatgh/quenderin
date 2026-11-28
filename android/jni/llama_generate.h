@@ -152,11 +152,15 @@ inline PromptBatchResult decodeChunked(llama_context* ctx, const std::vector<lla
 // (the prompt ends with it); the dropped middle is what a window this size could never hold anyway.
 // A prompt longer than n_ctx would otherwise return rc=1 from every prefill (a hard "failed" reply),
 // or on older pins abort. Twin of LlamaEngine.swift's promptLimit clamp (App Review crash, 0.2.0(4)).
+inline int promptTokenLimit(int nCtx, int maxTokens) {
+    // Keep at least three quarters of small contexts available for the prompt.
+    const int reserve = std::min(nCtx / 4, std::max(256, maxTokens));
+    return nCtx - reserve;
+}
+
 inline std::vector<llama_token> clampToContext(const std::vector<llama_token>& raw, llama_context* ctx,
                                                int maxTokens) {
-    const int nCtx = (int) llama_n_ctx(ctx);
-    const int reserve = std::max(256, std::min(maxTokens, nCtx / 4));
-    const int limit = std::max(16, nCtx - reserve);
+    const int limit = promptTokenLimit((int) llama_n_ctx(ctx), maxTokens);
     if ((int) raw.size() <= limit) return raw;
     const int head = limit / 2;
     std::vector<llama_token> out(raw.begin(), raw.begin() + head);
@@ -236,13 +240,18 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
                                 bool* failed = nullptr,
                                 ThermalPoll thermalPoll = []() -> int { return 0; },
                                 bool* hitTokenCap = nullptr,
-                                GenerationPerformance* performance = nullptr) {
+                                GenerationPerformance* performance = nullptr,
+                                bool requiresFullPrompt = false) {
     std::string out;
     if (performance) *performance = GenerationPerformance{};
     if (failed) *failed = false;
     if (hitTokenCap) *hitTokenCap = false;
     if (rawTokens.empty()) return out;
     // Clamp BEFORE planning reuse so the mirror always describes what the KV actually holds.
+    if (requiresFullPrompt && rawTokens.size() > (size_t)promptTokenLimit((int)llama_n_ctx(ctx), maxTokens)) {
+        if (failed) *failed = true;
+        return out;
+    }
     const std::vector<llama_token> newTokens = clampToContext(rawTokens, ctx, maxTokens);
 
     const bool promptClamped = newTokens.size() != rawTokens.size();

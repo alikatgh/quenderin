@@ -165,7 +165,8 @@ final class ChatCapStatusTests: XCTestCase {
     func testNativeMappingDistinguishesBudgetFromEogContextAndUnknown() {
         XCTAssertEqual(LlamaEngine.capStatus(for: .budget), .hit)
         XCTAssertEqual(LlamaEngine.capStatus(for: .eog), .notHit)
-        XCTAssertEqual(LlamaEngine.capStatus(for: .contextExhausted), .notHit)
+        XCTAssertEqual(LlamaEngine.capStatus(for: .contextExhausted), .contextExhausted)
+        XCTAssertEqual(LlamaEngine.capStatus(for: .decodeFailed), .decodeFailed)
         XCTAssertEqual(LlamaEngine.capStatus(for: .cancelled), .unknown)
         XCTAssertEqual(LlamaEngine.capStatus(for: .unavailable), .unknown)
     }

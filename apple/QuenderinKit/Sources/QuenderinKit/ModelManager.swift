@@ -108,6 +108,13 @@ public final class FileManagerModelStorage: ModelStorage {
         }.map { $0.appendingPathComponent(model.filename) }
     }
 
+    /// Finds an on-disk candidate without requiring a process-local hash receipt.
+    func candidateFile(for model: ModelEntry) -> URL? {
+        if ModelArtifactSet.isMultipart(model) { return candidateFirstFiles(for: model).first }
+        return allDirs.lazy.map { $0.appendingPathComponent(model.filename) }
+            .first { ModelArtifactReceipts.Identity.read($0) != nil }
+    }
+
     /// Resolve a filename to the first existing URL across primary + legacy dirs (load path).
     public func url(for filename: String) -> URL? {
         for dir in allDirs {

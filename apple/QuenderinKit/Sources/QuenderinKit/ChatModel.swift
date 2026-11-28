@@ -26,6 +26,7 @@ public struct ChatMessage: Sendable, Identifiable, Equatable {
     /// Optional reasoning chain extracted from `<think>…</think>` when Thinking is set to `.show`.
     /// Nil for user messages, `.off`, `.hide`, and older saved transcripts.
     public var thinking: String?
+    var thinkingReviewed = false
 
     public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = [], thinking: String? = nil) {
         self.id = id
@@ -401,6 +402,39 @@ public final class ChatModel: ObservableObject {
         resolvedOptions.collectPerformance = true
         let systemPrompt = finalRequest.system
         let windowed = finalRequest.history
+        let activeThinkingMode = resolvedOptions.thinkingMode
+        var splitter: ThinkingSplitter?
+        if activeThinkingMode.allowsThinking {
+            let startsInsideThinking = await engine.chatPromptStartsInsideThinking(
+                system: systemPrompt, history: windowed, options: resolvedOptions
+            )
+            splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
+        }
+        guard preparation.isCurrent(), !Task.isCancelled else { return }
+        let stream: AsyncThrowingStream<String, Error>
+        do {
+            // Starting the stream is the coordinator's atomic admission point.
+            stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
+        } catch SpecialistCoordinationError.busy {
+            guard preparation.isCurrent(), !Task.isCancelled else { return }
+            preparationError = "The local model is busy. Your message and attachments are kept. Try again shortly."
+            return
+        } catch {
+            guard preparation.isCurrent(), !Task.isCancelled, !(error is CancellationError) else { return }
+            preparationError = "Your message and attachments are kept. " + OnboardingModel.describe(error)
+            return
+        }
+        guard preparation.isCurrent(), !Task.isCancelled else {
+            engine.requestCancel()
+            let abandon = Task {
+                do {
+                    for try await _ in stream { break }
+                } catch {}
+            }
+            abandon.cancel()
+            await abandon.value
+            return
+        }
         lastHitTokenCap = false
         hasOrdinaryInference = true
         didAcceptModel?(selectedModel, automaticSelected)
@@ -414,8 +448,6 @@ public final class ChatModel: ObservableObject {
         var tokenCount = 0
         var hitDegeneration = false
         var heldByShape = false
-        let activeThinkingMode = resolvedOptions.thinkingMode
-        var splitter: ThinkingSplitter? = nil
         var thinkingBuffer = ""
         func flushSplitterTail() {
             guard !heldByShape, var activeSplitter = splitter else { return }
@@ -423,7 +455,18 @@ public final class ChatModel: ObservableObject {
             splitter = activeSplitter
             if !tail.thinking.isEmpty { thinkingBuffer += tail.thinking }
             if !tail.answer.isEmpty { assistant.text += tail.answer }
-            assistant.thinking = (activeThinkingMode == .show && !thinkingBuffer.isEmpty) ? thinkingBuffer : nil
+        }
+        func settleReply() async -> Bool {
+            guard !heldByShape else { return true }
+            flushSplitterTail()
+            let text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+            let thinking = activeThinkingMode == .show && !thinkingBuffer.isEmpty ? thinkingBuffer : nil
+            let checked = await OutputCheck.finishChatReply(text, thinking: thinking)
+            guard inFlightAssistantID == assistantID else { return true }
+            assistant.text = checked.verdict.text
+            assistant.thinking = checked.thinking
+            assistant.thinkingReviewed = checked.thinking != nil
+            return checked.verdict.held
         }
         // Pace transcript writes to display frames (~30 Hz): every write is a full list diff plus a
         // Markdown re-parse of the reply, and at 80 tok/s that — not the engine — is the stall users
@@ -437,24 +480,6 @@ public final class ChatModel: ObservableObject {
             }
         }
         do {
-            if activeThinkingMode.allowsThinking {
-                let startsInsideThinking = await engine.chatPromptStartsInsideThinking(
-                    system: systemPrompt,
-                    history: windowed,
-                    options: resolvedOptions
-                )
-                guard inFlightAssistantID == assistantID else { return }
-                if stopRequested {
-                    inFlightAssistantID = nil
-                    return
-                }
-                if Task.isCancelled {
-                    discardCancelledAssistant()
-                    return
-                }
-                splitter = ThinkingSplitter(startsInsideThinking: startsInsideThinking)
-            }
-            let stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
             for try await token in stream {
                 // Dropping the iterator on break terminates the stream (the engine's
                 // onTermination stops decoding), so Stop also stops the compute.
@@ -475,7 +500,6 @@ public final class ChatModel: ObservableObject {
                     splitter = activeSplitter
                     if !delta.thinking.isEmpty { thinkingBuffer += delta.thinking }
                     if !delta.answer.isEmpty { assistant.text += delta.answer }
-                    assistant.thinking = (activeThinkingMode == .show && !thinkingBuffer.isEmpty) ? thinkingBuffer : nil
                 } else {
                     assistant.text += token
                 }
@@ -506,11 +530,8 @@ public final class ChatModel: ObservableObject {
             if stopRequested {
                 // Explicit Stop: the accepted pre-Stop text is the answer, even when the engine
                 // reports cancellation by throwing. Collapse and write it; no warning/notice/cap.
-                flushSplitterTail()
-                assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
-                if !assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
-                }
+                _ = await settleReply()
+                guard inFlightAssistantID == assistantID else { return }
                 if let i = messages.firstIndex(where: { $0.id == assistantID }),
                    messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                     messages[i] = assistant
@@ -554,14 +575,17 @@ public final class ChatModel: ObservableObject {
         }
         // Settle: flush any held-back thinking/tag suffix, collapse exact-duplicate paragraph runs,
         // and never leave a silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
-        flushSplitterTail()
-        assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
-        if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if !stopRequested && (assistant.thinking?.isEmpty ?? true) { assistant.text = ChatUserFacing.emptyReply() }
-        } else {
-            assistant.text = await OutputCheck.finishLive(assistant.text, kind: .reply).text
+        let held = await settleReply()
+        guard inFlightAssistantID == assistantID else { return }
+        if Task.isCancelled, !stopRequested {
+            discardCancelledAssistant()
+            return
         }
-        lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration
+        if !stopRequested, assistant.thinking == nil,
+           assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            assistant.text = ChatUserFacing.emptyReply()
+        }
+        lastHitTokenCap = capStatus == .hit && !stopRequested && !hitDegeneration && !held
         if let i = messages.firstIndex(where: { $0.id == assistantID }) {
             if messages[i].text != assistant.text || messages[i].thinking != assistant.thinking {
                 messages[i] = assistant
@@ -605,7 +629,7 @@ public final class ChatModel: ObservableObject {
         preparationError = nil; automaticSelectionStatus = nil
         // Q-322: cancel any in-flight decode BEFORE wiping its target array — otherwise the streaming
         // loop keeps appending tokens into a transcript that's just been replaced (cross-chat bleed).
-        if !messages.isEmpty { engine.requestCancel() }
+        if isGenerating { engine.requestCancel() }
         lastHitTokenCap = false
         inFlightAssistantID = nil
         messages.removeAll()

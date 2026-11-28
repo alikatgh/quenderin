@@ -217,6 +217,9 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
             },
             chatPromptStartsInsideThinking: { [self] system, history, options in
                 await self.exclusiveChatPromptStartsInsideThinking(owner: ownerID, system: system, history: history, options: options)
+            },
+            loadForRequest: { [self] model, fileURL, accept in
+                try await self.exclusiveLoad(owner: ownerID, model: model, at: fileURL, accept: accept)
             }
         )
     }
@@ -242,27 +245,46 @@ public actor CoordinatedInferenceEngine: InferenceEngine {
         guard exclusiveOwner == owner, held == nil else { return false }
         return await underlying.chatPromptStartsInsideThinking(system: system, history: history, options: options)
     }
-    private func exclusiveLoad(owner: UUID, model: ModelEntry, at fileURL: URL) async throws {
+    private func exclusiveLoad(owner: UUID, model: ModelEntry, at fileURL: URL,
+                               accept: (@Sendable () async -> Bool)? = nil) async throws {
         guard exclusiveOwner == owner, held == nil, !automaticSwitching else {
             throw SpecialistCoordinationError.busy
         }
         invalidateCapStatus()
         starts += 1; defer { end() }
         let previous = selected
+        let previousLoadedID = accept != nil ? await underlying.loadedModelID() : nil
         do {
-            try await underlying.load(model: model, at: fileURL)
+            if let accept {
+                try await underlying.loadCancellable(model: model, at: fileURL)
+                guard await underlying.loadedModelID() == model.id else { throw InferenceError.modelNotLoaded }
+                guard await accept() else { throw CancellationError() }
+            } else {
+                try await underlying.load(model: model, at: fileURL)
+            }
             selected = (model, fileURL)
         } catch {
-            if await underlying.loadedModelID() == nil, let previous, previous.model.id != model.id {
-                do {
-                    try await ModelArtifactSet.inBackground {
-                        try InferencePerformanceIdentity.verifyInstalled(previous.model, firstFile: previous.file)
+            let loadedID = await underlying.loadedModelID()
+            let shouldRestore = if accept != nil {
+                loadedID != previousLoadedID
+            } else {
+                loadedID == nil && (previous.map { $0.model.id != model.id } ?? false)
+            }
+            if shouldRestore {
+                // Rollback has to run even when the request task is already cancelled.
+                await Task { [self] in
+                    if let previous, accept == nil || previous.model.id == previousLoadedID {
+                        do {
+                            try await ModelArtifactSet.inBackground {
+                                try InferencePerformanceIdentity.verifyInstalled(previous.model, firstFile: previous.file)
+                            }
+                            try await underlying.load(model: previous.model, at: previous.file)
+                            selected = previous
+                            return
+                        } catch { /* The previous model is no longer loadable. */ }
                     }
-                    try await underlying.load(model: previous.model, at: previous.file)
-                    selected = previous
-                } catch {
                     await underlying.unload(); selected = nil
-                }
+                }.value
             }
             throw error
         }

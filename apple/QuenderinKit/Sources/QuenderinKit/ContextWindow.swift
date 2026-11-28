@@ -58,8 +58,7 @@ public enum ContextWindow {
     /// - Manual (`k2`/`k4`/`k8`): ALWAYS checked against the estimated KV headroom:
     ///   - If `estimatedKVGB(requested) <= headroomGB`: returns `requested`, with `.moreMemory`
     ///     when `requested > autoTokens` or `nil` when `requested <= autoTokens`.
-    ///   - Otherwise clamps to the largest of `8192 / 4096 / 2048` that fits (never below `2048`;
-    ///     if even `2048` does not fit, returns `2048`) with `.exceedsBudget`.
+    ///   - Otherwise clamps to a fitting tier down to 256 tokens. Zero means no tier fits.
     public static func resolve(
         choice: ContextLengthChoice,
         appBudgetGB: Double,
@@ -82,14 +81,14 @@ public enum ContextWindow {
             let warning: ContextWarning? = requested > autoTokens ? .moreMemory : nil
             return ContextResolution(tokens: requested, warning: warning)
         }
-        let clamped = [8192, 4096, 2048].first(where: fits) ?? 2048
+        let clamped = [4096, 2048, 1024, 512, 256].first(where: { $0 < requested && fits($0) }) ?? 0
         return ContextResolution(tokens: clamped, warning: .exceedsBudget)
     }
 
     /// Engine load-time sizing: resolves `choice` via `resolve(...)` and applies an optional
     /// model- or specialist-specific context ceiling (`maxContextTokens`). For `.auto`, produces
     /// the exact same token count as `recommend(...)` clamped to `maxContextTokens`.
-    /// Twin of Android `ContextWindow.resolveForLoad`.
+    /// Returns zero when no manual window fits. Twin of Android `ContextWindow.resolveForLoad`.
     public static func resolveForLoad(
         choice: ContextLengthChoice,
         appBudgetGB: Double,
@@ -136,7 +135,7 @@ public enum ContextLengthChoice: String, Sendable, Equatable, Codable, CaseItera
 public enum ContextWarning: String, Sendable, Equatable, Codable {
     /// Requested length is above Auto but still fits the estimated KV headroom.
     case moreMemory
-    /// Requested length exceeds estimated KV headroom and was clamped down to Auto.
+    /// Requested length exceeds estimated KV headroom.
     case exceedsBudget
 }
 
@@ -159,6 +158,7 @@ public struct ContextResolution: Sendable, Equatable {
         case .moreMemory:
             return "Uses more memory. Long chats may be slower."
         case .exceedsBudget:
+            if tokens == 0 { return "Not enough memory for a context window at this setting." }
             return "Not enough memory on this device for this length; using \(tokens) tokens."
         }
     }

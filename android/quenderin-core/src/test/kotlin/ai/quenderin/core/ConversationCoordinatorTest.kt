@@ -71,6 +71,32 @@ class ConversationCoordinatorTest {
         assertEquals(listOf("fresh question", "partial tail"), f.texts())
     }
 
+    @Test fun backOrNewAfterAdmissionDoesNotRestoreTheAcceptedDraft() {
+        for (startNew in listOf(false, true)) {
+            val f = Fixture()
+            val id = checkNotNull(f.coordinator.currentId)
+            val sent = AttachedDocument("sent.txt", "sent")
+            val later = AttachedDocument("later.txt", "later")
+            f.coordinator.saveDraft(id, "question", listOf(sent))
+            val composerAtSend = f.coordinator.draft(id)
+            f.coordinator.appendDraftDocument(id, later)
+            f.engine.onStream = {
+                // The worker has admitted the draft. Compose has yet to refresh the displayed
+                // "question" and sent attachment when the user navigates away.
+                if (startNew) f.coordinator.startNew() else {
+                    f.chat.invalidatePreparedTurns()
+                    f.coordinator.persist()
+                }
+            }
+            f.chat.send(composerAtSend.text, composerAtSend.documents, onAdmitted = {
+                f.coordinator.consumeDraft(id, composerAtSend.documents)
+            })
+            f.coordinator.open(id)
+            assertEquals(listOf("question"), f.texts())
+            assertEquals(ConversationDraft(documents = listOf(later)), f.coordinator.draft(id))
+        }
+    }
+
     @Test fun backMidstreamCannotPersistPartialAfterCompletionOrReopen() {
         val f = Fixture()
         val id = checkNotNull(f.coordinator.currentId)

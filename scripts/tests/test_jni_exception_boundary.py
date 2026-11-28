@@ -9,9 +9,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def source_wrapper(name):
+def source_function(signature):
     text = (ROOT / 'android/jni/llama_jni.cpp').read_text()
-    start = text.index('JNIEXPORT jstring JNICALL\nJava_ai_quenderin_core_LlamaEngine_' + name)
+    start = text.index(signature + '(')
     brace = text.index('{', start)
     depth = 1
     end = brace + 1
@@ -19,6 +19,14 @@ def source_wrapper(name):
         depth += (text[end] == '{') - (text[end] == '}')
         end += 1
     return text[start:end]
+
+
+def source_wrapper(name):
+    return source_function('JNIEXPORT jstring JNICALL\nJava_ai_quenderin_core_LlamaEngine_' + name)
+
+
+def source_chat_helper():
+    return source_function('static jstring completeChatStreaming')
 
 
 class JNIExceptionBoundaryTests(unittest.TestCase):
@@ -79,10 +87,20 @@ int main() {
             subprocess.run([str(executable)], check=True, capture_output=True, timeout=10)
 
     def test_other_completion_wrappers_guard_callback_exceptions_before_result_conversion(self):
-        for name in ('nativeComplete', 'nativeCompleteStreaming', 'nativeCompleteChatStreaming', 'nativeCompleteWithGrammar'):
+        functions = {name: source_wrapper(name) for name in (
+            'nativeComplete', 'nativeCompleteStreaming',
+        )}
+        for name in ('nativeCompleteChatStreaming', 'nativeCompleteChatWithGrammar'):
+            self.assertIn('completeChatStreaming(env,', source_wrapper(name))
+        functions['completeChatStreaming'] = source_chat_helper()
+        for name, require_full_prompt in [('nativeCompleteWithGrammar', 'false'), ('nativeCompleteWithFullPromptGrammar', 'true')]:
+            wrapper = source_wrapper(name)
+            self.assertIn('return completeWithGrammar(env,', wrapper)
+            self.assertIn(f'repeat_last_n, {require_full_prompt});', wrapper)
+        functions['completeWithGrammar'] = source_function('static jstring completeWithGrammar')
+        for name, body in functions.items():
             with self.subTest(name=name):
-                wrapper = source_wrapper(name)
-                tail = wrapper[wrapper.index('std::string out = generate('):]
+                tail = body[body.index('std::string out = generate('):]
                 self.assertLess(tail.index('if (env->ExceptionCheck()) return nullptr;'), tail.index('if (failed)'))
                 self.assertLess(tail.index('if (env->ExceptionCheck()) return nullptr;'), tail.index('return make_jstring'))
 

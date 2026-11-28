@@ -219,10 +219,12 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
+        let settings = AppSettings.shared
         let conn = LocalAPIConnection(
             connection: nwConnection,
             queue: queue,
-            writeTimeoutSeconds: Self.writeTimeoutSeconds
+            writeTimeoutSeconds: Self.writeTimeoutSeconds,
+            validateHeaders: { settings.validateLocalAPIHeaders($0, port: port) }
         )
         let id = ObjectIdentifier(conn)
         connections[id] = conn
@@ -258,15 +260,14 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        let requiredKey = AppSettings.shared.localAPIKey
-        if let rejection = LocalAPIGuard.check(request, port: port, requiredAPIKey: requiredKey.isEmpty ? nil : requiredKey) {
+        if let rejection = AppSettings.shared.validateLocalAPIHeaders(request, port: port) {
             connection.sendAndClose(LocalHTTPResponse.error(rejection))
             return
         }
 
         switch (request.method, request.path) {
         case ("GET", "/v1/models"):
-            let models = await availableModels()
+            let models = availableModels(activeID: await currentActiveModelID())
             guard isListenerActive(generation: generation) else {
                 connection.cancel()
                 return
@@ -299,8 +300,8 @@ public final class LocalAPIServer: ObservableObject {
             return
         }
 
-        let models = await availableModels()
         let activeID = await currentActiveModelID()
+        let models = availableModels(activeID: activeID)
         let availableIDs = models.map(\.id)
         let bodyData = request.body
 
@@ -416,7 +417,8 @@ public final class LocalAPIServer: ObservableObject {
 
         // Ensure the requested model is already loaded, or load an already-installed, integrity-checked
         // file exclusively inside this lease — never delete, never download, never cancel another owner.
-        if let loadErr = await ensureModelLoadedInsideLease(modelID: chatReq.model, lease: lease) {
+        if let loadErr = await ensureModelLoadedInsideLease(modelID: chatReq.model, lease: lease,
+                                                            generation: generation, connection: connection) {
             await releaseLease()
             await releaseGate()
             if !Task.isCancelled && !connection.isDisconnected && isListenerActive(generation: generation) {
@@ -547,7 +549,7 @@ public final class LocalAPIServer: ObservableObject {
         // 2) The exclusive inference lease and request gate are released the instant native
         //    generation completes, never held while draining buffered SSE frames to a slow reader.
         let sseBuffer = LocalSSEStreamBuffer()
-        var writerTask: Task<Void, Never>?
+        var writerTask: Task<Bool, Never>?
         var headersStarted = false
 
         func startWriterIfNeeded() {
@@ -563,29 +565,11 @@ public final class LocalAPIServer: ObservableObject {
                 sseBuffer.enqueueProbe()
             }
             writerTask = Task { [connection, sseBuffer] in
-                while true {
-                    let batch = await sseBuffer.nextBatch()
-                    if batch.isAborted || connection.isDisconnected {
-                        connection.cancel()
-                        return
-                    }
-                    if batch.isFinished {
-                        if !batch.data.isEmpty {
-                            connection.sendAndClose(batch.data)
-                        } else {
-                            connection.cancel()
-                        }
-                        return
-                    }
-                    if !batch.data.isEmpty {
-                        let ok = await connection.send(batch.data)
-                        if !ok {
-                            sseBuffer.abort()
-                            connection.cancel()
-                            return
-                        }
-                    }
+                let sent = await sseBuffer.writeFrames { data, final in
+                    await connection.send(data, final: final)
                 }
+                if !sent { connection.cancel() }
+                return sent
             }
         }
 
@@ -629,11 +613,26 @@ public final class LocalAPIServer: ObservableObject {
                 }
             }
 
-            let cap = await lease.chatCapStatus()
+            if Task.isCancelled || connection.isDisconnected || sseBuffer.isAborted {
+                lease.requestCancel()
+                await releaseLease()
+                await releaseGate()
+                sseBuffer.abort()
+                writerTask?.cancel()
+                return
+            }
+
+            let finishReason = try LocalAPIFinishReason.completion(for: await lease.chatCapStatus())
             // Release the exclusive engine lease and API gate immediately now that native
             // generation has finished; slow socket draining below can never starve in-app chat.
             await releaseLease()
             await releaseGate()
+            guard !Task.isCancelled, !connection.isDisconnected, !sseBuffer.isAborted else {
+                sseBuffer.abort()
+                writerTask?.cancel()
+                connection.cancel()
+                return
+            }
 
             var tailData = Data()
             if splitThinking {
@@ -650,22 +649,16 @@ public final class LocalAPIServer: ObservableObject {
                 }
             }
 
-            let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
             tailData.append(LocalAPICodec.encodeStreamChunk(
                 id: id, created: created, model: model, finishReason: finishReason
             ))
             tailData.append(LocalAPICodec.streamDoneFrame)
-            requestsServed += 1
-
-            if headersStarted {
-                sseBuffer.finish(finalData: tailData)
-                await writerTask?.value
-            } else {
-                var full = LocalHTTPResponse.sseHeaders()
-                full.append(LocalAPICodec.encodeStreamChunk(id: id, created: created, model: model, role: "assistant"))
-                full.append(tailData)
-                connection.sendAndClose(full)
+            startWriterIfNeeded()
+            sseBuffer.finish(finalData: tailData)
+            if await writerTask?.value == true {
+                requestsServed += 1
             }
+            connection.cancel()
         } catch InferenceError.cancelled {
             lease.requestCancel()
             await releaseLease()
@@ -688,12 +681,15 @@ public final class LocalAPIServer: ObservableObject {
             lease.requestCancel()
             await releaseLease()
             await releaseGate()
-            sseBuffer.abort()
-            writerTask?.cancel()
-            if !headersStarted && !connection.isDisconnected {
-                connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
-            } else {
+            let apiError = error as? LocalAPIError ?? .internalError("Generation failed: \(error.localizedDescription)")
+            if headersStarted && !connection.isDisconnected {
+                sseBuffer.finish(finalData: LocalAPICodec.encodeStreamError(apiError))
+                _ = await writerTask?.value
                 connection.cancel()
+            } else {
+                sseBuffer.abort()
+                writerTask?.cancel()
+                if !connection.isDisconnected { connection.sendAndClose(LocalHTTPResponse.error(apiError)) }
             }
         }
     }
@@ -742,12 +738,11 @@ public final class LocalAPIServer: ObservableObject {
                 await releaseGate()
                 return
             }
-            let cap = await lease.chatCapStatus()
+            let finishReason = try LocalAPIFinishReason.completion(for: await lease.chatCapStatus())
             // Release the exclusive engine lease and API gate before flushing the HTTP response.
             await releaseLease()
             await releaseGate()
 
-            let finishReason: LocalAPIFinishReason = (cap == .hit) ? .length : .stop
             let body = LocalAPICodec.encodeChatCompletion(
                 id: id,
                 created: created,
@@ -780,7 +775,8 @@ public final class LocalAPIServer: ObservableObject {
             await releaseLease()
             await releaseGate()
             if !connection.isDisconnected {
-                connection.sendAndClose(LocalHTTPResponse.error(.internalError("Generation failed: \(error.localizedDescription)")))
+                let apiError = error as? LocalAPIError ?? .internalError("Generation failed: \(error.localizedDescription)")
+                connection.sendAndClose(LocalHTTPResponse.error(apiError))
             }
         }
     }
@@ -817,12 +813,21 @@ public final class LocalAPIServer: ObservableObject {
         return nil
     }
 
-    private func availableModels() async -> [LocalAPIModelInfo] {
-        let activeID = await currentActiveModelID()
-        let manager = ModelManager(
-            storage: OnboardingModel.defaultModelStorage(),
-            activeModelID: activeID
+    private func availableModels(activeID: String?) -> [LocalAPIModelInfo] {
+        Self.installedModels(
+            activeID: activeID,
+            catalog: ModelCatalog.models,
+            sideloaded: SideloadedModels.shared,
+            storage: OnboardingModel.defaultModelStorage()
         )
+    }
+
+    static func installedModels(
+        activeID: String?,
+        catalog: [ModelEntry],
+        sideloaded: SideloadedModels,
+        storage: FileManagerModelStorage
+    ) -> [LocalAPIModelInfo] {
         var seen: Set<String> = []
         var result: [LocalAPIModelInfo] = []
 
@@ -831,12 +836,17 @@ public final class LocalAPIServer: ObservableObject {
             result.append(LocalAPIModelInfo(id: activeID))
         }
 
-        for installed in manager.installed() where ModelRuntimeSupport.supports(installed.model) {
-            if seen.insert(installed.model.id).inserted {
-                result.append(LocalAPIModelInfo(id: installed.model.id))
-            }
+        let candidates = (catalog + sideloaded.all).compactMap { entry -> (id: String, size: Int64)? in
+            guard seen.insert(entry.id).inserted, ModelRuntimeSupport.supports(entry),
+                  let file = storage.candidateFile(for: entry),
+                  let identity = ModelArtifactReceipts.Identity.read(file) else { return nil }
+            let size = ModelArtifactSet.isMultipart(entry) ? entry.downloadBytes ?? identity.size : identity.size
+            return (entry.id, size)
+        }.sorted {
+            if $0.size != $1.size { return $0.size > $1.size }
+            return $0.id < $1.id
         }
-
+        result.append(contentsOf: candidates.map { LocalAPIModelInfo(id: $0.id) })
         return result
     }
 
@@ -854,7 +864,9 @@ public final class LocalAPIServer: ObservableObject {
     /// and never calls `requestCancel()` outside the exclusive lease.
     private func ensureModelLoadedInsideLease(
         modelID: String,
-        lease: ExclusiveInferenceLease
+        lease: ExclusiveInferenceLease,
+        generation: UInt64,
+        connection: LocalAPIConnection
     ) async -> LocalAPIError? {
         if await lease.loadedModelID() == modelID {
             return nil
@@ -887,16 +899,18 @@ public final class LocalAPIServer: ObservableObject {
 
         await lease.setContextLengthChoice(AppSettings.shared.contextLength)
         do {
-            try await lease.load(model: entry, at: fileURL)
+            try await lease.loadForRequest(model: entry, at: fileURL) { @MainActor in
+                // Model selection commits on the main actor before this request releases its lease.
+                guard !Task.isCancelled, self.isListenerActive(generation: generation),
+                      !connection.isDisconnected else { return false }
+                self.onboarding?.syncExternallyLoadedModel(entry)
+                return true
+            }
+        } catch is CancellationError {
+            return nil
         } catch {
             return .serviceUnavailable("Could not load model '\(entry.id)': \(OnboardingModel.describe(error))")
         }
-
-        guard await lease.loadedModelID() == entry.id else {
-            return .serviceUnavailable("Could not load model '\(entry.id)'. Open Quenderin to check model status.")
-        }
-
-        onboarding?.syncExternallyLoadedModel(entry)
         return nil
     }
 
@@ -935,8 +949,10 @@ private final class LocalAPIConnection: @unchecked Sendable {
     private let connection: NWConnection
     private let queue: DispatchQueue
     private let writeTimeoutSeconds: Double
+    private let validateHeaders: @Sendable (LocalHTTPRequest) -> LocalAPIError?
     private let lock = NSLock()
     private var buffer = Data()
+    private var headersAccepted = false // connection queue only
     private var parsedRequest = false
     private var sendingFinal = false
     private var finished = false
@@ -957,10 +973,12 @@ private final class LocalAPIConnection: @unchecked Sendable {
         return disconnected
     }
 
-    init(connection: NWConnection, queue: DispatchQueue, writeTimeoutSeconds: Double) {
+    init(connection: NWConnection, queue: DispatchQueue, writeTimeoutSeconds: Double,
+         validateHeaders: @escaping @Sendable (LocalHTTPRequest) -> LocalAPIError?) {
         self.connection = connection
         self.queue = queue
         self.writeTimeoutSeconds = writeTimeoutSeconds
+        self.validateHeaders = validateHeaders
     }
 
     func attachWorkTask(_ task: Task<Void, Never>) {
@@ -1001,6 +1019,12 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 break
             }
         }
+        scheduleReadTimeout(seconds: 5, message: "Timed out waiting for HTTP headers.")
+        connection.start(queue: queue)
+        receiveNext()
+    }
+
+    private func scheduleReadTimeout(seconds: Double, message: String) {
         let timeout = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.lock.lock()
@@ -1008,20 +1032,23 @@ private final class LocalAPIConnection: @unchecked Sendable {
             let alreadyClosed = self.disconnected
             self.lock.unlock()
             if !alreadyParsed && !alreadyClosed {
-                self.sendAndClose(LocalHTTPResponse.error(.badRequest("Timed out waiting for HTTP request.")))
+                self.sendAndClose(LocalHTTPResponse.error(.badRequest(message)))
             }
         }
         lock.lock()
+        readTimeoutItem?.cancel()
         readTimeoutItem = timeout
         lock.unlock()
-        queue.asyncAfter(deadline: .now() + 30, execute: timeout)
-        connection.start(queue: queue)
-        receiveNext()
+        queue.asyncAfter(deadline: .now() + seconds, execute: timeout)
     }
 
     private func receiveNext() {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { @Sendable [weak self] data, _, isComplete, error in
             guard let self else { return }
+            self.lock.lock()
+            let receiving = !self.disconnected && !self.sendingFinal
+            self.lock.unlock()
+            guard receiving else { return }
             if error != nil {
                 self.markDisconnected()
                 return
@@ -1029,7 +1056,14 @@ private final class LocalAPIConnection: @unchecked Sendable {
             if let data, !data.isEmpty {
                 self.buffer.append(data)
             }
-            switch LocalHTTPRequest.parse(self.buffer) {
+            let parsed = LocalHTTPRequest.parse(self.buffer) { head in
+                guard !self.headersAccepted else { return nil }
+                if let rejection = self.validateHeaders(head) { return rejection }
+                self.headersAccepted = true
+                self.scheduleReadTimeout(seconds: 30, message: "Timed out waiting for HTTP body.")
+                return nil
+            }
+            switch parsed {
             case .complete(let request, _):
                 self.cancelReadTimeout(markParsed: true)
                 self.buffer.removeAll(keepingCapacity: false)
@@ -1042,6 +1076,9 @@ private final class LocalAPIConnection: @unchecked Sendable {
             case .error(let parseErr):
                 self.cancelReadTimeout(markParsed: true)
                 self.sendAndClose(LocalHTTPResponse.error(.fromParseError(parseErr)))
+            case .rejected(let error):
+                self.cancelReadTimeout(markParsed: true)
+                self.sendAndClose(LocalHTTPResponse.error(error))
             case .needMore:
                 if isComplete {
                     self.cancelReadTimeout(markParsed: true)
@@ -1106,7 +1143,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
 
     /// Sends one SSE/response chunk with a bounded write deadline so a stalled reader cannot
     /// block inference or starve in-app chat.
-    func send(_ data: Data) async -> Bool {
+    func send(_ data: Data, final: Bool) async -> Bool {
         if isDisconnected { return false }
         return await withCheckedContinuation { continuation in
             let timeoutItem = DispatchWorkItem { [weak self] in
@@ -1125,11 +1162,16 @@ private final class LocalAPIConnection: @unchecked Sendable {
                 continuation.resume(returning: false)
                 return
             }
+            if final {
+                sendingFinal = true
+                streamingProbeHook = nil
+            }
             pendingWrite = (continuation, timeoutItem)
             lock.unlock()
 
             queue.asyncAfter(deadline: .now() + writeTimeoutSeconds, execute: timeoutItem)
-            connection.send(content: data, completion: .contentProcessed { @Sendable [weak self] error in
+            let context: NWConnection.ContentContext = final ? .finalMessage : .defaultMessage
+            connection.send(content: data, contentContext: context, isComplete: true, completion: .contentProcessed { @Sendable [weak self] error in
                 guard let self else { return }
                 guard let pending = self.takePendingWrite() else { return }
                 pending.timeout.cancel()
@@ -1137,7 +1179,7 @@ private final class LocalAPIConnection: @unchecked Sendable {
                     self.markDisconnected()
                     pending.continuation.resume(returning: false)
                 } else {
-                    pending.continuation.resume(returning: true)
+                    pending.continuation.resume(returning: !self.isDisconnected)
                 }
             })
         }
